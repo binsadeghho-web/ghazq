@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTabId } from './components/layout/Sidebar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { LoginModal } from './components/auth/LoginModal';
 import { SessionManagerModal } from './components/auth/SessionManagerModal';
+import { CrextioLayout } from './components/crextio/CrextioLayout';
+import { GlobalMouseHalo } from './components/common/GlobalMouseHalo';
 
 // Section components
 import { DashboardSection } from './components/dashboard/DashboardSection';
@@ -18,6 +20,8 @@ import { JudicialRulingsSection } from './components/rulings/JudicialRulingsSect
 import { WelfareSection } from './components/welfare/WelfareSection';
 import { SynergyWallSection } from './components/synergy/SynergyWallSection';
 import { AdminControlCenter } from './components/admin/AdminControlCenter';
+import { AlumniDirectorySection } from './components/alumni/AlumniDirectorySection';
+import { UserManagementModule } from './components/admin/UserManagementModule';
 
 const tabTitles: Record<NavTabId, string> = {
   dashboard: 'داشبورد جامع و درگاه‌های دسترسی',
@@ -29,20 +33,31 @@ const tabTitles: Record<NavTabId, string> = {
   rulings: 'تالار نقد، ارزیابی و مباحثه آراء قضایی',
   welfare: 'تسهیلات رفاهی، اقامتگاه‌ها و سبد مصرفی',
   synergy: 'دیوار هم‌افزایی شغلی و دیوار همدلی',
-  admin: 'مرکز فرماندهی و مدیریت سامانه فقه و قضا',
+  alumni: 'بانک جامع اطلاعات و شناسنامه دانش‌آموختگان',
+  users: 'مدیریت کاربران (حساب‌های کاربری) و سطوح دسترسی',
+  admin: 'مدیریت',
 };
 
 const MainLayout: React.FC = () => {
+  const { designTheme, setDesignTheme } = useApp();
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // When Theme 2 (Crextio) is selected, render Crextio Workspace
+  if (designTheme === 'crextio') {
+    return <CrextioLayout onToggleToPortalTheme={() => setDesignTheme('portal')} />;
+  }
 
   return (
     <div
       className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col text-slate-800 dark:text-slate-100 font-sans transition-colors relative overflow-x-hidden selection:bg-amber-500/30"
       dir="rtl"
     >
+      {/* Global Interactive Mouse Glow over background & empty spaces */}
+      <GlobalMouseHalo theme="portal" />
+
       {/* Dynamic Ambient Background Mesh Glows */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 blur-3xl" />
@@ -91,6 +106,8 @@ const MainLayout: React.FC = () => {
               {activeTab === 'rulings' && <JudicialRulingsSection />}
               {activeTab === 'welfare' && <WelfareSection />}
               {activeTab === 'synergy' && <SynergyWallSection />}
+              {activeTab === 'alumni' && <AlumniDirectorySection onNavigate={setActiveTab} />}
+              {activeTab === 'users' && <UserManagementModule />}
               {activeTab === 'admin' && <AdminControlCenter />}
             </motion.div>
           </AnimatePresence>
@@ -110,10 +127,17 @@ const MainLayout: React.FC = () => {
         onClose={() => setLoginModalOpen(false)}
       />
 
-      <SessionManagerModal
-        isOpen={sessionModalOpen}
-        onClose={() => setSessionModalOpen(false)}
-      />
+      {/* Floating Theme 2 Switcher Badge */}
+      <div className="fixed bottom-6 left-6 z-50">
+        <button
+          onClick={() => setDesignTheme('crextio')}
+          className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-[#222222] hover:bg-black text-white text-xs font-bold shadow-2xl border border-white/20 hover:scale-105 transition-all group active:scale-95"
+          title="مشاهده تم دوم (طرح مینیمال Crextio)"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-[#F8D548] animate-pulse" />
+          <span>مشاهده تم ۲: Crextio Workspace (طرح درخواستی)</span>
+        </button>
+      </div>
     </div>
   );
 };

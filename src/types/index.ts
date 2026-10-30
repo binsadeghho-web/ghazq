@@ -14,9 +14,41 @@ export interface UserSession {
   familyId: string;
 }
 
+export type AppSectionId = 
+  | 'dashboard'
+  | 'cartable'
+  | 'courses'
+  | 'products'
+  | 'counseling'
+  | 'research'
+  | 'rulings'
+  | 'welfare'
+  | 'synergy'
+  | 'alumni'
+  | 'users';
+
+export type PermissionAccessLevel =
+  | 'none'          // عدم دسترسی
+  | 'view_all'      // فقط مشاهده (کل اطلاعات)
+  | 'manage_all'    // مشاهده و ویرایش (کل اطلاعات)
+  | 'view_own'      // منحصراً فقط مشاهده اطلاعات خود
+  | 'manage_own';   // مشاهده و ویرایش مستقل اطلاعات خود
+
+export type UserSectionPermissions = Partial<Record<AppSectionId, PermissionAccessLevel>>;
+
+export interface UserPermissions {
+  canSubmitRuling: boolean;
+  canBookCounseling: boolean;
+  canRequestLoan: boolean;
+  canBuyCooperative: boolean;
+  canAccessCartable: boolean;
+}
+
 export interface User {
   id: string;
-  nationalId: string; // Identifier for login
+  nationalId: string; // کد ملی (شناسه ورود)
+  username?: string; // نام کاربری (پیش‌فرض کد ملی)
+  password?: string; // رمز عبور (پیش‌فرض شماره موبایل)
   fullName: string;
   phone: string;
   role: UserRole;
@@ -30,6 +62,66 @@ export interface User {
   lockExpiresAt?: string;
   tokenVersion: number;
   sessions: UserSession[];
+  hasAccount?: boolean; // نشان‌دهنده وجود یا عدم وجود حساب کاربری فعال
+  
+  // دسترسی‌های ریز و ماتریسی بخش‌های نرم‌افزار
+  sectionPermissions?: UserSectionPermissions;
+
+  // سربرگ ۱: اطلاعات هویتی و فردی
+  birthDate?: string;
+  fatherName?: string;
+  idNumber?: string;
+  maritalStatus?: 'مجرد' | 'متاهل';
+  childrenCount?: number;
+  residentialAddress?: string;
+
+  // سربرگ ۲: سوابق حوزوی و دانشگاهی
+  academicDegree?: string; // سطح ۴ حوزه، دکتری، کارشناسی ارشد
+  thesisTitle?: string;
+  supervisorProfessor?: string;
+  seminaryLevel?: string; // سطح ۲، ۳، ۴ یا درس خارج
+  seminarySchool?: string; // حوزه علمیه قم، تهران، مشهد و ...
+  universityDegree?: string;
+  universityName?: string;
+  fieldOfStudy?: string;
+  academicHonors?: string;
+
+  // سربرگ ۳: سوابق در مجموعه و مرکز دانش‌آموختگان
+  associationMembershipDate?: string;
+  associationResponsibility?: string; // عضو هیئت اندیشه‌ورز، مسئول کارگروه، مجمع عمومی
+  associationContributions?: string[]; // فعالیت‌ها و طرح‌های ارائه‌شده در مرکز
+  membershipStatus?: 'active' | 'honorary' | 'alumni_council';
+  internalNotes?: string;
+
+  // سربرگ ۴: اطلاعات شغلی و قضایی
+  personnelId?: string;
+  judicialGrade?: number; // پایه ۱ تا ۱۱ قضایی
+  courtBranch?: string;
+  province?: string;
+  email?: string;
+  employmentStatus?: 'شاغل قضایی' | 'مستشار' | 'بازپرس' | 'دادیار' | 'قاضی بازنشسته' | 'عضو هیئت علمی';
+  currentJudicialPost?: string;
+  serviceYears?: number;
+  judicialSpecialty?: string; // کیفری، حقوقی، خانواده، اقتصادی، اداری
+  
+  permissions?: UserPermissions;
+}
+
+export interface CrextioDashboardConfig {
+  showHeroBanner: boolean;
+  showCourseShowcase: boolean;
+  courseShowcaseMode: 'carousel' | 'grid' | 'compact';
+  showKpiRow: boolean;
+  showProfileCard: boolean;
+  showPerformanceCard: boolean;
+  showPublicationsGallery: boolean;
+  publicationsMode: 'cards' | 'list';
+  showCartableSnippet: boolean;
+  showQuickActions: boolean;
+  showRulingsSnippet: boolean;
+  canvasTheme: 'warm_ivory' | 'royal_emerald' | 'pure_minimal';
+  heroTitle?: string;
+  heroSubtitle?: string;
 }
 
 export interface AuditLog {

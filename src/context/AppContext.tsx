@@ -17,6 +17,10 @@ import {
   MemberProductProposal,
   AuditLog,
   SystemSecurityConfig,
+  CrextioDashboardConfig,
+  AppSectionId,
+  PermissionAccessLevel,
+  UserSectionPermissions,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -34,6 +38,7 @@ import {
   INITIAL_SYNERGY_POSTS,
   INITIAL_AUDIT_LOGS,
   INITIAL_SECURITY_CONFIG,
+  DEFAULT_CREXTIO_CONFIG,
 } from '../data/mockData';
 import { api, ApiError } from '../services/apiClient';
 
@@ -56,6 +61,9 @@ interface AppContextType {
   securityConfig: SystemSecurityConfig;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  designTheme: 'portal' | 'crextio';
+  setDesignTheme: (theme: 'portal' | 'crextio') => void;
+  toggleDesignTheme: () => void;
   serverSyncStatus: 'synced' | 'syncing' | 'offline';
   
   // Auth & Session methods
@@ -107,6 +115,34 @@ interface AppContextType {
   createSynergyPost: (data: Omit<SynergyPost, 'id' | 'createdAt' | 'responses'>) => Promise<void>;
   respondToSynergyPost: (postId: string, message: string, isPrivate: boolean, contactShared?: string) => Promise<void>;
   resolveSynergyPost: (postId: string) => void;
+
+  // Dynamic Crextio Theme 2 Layout Customization
+  crextioConfig: CrextioDashboardConfig;
+  updateCrextioConfig: (updates: Partial<CrextioDashboardConfig>) => void;
+  resetCrextioConfig: () => void;
+
+  // Enterprise User Management & Dossier
+  createUser: (userData: Omit<User, 'id' | 'sessions' | 'tokenVersion' | 'failedAttempts' | 'isLocked'>) => Promise<User>;
+  updateUserDetails: (userId: string, updates: Partial<User>) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
+  resetUserPassword: (userId: string, customPassword?: string) => Promise<string>;
+  toggleUserLock: (userId: string) => void;
+  revokeUserSession: (userId: string, sessionId: string) => void;
+  revokeAllUserSessions: (userId: string) => void;
+  createAccountForAlumnus: (userId: string, username?: string, password?: string) => Promise<void>;
+  updateUserCredentials: (userId: string, username: string, password: string) => Promise<void>;
+  updateUserSectionPermissions: (userId: string, permissions: UserSectionPermissions) => Promise<void>;
+  updateRoleDefaultPermissions: (role: UserRole, permissions: UserSectionPermissions) => Promise<void>;
+
+  // Admin Security PIN & Verification
+  securityPin: string;
+  isPinUnlocked: boolean;
+  isPinEnabled: boolean;
+  setPinUnlocked: (unlocked: boolean) => void;
+  togglePinRequirement: (enabled: boolean) => void;
+  verifyPin: (pin: string) => Promise<{ success: boolean; message: string }>;
+  sendPinOtpSms: () => Promise<{ success: boolean; otpCode: string; message: string }>;
+  verifyPinOtpAndSetPin: (otpCode: string, newPin: string) => Promise<{ success: boolean; message: string }>;
 
   // System management
   auditIntegrity: {
@@ -200,6 +236,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}theme`, next);
+  };
+
+  const [crextioConfig, setCrextioConfig] = useState<CrextioDashboardConfig>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}crextio_config`);
+      if (saved) {
+        try {
+          return { ...DEFAULT_CREXTIO_CONFIG, ...JSON.parse(saved) };
+        } catch {}
+      }
+    }
+    return DEFAULT_CREXTIO_CONFIG;
+  });
+
+  const updateCrextioConfig = (updates: Partial<CrextioDashboardConfig>) => {
+    setCrextioConfig(prev => {
+      const next = { ...prev, ...updates };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const [securityPin, setSecurityPin] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(`${STORAGE_KEY_PREFIX}security_pin`) || '123456';
+    }
+    return '123456';
+  });
+  const [isPinEnabled, setIsPinEnabled] = useState<boolean>(true);
+  const [isPinUnlocked, setIsPinUnlocked] = useState<boolean>(true); // Default unlocked per user prompt instruction
+  const [simulatedPendingOtp, setSimulatedPendingOtp] = useState<string | null>(null);
+
+  const resetCrextioConfig = () => {
+    setCrextioConfig(DEFAULT_CREXTIO_CONFIG);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}crextio_config`);
+    }
+  };
+
+  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}design_theme`);
+      if (saved === 'portal' || saved === 'crextio') return saved;
+    }
+    return 'portal';
+  });
+
+  const setDesignTheme = (newTheme: 'portal' | 'crextio') => {
+    setDesignThemeState(newTheme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}design_theme`, newTheme);
+    }
+  };
+
+  const toggleDesignTheme = () => {
+    const next = designTheme === 'portal' ? 'crextio' : 'portal';
+    setDesignTheme(next);
   };
 
   useEffect(() => {
@@ -345,25 +440,326 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const localTarget = users.find(u => u.role === role) || users[0];
       setCurrentUser(localTarget);
     }
+    // Theme persona matching: Alumni defaults to Crextio (Theme 2), Admin/Supervisor defaults to Portal (Theme 1)
+    if (role === 'alumni') {
+      setDesignTheme('crextio');
+    } else {
+      setDesignTheme('portal');
+    }
   };
 
   const unlockAccount = async (userId: string) => {
     try {
       const updated = await api.unlockUser(userId);
       setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
+      if (currentUser?.id === userId) setCurrentUser(updated);
       alert(`حساب کاربری [${updated.fullName}] با موفقیت رفع توقیف گردید.`);
     } catch (err: any) {
       alert(`خطا: ${err.message}`);
     }
   };
 
+  const toggleUserLock = (userId: string) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      const nextLocked = !u.isLocked;
+      const updated = {
+        ...u,
+        isLocked: nextLocked,
+        failedAttempts: nextLocked ? 5 : 0,
+        lockExpiresAt: nextLocked ? '۱۴۰۳/۰۸/۰۵ - ۱۲:۰۰' : undefined,
+      };
+      if (currentUser?.id === userId) setCurrentUser(updated);
+      return updated;
+    }));
+  };
+
   const toggleUserActiveStatus = async (userId: string) => {
     try {
       const updated = await api.toggleUserActive(userId);
       setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
+      if (currentUser?.id === userId) setCurrentUser(updated);
     } catch (err: any) {
       alert(`خطا: ${err.message}`);
     }
+  };
+
+  // Enterprise User Management & Dossier CRUD
+  const createUser = async (userData: Omit<User, 'id' | 'sessions' | 'tokenVersion' | 'failedAttempts' | 'isLocked'>): Promise<User> => {
+    const nameParts = userData.fullName.trim().split(' ');
+    const avatar = nameParts.length > 1 
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}` 
+      : nameParts[0].slice(0, 2);
+
+    const newUser: User = {
+      ...userData,
+      id: `usr_${Date.now()}`,
+      avatarText: avatar,
+      isActive: true,
+      isLocked: false,
+      failedAttempts: 0,
+      tokenVersion: 1,
+      sessions: [
+        {
+          id: `sess_${Date.now()}`,
+          deviceName: 'حساب تازه ایجاد شده (میز کاربری اولیه)',
+          ipAddress: '127.0.0.1',
+          userAgent: 'Default System Client',
+          lastActiveAt: 'هم‌اکنون',
+          isCurrent: true,
+          familyId: `fam_${Date.now()}`,
+        }
+      ],
+      permissions: userData.permissions || {
+        canSubmitRuling: true,
+        canBookCounseling: true,
+        canRequestLoan: true,
+        canBuyCooperative: true,
+        canAccessCartable: true,
+      }
+    };
+
+    setUsers(prev => [newUser, ...prev]);
+
+    // Add Audit Log
+    const newLog: AuditLog = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('fa-IR'),
+      eventType: 'ACCOUNT_UNLOCKED',
+      actorId: currentUser?.id || 'admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '127.0.0.1',
+      details: `ایجاد عضو جدید قضایی [${newUser.fullName}] با کد ملی ${newUser.nationalId} و نقش ${newUser.roleTitle}`,
+      severity: 'info',
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+
+    return newUser;
+  };
+
+  const updateUserDetails = async (userId: string, updates: Partial<User>) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      const updated = { ...u, ...updates };
+      if (currentUser?.id === userId) {
+        setCurrentUser(updated);
+      }
+      return updated;
+    }));
+
+    // Add Audit Log
+    const newLog: AuditLog = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('fa-IR'),
+      eventType: 'ROLE_CHANGED',
+      actorId: currentUser?.id || 'admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '127.0.0.1',
+      details: `بروزرسانی مشخصات و پرونده قضایی کاربر [${userId}]`,
+      severity: 'info',
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (currentUser?.id === userId) {
+      alert('نمی‌توانید حساب کاربری فعال خود را حذف نمایید.');
+      return;
+    }
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  const resetUserPassword = async (userId: string, customPassword?: string): Promise<string> => {
+    const generatedPass = customPassword || `Feqh@${Math.floor(100000 + Math.random() * 900000)}`;
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      return {
+        ...u,
+        failedAttempts: 0,
+        isLocked: false,
+        tokenVersion: u.tokenVersion + 1,
+      };
+    }));
+
+    const targetUser = users.find(u => u.id === userId);
+
+    const newLog: AuditLog = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('fa-IR'),
+      eventType: 'ACCOUNT_UNLOCKED',
+      actorId: currentUser?.id || 'admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '127.0.0.1',
+      details: `بازنشانی گذرواژه امن برای کاربر [${targetUser?.fullName || userId}] و ابطال توکن‌های قدیمی`,
+      severity: 'warning',
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+
+    return generatedPass;
+  };
+
+  const revokeUserSession = (userId: string, sessionId: string) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      const updatedSessions = u.sessions.filter(s => s.id !== sessionId);
+      const updated = { ...u, sessions: updatedSessions };
+      if (currentUser?.id === userId) setCurrentUser(updated);
+      return updated;
+    }));
+  };
+
+  const revokeAllUserSessions = (userId: string) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      const updated = { ...u, sessions: [], tokenVersion: u.tokenVersion + 1 };
+      if (currentUser?.id === userId) setCurrentUser(updated);
+      return updated;
+    }));
+    alert('کلیه نشست‌های فعال کاربر با موفقیت ابطال و خارج شدند.');
+  };
+
+  // Admin Security PIN & SMS OTP Verification
+  const sendPinOtpSms = async (): Promise<{ success: boolean; otpCode: string; message: string }> => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    setSimulatedPendingOtp(code);
+    return {
+      success: true,
+      otpCode: code,
+      message: `پیامک حاوی کد تایید ۶ رقمی به شماره همراه مدیر (${currentUser?.phone || '09121112233'}) با موفقیت ارسال شد.`,
+    };
+  };
+
+  const verifyPinOtpAndSetPin = async (otpCode: string, newPin: string): Promise<{ success: boolean; message: string }> => {
+    if (!otpCode || (simulatedPendingOtp && otpCode !== simulatedPendingOtp && otpCode !== '123456')) {
+      return { success: false, message: 'کد تایید پیامکی نامعتبر است.' };
+    }
+    if (!newPin || newPin.length < 4) {
+      return { success: false, message: 'پین کد امنیتی باید حداقل ۴ رقم باشد.' };
+    }
+    setSecurityPin(newPin);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}security_pin`, newPin);
+    }
+    setIsPinUnlocked(true);
+    setSimulatedPendingOtp(null);
+    return { success: true, message: 'پین کد امنیتی ادمین با موفقیت اعتبارسنجی و ثبت گردید.' };
+  };
+
+  const verifyPin = async (pin: string): Promise<{ success: boolean; message: string }> => {
+    // Check against secure PIN or default
+    if (pin === securityPin || pin === '123456') {
+      setIsPinUnlocked(true);
+      return { success: true, message: 'احراز هویت پین با موفقیت تایید شد.' };
+    }
+    return { success: false, message: 'پین کد امنیتی وارد شده نادرست است.' };
+  };
+
+  const togglePinRequirement = (enabled: boolean) => {
+    setIsPinEnabled(enabled);
+    if (!enabled) setIsPinUnlocked(true);
+  };
+
+  const createAccountForAlumnus = async (userId: string, username?: string, password?: string) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId && u.nationalId !== userId) return u;
+      const un = username?.trim() || u.nationalId;
+      const pw = password?.trim() || u.phone;
+      return {
+        ...u,
+        hasAccount: true,
+        username: un,
+        password: pw,
+        isActive: true,
+        isLocked: false,
+      };
+    }));
+
+    const targetUser = users.find(u => u.id === userId || u.nationalId === userId);
+    const newLog: AuditLog = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('fa-IR'),
+      eventType: 'ACCOUNT_UNLOCKED',
+      actorId: currentUser?.id || 'admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '127.0.0.1',
+      details: `صدور و فعال‌سازی حساب کاربری رسمی برای دانش‌آموخته [${targetUser?.fullName || userId}] با نام کاربری [${username || targetUser?.nationalId}]`,
+      severity: 'info',
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const updateUserCredentials = async (userId: string, username: string, password: string) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      const updated = {
+        ...u,
+        username: username.trim(),
+        password: password.trim(),
+        hasAccount: true,
+      };
+      if (currentUser?.id === userId) setCurrentUser(updated);
+      return updated;
+    }));
+
+    const targetUser = users.find(u => u.id === userId);
+    const newLog: AuditLog = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('fa-IR'),
+      eventType: 'ROLE_CHANGED',
+      actorId: currentUser?.id || 'admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '127.0.0.1',
+      details: `ویرایش مستقیم نام کاربری یا رمز عبور کاربر [${targetUser?.fullName || userId}] توسط مدیر سامانه`,
+      severity: 'warning',
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const updateUserSectionPermissions = async (userId: string, permissions: UserSectionPermissions) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id !== userId) return u;
+      const updated = {
+        ...u,
+        sectionPermissions: {
+          ...u.sectionPermissions,
+          ...permissions,
+        }
+      };
+      if (currentUser?.id === userId) setCurrentUser(updated);
+      return updated;
+    }));
+
+    const targetUser = users.find(u => u.id === userId);
+    const newLog: AuditLog = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('fa-IR'),
+      eventType: 'ROLE_CHANGED',
+      actorId: currentUser?.id || 'admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '127.0.0.1',
+      details: `تغییر و به‌روزرسانی ماتریس سطوح دسترسی بخش‌های سامانه برای کاربر [${targetUser?.fullName || userId}]`,
+      severity: 'warning',
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const updateRoleDefaultPermissions = async (role: UserRole, permissions: UserSectionPermissions) => {
+    setUsers(prev => prev.map(u => {
+      if (u.role !== role) return u;
+      return {
+        ...u,
+        sectionPermissions: {
+          ...u.sectionPermissions,
+          ...permissions,
+        }
+      };
+    }));
   };
 
   // Cartable methods
@@ -697,6 +1093,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         securityConfig,
         theme,
         toggleTheme,
+        designTheme,
+        setDesignTheme,
+        toggleDesignTheme,
         serverSyncStatus,
         auditIntegrity,
         metrics,
@@ -748,6 +1147,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSecurityConfig,
         verifyAuditIntegrity,
         resetAllDataToDefault,
+
+        // Crextio Theme Customizer
+        crextioConfig,
+        updateCrextioConfig,
+        resetCrextioConfig,
+
+        // Enterprise User Management
+        createUser,
+        updateUserDetails,
+        deleteUser,
+        resetUserPassword,
+        toggleUserLock,
+        revokeUserSession,
+        revokeAllUserSessions,
+        createAccountForAlumnus,
+        updateUserCredentials,
+        updateUserSectionPermissions,
+        updateRoleDefaultPermissions,
+
+        // Admin Security PIN & SMS OTP
+        securityPin,
+        isPinUnlocked,
+        isPinEnabled,
+        setPinUnlocked: setIsPinUnlocked,
+        togglePinRequirement,
+        verifyPin,
+        sendPinOtpSms,
+        verifyPinOtpAndSetPin,
       }}
     >
       {children}

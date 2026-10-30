@@ -25,6 +25,8 @@ export type NavTabId =
   | 'rulings'
   | 'welfare'
   | 'synergy'
+  | 'alumni'
+  | 'users'
   | 'admin';
 
 interface SidebarProps {
@@ -146,6 +148,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       activeBg: 'bg-purple-600 text-white dark:bg-purple-500 dark:text-white',
       count: openSynergyCount,
     },
+    ...(currentUser?.role === 'admin' || currentUser?.role === 'supervisor' ? [
+      {
+        id: 'alumni' as NavTabId,
+        label: 'دانش‌آموختگان',
+        subtext: 'بانک جامع اطلاعات، سوابق قضایی و علمی دانش‌آموختگان',
+        icon: GraduationCap,
+        accentColor: 'text-emerald-500 dark:text-emerald-400',
+        glowColor: 'rgba(16, 185, 129, 0.2)',
+        activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
+      },
+      {
+        id: 'users' as NavTabId,
+        label: 'مدیریت کاربران (حساب‌های کاربری)',
+        subtext: 'مدیریت حساب‌ها، رمزهای عبور و سطوح دسترسی',
+        icon: Users2,
+        accentColor: 'text-indigo-500 dark:text-indigo-400',
+        glowColor: 'rgba(99, 102, 241, 0.2)',
+        activeBg: 'bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white',
+      }
+    ] : []),
   ];
 
   const showAdminTab = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
@@ -329,7 +351,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-black text-slate-900 dark:text-white">
-                        فرماندهی و مدیریت سامانه
+                        مدیریت
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400">
                         Admin
@@ -396,7 +418,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center gap-3">
                 <ShieldCheck className="w-5 h-5 text-amber-600" />
-                <span className="text-xs font-bold">فرماندهی و مدیریت</span>
+                <span className="text-xs font-bold">مدیریت</span>
               </div>
             </button>
           )}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { NavTabId } from '../layout/Sidebar';
 import { ModernDashboardCard } from '../ModernDashboardCard';
+import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   Inbox,
   GraduationCap,
@@ -11,6 +12,7 @@ import {
   Scale,
   Gift,
   Users2,
+  Users,
   ShieldCheck,
   LayoutDashboard,
   CheckCircle2,
@@ -26,6 +28,7 @@ interface DashboardSectionProps {
 export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }) => {
   const {
     currentUser,
+    users,
     cartableRequests,
     courses,
     products,
@@ -249,14 +252,40 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           onClick={() => onNavigate('synergy')}
         />
 
-        {/* ۹. مرکز فرماندهی و مدیریت سامانه (ویژه مدیران و مسئولین) */}
+        {/* ۹. کارت ویژه دانش‌آموختگان (فقط برای ادمین و مسئولین) */}
         {showAdminCard && (
           <ModernDashboardCard
-            title="فرماندهی و مدیریت"
+            title="دانش‌آموختگان"
+            accent="emerald"
+            icon={<GraduationCap className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />}
+            subValue="بانک جامع سوابق هویتی، قضایی، پژوهشی، رساله‌ها و ثبت پرونده‌های تفصیلی"
+            trendContext={`${toPersianNumbers(users.filter(u => u.role === 'alumni' || u.judicialGrade).length)} پرونده ثبت‌شده دانش‌آموخته`}
+            badgeText="بانک دانش‌آموختگان"
+            onClick={() => onNavigate('alumni')}
+          />
+        )}
+
+        {/* ۱۰. کارت ویژه مدیریت کاربران {حساب‌های کاربری} */}
+        {showAdminCard && (
+          <ModernDashboardCard
+            title="مدیریت کاربران {حساب‌های کاربری}"
+            accent="indigo"
+            icon={<Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />}
+            subValue="مدیریت حساب‌های کاربری همه سطوح، رمزهای عبور، وضعیت نشست‌ها و سطوح دسترسی"
+            trendContext={`${toPersianNumbers(users.length)} حساب کاربری فعال`}
+            badgeText="حساب‌های کاربری و دسترسی‌ها"
+            onClick={() => onNavigate('users')}
+          />
+        )}
+
+        {/* ۱۱. کارت مدیریت (نام اصلاح‌شده از فرماندهی و مدیریت به مدیریت) */}
+        {showAdminCard && (
+          <ModernDashboardCard
+            title="مدیریت"
             accent="amber"
             icon={<ShieldCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-            subValue="پایش RLS، رفع توقیف آنی حساب‌ها و نظارت بر لاگ‌های امنیتی"
-            trendContext={`${auditLogs.length} ثبت لاگ امنیتی`}
+            subValue="پایش سلامت سرور، زنجیره غیرقابل‌دستکاری SHA-256 و عیب‌یابی آنی سامانه"
+            trendContext={`${toPersianNumbers(auditLogs.length)} رکورد در زنجیره وقایع`}
             badgeText="مدیریت سیستم"
             onClick={() => onNavigate('admin')}
           />

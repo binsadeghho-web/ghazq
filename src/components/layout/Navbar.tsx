@@ -11,7 +11,8 @@ import {
   Moon, 
   KeyRound,
   Menu,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -29,7 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setMobileMenuOpen,
   activeSectionTitle = 'کارتابل خدمات اداری و آموزشی',
 }) => {
-  const { currentUser, logout, switchUserRole, theme, toggleTheme } = useApp();
+  const { currentUser, logout, switchUserRole, theme, toggleTheme, designTheme, toggleDesignTheme } = useApp();
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
   const getRoleLabel = (role: UserRole) => {
@@ -81,6 +82,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Zone 3: Actions (Theme Toggle, Sessions, Role Switcher, Profile/Login) */}
           <div className="flex items-center gap-2.5 shrink-0">
             
+            {/* Theme 2 (Crextio) Switcher Button */}
+            <button
+              onClick={toggleDesignTheme}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-amber-300 bg-amber-400/20 hover:bg-amber-400/30 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 rounded-xl transition-all border border-amber-400/50 dark:border-amber-500/40 shadow-2xs active:scale-95"
+              title="نمایش تم دوم (طرح مینیمال Crextio)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+              <span>تم ۲: Crextio</span>
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
