@@ -71,16 +71,18 @@ const MainLayout: React.FC = () => {
       </div>
 
       {/* Top 3-Zone Navbar */}
-      <Navbar
-        onOpenLogin={() => setLoginModalOpen(true)}
-        onOpenSessions={() => setSessionModalOpen(true)}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-        activeSectionTitle={tabTitles[activeTab]}
-      />
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        <Navbar
+          onOpenLogin={() => setLoginModalOpen(true)}
+          onOpenSessions={() => setSessionModalOpen(true)}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+          activeSectionTitle={tabTitles[activeTab]}
+        />
+      </div>
 
       {/* Main Container with Sidebar + Content */}
-      <div className="relative z-10 flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 pb-20 lg:pb-6">
+      <div className="relative z-10 flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 pb-20 lg:pb-6">
         {/* Right Independent Floating Capsule Sidebar */}
         <Sidebar
           activeTab={activeTab}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { CrextioDashboard } from './CrextioDashboard';
 import { CrextioSubViews } from './CrextioSubViews';
