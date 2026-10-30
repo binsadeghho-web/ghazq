@@ -1,0 +1,6 @@
+{
+  "name": "سامانه دانش‌آموختگان فقه و قضا",
+  "description": "سامانه یکپارچه خدمات اداری، آموزشی، دوره‌های تخصصی، تالار آراء، راهبری پژوهش و هم‌افزایی دانش‌آموختگان فقه و قضا",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
