@@ -93,11 +93,11 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           {/* موج رنگی ۳: کهربایی طلایی و یاقوتی گرم */}
           <div className="absolute top-1/4 -left-1/4 w-[400px] h-[300px] rounded-full bg-gradient-to-r from-amber-400/25 via-rose-500/25 to-pink-500/20 blur-3xl animate-aurora-pulse" />
 
-          {/* نورافکن نوری تعقیب‌کننده نشانگر موس روی طیف نوری */}
+          {/* نورافکن نوری تعقیب‌کننده نشانگر موس روی طیف نوری با حجم جمع‌وجور و دقیق */}
           <div
             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
             style={{
-              background: `radial-gradient(350px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255, 255, 255, 0.25), transparent 75%)`,
+              background: `radial-gradient(160px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255, 255, 255, 0.35), transparent 75%)`,
             }}
           />
         </div>

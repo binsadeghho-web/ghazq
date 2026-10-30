@@ -160,7 +160,7 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
   return (
     <motion.div
       ref={cardRef}
-      whileHover={{ y: -8, scale: 1.02 }}
+      whileHover={{ y: -10, scale: 1.12 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}
@@ -179,6 +179,7 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
         border border-slate-200/90 dark:border-white/10 min-h-[220px]
         bg-gradient-to-br ${styleConfig.gradientBg}
         ${styleConfig.rimBorder}
+        hover:z-30 hover:shadow-2xl transition-all duration-300
         ${className}
       `}
       style={{
@@ -186,11 +187,11 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
         ['--mouse-y' as string]: `${mousePos.y}px`,
       }}
     >
-      {/* هاله نور پس‌زمینه کارت (Ambient Diffuse Halo) */}
+      {/* هاله نور پس‌زمینه کارت با حجم کنترل‌شده و متمرکز (Ambient Diffuse Halo) */}
       <div
-        className="pointer-events-none absolute -inset-1 rounded-2xl opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100 -z-10"
+        className="pointer-events-none absolute -inset-1 rounded-2xl opacity-0 blur-lg transition-opacity duration-500 group-hover:opacity-100 -z-10"
         style={{
-          background: `radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${styleConfig.glow}, transparent 70%)`,
+          background: `radial-gradient(160px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${styleConfig.glow}, transparent 75%)`,
         }}
       />
 
@@ -200,11 +201,11 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
         aria-hidden="true"
       />
 
-      {/* نورافکن تعقیب‌کننده موس (Interactive Spotlight) */}
+      {/* نورافکن تعقیب‌کننده موس با حجم جمع‌وجور و دقیق (Interactive Spotlight) */}
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
-          background: `radial-gradient(280px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${styleConfig.spotlight}, transparent 75%)`,
+          background: `radial-gradient(140px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), ${styleConfig.spotlight}, transparent 75%)`,
         }}
         aria-hidden="true"
       />

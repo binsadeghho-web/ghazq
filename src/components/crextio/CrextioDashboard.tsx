@@ -68,15 +68,15 @@ const CrextioCard: React.FC<{
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className={`relative overflow-hidden transition-all duration-300 ${className}`}
+      whileHover={{ y: -8, scale: 1.10, transition: { duration: 0.25 } }}
+      className={`relative overflow-hidden transition-all duration-300 hover:z-30 hover:shadow-2xl ${className}`}
     >
-      {/* Dynamic Cursor Light Halo on Card */}
+      {/* Dynamic Cursor Light Halo on Card (compact & refined 160px) */}
       <div
         className="pointer-events-none absolute -inset-px transition-opacity duration-300"
         style={{
           opacity: isHovered ? 1 : 0,
-          background: `radial-gradient(320px circle at ${mousePos.x}px ${mousePos.y}px, ${glowColor}, transparent 75%)`,
+          background: `radial-gradient(160px circle at ${mousePos.x}px ${mousePos.y}px, ${glowColor}, transparent 75%)`,
         }}
       />
       {/* Dynamic Specular Border Shine */}
@@ -85,7 +85,7 @@ const CrextioCard: React.FC<{
         style={{
           opacity: isHovered ? 1 : 0,
           border: '1px solid transparent',
-          backgroundImage: `radial-gradient(220px circle at ${mousePos.x}px ${mousePos.y}px, rgba(245, 158, 11, 0.4), transparent 75%)`,
+          backgroundImage: `radial-gradient(130px circle at ${mousePos.x}px ${mousePos.y}px, rgba(245, 158, 11, 0.4), transparent 75%)`,
           maskImage: 'linear-gradient(black, black)',
           WebkitMaskImage: 'linear-gradient(black, black)',
           maskComposite: 'exclude',

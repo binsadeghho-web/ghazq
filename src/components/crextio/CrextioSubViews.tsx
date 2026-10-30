@@ -28,7 +28,9 @@ import {
   Download,
   Calendar,
   DollarSign,
-  HeartHandshake
+  HeartHandshake,
+  Compass,
+  Home
 } from 'lucide-react';
 
 interface CrextioSubViewsProps {
@@ -48,6 +50,8 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
     welfareRequests,
     consumables,
     synergyPosts,
+    researchMentorships,
+    submitResearchProject,
     auditLogs,
     verifyAuditChain,
     isRealtimeConnected,
@@ -60,9 +64,14 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [commentText, setCommentText] = useState('');
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
+  const [newResearchOpen, setNewResearchOpen] = useState(false);
+  const [thesisTitle, setThesisTitle] = useState('');
+  const [thesisField, setThesisField] = useState('فقه و حقوق جزا و جرم‌شناسی');
+  const [accommodationCity, setAccommodationCity] = useState<'قم' | 'تهران' | 'مشهد'>('قم');
+  const [needsAccommodation, setNeedsAccommodation] = useState(false);
 
-  // Common Crextio Glass Card style - Warm Ivory Cream & Emerald
-  const cardStyle = "bg-[#FCFCF9]/90 hover:bg-white backdrop-blur-xl rounded-[32px] p-6 shadow-2xs border border-[#E3E0D3] transition-all duration-300 hover:-translate-y-1 hover:shadow-md";
+  // Common Crextio Glass Card style - Warm Ivory Cream & Emerald with 10% more hover magnification
+  const cardStyle = "bg-[#FCFCF9]/90 hover:bg-white backdrop-blur-xl rounded-[32px] p-6 shadow-2xs border border-[#E3E0D3] transition-all duration-300 hover:-translate-y-2 hover:scale-[1.08] hover:z-20 hover:shadow-xl";
 
   /* ========================================================================
      1. PEOPLE / CARTABLE (کارتابل اداری و استعلامات)
@@ -501,7 +510,233 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   }
 
   /* ========================================================================
-     8. SYSTEM SETTINGS & AUDIT (امنیت و مرکز فرماندهی)
+     8. RESEARCH MENTORSHIP & THESES (راهبری پژوهش و هدایت رساله‌ها)
+     ======================================================================== */
+  if (activeNav === 'Research' || activeNav === 'ResearchMentorship') {
+    const handleCreateResearch = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!thesisTitle.trim() || !currentUser) return;
+      submitResearchProject({
+        applicantId: currentUser.id,
+        applicantName: currentUser.fullName,
+        thesisTitle: thesisTitle.trim(),
+        field: thesisField,
+        stage: 'proposal',
+        stageTitle: 'تصویب عنوان و نگارش پروپوزال اولیه',
+        accommodationRequested: needsAccommodation,
+        ...(needsAccommodation && { accommodationCity }),
+      });
+      setThesisTitle('');
+      setNeedsAccommodation(false);
+      setNewResearchOpen(false);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
+              راهبری پژوهش
+            </span>
+            <h2 className="text-2xl font-extrabold text-stone-900">
+              شبکه رساله‌ها، پایان‌نامه‌ها و اسکان مطالعاتی ({toPersianNumbers(researchMentorships.length)})
+            </h2>
+            <p className="text-xs text-stone-500 mt-0.5">هدایت علمی رساله‌های سطح ۴ و دکتری، پیگیری استاد راهنما و اسکان پژوهشی قم، تهران و مشهد</p>
+          </div>
+
+          <button
+            onClick={() => setNewResearchOpen(true)}
+            className="px-5 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-2xs flex items-center gap-2 self-start sm:self-auto transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>ثبت رساله / پروپوزال جدید</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {researchMentorships.map(proj => (
+            <div key={proj.id} className={cardStyle}>
+              <div className="flex items-center justify-between text-xs mb-3">
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold">
+                  {proj.stageTitle}
+                </span>
+                <span className="font-mono font-bold text-stone-600">
+                  پیشرفت: {toPersianNumbers(proj.progressPercent)}٪
+                </span>
+              </div>
+
+              <h3 className="text-base font-bold text-stone-900 leading-snug line-clamp-2 min-h-[48px]">
+                {proj.thesisTitle}
+              </h3>
+
+              <div className="space-y-1.5 mt-3 text-xs text-stone-600 font-medium">
+                <p>پژوهشگر: <strong className="text-stone-900">{proj.applicantName}</strong></p>
+                <p>رشته / گرایش: {proj.field}</p>
+                <p className="flex items-center gap-1">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  استاد راهنما: {proj.assignedSupervisor || 'در حال انتصاب توسط شورا'}
+                </p>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-stone-200/80 rounded-full h-2 mt-4 overflow-hidden">
+                <div 
+                  className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${proj.progressPercent}%` }}
+                />
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
+                {proj.accommodationRequested ? (
+                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <Home className="w-3 h-3" />
+                    اسکان {proj.accommodationCity || 'قم'}
+                  </span>
+                ) : (
+                  <span className="text-stone-400 font-medium">بدون تقاضای اسکان</span>
+                )}
+
+                <button
+                  onClick={() => setSelectedItem(proj)}
+                  className="text-emerald-800 hover:text-emerald-950 font-bold flex items-center gap-1"
+                >
+                  مشاهده مراحل <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Modal for Details & Milestones */}
+        {selectedItem && (
+          <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#FCFCFA] rounded-[36px] p-6 max-w-lg w-full space-y-4 shadow-2xl border border-stone-200">
+              <div className="flex justify-between items-start border-b border-stone-200 pb-3">
+                <h3 className="font-bold text-base text-stone-900">{selectedItem.thesisTitle}</h3>
+                <button onClick={() => setSelectedItem(null)} className="text-stone-400 hover:text-stone-600 font-bold">✕</button>
+              </div>
+              <div className="space-y-2 text-xs text-stone-700 font-medium">
+                <p><strong>پژوهشگر:</strong> {selectedItem.applicantName}</p>
+                <p><strong>گرایش:</strong> {selectedItem.field}</p>
+                <p><strong>مرحله:</strong> {selectedItem.stageTitle}</p>
+                <p><strong>استاد راهنما:</strong> {selectedItem.assignedSupervisor || 'تخصیص‌نیافته'}</p>
+                {selectedItem.accommodationRequested && (
+                  <p className="text-amber-800 font-bold">درخواست اسکان پژوهشی: {selectedItem.accommodationCity}</p>
+                )}
+                
+                <div className="pt-3 border-t border-stone-200">
+                  <h4 className="font-bold text-stone-900 mb-2">گام‌ها و مراحل پژوهشی:</h4>
+                  <div className="space-y-1.5">
+                    {selectedItem.milestones?.map((m: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-[#F5F4EE] border border-stone-200">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className={`w-4 h-4 ${m.isDone ? 'text-emerald-600' : 'text-stone-300'}`} />
+                          {m.title}
+                        </span>
+                        <span className="text-[10px] text-stone-500 font-mono">{toPersianNumbers(m.date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedItem(null)}
+                className="w-full py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs transition-colors"
+              >
+                بستن
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal to Register New Thesis Proposal */}
+        {newResearchOpen && (
+          <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#FCFCFA] rounded-[36px] p-6 max-w-lg w-full space-y-4 shadow-2xl border border-stone-200">
+              <div className="flex justify-between items-start border-b border-stone-200 pb-3">
+                <h3 className="font-bold text-base text-stone-900">ثبت پروپوزال و رساله پژوهشی جدید</h3>
+                <button onClick={() => setNewResearchOpen(false)} className="text-stone-400 hover:text-stone-600 font-bold">✕</button>
+              </div>
+
+              <form onSubmit={handleCreateResearch} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-stone-800 mb-1">عنوان رساله / پایان‌نامه:</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: بررسی فقهی-حقوقی استناد به ادله دیجیتال در دعاوی کیفری"
+                    value={thesisTitle}
+                    onChange={e => setThesisTitle(e.target.value)}
+                    className="w-full p-2.5 bg-[#F5F4EE] border border-stone-200 rounded-2xl text-stone-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-800 mb-1">گرایش تخصصی:</label>
+                  <select
+                    value={thesisField}
+                    onChange={e => setThesisField(e.target.value)}
+                    className="w-full p-2.5 bg-[#F5F4EE] border border-stone-200 rounded-2xl text-stone-900 font-medium"
+                  >
+                    <option value="فقه و حقوق جزا و جرم‌شناسی">فقه و حقوق جزا و جرم‌شناسی</option>
+                    <option value="فقه و حقوق خصوصی و قراردادها">فقه و حقوق خصوصی و قراردادها</option>
+                    <option value="حقوق عمومی و اداری">حقوق عمومی و اداری</option>
+                    <option value="فقه القضاء تطبیقی و اصول فقه">فقه القضاء تطبیقی و اصول فقه</option>
+                  </select>
+                </div>
+
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-900">
+                    <input
+                      type="checkbox"
+                      checked={needsAccommodation}
+                      onChange={e => setNeedsAccommodation(e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                    />
+                    <span>تقاضای استفاده از تسهیلات اسکان مطالعاتی و کتابخانه‌ای دارم</span>
+                  </label>
+
+                  {needsAccommodation && (
+                    <div>
+                      <label className="block font-bold text-amber-800 mb-1 text-[11px]">انتخاب شهر اسکان:</label>
+                      <select
+                        value={accommodationCity}
+                        onChange={e => setAccommodationCity(e.target.value as any)}
+                        className="w-full p-2 bg-white border border-amber-300 rounded-xl text-stone-900 font-medium"
+                      >
+                        <option value="قم">قم (پردیس پژوهشی و کتابخانه تخصصی آیت‌الله بروجردی)</option>
+                        <option value="تهران">تهران (پژوهشگاه قوه قضاییه)</option>
+                        <option value="مشهد">مشهد (مرکز اسناد آستان قدس رضوی)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold transition-colors"
+                  >
+                    ثبت نهایی و ارجاع به شورای پژوهش
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewResearchOpen(false)}
+                    className="px-4 py-2.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold transition-colors"
+                  >
+                    انصراف
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ========================================================================
+     9. SYSTEM SETTINGS & AUDIT (امنیت و مرکز فرماندهی)
      ======================================================================== */
   if (activeNav === 'Setting') {
     const handleRunDiagnostic = async () => {

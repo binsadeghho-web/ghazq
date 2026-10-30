@@ -198,7 +198,7 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
             className={`
               p-3 rounded-xl border flex items-center justify-center shrink-0
               ${colors.iconBg} ${colors.iconText}
-              transition-transform duration-200 group-hover:scale-105
+              transition-transform duration-200 group-hover:scale-100
             `}
           >
             {icon}

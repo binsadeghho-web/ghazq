@@ -25,7 +25,7 @@ export const ModernMetricCard: React.FC<ModernMetricCardProps> = ({
 }) => {
   return (
     <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
+      whileHover={{ y: -6, scale: 1.11 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}
@@ -33,7 +33,7 @@ export const ModernMetricCard: React.FC<ModernMetricCardProps> = ({
       tabIndex={onClick ? 0 : undefined}
       className={`
         glass-card relative p-5 rounded-2xl text-right transition-all duration-200
-        border border-slate-200/90 dark:border-white/10
+        border border-slate-200/90 dark:border-white/10 hover:z-20 hover:shadow-xl
         ${onClick ? 'cursor-pointer' : ''}
       `}
     >

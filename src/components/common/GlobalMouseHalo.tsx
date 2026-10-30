@@ -148,31 +148,32 @@ export const GlobalMouseHalo: React.FC<GlobalMouseHaloProps> = ({ theme = 'porta
         />
       )}
 
-      {/* Layer 1: Wide Soft Ambient Halo (illuminates empty spaces, margins, and backgrounds) */}
+      {/* Layer 1: Compact Ambient Halo (tighter, smaller radius ~200px) */}
       <div
         ref={haloRef}
-        className="absolute top-0 left-0 w-[550px] h-[550px] rounded-full will-change-transform transition-opacity duration-300"
+        className="absolute top-0 left-0 w-[200px] h-[200px] rounded-full will-change-transform transition-opacity duration-300"
         style={{
           background: isCrextio
-            ? 'radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, rgba(245, 158, 11, 0.10) 35%, rgba(6, 182, 212, 0.05) 60%, transparent 80%)'
-            : 'radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(245, 158, 11, 0.10) 35%, rgba(168, 85, 247, 0.06) 60%, transparent 80%)',
-          filter: 'blur(32px)',
+            ? 'radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(245, 158, 11, 0.12) 40%, rgba(6, 182, 212, 0.05) 65%, transparent 80%)'
+            : 'radial-gradient(circle, rgba(99, 102, 241, 0.20) 0%, rgba(245, 158, 11, 0.12) 40%, rgba(168, 85, 247, 0.06) 65%, transparent 80%)',
+          filter: 'blur(16px)',
           opacity: 0,
         }}
       />
 
-      {/* Layer 2: Refined Inner Core Spotlight right under the cursor */}
+      {/* Layer 2: Focused Core Spotlight right under cursor (~80px) */}
       <div
         ref={coreRef}
-        className="absolute top-0 left-0 w-[220px] h-[220px] rounded-full will-change-transform transition-opacity duration-150"
+        className="absolute top-0 left-0 w-[80px] h-[80px] rounded-full will-change-transform transition-opacity duration-150"
         style={{
           background: isCrextio
-            ? 'radial-gradient(circle, rgba(52, 211, 153, 0.28) 0%, rgba(251, 191, 36, 0.18) 40%, transparent 75%)'
-            : 'radial-gradient(circle, rgba(129, 140, 248, 0.28) 0%, rgba(251, 191, 36, 0.16) 40%, transparent 75%)',
-          filter: 'blur(16px)',
+            ? 'radial-gradient(circle, rgba(52, 211, 153, 0.35) 0%, rgba(251, 191, 36, 0.20) 45%, transparent 75%)'
+            : 'radial-gradient(circle, rgba(129, 140, 248, 0.35) 0%, rgba(251, 191, 36, 0.18) 45%, transparent 75%)',
+          filter: 'blur(8px)',
           opacity: 0,
         }}
       />
     </div>
   );
 };
+

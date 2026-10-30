@@ -23,6 +23,9 @@ import { AdminControlCenter } from './components/admin/AdminControlCenter';
 import { AlumniDirectorySection } from './components/alumni/AlumniDirectorySection';
 import { UserManagementModule } from './components/admin/UserManagementModule';
 
+import { CrextioSubViews } from './components/crextio/CrextioSubViews';
+import { Sparkles, ArrowRight } from 'lucide-react';
+
 const tabTitles: Record<NavTabId, string> = {
   dashboard: 'داشبورد جامع و درگاه‌های دسترسی',
   cartable: 'کارتابل خدمات اداری و آموزشی',
@@ -55,8 +58,10 @@ const MainLayout: React.FC = () => {
       className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col text-slate-800 dark:text-slate-100 font-sans transition-colors relative overflow-x-hidden selection:bg-amber-500/30"
       dir="rtl"
     >
-      {/* Global Interactive Mouse Glow over background & empty spaces */}
-      <GlobalMouseHalo theme="portal" />
+      {/* 
+        توجه: هاله نوری در تم ۱ طبق دستور کاربر از فضاهای خالی برداشته شد 
+        و منحصراً فقط روی تیتر داشبورد و کارت‌های داشبورد فعال است
+      */}
 
       {/* Dynamic Ambient Background Mesh Glows */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
@@ -97,18 +102,50 @@ const MainLayout: React.FC = () => {
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               className="w-full"
             >
-              {activeTab === 'dashboard' && <DashboardSection onNavigate={setActiveTab} />}
-              {activeTab === 'cartable' && <CartableSection />}
-              {activeTab === 'courses' && <CoursesSection />}
-              {activeTab === 'products' && <ProductsSection />}
-              {activeTab === 'counseling' && <CounselingSection />}
-              {activeTab === 'research' && <ResearchMentorshipSection />}
-              {activeTab === 'rulings' && <JudicialRulingsSection />}
-              {activeTab === 'welfare' && <WelfareSection />}
-              {activeTab === 'synergy' && <SynergyWallSection />}
-              {activeTab === 'alumni' && <AlumniDirectorySection onNavigate={setActiveTab} />}
-              {activeTab === 'users' && <UserManagementModule />}
-              {activeTab === 'admin' && <AdminControlCenter />}
+              {/* داشبورد و صفحه اصلی تم ۱ همچنان متمایز و اختصاصی باقی می‌ماند */}
+              {activeTab === 'dashboard' ? (
+                <DashboardSection onNavigate={setActiveTab} />
+              ) : (
+                /* 
+                  وقتی داخل هر یک از بخش‌های مختلف می‌رویم:
+                  ظاهر بخش‌ها مطابق درخواست کاربر دقیقاً به فرمت تم ۲ (Crextio luxury emerald & ivory) درمی‌آید
+                */
+                <div className="rounded-[40px] bg-[#FCFCF9]/95 dark:bg-[#182622]/95 border border-[#E3E0D3] dark:border-[#2A423B] p-6 sm:p-8 lg:p-10 shadow-2xl text-stone-900 dark:text-stone-100 min-h-[700px] transition-all duration-500">
+                  {/* Top Bar Indicator for Sub-sections */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-stone-200/80 dark:border-[#2A423B]">
+                    <div className="flex items-center gap-2.5">
+                      <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        طراحی فاخر زمردی (ظاهر تم ۲)
+                      </span>
+                      <span className="text-xs text-stone-500 dark:text-stone-400 font-medium hidden md:inline">
+                        ویترین و سامانه تخصصی دانش‌آموختگان فقه و قضا
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('dashboard')}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-stone-100 dark:bg-[#233832] hover:bg-stone-200 dark:hover:bg-[#2C473F] text-stone-700 dark:text-stone-200 text-xs font-bold border border-stone-200 dark:border-[#34544B] transition-all self-start sm:self-auto hover:scale-105 active:scale-95"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>بازگشت به داشبورد</span>
+                    </button>
+                  </div>
+
+                  {/* نمای غنی و زیباتر بخش‌های مختلف با فرمت تم ۲ */}
+                  {activeTab === 'cartable' && <CrextioSubViews activeNav="Cartable" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'courses' && <CrextioSubViews activeNav="Courses" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'products' && <CrextioSubViews activeNav="Products" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'counseling' && <CrextioSubViews activeNav="Counseling" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'research' && <CrextioSubViews activeNav="Research" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'rulings' && <CrextioSubViews activeNav="Rulings" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'welfare' && <CrextioSubViews activeNav="Welfare" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'synergy' && <CrextioSubViews activeNav="Synergy" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'alumni' && <AlumniDirectorySection onNavigate={setActiveTab} />}
+                  {activeTab === 'users' && <UserManagementModule />}
+                  {activeTab === 'admin' && <AdminControlCenter />}
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </main>
