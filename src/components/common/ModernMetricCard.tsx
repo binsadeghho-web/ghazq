@@ -25,7 +25,7 @@ export const ModernMetricCard: React.FC<ModernMetricCardProps> = ({
 }) => {
   return (
     <motion.div
-      whileHover={{ y: -6, scale: 1.11 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}

@@ -40,6 +40,7 @@ interface CrextioLayoutProps {
 export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTheme }) => {
   const { currentUser, users, switchUserRole, logout, crextioConfig } = useApp();
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
+  const [hoveredNav, setHoveredNav] = useState<string>('Dashboard');
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
@@ -138,22 +139,46 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             </button>
           </div>
 
-          {/* Nav Items */}
-          <nav className="flex items-center gap-1 overflow-x-auto pb-2 xl:pb-0 scrollbar-none">
+          {/* Nav Items with Floating Green Indicator & 1s Return Mechanism */}
+          <nav 
+            className="relative flex items-center gap-1 overflow-x-auto pb-2 xl:pb-0 scrollbar-none p-1.5 bg-[#121E1B] rounded-2xl border border-[#233832]"
+            onMouseLeave={() => {
+              // Reset hover to active tab after 1 second if mouse leaves nav
+              const timer = setTimeout(() => {
+                setHoveredNav(activeNav);
+              }, 1000);
+              return () => clearTimeout(timer);
+            }}
+          >
             {navItems.map(item => {
               const isActive = activeNav.toLowerCase() === item.id.toLowerCase();
+              const isHovered = (hoveredNav || activeNav).toLowerCase() === item.id.toLowerCase();
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveNav(item.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
+                  onClick={() => {
+                    setActiveNav(item.id);
+                    setHoveredNav(item.id);
+                  }}
+                  onMouseEnter={() => setHoveredNav(item.id)}
+                  className={`relative z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors duration-200 whitespace-nowrap ${
                     isActive
-                      ? 'bg-emerald-500 text-stone-950 shadow-md scale-105'
-                      : 'text-stone-300 hover:text-white hover:bg-[#233832]'
+                      ? 'text-stone-950 font-black'
+                      : isHovered
+                      ? 'text-emerald-300'
+                      : 'text-stone-300 hover:text-white'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  {/* Floating Green Pill Indicator */}
+                  {isHovered && (
+                    <motion.div
+                      layoutId="crextioNavPill"
+                      className="absolute inset-0 bg-emerald-500 rounded-xl -z-10 shadow-lg shadow-emerald-500/20"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <Icon className={`w-4 h-4 ${isActive || isHovered ? 'text-stone-950' : 'text-emerald-400'}`} />
                   <span>{item.label}</span>
                 </button>
               );

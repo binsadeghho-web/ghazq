@@ -160,9 +160,9 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
   return (
     <motion.div
       ref={cardRef}
-      whileHover={{ y: -10, scale: 1.12 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}
       onMouseMove={handleMouseMove}
       role={onClick ? 'button' : 'region'}

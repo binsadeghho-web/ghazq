@@ -68,8 +68,8 @@ const CrextioCard: React.FC<{
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
-      whileHover={{ y: -8, scale: 1.10, transition: { duration: 0.25 } }}
-      className={`relative overflow-hidden transition-all duration-300 hover:z-30 hover:shadow-2xl ${className}`}
+      whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.2 } }}
+      className={`relative overflow-hidden transition-all duration-300 hover:z-30 hover:shadow-xl ${className}`}
     >
       {/* Dynamic Cursor Light Halo on Card (compact & refined 160px) */}
       <div
