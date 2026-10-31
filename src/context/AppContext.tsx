@@ -190,7 +190,7 @@ const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[2]); // Default Alumni
+  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[0]); // Default Admin / Supervisor
   const [cartableRequests, setCartableRequests] = useState<CartableRequest[]>(INITIAL_CARTABLE_REQUESTS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [courseEnrollments, setCourseEnrollments] = useState<CourseEnrollment[]>(INITIAL_COURSE_ENROLLMENTS);

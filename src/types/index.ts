@@ -267,6 +267,10 @@ export interface Product {
   coverImage?: string;
   downloadLink?: string;
   allowedPaymentMethod?: 'both' | 'gateway_only' | 'receipt_only';
+  shippingMode?: 'postal_only' | 'pickup_only' | 'both';
+  shippingCostType?: 'free' | 'fixed' | 'calculated_later';
+  shippingFixedFee?: number;
+  pickupAddressNotice?: string;
   isAvailable: boolean;
   badgeText?: string;
   isOwned?: boolean;
@@ -294,6 +298,9 @@ export interface ProductOrder {
   receiptFileUrl?: string;
   receiptBankName?: string;
   receiptDate?: string;
+  fulfillmentChoice?: 'postal' | 'pickup';
+  shippingFee?: number;
+  shippingNotice?: string;
   shippingAddress?: string;
   adminNote?: string;
   reviewedBy?: string;

@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { ModernMetricCard } from '../common/ModernMetricCard';
 import { UserManagementModule } from './UserManagementModule';
 import { AnalyticsReportsModule } from './AnalyticsReportsModule';
+import { FinancialAuditLedgerModule } from './FinancialAuditLedgerModule';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import {
   ShieldAlert,
@@ -46,7 +47,7 @@ export const AdminControlCenter: React.FC = () => {
     refreshMetrics,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'reports' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('reports');
+  const [activeTab, setActiveTab] = useState<'reports' | 'ledger' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('reports');
   const [logFilter, setLogFilter] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
   const [searchUser, setSearchUser] = useState('');
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
@@ -197,6 +198,16 @@ export const AdminControlCenter: React.FC = () => {
           گزارش‌گیری و تحلیل مالی
         </button>
         <button
+          onClick={() => setActiveTab('ledger')}
+          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
+            activeTab === 'ledger'
+              ? 'bg-slate-900 dark:bg-slate-800 text-white font-bold shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          حسابداری و مدیریت تراکنش‌ها
+        </button>
+        <button
           onClick={() => setActiveTab('diagnostics')}
           className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
             activeTab === 'diagnostics'
@@ -251,6 +262,11 @@ export const AdminControlCenter: React.FC = () => {
       {/* Tab 0: Analytics & Graphical Reports */}
       {activeTab === 'reports' && (
         <AnalyticsReportsModule />
+      )}
+
+      {/* Tab 0.5: Financial Audit Ledger */}
+      {activeTab === 'ledger' && (
+        <FinancialAuditLedgerModule />
       )}
 
       {/* Tab 1: Diagnostics & Quick Fixes */}

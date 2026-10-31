@@ -35,6 +35,12 @@ import {
 
 import { CartableSection } from '../cartable/CartableSection';
 import { CoursesSection } from '../courses/CoursesSection';
+import { ProductsSection } from '../products/ProductsSection';
+import { CounselingSection } from '../counseling/CounselingSection';
+import { WelfareSection } from '../welfare/WelfareSection';
+import { SynergyWallSection } from '../synergy/SynergyWallSection';
+import { JudicialRulingsSection } from '../rulings/JudicialRulingsSection';
+import { ResearchMentorshipSection } from '../research/ResearchMentorshipSection';
 
 interface CrextioSubViewsProps {
   activeNav: string;
@@ -94,47 +100,7 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
      3. PUBLICATIONS SHOWCASE (ویترین انتشارات و کتب)
      ======================================================================== */
   if (activeNav === 'Devices' || activeNav === 'Products') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              ویترین انتشارات
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">
-              کتب و موسوعه‌های تخصصی ({toPersianNumbers(products.length)})
-            </h2>
-            <p className="text-xs text-stone-500 mt-0.5">مجموعه آثار منتشرشده، درس‌گفتارها و کتب مرجع حقوقی و فقهی</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {products.map(prod => (
-            <div key={prod.id} className={cardStyle}>
-              <div className="h-36 rounded-2xl bg-gradient-to-br from-[#122A22] via-[#0E1E18] to-stone-900 flex flex-col items-center justify-center text-white mb-4 shadow-inner p-3 text-center">
-                <BookOpen className="w-10 h-10 text-emerald-300 mb-2" />
-                <span className="text-[11px] text-emerald-200 font-bold">{prod.formatTitle}</span>
-              </div>
-
-              <h3 className="text-base font-bold text-stone-900 line-clamp-1">{prod.title}</h3>
-              <p className="text-xs text-stone-500 font-medium mt-1 truncate">پدیدآور: {prod.authorOrPresenter}</p>
-
-              <div className="mt-4 pt-3 border-t border-stone-200/80 flex items-center justify-between">
-                <span className="text-xs font-extrabold text-stone-900">
-                  {prod.price > 0 ? `${toPersianNumbers(prod.price.toLocaleString('fa-IR'))} تومان` : 'رایگان'}
-                </span>
-                <button 
-                  onClick={() => purchaseProduct(prod.id)}
-                  className="px-3.5 py-1.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-colors"
-                >
-                  دریافت اثر
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <ProductsSection />;
   }
 
   /* ========================================================================

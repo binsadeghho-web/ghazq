@@ -72,6 +72,7 @@ export const ProductsSection: React.FC = () => {
   const [buyStep, setBuyStep] = useState<1 | 2 | 3>(1);
   const [buyTermsAccepted, setBuyTermsAccepted] = useState(false);
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<'online_gateway' | 'bank_receipt'>('bank_receipt');
+  const [fulfillmentChoice, setFulfillmentChoice] = useState<'postal' | 'pickup'>('postal');
   
   // Bank Receipt Form Data
   const [receiptTrackingCode, setReceiptTrackingCode] = useState('');
@@ -106,6 +107,10 @@ export const ProductsSection: React.FC = () => {
     coverImage: string;
     downloadLink: string;
     allowedPaymentMethod: 'both' | 'gateway_only' | 'receipt_only';
+    shippingMode: 'postal_only' | 'pickup_only' | 'both';
+    shippingCostType: 'free' | 'fixed' | 'calculated_later';
+    shippingFixedFee: number;
+    pickupAddressNotice: string;
     badgeText: string;
     description: string;
   }>({
@@ -123,6 +128,10 @@ export const ProductsSection: React.FC = () => {
     coverImage: PRESET_PRODUCT_COVERS[0].url,
     downloadLink: 'https://cdn.feqh-ghaza.ir/downloads/book-sample.pdf',
     allowedPaymentMethod: 'both',
+    shippingMode: 'both',
+    shippingCostType: 'free',
+    shippingFixedFee: 50000,
+    pickupAddressNotice: 'قم، خیابان معلم، مجتمع نخبگان فقه و قضا، طبقه دوم، دبیرخانه تحویل حضوری',
     badgeText: 'چاپ جدید',
     description: 'توضیحات جامع و تحلیل تخصصی محتوای اثر علمی...',
   });
@@ -163,6 +172,13 @@ export const ProductsSection: React.FC = () => {
     const policy = product.allowedPaymentMethod || 'both';
     setBuyPaymentMethod(policy === 'gateway_only' ? 'online_gateway' : 'bank_receipt');
     setReceiptTrackingCode(`PRD-TRX-${Math.floor(1000000 + Math.random() * 9000000)}`);
+
+    const mode = product.shippingMode || 'both';
+    if (mode === 'pickup_only') {
+      setFulfillmentChoice('pickup');
+    } else {
+      setFulfillmentChoice('postal');
+    }
   };
 
   const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,7 +215,33 @@ export const ProductsSection: React.FC = () => {
   const handleSubmitPurchase = async () => {
     if (!purchasingProduct) return;
     try {
-      await purchaseProduct(purchasingProduct.id);
+      let shippingFee = 0;
+      let shippingNotice = '';
+      if (purchasingProduct.format === 'book') {
+        if (fulfillmentChoice === 'pickup') {
+          shippingFee = 0;
+          shippingNotice = 'تحویل حضوری در محل دبیرخانه انتشارات مرکز';
+        } else {
+          const costType = purchasingProduct.shippingCostType || 'free';
+          if (costType === 'free') {
+            shippingFee = 0;
+            shippingNotice = 'ارسال پستی رایگان سراسری به عهده مرکز';
+          } else if (costType === 'fixed') {
+            shippingFee = purchasingProduct.shippingFixedFee || 50000;
+            shippingNotice = `پست پیشتاز با مبلغ ثابت ${toPersianNumbers(shippingFee.toLocaleString('fa-IR'))} تومان`;
+          } else {
+            shippingFee = 0;
+            shippingNotice = 'هزینه ارسال پستی پس از ثبت سفارش بر اساس وزن و شهر مقصد استعلام و اعلام می‌گردد.';
+          }
+        }
+      }
+
+      await purchaseProduct(purchasingProduct.id, {
+        fulfillmentChoice: purchasingProduct.format === 'book' ? fulfillmentChoice : undefined,
+        shippingFee,
+        shippingNotice,
+        shippingAddress: fulfillmentChoice === 'postal' ? shippingAddress : undefined,
+      });
       setBuyStep(3);
     } catch (err: any) {
       alert(`خطا در ثبت سفارش: ${err.message}`);
@@ -225,6 +267,10 @@ export const ProductsSection: React.FC = () => {
         coverImage: productToEdit.coverImage || PRESET_PRODUCT_COVERS[0].url,
         downloadLink: productToEdit.downloadLink || 'https://cdn.feqh-ghaza.ir/downloads/sample.pdf',
         allowedPaymentMethod: productToEdit.allowedPaymentMethod || 'both',
+        shippingMode: productToEdit.shippingMode || 'both',
+        shippingCostType: productToEdit.shippingCostType || 'free',
+        shippingFixedFee: productToEdit.shippingFixedFee || 50000,
+        pickupAddressNotice: productToEdit.pickupAddressNotice || 'قم، خیابان معلم، مجتمع نخبگان فقه و قضا، طبقه دوم، دبیرخانه تحویل حضوری',
         badgeText: productToEdit.badgeText || '',
         description: productToEdit.description,
       });
@@ -245,6 +291,10 @@ export const ProductsSection: React.FC = () => {
         coverImage: PRESET_PRODUCT_COVERS[0].url,
         downloadLink: 'https://cdn.feqh-ghaza.ir/downloads/sample.pdf',
         allowedPaymentMethod: 'both',
+        shippingMode: 'both',
+        shippingCostType: 'free',
+        shippingFixedFee: 50000,
+        pickupAddressNotice: 'قم، خیابان معلم، مجتمع نخبگان فقه و قضا، طبقه دوم، دبیرخانه تحویل حضوری',
         badgeText: 'چاپ جدید',
         description: 'شرح جامع و تحلیل فقهی حقوقی موضوع اثر...',
       });
@@ -260,7 +310,7 @@ export const ProductsSection: React.FC = () => {
     }
 
     let formatTitle = builderForm.formatTitle;
-    if (builderForm.format === 'book') formatTitle = 'کتاب چاپی نفیس (پست سفارشی)';
+    if (builderForm.format === 'book') formatTitle = 'کتاب چاپی نفیس (پست سفارشی / تحویل حضوری)';
     else if (builderForm.format === 'audio_series') formatTitle = 'درس‌گفتار صوتی دیجیتال (دانلود آنی)';
     else if (builderForm.format === 'multimedia') formatTitle = 'نرم‌افزار چندرسانه‌ای (دسترسی برخط)';
 
@@ -279,6 +329,10 @@ export const ProductsSection: React.FC = () => {
       coverImage: builderForm.hasCoverImage ? builderForm.coverImage : undefined,
       downloadLink: builderForm.downloadLink,
       allowedPaymentMethod: builderForm.allowedPaymentMethod,
+      shippingMode: builderForm.shippingMode,
+      shippingCostType: builderForm.shippingCostType,
+      shippingFixedFee: Number(builderForm.shippingFixedFee),
+      pickupAddressNotice: builderForm.pickupAddressNotice,
       badgeText: builderForm.badgeText || undefined,
       isAvailable: true,
     };
@@ -709,6 +763,30 @@ export const ProductsSection: React.FC = () => {
                     <span className="text-slate-400 block text-[11px]">سال انتشار:</span>
                     <span className="text-slate-800 dark:text-slate-200 font-bold">{toPersianNumbers(introProduct.publishedYear)}</span>
                   </div>
+                  {introProduct.format === 'book' && (
+                    <>
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">شیوه تحویل:</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          {introProduct.shippingMode === 'postal_only'
+                            ? 'ارسال پستی پیشتاز'
+                            : introProduct.shippingMode === 'pickup_only'
+                            ? 'تحویل حضوری در دبیرخانه'
+                            : 'تحویل حضوری یا ارسال پستی'}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-slate-400 block text-[11px]">سیاست هزینه پست:</span>
+                        <span className="text-amber-600 dark:text-amber-400 font-bold">
+                          {introProduct.shippingCostType === 'free'
+                            ? 'ارسال پستی رایگان سراسری (به عهده مرکز)'
+                            : introProduct.shippingCostType === 'fixed'
+                            ? `مبلغ ثابت ${toPersianNumbers((introProduct.shippingFixedFee || 50000).toLocaleString('fa-IR'))} تومان`
+                            : 'اعلام مجزای هزینه پست پس از ثبت سفارش توسط مسئول'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -794,29 +872,123 @@ export const ProductsSection: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-amber-800 dark:text-amber-300 font-bold block">مبلغ قابل پرداخت سفارش:</span>
-                        <strong className="text-amber-600 dark:text-amber-400 text-base font-black">
-                          {purchasingProduct.price > 0 ? `${toPersianNumbers(purchasingProduct.price.toLocaleString('fa-IR'))} تومان` : 'رایگان'}
-                        </strong>
-                      </div>
-                      <div className="text-left text-slate-500">
-                        {purchasingProduct.format === 'book' ? 'شامل هزینه پست پیشتاز سراسری' : 'دسترسی ابدی در کتابخانه دیجیتال'}
-                      </div>
-                    </div>
+                    {/* Price and Shipping Fee Summary Box */}
+                    {(() => {
+                      let calcShipping = 0;
+                      if (purchasingProduct.format === 'book' && fulfillmentChoice === 'postal') {
+                        if (purchasingProduct.shippingCostType === 'fixed') {
+                          calcShipping = purchasingProduct.shippingFixedFee || 50000;
+                        }
+                      }
+                      const grandTotal = purchasingProduct.price + calcShipping;
 
+                      return (
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div>
+                            <span className="text-amber-800 dark:text-amber-300 font-bold block">مبلغ نهایی قابل پرداخت سفارش:</span>
+                            <strong className="text-amber-600 dark:text-amber-400 text-lg font-black">
+                              {grandTotal > 0 ? `${toPersianNumbers(grandTotal.toLocaleString('fa-IR'))} تومان` : 'رایگان'}
+                            </strong>
+                            {calcShipping > 0 && (
+                              <span className="text-[10px] text-slate-500 block">
+                                (قیمت اثر: {toPersianNumbers(purchasingProduct.price.toLocaleString('fa-IR'))} + هزینه پست: {toPersianNumbers(calcShipping.toLocaleString('fa-IR'))} تومان)
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-left text-slate-500 font-medium">
+                            {purchasingProduct.format === 'book'
+                              ? fulfillmentChoice === 'postal'
+                                ? purchasingProduct.shippingCostType === 'free'
+                                  ? 'ارسال پستی پیشتاز (رایگان به عهده مرکز)'
+                                  : purchasingProduct.shippingCostType === 'fixed'
+                                  ? 'شامل هزینه پست پیشتاز ثابت'
+                                  : 'استعلام مجزای هزینه پست پس از ثبت'
+                                : 'تحویل حضوری در محل مرکز'
+                              : 'دانلود دیجیتال و دسترسی برخط'}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Book Shipping & Fulfillment Selection */}
                     {purchasingProduct.format === 'book' && (
-                      <div className="space-y-2">
-                        <label className="block text-xs font-black text-slate-800 dark:text-slate-200">
-                          آدرس پستی جهت ارسال کتاب چاپی:
+                      <div className="space-y-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                        <label className="block text-xs font-black text-slate-900 dark:text-white">
+                          انتخاب شیوه تحویل و دریافت کتاب چاپی:
                         </label>
-                        <textarea
-                          rows={2}
-                          value={shippingAddress}
-                          onChange={e => setShippingAddress(e.target.value)}
-                          className="w-full p-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
-                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          {(purchasingProduct.shippingMode === 'both' || purchasingProduct.shippingMode === 'postal_only' || !purchasingProduct.shippingMode) && (
+                            <div
+                              onClick={() => setFulfillmentChoice('postal')}
+                              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                                fulfillmentChoice === 'postal'
+                                  ? 'bg-amber-500/15 border-amber-500 font-bold text-slate-900 dark:text-white shadow-xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <Truck className="w-4 h-4 text-amber-500" />
+                                <span className="font-extrabold">ارسال با پست پیشتاز</span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-normal">
+                                ارسال به آدرس پستی ثبت‌شده در سراسر کشور
+                              </p>
+                            </div>
+                          )}
+
+                          {(purchasingProduct.shippingMode === 'both' || purchasingProduct.shippingMode === 'pickup_only') && (
+                            <div
+                              onClick={() => setFulfillmentChoice('pickup')}
+                              className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                                fulfillmentChoice === 'pickup'
+                                  ? 'bg-amber-500/15 border-amber-500 font-bold text-slate-900 dark:text-white shadow-xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <Package className="w-4 h-4 text-emerald-500" />
+                                <span className="font-extrabold">تحویل حضوری در محل مرکز</span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-normal">
+                                مراجعه به دبیرخانه انتشارات مرکز بدون هزینه پستی
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {fulfillmentChoice === 'postal' && (
+                          <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                            <label className="block text-xs font-black text-slate-800 dark:text-slate-200">
+                              آدرس پستی دقیق جهت ارسال مرسوله:
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={shippingAddress}
+                              onChange={e => setShippingAddress(e.target.value)}
+                              placeholder="استان، شهر، خیابان، پلاک، واحد، کد پستی ۱۰ رقمی..."
+                              className="w-full p-3 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                            <div className="p-2.5 bg-amber-500/10 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-semibold">
+                              {purchasingProduct.shippingCostType === 'free'
+                                ? '✨ هزینه پست پیشتاز: رایگان (ارسال به عهده مرکز)'
+                                : purchasingProduct.shippingCostType === 'fixed'
+                                ? `📦 هزینه ثابت پست پیشتاز: ${toPersianNumbers((purchasingProduct.shippingFixedFee || 50000).toLocaleString('fa-IR'))} تومان (در جمع کل لحاظ شد)`
+                                : '📋 هزینه پست پس از ثبت سفارش بر اساس وزن و شهر مقصد استعلام و به شما اعلام می‌گردد.'}
+                            </div>
+                          </div>
+                        )}
+
+                        {fulfillmentChoice === 'pickup' && (
+                          <div className="p-3 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 rounded-xl text-xs space-y-1 border border-emerald-500/20">
+                            <span className="font-extrabold block">آدرس و محل تحویل حضوری:</span>
+                            <p className="text-[11px]">
+                              {purchasingProduct.pickupAddressNotice || 'قم، خیابان معلم، مجتمع نخبگان فقه و قضا، طبقه دوم، دبیرخانه تحویل حضوری'}
+                            </p>
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-bold mt-1">
+                              ساعات مراجعه حضوری: شنبه تا چهارشنبه از ساعت ۰۸:۰۰ الی ۱۴:۳۰
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1083,6 +1255,78 @@ export const ProductsSection: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {/* Shipping & Fulfillment Configuration for Books */}
+                {builderForm.format === 'book' && (
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+                    <div className="font-extrabold text-amber-900 dark:text-amber-200 text-xs flex items-center gap-1.5">
+                      <Truck className="w-4 h-4 text-amber-500" />
+                      <span>تنظیمات تحویل و هزینه ارسال (ویژه کتب و آثار مکتوب)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          شیوه تحویل مجاز برای خریدار:
+                        </label>
+                        <select
+                          value={builderForm.shippingMode}
+                          onChange={e => setBuilderForm({ ...builderForm, shippingMode: e.target.value as any })}
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
+                        >
+                          <option value="both">تحویل حضوری یا ارسال پستی (حق انتخاب با مشتری)</option>
+                          <option value="postal_only">منحصراً ارسال پستی پیشتاز</option>
+                          <option value="pickup_only">منحصراً تحویل حضوری در محل مرکز</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          سیاست محاسبه هزینه ارسال پستی:
+                        </label>
+                        <select
+                          value={builderForm.shippingCostType}
+                          onChange={e => setBuilderForm({ ...builderForm, shippingCostType: e.target.value as any })}
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
+                        >
+                          <option value="free">ارسال رایگان (هزینه پست به عهده مرکز)</option>
+                          <option value="fixed">مبلغ ثابت برای همه سفارش‌ها (تومان)</option>
+                          <option value="calculated_later">اعلام مجزا به مشتری پس از استعلام (وزن/شهر)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {builderForm.shippingCostType === 'fixed' && (
+                      <div>
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          مبلغ ثابت هزینه پست پیشتاز (تومان):
+                        </label>
+                        <input
+                          type="number"
+                          value={builderForm.shippingFixedFee}
+                          onChange={e => setBuilderForm({ ...builderForm, shippingFixedFee: Number(e.target.value) })}
+                          placeholder="مثال: ۵۰۰۰۰"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-mono"
+                        />
+                      </div>
+                    )}
+
+                    {(builderForm.shippingMode === 'both' || builderForm.shippingMode === 'pickup_only') && (
+                      <div>
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          آدرس و راهنمای تحویل حضوری در مرکز:
+                        </label>
+                        <input
+                          type="text"
+                          value={builderForm.pickupAddressNotice}
+                          onChange={e => setBuilderForm({ ...builderForm, pickupAddressNotice: e.target.value })}
+                          placeholder="آدرس دقیق دبیرخانه و ساعات مراجعه..."
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">شرح و معرفی مشهور اثر:</label>
