@@ -170,8 +170,10 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           accent="indigo"
           icon={<Inbox className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />}
           subValue="پیگیری مطالبات اداری، ارتقای رتبه، صدور گواهی‌ها و تبادل اسناد رسمی"
-          trendContext={pendingRequestsCount > 0 ? `${pendingRequestsCount} درخواست در انتظار اقدام` : 'کارتابل آماده و برخط'}
+          trendContext={pendingRequestsCount > 0 ? `${pendingRequestsCount} درخواست در انتظار پاسخ مسئول` : 'کارتابل آماده و پاسخ‌گویی برخط'}
           badgeText="پرتال اداری"
+          notificationCount={pendingRequestsCount}
+          hasNotification={pendingRequestsCount > 0}
           onClick={() => onNavigate('cartable')}
         />
 

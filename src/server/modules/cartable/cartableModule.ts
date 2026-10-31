@@ -99,6 +99,8 @@ export class CartableService {
         createdAt: now,
         updatedAt: now,
         messages: [initialMessage],
+        hasUnreadSupervisor: true,
+        hasUnreadApplicant: false,
         version: 1,
       };
 
@@ -141,6 +143,10 @@ export class CartableService {
 
     AuthorizationPolicy.assertOwnership(authCtx, request.applicantId, 'درخواست کارتابل');
 
+    if (request.status === 'archived') {
+      throw AppError.badRequest('این درخواست توسط مسئول مربوطه مختومه گردیده و امکان ارسال پیام جدید وجود ندارد.');
+    }
+
     const newMessage: CartableMessage = {
       id: generateUUIDv7(),
       senderId: authCtx.userId,
@@ -150,7 +156,8 @@ export class CartableService {
       timestamp: new Date().toISOString(),
     };
 
-    const nextStatus: RequestStatus = authCtx.role === 'alumni' ? 'pending' : 'need_info';
+    const isAlumni = authCtx.role === 'alumni';
+    const nextStatus: RequestStatus = isAlumni ? 'pending' : 'in_progress';
 
     // Atomic update with version increment
     const updated = db.updateWithOptimisticLock(
@@ -160,6 +167,8 @@ export class CartableService {
       current => ({
         messages: [...current.messages, newMessage],
         status: (current.status === 'completed' ? 'in_progress' : nextStatus) as RequestStatus,
+        hasUnreadSupervisor: isAlumni ? true : false,
+        hasUnreadApplicant: isAlumni ? false : true,
         updatedAt: new Date().toISOString(),
       })
     );
@@ -180,7 +189,7 @@ export class CartableService {
     status: RequestStatus,
     expectedVersion: number
   ): Promise<CartableRequest & { version: number }> {
-    // Only supervisors and admins can change status unilaterally
+    // Only supervisors and admins can change status
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
 
     const request = await this.repo.findById(requestId);
@@ -192,6 +201,8 @@ export class CartableService {
       expectedVersion,
       () => ({
         status,
+        hasUnreadApplicant: true,
+        hasUnreadSupervisor: false,
         updatedAt: new Date().toISOString(),
       })
     );
@@ -211,6 +222,27 @@ export class CartableService {
       status,
       actorId: authCtx.userId,
     });
+
+    return updated;
+  }
+
+  async markAsRead(
+    authCtx: AuthContext,
+    requestId: string
+  ): Promise<CartableRequest & { version: number }> {
+    const request = await this.repo.findById(requestId);
+    if (!request) throw AppError.notFound('درخواست کارتابل');
+
+    const isStaff = authCtx.role === 'admin' || authCtx.role === 'supervisor';
+    const updated = db.updateWithOptimisticLock(
+      db.cartableRequests,
+      requestId,
+      request.version,
+      current => ({
+        hasUnreadSupervisor: isStaff ? false : current.hasUnreadSupervisor,
+        hasUnreadApplicant: !isStaff ? false : current.hasUnreadApplicant,
+      })
+    );
 
     return updated;
   }
@@ -271,6 +303,20 @@ export function createCartableRouter(): Router {
         fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
       };
       const item = await service.addReply(authCtx, req.params.id, req.body.text);
+      res.json(item);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/read', async (req: Request, res: Response, next) => {
+    try {
+      const authCtx: AuthContext = (req as any).user || {
+        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
+        role: (req.headers['x-user-role'] as any) || 'alumni',
+        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
+      };
+      const item = await service.markAsRead(authCtx, req.params.id);
       res.json(item);
     } catch (err) {
       next(err);

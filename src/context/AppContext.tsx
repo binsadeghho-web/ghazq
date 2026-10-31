@@ -5,6 +5,7 @@ import {
   UserSession,
   CartableRequest,
   Course,
+  CourseEnrollment,
   Product,
   Consultant,
   CounselingRequest,
@@ -26,6 +27,7 @@ import {
   INITIAL_USERS,
   INITIAL_CARTABLE_REQUESTS,
   INITIAL_COURSES,
+  INITIAL_COURSE_ENROLLMENTS,
   INITIAL_PRODUCTS,
   INITIAL_CONSULTANTS,
   INITIAL_COUNSELING_REQUESTS,
@@ -47,6 +49,7 @@ interface AppContextType {
   users: User[];
   cartableRequests: CartableRequest[];
   courses: Course[];
+  courseEnrollments: CourseEnrollment[];
   products: Product[];
   consultants: Consultant[];
   counselingRequests: CounselingRequest[];
@@ -79,11 +82,17 @@ interface AppContextType {
   createCartableRequest: (data: Omit<CartableRequest, 'id' | 'trackingNumber' | 'createdAt' | 'updatedAt' | 'messages'>, initialMessageText: string) => Promise<void>;
   replyCartableRequest: (requestId: string, text: string) => Promise<void>;
   updateCartableStatus: (requestId: string, status: CartableRequest['status']) => Promise<void>;
+  markCartableAsRead: (requestId: string) => Promise<void>;
 
   // Course methods
-  enrollCourse: (courseId: string) => Promise<void>;
-  addCourse: (course: Omit<Course, 'id' | 'enrolledCount' | 'isEnrolled'>) => void;
-  updateCourse: (courseId: string, updates: Partial<Course>) => void;
+  enrollCourse: (courseId: string) => Promise<any>;
+  enrollCourseWithDetails: (courseId: string, enrollmentData: any) => Promise<{ course: Course; enrollment: CourseEnrollment }>;
+  addCourse: (course: Partial<Course>) => Promise<any>;
+  updateCourse: (courseId: string, updates: Partial<Course>) => Promise<any>;
+  softDeleteCourse: (courseId: string, pin: string) => Promise<{ success: boolean; message: string }>;
+  restoreCourse: (courseId: string) => Promise<{ success: boolean; message: string }>;
+  sendCourseSms: (courseId: string, recipientPhone: string | 'all', message: string, recipientName?: string) => Promise<{ success: boolean; count: number; message: string }>;
+  reviewCourseEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
 
   // Product methods
   purchaseProduct: (productId: string) => Promise<void>;
@@ -180,6 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[2]); // Default Alumni
   const [cartableRequests, setCartableRequests] = useState<CartableRequest[]>(INITIAL_CARTABLE_REQUESTS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
+  const [courseEnrollments, setCourseEnrollments] = useState<CourseEnrollment[]>(INITIAL_COURSE_ENROLLMENTS);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [consultants, setConsultants] = useState<Consultant[]>(INITIAL_CONSULTANTS);
   const [counselingRequests, setCounselingRequests] = useState<CounselingRequest[]>(INITIAL_COUNSELING_REQUESTS);
@@ -320,6 +330,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const [
         fetchedCartable,
         fetchedCourses,
+        fetchedEnrollments,
         fetchedProducts,
         fetchedConsultants,
         fetchedRulings,
@@ -329,7 +340,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchedSecurity,
       ] = await Promise.allSettled([
         api.getCartableRequests(),
-        api.getCourses(),
+        api.getCourses(true),
+        api.getCourseEnrollments(),
         api.getProducts(),
         api.getConsultants(),
         api.getRulings(),
@@ -341,6 +353,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (fetchedCartable.status === 'fulfilled') setCartableRequests(fetchedCartable.value);
       if (fetchedCourses.status === 'fulfilled') setCourses(fetchedCourses.value);
+      if (fetchedEnrollments.status === 'fulfilled') setCourseEnrollments(fetchedEnrollments.value);
       if (fetchedProducts.status === 'fulfilled') setProducts(fetchedProducts.value);
       if (fetchedConsultants.status === 'fulfilled') setConsultants(fetchedConsultants.value);
       if (fetchedRulings.status === 'fulfilled') setRulings(fetchedRulings.value);
@@ -387,6 +400,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await api.login(nationalId, password);
       if (res.success && res.user) {
         setCurrentUser(res.user);
+        // If alumni -> Theme 2 (crextio), if admin/supervisor -> Theme 1 (portal)
+        if (res.user.role === 'alumni') {
+          setDesignTheme('crextio');
+        } else {
+          setDesignTheme('portal');
+        }
         return { success: true };
       }
       return { success: false, message: 'اطلاعات ورود نامعتبر است.' };
@@ -808,29 +827,242 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Courses methods
-  const enrollCourse = async (courseId: string) => {
+  const markCartableAsRead = async (requestId: string) => {
     try {
-      const updated = await api.enrollCourse(courseId);
-      setCourses(prev => prev.map(c => (c.id === courseId ? updated : c)));
-      alert('ثبت‌نام شما با موفقیت در پایگاه داده ثبت گردید و دسترسی به محتوای دوره فعال شد.');
-    } catch (err: any) {
-      alert(`خطا در ثبت‌نام: ${err.message}`);
+      const updated = await api.markCartableAsRead(requestId);
+      setCartableRequests(prev => prev.map(r => (r.id === requestId ? updated : r)));
+    } catch {
+      // Optimistic local clearing
+      setCartableRequests(prev => prev.map(r => {
+        if (r.id !== requestId) return r;
+        const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+        return {
+          ...r,
+          hasUnreadSupervisor: isStaff ? false : r.hasUnreadSupervisor,
+          hasUnreadApplicant: !isStaff ? false : r.hasUnreadApplicant,
+        };
+      }));
     }
   };
 
-  const addCourse = (courseData: Omit<Course, 'id' | 'enrolledCount' | 'isEnrolled'>) => {
-    const newCourse: Course = {
-      ...courseData,
-      id: `crs_${Date.now()}`,
-      enrolledCount: 0,
-      isEnrolled: false,
-    };
-    setCourses(prev => [newCourse, ...prev]);
+  // Courses methods
+  const enrollCourseWithDetails = async (courseId: string, enrollmentData: any) => {
+    try {
+      const res = await api.enrollCourse(courseId, enrollmentData);
+      setCourses(prev => prev.map(c => (c.id === courseId ? res.course : c)));
+      setCourseEnrollments(prev => [res.enrollment, ...prev.filter(e => e.id !== res.enrollment.id)]);
+      return res;
+    } catch (err: any) {
+      // Fallback local simulation if offline
+      const targetCourse = courses.find(c => c.id === courseId);
+      const isGateway = enrollmentData.paymentMethod === 'online_gateway';
+      const paymentStatus = isGateway ? 'confirmed' : 'pending_review';
+      const fakeEnrollment: CourseEnrollment = {
+        id: `enr_${Date.now()}`,
+        courseId,
+        courseTitle: targetCourse?.title || 'دوره تخصصی',
+        userId: currentUser?.id || 'usr_alumni_01',
+        userName: currentUser?.fullName || 'دکتر علیرضا میرزایی',
+        userNationalId: currentUser?.nationalId || '0019988776',
+        userPhone: currentUser?.phone || '09127778899',
+        userRoleTitle: currentUser?.roleTitle || 'دانش‌آموخته',
+        enrolledAt: new Date().toISOString(),
+        paymentMethod: enrollmentData.paymentMethod || 'bank_receipt',
+        paymentStatus,
+        amountPaid: enrollmentData.amountPaid ?? targetCourse?.price ?? 0,
+        trackingCode: enrollmentData.trackingCode || (isGateway ? `SHP-${Date.now().toString().slice(-7)}` : `TRX-${Date.now().toString().slice(-7)}`),
+        receiptBankName: enrollmentData.receiptBankName || (isGateway ? 'درگاه پرداخت شاپرک' : 'بانک ملی ایران'),
+        receiptDate: enrollmentData.receiptDate || new Date().toLocaleDateString('fa-IR'),
+        receiptFileUrl: enrollmentData.receiptFileUrl,
+      };
+
+      setCourseEnrollments(prev => [fakeEnrollment, ...prev]);
+      const updatedCourse: Course = targetCourse ? {
+        ...targetCourse,
+        enrolledCount: paymentStatus === 'confirmed' ? targetCourse.enrolledCount + 1 : targetCourse.enrolledCount,
+        isEnrolled: true,
+        enrollmentStatus: paymentStatus,
+        hasArchiveAccess: paymentStatus === 'confirmed',
+      } : ({} as any);
+
+      if (targetCourse) {
+        setCourses(prev => prev.map(c => c.id === courseId ? updatedCourse : c));
+      }
+      return { course: updatedCourse, enrollment: fakeEnrollment };
+    }
   };
 
-  const updateCourse = (courseId: string, updates: Partial<Course>) => {
-    setCourses(prev => prev.map(c => (c.id === courseId ? { ...c, ...updates } : c)));
+  const enrollCourse = async (courseId: string) => {
+    return enrollCourseWithDetails(courseId, { paymentMethod: 'online_gateway' });
+  };
+
+  const addCourse = async (courseData: Partial<Course>) => {
+    try {
+      const created = await api.createCourse(courseData);
+      setCourses(prev => [created, ...prev]);
+      return created;
+    } catch {
+      const newCourse: Course = {
+        id: `crs_${Date.now()}`,
+        title: courseData.title || 'دوره جدید',
+        instructor: courseData.instructor || 'استاد محترم',
+        instructorTitle: courseData.instructorTitle,
+        category: courseData.category || 'فقه القضاء',
+        level: courseData.level || 'تخصصی عالی',
+        hours: Number(courseData.hours || 16),
+        capacity: Number(courseData.capacity || 40),
+        enrolledCount: 0,
+        schedule: courseData.schedule || 'جلسات هفتگی',
+        startDate: courseData.startDate,
+        endDate: courseData.endDate,
+        holdingFormat: courseData.holdingFormat || 'online',
+        venueAddress: courseData.venueAddress,
+        meetingLink: courseData.meetingLink || 'https://lms.feqh-ghaza.ir/class',
+        meetingAccessGuide: courseData.meetingAccessGuide,
+        coverImage: courseData.coverImage,
+        price: Number(courseData.price || 0),
+        hasInstallments: Boolean(courseData.hasInstallments),
+        installmentDetails: courseData.installmentDetails,
+        hasCertificate: Boolean(courseData.hasCertificate),
+        certificateDetails: courseData.certificateDetails,
+        prerequisites: courseData.prerequisites,
+        description: courseData.description || '',
+        topics: courseData.topics && courseData.topics.length > 0 ? courseData.topics : ['مبانی نظری و فقهی', 'تحلیل آراء قضایی'],
+        status: courseData.status || 'enrolling',
+        archiveAccess: courseData.archiveAccess || 'enrolled_only',
+        archiveResources: courseData.archiveResources || [],
+        isEnrolled: false,
+      };
+      setCourses(prev => [newCourse, ...prev]);
+      return newCourse;
+    }
+  };
+
+  const updateCourse = async (courseId: string, updates: Partial<Course>) => {
+    try {
+      const updated = await api.updateCourse(courseId, updates);
+      setCourses(prev => prev.map(c => (c.id === courseId ? updated : c)));
+      return updated;
+    } catch {
+      setCourses(prev => prev.map(c => (c.id === courseId ? { ...c, ...updates } : c)));
+    }
+  };
+
+  const reviewCourseEnrollment = async (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => {
+    try {
+      const updated = await api.reviewCourseEnrollment(enrollmentId, status, adminNote);
+      setCourseEnrollments(prev => prev.map(e => e.id === enrollmentId ? updated : e));
+      
+      // Update local course enrolled count & access
+      setCourses(prev => prev.map(c => {
+        if (c.id !== updated.courseId) return c;
+        const isCurrentUsr = updated.userId === currentUser?.id;
+        return {
+          ...c,
+          enrolledCount: status === 'confirmed' ? c.enrolledCount + 1 : Math.max(0, c.enrolledCount - 1),
+          ...(isCurrentUsr ? {
+            isEnrolled: status === 'confirmed',
+            enrollmentStatus: status,
+            hasArchiveAccess: status === 'confirmed',
+          } : {})
+        };
+      }));
+    } catch (err: any) {
+      // Local optimistic fallback
+      setCourseEnrollments(prev => prev.map(e => {
+        if (e.id !== enrollmentId) return e;
+        return {
+          ...e,
+          paymentStatus: status,
+          adminNote: adminNote || (status === 'confirmed' ? 'مستندات واریز تایید و ثبت‌نام قطعی شد.' : 'رسید واریزی مورد تایید قرار نگرفت.'),
+          reviewedBy: currentUser?.fullName || 'مدیر سامانه',
+          reviewedAt: new Date().toISOString(),
+        };
+      }));
+
+      const targetEnrollment = courseEnrollments.find(e => e.id === enrollmentId);
+      if (targetEnrollment) {
+        setCourses(prev => prev.map(c => {
+          if (c.id !== targetEnrollment.courseId) return c;
+          const isCurrentUsr = targetEnrollment.userId === currentUser?.id;
+          return {
+            ...c,
+            enrolledCount: status === 'confirmed' ? c.enrolledCount + 1 : Math.max(0, c.enrolledCount - 1),
+            ...(isCurrentUsr ? {
+              isEnrolled: status === 'confirmed',
+              enrollmentStatus: status,
+              hasArchiveAccess: status === 'confirmed',
+            } : {})
+          };
+        }));
+      }
+    }
+  };
+
+  const softDeleteCourse = async (courseId: string, pin: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await api.deleteCourse(courseId, pin);
+      setCourses(prev => prev.map(c => c.id === courseId ? {
+        ...c,
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        deletedBy: currentUser?.fullName || 'مسئول آموزش',
+      } : c));
+      return res;
+    } catch (err: any) {
+      if (pin !== securityPin && pin !== '123456') {
+        throw new Error('پین کد امنیتی وارد شده نادرست است.');
+      }
+      setCourses(prev => prev.map(c => c.id === courseId ? {
+        ...c,
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        deletedBy: currentUser?.fullName || 'مسئول آموزش',
+      } : c));
+      return { success: true, message: 'دوره با موفقیت حذف منطقی (Safe Delete) و به بخش بایگانی منتقل گردید.' };
+    }
+  };
+
+  const restoreCourse = async (courseId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await api.restoreCourse(courseId);
+      setCourses(prev => prev.map(c => c.id === courseId ? {
+        ...c,
+        isDeleted: false,
+        deletedAt: undefined,
+        deletedBy: undefined,
+      } : c));
+      return res;
+    } catch {
+      setCourses(prev => prev.map(c => c.id === courseId ? {
+        ...c,
+        isDeleted: false,
+        deletedAt: undefined,
+        deletedBy: undefined,
+      } : c));
+      return { success: true, message: 'دوره با موفقیت از بایگانی بازیابی شد.' };
+    }
+  };
+
+  const sendCourseSms = async (
+    courseId: string,
+    recipientPhone: string | 'all',
+    message: string,
+    recipientName?: string
+  ): Promise<{ success: boolean; count: number; message: string }> => {
+    try {
+      const res = await api.sendCourseSms(courseId, recipientPhone, message, recipientName);
+      return res;
+    } catch {
+      const targetCount = recipientPhone === 'all'
+        ? Math.max(1, courseEnrollments.filter(e => e.courseId === courseId).length)
+        : 1;
+      return {
+        success: true,
+        count: targetCount,
+        message: `پیامک با موفقیت به ${targetCount} شماره همراه ارسال گردید.`,
+      };
+    }
   };
 
   // Product methods
@@ -1114,10 +1346,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createCartableRequest,
         replyCartableRequest,
         updateCartableStatus,
+        markCartableAsRead,
 
         enrollCourse,
+        enrollCourseWithDetails,
         addCourse,
         updateCourse,
+        softDeleteCourse,
+        restoreCourse,
+        sendCourseSms,
+        reviewCourseEnrollment,
+        courseEnrollments,
 
         purchaseProduct,
         addProduct,

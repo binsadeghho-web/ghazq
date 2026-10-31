@@ -33,6 +33,9 @@ import {
   Home
 } from 'lucide-react';
 
+import { CartableSection } from '../cartable/CartableSection';
+import { CoursesSection } from '../courses/CoursesSection';
+
 interface CrextioSubViewsProps {
   activeNav: string;
   onNavigate: (tab: string) => void;
@@ -77,156 +80,14 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
      1. PEOPLE / CARTABLE (کارتابل اداری و استعلامات)
      ======================================================================== */
   if (activeNav === 'People' || activeNav === 'Cartable') {
-    const filteredRequests = cartableRequests.filter(req =>
-      req.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.trackingNumber.includes(searchQuery)
-    );
-
-    return (
-      <div className="space-y-6">
-        {/* Header Bar */}
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              کارتابل اداری
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">اعضا، قضات و پرونده‌های اداری</h2>
-            <p className="text-xs text-stone-500 mt-0.5">مدیریت درخواست‌های استعلام، گواهی‌های شغلی و امور اداری اعضا</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="relative flex-1 sm:w-72">
-              <input
-                type="text"
-                placeholder="جستجو در عنوان یا شماره پیگیری..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pr-9 pl-4 py-2.5 bg-[#F5F4EE] border border-stone-200 rounded-full text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-              />
-              <Search className="w-4 h-4 text-stone-400 absolute right-3 top-3" />
-            </div>
-          </div>
-        </div>
-
-        {/* Request Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredRequests.map(req => (
-            <div key={req.id} className={cardStyle}>
-              <div className="flex items-center justify-between text-xs mb-3">
-                <span className="font-mono font-extrabold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-full">
-                  کد پیگیری: #{toPersianNumbers(req.trackingNumber)}
-                </span>
-                <span className={`px-2.5 py-1 rounded-full font-bold ${
-                  req.status === 'completed' 
-                    ? 'bg-teal-100 text-teal-900' 
-                    : req.status === 'in_progress' 
-                    ? 'bg-amber-100 text-amber-900' 
-                    : 'bg-stone-200 text-stone-800'
-                }`}>
-                  {req.status === 'completed' ? 'تکمیل‌شده' : req.status === 'in_progress' ? 'در حال بررسی' : 'ثبت‌شده'}
-                </span>
-              </div>
-
-              <h3 className="text-base font-bold text-stone-900 leading-snug line-clamp-1">{req.title}</h3>
-              <p className="text-xs text-stone-500 mt-2 font-medium">متقاضی: {req.applicantName} · دسته‌بندی: {req.category}</p>
-
-              <div className="pt-4 mt-4 border-t border-stone-200/80 flex items-center justify-between text-xs text-stone-500">
-                <span>تاریخ: {req.createdAt ? toPersianNumbers(req.createdAt.split('T')[0]) : 'امروز'}</span>
-                <button 
-                  onClick={() => setSelectedItem(req)}
-                  className="text-emerald-800 hover:text-emerald-950 font-bold flex items-center gap-1"
-                >
-                  مشاهده پرونده <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Modal for Request Details */}
-        {selectedItem && (
-          <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#FCFCFA] rounded-[36px] p-6 max-w-lg w-full space-y-4 shadow-2xl border border-stone-200">
-              <div className="flex justify-between items-start border-b border-stone-200 pb-3">
-                <h3 className="font-bold text-lg text-stone-900">{selectedItem.title}</h3>
-                <button onClick={() => setSelectedItem(null)} className="text-stone-400 hover:text-stone-600 font-bold">✕</button>
-              </div>
-              <div className="space-y-2 text-xs text-stone-700 font-medium">
-                <p><strong>شماره پیگیری:</strong> {toPersianNumbers(selectedItem.trackingNumber)}</p>
-                <p><strong>متقاضی:</strong> {selectedItem.applicantName}</p>
-                <p><strong>وضعیت:</strong> {selectedItem.status}</p>
-                <p><strong>تاریخ ثبت:</strong> {selectedItem.createdAt}</p>
-              </div>
-              <button 
-                onClick={() => setSelectedItem(null)}
-                className="w-full py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs transition-colors"
-              >
-                بستن
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    return <CartableSection />;
   }
 
   /* ========================================================================
      2. COURSES GALLERY (گالری دوره‌های آموزشی)
      ======================================================================== */
   if (activeNav === 'Hiring' || activeNav === 'Courses') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              گالری دوره‌های علمی
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">
-              دوره‌ها و کارگاه‌های تخصصی ({toPersianNumbers(courses.length)})
-            </h2>
-            <p className="text-xs text-stone-500 mt-0.5">کارگاه‌های ادله دیجیتال، داوری تجاری بین‌المللی و فقه القضاء نوین</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {courses.map(course => (
-            <div key={course.id} className={cardStyle}>
-              <div className="flex items-center justify-between text-xs mb-3">
-                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold">
-                  سطح {course.level}
-                </span>
-                <span className="font-bold text-stone-600">
-                  {toPersianNumbers(course.hours)} ساعت آموزش
-                </span>
-              </div>
-
-              <h3 className="text-lg font-bold text-stone-900 leading-snug min-h-[52px]">{course.title}</h3>
-              <p className="text-xs text-stone-600 font-medium mt-2 flex items-center gap-1.5">
-                <UserCheck className="w-4 h-4 text-emerald-700" />
-                استاد: {course.instructor}
-              </p>
-
-              <div className="mt-5 pt-4 border-t border-stone-200/80 flex items-center justify-between">
-                <span className="text-sm font-extrabold text-stone-900">
-                  {course.price > 0 ? `${toPersianNumbers(course.price.toLocaleString('fa-IR'))} تومان` : 'رایگان (ویژه اعضا)'}
-                </span>
-                <button 
-                  onClick={() => enrollCourse(course.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                    course.isEnrolled 
-                      ? 'bg-stone-200/80 text-emerald-900 border border-emerald-300'
-                      : 'bg-emerald-800 hover:bg-emerald-900 text-white shadow-2xs'
-                  }`}
-                >
-                  {course.isEnrolled ? '✓ ثبت‌نام شده' : 'ثبت‌نام در دوره'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <CoursesSection />;
   }
 
   /* ========================================================================

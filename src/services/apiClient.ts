@@ -147,13 +147,69 @@ class ApiClient {
     });
   }
 
-  // Courses endpoints
-  async getCourses() {
-    return this.request<any[]>('/api/courses');
+  async markCartableAsRead(id: string) {
+    return this.request<any>(`/api/cartable/${id}/read`, {
+      method: 'POST',
+    });
   }
 
-  async enrollCourse(courseId: string) {
-    return this.request<any>(`/api/courses/${courseId}/enroll`, { method: 'POST' });
+  // Courses endpoints
+  async getCourses(includeDeleted = false) {
+    const url = includeDeleted ? '/api/courses?includeDeleted=true' : '/api/courses';
+    return this.request<any[]>(url);
+  }
+
+  async getCourseEnrollments(courseId?: string) {
+    const url = courseId ? `/api/courses/enrollments?courseId=${courseId}` : '/api/courses/enrollments';
+    return this.request<any[]>(url);
+  }
+
+  async enrollCourse(courseId: string, enrollmentData: any = {}) {
+    return this.request<{ course: any; enrollment: any }>(`/api/courses/${courseId}/enroll`, {
+      method: 'POST',
+      body: JSON.stringify(enrollmentData),
+    });
+  }
+
+  async createCourse(courseData: any) {
+    return this.request<any>('/api/courses', {
+      method: 'POST',
+      body: JSON.stringify(courseData),
+    });
+  }
+
+  async updateCourse(courseId: string, updates: any) {
+    return this.request<any>(`/api/courses/${courseId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteCourse(courseId: string, pin: string) {
+    return this.request<{ success: boolean; message: string }>(`/api/courses/${courseId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ pin }),
+    });
+  }
+
+  async restoreCourse(courseId: string) {
+    return this.request<{ success: boolean; message: string }>(`/api/courses/${courseId}/restore`, {
+      method: 'POST',
+    });
+  }
+
+  async sendCourseSms(courseId: string, recipientPhone: string | 'all', message: string, recipientName?: string) {
+    return this.request<{ success: boolean; count: number; message: string }>(`/api/courses/${courseId}/sms`, {
+      method: 'POST',
+      body: JSON.stringify({ recipientPhone, message, recipientName }),
+    });
+  }
+
+  async reviewCourseEnrollment(enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) {
+    return this.request<any>(`/api/courses/enrollments/${enrollmentId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, adminNote }),
+    });
   }
 
   // Products endpoints

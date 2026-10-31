@@ -3,6 +3,7 @@ import {
   User,
   CartableRequest,
   Course,
+  CourseEnrollment,
   Product,
   Consultant,
   CounselingRequest,
@@ -19,6 +20,7 @@ import {
   INITIAL_USERS,
   INITIAL_CARTABLE_REQUESTS,
   INITIAL_COURSES,
+  INITIAL_COURSE_ENROLLMENTS,
   INITIAL_PRODUCTS,
   INITIAL_CONSULTANTS,
   INITIAL_COUNSELING_REQUESTS,
@@ -54,6 +56,7 @@ export interface DatabaseState {
   users: (User & { version: number })[];
   cartableRequests: (CartableRequest & { version: number })[];
   courses: (Course & { version: number })[];
+  courseEnrollments: (CourseEnrollment & { version: number })[];
   products: (Product & { version: number })[];
   consultants: (Consultant & { version: number })[];
   counselingRequests: (CounselingRequest & { version: number })[];
@@ -94,6 +97,7 @@ export class InMemoryDatabaseEngine {
       users: addVersion(cloneDeep(INITIAL_USERS)),
       cartableRequests: addVersion(cloneDeep(INITIAL_CARTABLE_REQUESTS)),
       courses: addVersion(cloneDeep(INITIAL_COURSES)),
+      courseEnrollments: addVersion(cloneDeep(INITIAL_COURSE_ENROLLMENTS)),
       products: addVersion(cloneDeep(INITIAL_PRODUCTS)),
       consultants: addVersion(cloneDeep(INITIAL_CONSULTANTS)),
       counselingRequests: addVersion(cloneDeep(INITIAL_COUNSELING_REQUESTS)),
@@ -113,6 +117,7 @@ export class InMemoryDatabaseEngine {
   get users() { return this.state.users; }
   get cartableRequests() { return this.state.cartableRequests; }
   get courses() { return this.state.courses; }
+  get courseEnrollments() { return this.state.courseEnrollments; }
   get products() { return this.state.products; }
   get consultants() { return this.state.consultants; }
   get counselingRequests() { return this.state.counselingRequests; }
@@ -223,6 +228,7 @@ export class DatabaseTransaction {
   get users() { return this.state.users; }
   get cartableRequests() { return this.state.cartableRequests; }
   get courses() { return this.state.courses; }
+  get courseEnrollments() { return this.state.courseEnrollments; }
   get products() { return this.state.products; }
   get consultants() { return this.state.consultants; }
   get counselingRequests() { return this.state.counselingRequests; }

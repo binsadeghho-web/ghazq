@@ -25,6 +25,10 @@ export interface ModernDashboardCardProps {
   status?: 'active' | 'warning' | 'idle';
   /** برچسب متنی کوچک در گوشه */
   badgeText?: string;
+  /** تعداد پیام‌ها/درخواست‌های خوانده نشده جهت نمایش علامت نوتیف */
+  notificationCount?: number;
+  /** وجود نوتیفیکیشن یا اعلان نیازمند توجه */
+  hasNotification?: boolean;
   /** رویداد کلیک */
   onClick?: () => void;
   className?: string;
@@ -139,6 +143,8 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
   icon,
   accent = 'indigo',
   badgeText,
+  notificationCount = 0,
+  hasNotification = false,
   onClick,
   className = '',
 }) => {
@@ -234,11 +240,23 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
           </div>
         )}
 
-        {badgeText && (
-          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl backdrop-blur-xs transition-colors ${styleConfig.badgeColor}`}>
-            {badgeText}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {(hasNotification || notificationCount > 0) && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/40 text-[11px] font-black animate-pulse shadow-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+              <span>{notificationCount > 0 ? `${notificationCount} درخواست باز` : 'اعلان جدید'}</span>
+            </div>
+          )}
+
+          {badgeText && (
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl backdrop-blur-xs transition-colors ${styleConfig.badgeColor}`}>
+              {badgeText}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* بخش مرکزی: عنوان اصلی بزرگ و برجسته با فونت فوق‌العاده خوانا */}

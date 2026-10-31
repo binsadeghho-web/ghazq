@@ -147,7 +147,7 @@ export interface AuditLog {
 
 export type CartableCategory = 'career' | 'administrative' | 'educational';
 export type RequestPriority = 'normal' | 'urgent' | 'instant';
-export type RequestStatus = 'pending' | 'in_progress' | 'need_info' | 'completed';
+export type RequestStatus = 'pending' | 'in_progress' | 'need_info' | 'rejected' | 'completed' | 'archived';
 
 export interface CartableMessage {
   id: string;
@@ -174,30 +174,87 @@ export interface CartableRequest {
   createdAt: string;
   updatedAt: string;
   messages: CartableMessage[];
+  hasUnreadSupervisor?: boolean;
+  hasUnreadApplicant?: boolean;
+}
+
+export interface CourseResource {
+  id: string;
+  title: string;
+  type: 'video' | 'audio' | 'pdf' | 'doc';
+  url: string;
+  size?: string;
+  sessionNumber?: number;
 }
 
 export interface Course {
   id: string;
   title: string;
   instructor: string;
+  instructorTitle?: string;
+  category?: string; // فقه القضاء، داوری تجاری، جزا و جرم‌شناسی، مهارت‌های قضایی، حقوق خصوصی
   level: string;
   hours: number;
   capacity: number;
   enrolledCount: number;
   schedule: string;
+  startDate?: string;
+  endDate?: string;
+  holdingFormat: 'online' | 'in_person' | 'hybrid';
+  venueAddress?: string; // آدرس محل برگزاری حضوری
+  meetingLink: string; // لینک ورود به کلاس برخط
+  meetingAccessGuide?: string; // راهنمای ورود، رمز عبور یا شناسه اسکای‌روم
+  coverImage?: string; // آدرس عکس یا بنر دوره
+  price: number;
+  hasInstallments: boolean;
+  installmentDetails?: string; // مثلاً دو قسط ۵۰٪
+  hasCertificate: boolean;
+  certificateDetails?: string; // گواهی رسمی پایان دوره ممهور به مهر مرکز
+  prerequisites?: string; // پیش‌نیازهای دوره
   description: string;
   topics: string[];
-  meetingLink: string;
-  price: number;
+  status: 'enrolling' | 'ongoing' | 'completed';
+  archiveAccess: 'all' | 'enrolled_only' | 'restricted';
+  archiveResources?: CourseResource[];
+  allowedPaymentMethod?: 'both' | 'gateway_only' | 'receipt_only';
+  customTags?: string[];
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
   isEnrolled?: boolean;
+  enrollmentStatus?: 'pending_review' | 'confirmed' | 'rejected';
   hasArchiveAccess?: boolean;
   archiveNotes?: string;
-  status: 'enrolling' | 'ongoing' | 'completed';
+  version?: number;
+}
+
+export interface CourseEnrollment {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  userId: string;
+  userName: string;
+  userNationalId: string;
+  userPhone: string;
+  userRoleTitle: string;
+  enrolledAt: string;
+  paymentMethod: 'online_gateway' | 'bank_receipt';
+  paymentStatus: 'pending_review' | 'confirmed' | 'rejected';
+  amountPaid: number;
+  trackingCode: string;
+  receiptFileUrl?: string;
+  receiptBankName?: string;
+  receiptDate?: string;
+  adminNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  version?: number;
 }
 
 export interface Product {
   id: string;
   title: string;
+  subtitle?: string;
   authorOrPresenter: string;
   format: 'book' | 'multimedia' | 'audio_series';
   formatTitle: string;
@@ -205,9 +262,18 @@ export interface Product {
   description: string;
   pagesOrDuration: string;
   publishedYear: string;
+  publisher?: string;
+  isbn?: string;
+  coverImage?: string;
+  downloadLink?: string;
+  allowedPaymentMethod?: 'both' | 'gateway_only' | 'receipt_only';
   isAvailable: boolean;
   badgeText?: string;
   isOwned?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  version?: number;
 }
 
 export type CounselingCategory = 'individual' | 'family' | 'academic' | 'personality' | 'judicial_career';
