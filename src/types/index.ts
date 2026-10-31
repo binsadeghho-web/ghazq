@@ -276,6 +276,31 @@ export interface Product {
   version?: number;
 }
 
+export interface ProductOrder {
+  id: string;
+  productId: string;
+  productTitle: string;
+  productFormat: 'book' | 'multimedia' | 'audio_series';
+  userId: string;
+  userName: string;
+  userPhone: string;
+  userNationalId: string;
+  userRoleTitle: string;
+  orderedAt: string;
+  amountPaid: number;
+  paymentMethod: 'online_gateway' | 'bank_receipt';
+  paymentStatus: 'pending_review' | 'confirmed' | 'rejected';
+  trackingCode: string;
+  receiptFileUrl?: string;
+  receiptBankName?: string;
+  receiptDate?: string;
+  shippingAddress?: string;
+  adminNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  version?: number;
+}
+
 export type CounselingCategory = 'individual' | 'family' | 'academic' | 'personality' | 'judicial_career';
 
 export interface Consultant {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ModernMetricCard } from '../common/ModernMetricCard';
 import { UserManagementModule } from './UserManagementModule';
+import { AnalyticsReportsModule } from './AnalyticsReportsModule';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import {
   ShieldAlert,
@@ -45,7 +46,7 @@ export const AdminControlCenter: React.FC = () => {
     refreshMetrics,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('diagnostics');
+  const [activeTab, setActiveTab] = useState<'reports' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('reports');
   const [logFilter, setLogFilter] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
   const [searchUser, setSearchUser] = useState('');
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
@@ -186,6 +187,16 @@ export const AdminControlCenter: React.FC = () => {
       {/* Segmented Tab Navigation */}
       <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors text-xs overflow-x-auto">
         <button
+          onClick={() => setActiveTab('reports')}
+          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
+            activeTab === 'reports'
+              ? 'bg-slate-900 dark:bg-slate-800 text-white font-bold shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          گزارش‌گیری و تحلیل مالی
+        </button>
+        <button
           onClick={() => setActiveTab('diagnostics')}
           className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
             activeTab === 'diagnostics'
@@ -236,6 +247,11 @@ export const AdminControlCenter: React.FC = () => {
           زنجیره وقایع و صحت هش ({auditLogs.length})
         </button>
       </div>
+
+      {/* Tab 0: Analytics & Graphical Reports */}
+      {activeTab === 'reports' && (
+        <AnalyticsReportsModule />
+      )}
 
       {/* Tab 1: Diagnostics & Quick Fixes */}
       {activeTab === 'diagnostics' && (

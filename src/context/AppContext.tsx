@@ -7,6 +7,7 @@ import {
   Course,
   CourseEnrollment,
   Product,
+  ProductOrder,
   Consultant,
   CounselingRequest,
   ResearchMentorship,
@@ -29,6 +30,7 @@ import {
   INITIAL_COURSES,
   INITIAL_COURSE_ENROLLMENTS,
   INITIAL_PRODUCTS,
+  INITIAL_PRODUCT_ORDERS,
   INITIAL_CONSULTANTS,
   INITIAL_COUNSELING_REQUESTS,
   INITIAL_RESEARCH_MENTORSHIPS,
@@ -95,7 +97,9 @@ interface AppContextType {
   reviewCourseEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
 
   // Product methods
-  purchaseProduct: (productId: string) => Promise<void>;
+  productOrders: ProductOrder[];
+  purchaseProduct: (productId: string, orderDetails?: Partial<ProductOrder>) => Promise<void>;
+  reviewProductOrder: (orderId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'isOwned'>) => void;
   updateProduct: (productId: string, updates: Partial<Product>) => void;
 
@@ -191,6 +195,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [courseEnrollments, setCourseEnrollments] = useState<CourseEnrollment[]>(INITIAL_COURSE_ENROLLMENTS);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [productOrders, setProductOrders] = useState<ProductOrder[]>(INITIAL_PRODUCT_ORDERS);
   const [consultants, setConsultants] = useState<Consultant[]>(INITIAL_CONSULTANTS);
   const [counselingRequests, setCounselingRequests] = useState<CounselingRequest[]>(INITIAL_COUNSELING_REQUESTS);
   const [researchMentorships, setResearchMentorships] = useState<ResearchMentorship[]>(INITIAL_RESEARCH_MENTORSHIPS);
@@ -1066,14 +1071,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Product methods
-  const purchaseProduct = async (productId: string) => {
+  const purchaseProduct = async (productId: string, orderDetails?: Partial<ProductOrder>) => {
+    const targetProduct = products.find(p => p.id === productId);
+    const isGateway = orderDetails?.paymentMethod === 'online_gateway' || !orderDetails?.paymentMethod;
+    const status = isGateway ? 'confirmed' : 'pending_review';
+
     try {
       const updated = await api.purchaseProduct(productId);
-      setProducts(prev => prev.map(p => (p.id === productId ? updated : p)));
-      alert('خرید محصول با موفقیت تایید شد و به کتابخانه دیجیتال شما افزوده گردید.');
-    } catch (err: any) {
-      alert(`خطا در خرید محصول: ${err.message}`);
+      setProducts(prev => prev.map(p => (p.id === productId ? { ...updated, isOwned: true } : p)));
+    } catch {
+      setProducts(prev => prev.map(p => (p.id === productId ? { ...p, isOwned: true } : p)));
     }
+
+    const newOrder: ProductOrder = {
+      id: `prd_ord_${Date.now()}`,
+      productId,
+      productTitle: targetProduct?.title || 'محصول تخصصی',
+      productFormat: targetProduct?.format || 'book',
+      userId: currentUser?.id || 'usr_alumni_01',
+      userName: currentUser?.fullName || 'دکتر علیرضا میرزایی',
+      userPhone: currentUser?.phone || '09127778899',
+      userNationalId: currentUser?.nationalId || '0019988776',
+      userRoleTitle: currentUser?.roleTitle || 'دانش‌آموخته',
+      orderedAt: new Date().toLocaleDateString('fa-IR'),
+      amountPaid: orderDetails?.amountPaid ?? targetProduct?.price ?? 0,
+      paymentMethod: orderDetails?.paymentMethod || 'online_gateway',
+      paymentStatus: status,
+      trackingCode: orderDetails?.trackingCode || (isGateway ? `SHP-ORD-${Date.now().toString().slice(-6)}` : `TRX-PRD-${Date.now().toString().slice(-6)}`),
+      receiptBankName: orderDetails?.receiptBankName || (isGateway ? 'درگاه شتاب' : 'بانک ملی ایران'),
+      receiptDate: orderDetails?.receiptDate || new Date().toLocaleDateString('fa-IR'),
+      shippingAddress: orderDetails?.shippingAddress,
+    };
+
+    setProductOrders(prev => [newOrder, ...prev]);
+  };
+
+  const reviewProductOrder = async (orderId: string, status: 'confirmed' | 'rejected', adminNote?: string) => {
+    setProductOrders(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      return {
+        ...o,
+        paymentStatus: status,
+        adminNote: adminNote || (status === 'confirmed' ? 'سفارش تایید شد.' : 'فیش واریزی مورد تایید قرار نگرفت.'),
+        reviewedBy: currentUser?.fullName || 'مدیر سیستم',
+        reviewedAt: new Date().toISOString(),
+      };
+    }));
   };
 
   const addProduct = (productData: Omit<Product, 'id' | 'isOwned'>) => {
@@ -1359,6 +1402,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         courseEnrollments,
 
         purchaseProduct,
+        reviewProductOrder,
+        productOrders,
         addProduct,
         updateProduct,
 
