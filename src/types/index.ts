@@ -367,7 +367,7 @@ export interface ResearchMentorship {
   assignedSupervisor?: string;
   accommodationRequested: boolean;
   accommodationCity?: 'قم' | 'تهران' | 'مشهد';
-  status: 'active' | 'under_review' | 'completed';
+  status: 'active' | 'under_review' | 'completed' | 'pending' | 'suspended';
   milestones: { title: string; isDone: boolean; date: string }[];
   createdAt: string;
 }

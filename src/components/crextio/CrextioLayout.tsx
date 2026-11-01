@@ -29,7 +29,8 @@ import {
   Shield,
   UserPlus,
   Users,
-  Palette
+  Palette,
+  Compass
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { UserRole } from '../../types';
@@ -55,6 +56,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'Courses', label: 'گالری دوره‌ها', icon: BookOpen },
     { id: 'Products', label: 'ویترین انتشارات', icon: BookOpen },
     { id: 'Counseling', label: 'مشاوره', icon: Laptop },
+    { id: 'Research', label: 'راهبری پایان‌نامه‌ها', icon: Compass },
     { id: 'Welfare', label: 'رفاهیات', icon: Gift },
     { id: 'Rulings', label: 'تالار آراء', icon: Scale },
     { id: 'Synergy', label: 'هم‌افزایی', icon: HeartHandshake },
@@ -143,7 +145,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
           {/* Nav Items with Floating Green Indicator & 1s Return Mechanism */}
           <nav 
-            className="relative flex items-center gap-1 overflow-x-auto pb-2 xl:pb-0 scrollbar-none p-1.5 bg-[#121E1B] rounded-2xl border border-[#233832]"
+            className="relative flex items-center gap-1 flex-wrap xl:flex-nowrap p-1.5 bg-[#121E1B] rounded-2xl border border-[#233832] overflow-visible z-40"
             onMouseLeave={() => {
               // Reset hover to active tab after 1 second if mouse leaves nav
               const timer = setTimeout(() => {

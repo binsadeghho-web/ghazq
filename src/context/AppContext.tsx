@@ -122,6 +122,8 @@ interface AppContextType {
   // Research Mentorship methods
   submitResearchProject: (data: Omit<ResearchMentorship, 'id' | 'progressPercent' | 'status' | 'milestones' | 'createdAt'>) => Promise<void>;
   updateResearchProgress: (projectId: string, stage: ResearchMentorship['stage'], stageTitle: string, progressPercent: number) => void;
+  updateResearchProject: (projectId: string, updates: Partial<ResearchMentorship>) => void;
+  deleteResearchProject: (projectId: string) => void;
 
   // Judicial Rulings methods
   submitRuling: (data: Omit<JudicialRuling, 'id' | 'status' | 'likesCount' | 'likedBy' | 'discussions'>) => void;
@@ -1210,6 +1212,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const updateResearchProject = (projectId: string, updates: Partial<ResearchMentorship>) => {
+    setResearchMentorships(prev =>
+      prev.map(p => (p.id === projectId ? { ...p, ...updates } : p))
+    );
+  };
+
+  const deleteResearchProject = (projectId: string) => {
+    setResearchMentorships(prev => prev.filter(p => p.id !== projectId));
+  };
+
   // Judicial Rulings methods
   const submitRuling = (data: Omit<JudicialRuling, 'id' | 'status' | 'likesCount' | 'likedBy' | 'discussions'>) => {
     const newRuling: JudicialRuling = {
@@ -1458,6 +1470,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         submitResearchProject,
         updateResearchProgress,
+        updateResearchProject,
+        deleteResearchProject,
 
         submitRuling,
         approveRuling,
