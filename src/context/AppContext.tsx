@@ -118,6 +118,7 @@ interface AppContextType {
   ) => void;
   updateConsultant: (consultantId: string, updates: Partial<Consultant>) => void;
   addConsultant: (consultant: Omit<Consultant, 'id'>) => void;
+  deleteConsultant: (consultantId: string) => void;
 
   // Research Mentorship methods
   submitResearchProject: (data: Omit<ResearchMentorship, 'id' | 'progressPercent' | 'status' | 'milestones' | 'createdAt'>) => Promise<void>;
@@ -1195,6 +1196,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConsultants(prev => [newConsultant, ...prev]);
   };
 
+  const deleteConsultant = (consultantId: string) => {
+    setConsultants(prev => prev.filter(c => c.id !== consultantId));
+  };
+
   // Research methods
   const submitResearchProject = async (data: Omit<ResearchMentorship, 'id' | 'progressPercent' | 'status' | 'milestones' | 'createdAt'>) => {
     try {
@@ -1467,6 +1472,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCounselingStatus,
         updateConsultant,
         addConsultant,
+        deleteConsultant,
 
         submitResearchProject,
         updateResearchProgress,

@@ -329,6 +329,9 @@ export interface Consultant {
   academicRank?: string;
   resumeDetails?: string[];
   isActive?: boolean;
+  counselingType?: 'general' | 'specialized_career';
+  fee?: number;
+  subsidyNotice?: string;
 }
 
 export interface CounselingRequest {
@@ -340,6 +343,7 @@ export interface CounselingRequest {
   userRoleTitle?: string;
   category: CounselingCategory;
   categoryTitle: string;
+  counselingType?: 'general' | 'specialized_career';
   preferredConsultantId?: string;
   preferredConsultantName?: string;
   description: string;
@@ -350,6 +354,9 @@ export interface CounselingRequest {
   meetingMode: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی';
   venueDetails?: string;
   counselorNotes?: string;
+  fee?: number;
+  subsidyNotice?: string;
+  paymentStatus?: 'pending_review' | 'confirmed' | 'waived' | 'free';
   reviewedBy?: string;
   reviewedAt?: string;
   createdAt: string;

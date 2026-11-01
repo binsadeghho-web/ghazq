@@ -37,6 +37,7 @@ import { CartableSection } from '../cartable/CartableSection';
 import { CoursesSection } from '../courses/CoursesSection';
 import { ProductsSection } from '../products/ProductsSection';
 import { CounselingSection } from '../counseling/CounselingSection';
+import { SpecializedCareerCounselingSection } from '../counseling/SpecializedCareerCounselingSection';
 import { WelfareSection } from '../welfare/WelfareSection';
 import { SynergyWallSection } from '../synergy/SynergyWallSection';
 import { JudicialRulingsSection } from '../rulings/JudicialRulingsSection';
@@ -104,13 +105,13 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   }
 
   /* ========================================================================
-     4. COUNSELING CLINIC (کلینیک مشاوره قضایی)
+     4. COUNSELING CLINIC (کلینیک مشاوره عمومی و تخصصی)
      ======================================================================== */
   if (activeNav === 'Apps' || activeNav === 'Counseling' || activeNav === 'CounselingGeneral') {
     return <CounselingSection initialTab="request" />;
   }
-  if (activeNav === 'CounselingSpecial') {
-    return <CounselingSection initialTab="academic_special" />;
+  if (activeNav === 'SpecializedCounseling' || activeNav === 'CounselingSpecial') {
+    return <SpecializedCareerCounselingSection />;
   }
 
   /* ========================================================================

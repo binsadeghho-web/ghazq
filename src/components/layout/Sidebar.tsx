@@ -21,6 +21,7 @@ export type NavTabId =
   | 'courses'
   | 'products'
   | 'counseling'
+  | 'specialized_counseling'
   | 'research'
   | 'rulings'
   | 'welfare'
@@ -103,12 +104,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'counseling',
-      label: 'مشاوره و روان‌شناختی',
-      subtext: 'سلامت شغلی، تحکیم خانواده و کوچینگ',
+      label: 'مشاوره عمومی و روان‌شناختی',
+      subtext: 'سلامت شغلی، تحکیم خانواده و سبک زندگی',
       icon: HeartHandshake,
       accentColor: 'text-rose-500 dark:text-rose-400',
       glowColor: 'rgba(244, 63, 94, 0.2)',
       activeBg: 'bg-rose-600 text-white dark:bg-rose-500 dark:text-white',
+    },
+    {
+      id: 'specialized_counseling',
+      label: 'مشاوره تخصصی شغلی قضا',
+      subtext: 'هدایت شغلی-تحصیلی با قضات پیشکسوت دیوان عالی',
+      icon: Scale,
+      accentColor: 'text-amber-500 dark:text-amber-400',
+      glowColor: 'rgba(245, 158, 11, 0.2)',
+      activeBg: 'bg-amber-600 text-white dark:bg-amber-500 dark:text-slate-950',
     },
     {
       id: 'research',

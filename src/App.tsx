@@ -15,6 +15,7 @@ import { CartableSection } from './components/cartable/CartableSection';
 import { CoursesSection } from './components/courses/CoursesSection';
 import { ProductsSection } from './components/products/ProductsSection';
 import { CounselingSection } from './components/counseling/CounselingSection';
+import { SpecializedCareerCounselingSection } from './components/counseling/SpecializedCareerCounselingSection';
 import { ResearchMentorshipSection } from './components/research/ResearchMentorshipSection';
 import { JudicialRulingsSection } from './components/rulings/JudicialRulingsSection';
 import { WelfareSection } from './components/welfare/WelfareSection';
@@ -31,7 +32,8 @@ const tabTitles: Record<NavTabId, string> = {
   cartable: 'کارتابل خدمات اداری و آموزشی',
   courses: 'دوره‌های تخصصی و کارگاه‌های علمی',
   products: 'فروشگاه آثار و کتب تخصصی فقه و قضا',
-  counseling: 'خدمات مشاوره و کوچینگ شغلی قضات',
+  counseling: 'خدمات مشاوره عمومی و روان‌شناختی',
+  specialized_counseling: 'مشاوره تخصصی تحصیلی و شغلی قضاوت',
   research: 'راهبری پایان‌نامه‌ها',
   rulings: 'تالار نقد، ارزیابی و مباحثه آراء قضایی',
   welfare: 'تسهیلات رفاهی، اقامتگاه‌ها و سبد مصرفی',
@@ -138,7 +140,8 @@ const MainLayout: React.FC = () => {
                   {activeTab === 'cartable' && <CrextioSubViews activeNav="Cartable" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'courses' && <CrextioSubViews activeNav="Courses" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'products' && <CrextioSubViews activeNav="Products" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
-                  {activeTab === 'counseling' && <CrextioSubViews activeNav="Counseling" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'counseling' && <CounselingSection initialTab="request" />}
+                  {activeTab === 'specialized_counseling' && <SpecializedCareerCounselingSection />}
                   {activeTab === 'research' && <CrextioSubViews activeNav="Research" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'rulings' && <CrextioSubViews activeNav="Rulings" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'welfare' && <CrextioSubViews activeNav="Welfare" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}

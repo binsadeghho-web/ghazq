@@ -5,6 +5,7 @@ import { UserManagementModule } from './UserManagementModule';
 import { AnalyticsReportsModule } from './AnalyticsReportsModule';
 import { FinancialAuditLedgerModule } from './FinancialAuditLedgerModule';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
+import { ConsultantManagementModule } from './ConsultantManagementModule';
 import {
   ShieldAlert,
   Users,
@@ -47,7 +48,7 @@ export const AdminControlCenter: React.FC = () => {
     refreshMetrics,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'reports' | 'ledger' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('reports');
+  const [activeTab, setActiveTab] = useState<'reports' | 'ledger' | 'consultants' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('reports');
   const [logFilter, setLogFilter] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
   const [searchUser, setSearchUser] = useState('');
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
@@ -208,6 +209,16 @@ export const AdminControlCenter: React.FC = () => {
           حسابداری و مدیریت تراکنش‌ها
         </button>
         <button
+          onClick={() => setActiveTab('consultants')}
+          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
+            activeTab === 'consultants'
+              ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          مدیریت مشاوران و تعرفه حق‌المشاوره
+        </button>
+        <button
           onClick={() => setActiveTab('diagnostics')}
           className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
             activeTab === 'diagnostics'
@@ -267,6 +278,11 @@ export const AdminControlCenter: React.FC = () => {
       {/* Tab 0.5: Financial Audit Ledger */}
       {activeTab === 'ledger' && (
         <FinancialAuditLedgerModule />
+      )}
+
+      {/* Tab 0.7: Dedicated Consultants & Fee Rates Management Module */}
+      {activeTab === 'consultants' && (
+        <ConsultantManagementModule />
       )}
 
       {/* Tab 1: Diagnostics & Quick Fixes */}
