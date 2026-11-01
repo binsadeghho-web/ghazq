@@ -105,7 +105,19 @@ interface AppContextType {
 
   // Counseling methods
   bookCounseling: (data: Omit<CounselingRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
-  updateCounselingStatus: (requestId: string, status: CounselingRequest['status'], scheduledDate?: string, counselorNotes?: string) => void;
+  updateCounselingStatus: (
+    requestId: string,
+    status: CounselingRequest['status'],
+    scheduledDate?: string,
+    counselorNotes?: string,
+    scheduledTime?: string,
+    venueDetails?: string,
+    meetingMode?: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی',
+    preferredConsultantId?: string,
+    preferredConsultantName?: string
+  ) => void;
+  updateConsultant: (consultantId: string, updates: Partial<Consultant>) => void;
+  addConsultant: (consultant: Omit<Consultant, 'id'>) => void;
 
   // Research Mentorship methods
   submitResearchProject: (data: Omit<ResearchMentorship, 'id' | 'progressPercent' | 'status' | 'milestones' | 'createdAt'>) => Promise<void>;
@@ -1143,10 +1155,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateCounselingStatus = (requestId: string, status: CounselingRequest['status'], scheduledDate?: string, counselorNotes?: string) => {
+  const updateCounselingStatus = (
+    requestId: string,
+    status: CounselingRequest['status'],
+    scheduledDate?: string,
+    counselorNotes?: string,
+    scheduledTime?: string,
+    venueDetails?: string,
+    meetingMode?: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی',
+    preferredConsultantId?: string,
+    preferredConsultantName?: string
+  ) => {
     setCounselingRequests(prev =>
-      prev.map(r => (r.id === requestId ? { ...r, status, scheduledDate, counselorNotes } : r))
+      prev.map(r => (r.id === requestId ? {
+        ...r,
+        status,
+        ...(scheduledDate ? { scheduledDate } : {}),
+        ...(scheduledTime ? { scheduledTime } : {}),
+        ...(counselorNotes !== undefined ? { counselorNotes } : {}),
+        ...(venueDetails ? { venueDetails } : {}),
+        ...(meetingMode ? { meetingMode } : {}),
+        ...(preferredConsultantId ? { preferredConsultantId } : {}),
+        ...(preferredConsultantName ? { preferredConsultantName } : {})
+      } : r))
     );
+  };
+
+  const updateConsultant = (consultantId: string, updates: Partial<Consultant>) => {
+    setConsultants(prev => prev.map(c => (c.id === consultantId ? { ...c, ...updates } : c)));
+  };
+
+  const addConsultant = (consultantData: Omit<Consultant, 'id'>) => {
+    const newConsultant: Consultant = {
+      ...consultantData,
+      id: `cns_${Date.now()}`,
+    };
+    setConsultants(prev => [newConsultant, ...prev]);
   };
 
   // Research methods
@@ -1409,6 +1453,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         bookCounseling,
         updateCounselingStatus,
+        updateConsultant,
+        addConsultant,
 
         submitResearchProject,
         updateResearchProgress,

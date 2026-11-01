@@ -308,31 +308,50 @@ export interface ProductOrder {
   version?: number;
 }
 
-export type CounselingCategory = 'individual' | 'family' | 'academic' | 'personality' | 'judicial_career';
+export type CounselingCategory = 
+  | 'individual' 
+  | 'family' 
+  | 'personality' 
+  | 'marriage' 
+  | 'academic' 
+  | 'judicial_career';
 
 export interface Consultant {
   id: string;
   name: string;
   title: string;
   specialty: string;
+  specialties?: string[];
   bio: string;
   experienceYears: number;
   availability: string;
+  avatarUrl?: string;
+  academicRank?: string;
+  resumeDetails?: string[];
+  isActive?: boolean;
 }
 
 export interface CounselingRequest {
   id: string;
   applicantId: string;
   applicantName: string;
+  userPhone?: string;
+  userNationalId?: string;
+  userRoleTitle?: string;
   category: CounselingCategory;
   categoryTitle: string;
   preferredConsultantId?: string;
   preferredConsultantName?: string;
   description: string;
-  status: 'pending' | 'scheduled' | 'completed';
+  status: 'pending' | 'scheduled' | 'attended' | 'completed' | 'cancelled' | 'absent';
+  sessionStatus?: 'upcoming' | 'attended' | 'cancelled' | 'absent';
   scheduledDate?: string;
+  scheduledTime?: string;
   meetingMode: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی';
+  venueDetails?: string;
   counselorNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   createdAt: string;
 }
 
