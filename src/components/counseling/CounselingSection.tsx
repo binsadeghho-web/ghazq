@@ -188,7 +188,14 @@ export const CounselingSection: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <ModernMetricCard
+          title="مشاوره تخصصی تحصیلی و شغلی قضا"
+          value="کلینیک ویژه"
+          periodLabel="رشد علمی و ارتقای رتبه"
+          icon={<Scale className="w-4 h-4 text-amber-500" />}
+          onClick={() => setActiveTab('academic_special')}
+        />
         <ModernMetricCard
           title="مشاوران و روان‌شناسان مرکز"
           value={consultants.length}
@@ -228,15 +235,15 @@ export const CounselingSection: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-              مرکز سلامت روان و مشاوره تخصصی قضایی
+              بخش خدمات عمومی مشاوره و سلامت روان
             </span>
             <span className="text-xs text-slate-400 font-mono tabular-nums">محرمانه و رمزنگاری‌شده</span>
           </div>
           <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-            خدمات مشاوره، روان‌شناختی و هدایت شغلی-تحصیلی
+            بخش خدمات عمومی مشاوره
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            مشاوره فردی، زوج‌درمانی، مدیریت فرسودگی شغلی قضاوت و کلینیک تخصصی پیشرفت علمی زیر نظر اساتید مجرب
+            ارائه خدمات مشاوره فردی، خانواده، شخصیتی و مدیریت استرس در کنار کلینیک تخصصی هدایت شغلی و تحصیلی
           </p>
         </div>
 
