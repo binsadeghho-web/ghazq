@@ -78,7 +78,7 @@ export const ResearchMentorshipSection: React.FC = () => {
       <div className="glass-card rounded-2xl p-6 border border-slate-200/90 dark:border-white/10 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-            راهبری پژوهش و شتاب‌دهی پایان‌نامه‌ها
+            راهبری پایان‌نامه‌ها
           </h1>
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
             <span>طرح ویژه هدایت رساله‌های دکتری و سطح ۴، هماهنگی استاد راهنما و اسکان پژوهشی</span>

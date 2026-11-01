@@ -45,6 +45,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
+  const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
 
   const isAdminOrSupervisor = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
 
@@ -152,36 +153,75 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             }}
           >
             {navItems.map(item => {
-              const isActive = activeNav.toLowerCase() === item.id.toLowerCase();
+              const isActive = activeNav.toLowerCase() === item.id.toLowerCase() || (item.id === 'Counseling' && (activeNav === 'CounselingSpecial' || activeNav === 'CounselingGeneral'));
               const isHovered = (hoveredNav || activeNav).toLowerCase() === item.id.toLowerCase();
               const Icon = item.icon;
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveNav(item.id);
-                    setHoveredNav(item.id);
-                  }}
-                  onMouseEnter={() => setHoveredNav(item.id)}
-                  className={`relative z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors duration-200 whitespace-nowrap ${
-                    isActive
-                      ? 'text-stone-950 font-black'
-                      : isHovered
-                      ? 'text-emerald-300'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                >
-                  {/* Floating Green Pill Indicator */}
-                  {isHovered && (
-                    <motion.div
-                      layoutId="crextioNavPill"
-                      className="absolute inset-0 bg-emerald-500 rounded-xl -z-10 shadow-lg shadow-emerald-500/20"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
+                <div key={item.id} className="relative">
+                  <button
+                    onClick={() => {
+                      if (item.id === 'Counseling') {
+                        setCounselingDropdownOpen(!counselingDropdownOpen);
+                      } else {
+                        setCounselingDropdownOpen(false);
+                        setActiveNav(item.id);
+                        setHoveredNav(item.id);
+                      }
+                    }}
+                    onMouseEnter={() => {
+                      setHoveredNav(item.id);
+                      if (item.id !== 'Counseling') setCounselingDropdownOpen(false);
+                    }}
+                    className={`relative z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors duration-200 whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'text-stone-950 font-black'
+                        : isHovered
+                        ? 'text-emerald-300'
+                        : 'text-stone-300 hover:text-white'
+                    }`}
+                  >
+                    {/* Floating Green Pill Indicator */}
+                    {isHovered && (
+                      <motion.div
+                        layoutId="crextioNavPill"
+                        className="absolute inset-0 bg-emerald-500 rounded-xl -z-10 shadow-lg shadow-emerald-500/20"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <Icon className={`w-4 h-4 ${isActive || isHovered ? 'text-stone-950' : 'text-emerald-400'}`} />
+                    <span>{item.label}</span>
+                    {item.id === 'Counseling' && <ChevronDown className="w-3.5 h-3.5 mr-1" />}
+                  </button>
+
+                  {/* Counseling Dropdown Menu */}
+                  {item.id === 'Counseling' && counselingDropdownOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-72 bg-[#182622] border border-[#2A423B] rounded-2xl shadow-2xl p-2 z-50 space-y-1 text-xs">
+                      <div className="px-3 py-2 text-[10px] font-bold text-emerald-400 border-b border-[#2A423B]">
+                        انتخاب بخش مشاوره:
+                      </div>
+                      <button
+                        onClick={() => {
+                          setActiveNav('CounselingSpecial');
+                          setCounselingDropdownOpen(false);
+                        }}
+                        className="w-full text-right px-3.5 py-2.5 rounded-xl hover:bg-emerald-500/20 text-stone-200 hover:text-white font-bold transition-colors flex items-center justify-between"
+                      >
+                        <span>مشاوره تخصصی تحصیلی و شغلی</span>
+                        <ChevronDown className="w-3 h-3 -rotate-90 text-emerald-400" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveNav('CounselingGeneral');
+                          setCounselingDropdownOpen(false);
+                        }}
+                        className="w-full text-right px-3.5 py-2.5 rounded-xl hover:bg-emerald-500/20 text-stone-200 hover:text-white font-bold transition-colors flex items-center justify-between"
+                      >
+                        <span>خدمات مشاوره عمومی (شخصیت، ازدواج، خانواده و...)</span>
+                        <ChevronDown className="w-3 h-3 -rotate-90 text-emerald-400" />
+                      </button>
+                    </div>
                   )}
-                  <Icon className={`w-4 h-4 ${isActive || isHovered ? 'text-stone-950' : 'text-emerald-400'}`} />
-                  <span>{item.label}</span>
-                </button>
+                </div>
               );
             })}
           </nav>

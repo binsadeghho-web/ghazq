@@ -106,47 +106,11 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   /* ========================================================================
      4. COUNSELING CLINIC (کلینیک مشاوره قضایی)
      ======================================================================== */
-  if (activeNav === 'Apps' || activeNav === 'Counseling') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              کلینیک مشاوره
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">مشاوره تخصصی و سلامت شغلی قضات</h2>
-            <p className="text-xs text-stone-500 mt-0.5">مدیریت فرسودگی شغلی، مشاوره حقوقی تخصصی و تحکیم خانواده با حفظ کامل محرمانگی</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {consultants.map(c => (
-            <div key={c.id} className={cardStyle}>
-              <div className="flex items-center gap-3.5 mb-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-900 text-white flex items-center justify-center font-extrabold text-lg shadow-xs">
-                  {c.name.split(' ')[0][0]}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-stone-900">{c.name}</h3>
-                  <p className="text-xs text-emerald-800 font-bold">{c.specialty}</p>
-                </div>
-              </div>
-
-              <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed font-medium">{c.bio}</p>
-
-              <div className="mt-4 pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
-                <span className="text-emerald-900 font-bold bg-emerald-100/80 px-2.5 py-1 rounded-full">
-                  ✓ هیئت علمی تاییدشده
-                </span>
-                <button className="px-4 py-1.5 rounded-full bg-stone-900 hover:bg-black text-white font-bold transition-colors">
-                  درخواست نوبت
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+  if (activeNav === 'Apps' || activeNav === 'Counseling' || activeNav === 'CounselingGeneral') {
+    return <CounselingSection initialTab="request" />;
+  }
+  if (activeNav === 'CounselingSpecial') {
+    return <CounselingSection initialTab="academic_special" />;
   }
 
   /* ========================================================================

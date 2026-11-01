@@ -33,7 +33,11 @@ import {
   MessageSquare
 } from 'lucide-react';
 
-export const CounselingSection: React.FC = () => {
+interface CounselingSectionProps {
+  initialTab?: 'request' | 'my_history' | 'consultants' | 'admin_queue' | 'academic_special' | 'articles';
+}
+
+export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab = 'request' }) => {
   const {
     currentUser,
     consultants,
@@ -46,7 +50,7 @@ export const CounselingSection: React.FC = () => {
 
   const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
 
-  const [activeTab, setActiveTab] = useState<'request' | 'my_history' | 'consultants' | 'admin_queue' | 'academic_special' | 'articles'>('request');
+  const [activeTab, setActiveTab] = useState<'request' | 'my_history' | 'consultants' | 'admin_queue' | 'academic_special' | 'articles'>(initialTab);
 
   // Booking Form State
   const [category, setCategory] = useState<CounselingCategory>('judicial_career');

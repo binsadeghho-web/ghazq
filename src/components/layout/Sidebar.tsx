@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'research',
-      label: 'پژوهش و پایان‌نامه‌ها',
+      label: 'راهبری پایان‌نامه‌ها',
       subtext: 'کوچینگ رساله دکتری و اسکان پژوهشی',
       icon: FileText,
       accentColor: 'text-amber-500 dark:text-amber-400',
