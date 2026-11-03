@@ -344,9 +344,9 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           </div>
         </header>
 
-        {/* HORIZONTAL NAVIGATION BAR (RIGHT ALIGNED ON SCREEN) */}
-        <nav className="bg-white/95 backdrop-blur-xl rounded-2xl p-2 px-3 sm:px-4 border border-stone-200/90 shadow-sm overflow-x-auto scrollbar-none z-20">
-          <div className="flex items-center justify-start gap-1.5 min-w-max">
+        {/* HORIZONTAL NAVIGATION BAR (CENTERED ON SCREEN BELOW HEADER) */}
+        <nav className="bg-white/95 backdrop-blur-xl rounded-2xl p-2 px-3 sm:px-4 border border-stone-200/90 shadow-sm overflow-x-auto scrollbar-none z-20 flex justify-center">
+          <div className="flex items-center justify-center gap-1.5 min-w-max mx-auto">
             {navItems.map(item => {
               const Icon = item.icon;
               const isActive = activeNav === item.id;

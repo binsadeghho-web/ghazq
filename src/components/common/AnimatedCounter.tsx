@@ -48,10 +48,11 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
 
       const step = (timestamp: number) => {
         if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const elapsed = timestamp - startTimestamp;
+        const progress = Math.min(elapsed / duration, 1);
 
-        // منحنی نرم و تدریجی کاهش شتاب (easeOutCubic / easeOutExpo)
-        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -8 * progress);
+        // Smooth cubic ease-out calculation: 1 - (1 - progress)^3
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
         const currentNumber = easeProgress * targetNumber;
 
         let formattedNumber: string;
@@ -84,7 +85,7 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
       return () => cancelAnimationFrame(animationFrameId);
     }
 
-    // مشاهده‌گر اسکرول: هر بار از دید خارج شد و دوباره وارد دید شد، شمارش از اول آغاز شود
+    // Scroll observer
     const observer = new IntersectionObserver(
       entries => {
         entries.forEach(entry => {
@@ -92,7 +93,6 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
             startCounting();
             hasBeenVisibleRef.current = true;
           } else {
-            // وقتی از کادر خارج شد، مجدداً ریست به صفر جهت آماده‌سازی انیمیشن بعدی
             if (hasBeenVisibleRef.current) {
               setDisplayValue('۰');
             }
@@ -100,7 +100,7 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
         });
       },
       {
-        threshold: 0.25,
+        threshold: 0.15,
         rootMargin: '0px'
       }
     );
@@ -118,10 +118,8 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
   return (
     <span ref={containerRef} className={`inline-flex items-center justify-center transition-transform ${className}`}>
       <motion.span
-        key={displayValue}
-        initial={{ opacity: 0.85, scale: isAnimating ? 0.98 : 1 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.15 }}
+        animate={{ scale: isAnimating ? [1, 1.03, 1] : 1 }}
+        transition={{ duration: 0.3 }}
       >
         {displayValue}
       </motion.span>

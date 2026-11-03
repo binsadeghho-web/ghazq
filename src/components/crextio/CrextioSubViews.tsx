@@ -159,43 +159,10 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   }
 
   /* ========================================================================
-     6. SYNERGY WALL (دیوار هم‌افزایی و استعلامات)
+     6. SYNERGY & EXPERIENCES WALL (دیوار هم‌افزایی و تجارب اعضا)
      ======================================================================== */
   if (activeNav === 'Calendar' || activeNav === 'Synergy') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              هم‌افزایی شغلی
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">دیوار هم‌افزایی و همیاری اعضا</h2>
-            <p className="text-xs text-stone-500 mt-0.5">تبادل مستقیم تجارب اداری، رویه‌های قضایی و استعلامات محلی</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {synergyPosts.map(post => (
-            <div key={post.id} className={cardStyle}>
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="font-bold text-stone-900">{post.categoryTitle || post.category}</span>
-                <span className="text-stone-500 font-medium">{post.provinceOrCity || 'حوزه قضایی'}</span>
-              </div>
-
-              <h3 className="text-base font-bold text-stone-900">{post.title}</h3>
-              <p className="text-xs text-stone-600 mt-2 line-clamp-3 leading-relaxed">{post.content}</p>
-
-              <div className="mt-4 pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
-                <span className="text-stone-500 font-medium">پاسخ‌ها: {toPersianNumbers(post.responses?.length || 0)}</span>
-                <button className="px-4 py-1.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-colors">
-                  مشارکت و پاسخ
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <SynergyWallSection />;
   }
 
   /* ========================================================================

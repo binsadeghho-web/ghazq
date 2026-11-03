@@ -163,6 +163,8 @@ export interface CrextioDashboardConfig {
   welfareShowcaseSubtitle?: string;
   multimediaShowcaseTitle?: string;
   multimediaShowcaseSubtitle?: string;
+  dashboardSectionOrder?: string[];
+  hiddenDashboardSections?: Record<string, boolean>;
 }
 
 export interface MizanDashboardConfig {

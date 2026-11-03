@@ -224,11 +224,42 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
               </div>
 
               <div className="space-y-3 pt-2 border-t border-stone-200 text-xs">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h5 className="font-black text-xs text-stone-900">فهرست کتب و محصولات علمی:</h5>
-                  <button onClick={handleAddItem} className="flex items-center gap-1 text-xs font-bold text-purple-700 hover:underline">
-                    <Plus className="w-4 h-4" /> افزودن کتاب جدید
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      onChange={(e) => {
+                        const selectedP = products.find(p => p.id === e.target.value);
+                        if (selectedP) {
+                          setCustomItems(prev => [
+                            ...prev,
+                            {
+                              id: `book-${Date.now()}`,
+                              title: selectedP.title,
+                              author: selectedP.authorOrPresenter,
+                              price: selectedP.price,
+                              discountPercent: 15,
+                              coverImage: selectedP.coverImage || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80',
+                              tag: selectedP.formatTitle || 'کتاب انتشارات'
+                            }
+                          ]);
+                        }
+                        e.target.value = '';
+                      }}
+                      className="p-1.5 rounded-xl bg-stone-100 border border-stone-300 text-xs font-bold text-stone-800"
+                    >
+                      <option value="">+ انتخاب مستقیم از محصولات موجود سیستم...</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} ({p.authorOrPresenter})
+                        </option>
+                      ))}
+                    </select>
+
+                    <button onClick={handleAddItem} className="flex items-center gap-1 text-xs font-bold text-purple-700 hover:underline">
+                      <Plus className="w-4 h-4" /> افزودن دستی
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
