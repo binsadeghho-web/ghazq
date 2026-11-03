@@ -261,15 +261,8 @@ export const MizanLayout: React.FC = () => {
                     onClick={() => { setDesignTheme('crextio'); setThemePickerOpen(false); }}
                     className="w-full text-right p-2 rounded-xl hover:bg-[#F0F5F2] flex items-center justify-between text-[#2C5747]"
                   >
-                    <span>۲. کرکستیو تاریک و شیشه‌ای</span>
+                    <span>۲. کرکستیو (Crextio)</span>
                     {designTheme === 'crextio' && <CheckCircle2 className="w-3.5 h-3.5 text-[#158561]" />}
-                  </button>
-                  <button
-                    onClick={() => { setDesignTheme('mizan'); setThemePickerOpen(false); }}
-                    className="w-full text-right p-2 rounded-xl bg-[#EBF8F2] text-[#0D3829] font-bold flex items-center justify-between"
-                  >
-                    <span>۳. میزان فاخر کاغذی (Mizan)</span>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#158561]" />
                   </button>
                 </motion.div>
               )}

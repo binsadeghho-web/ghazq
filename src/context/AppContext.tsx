@@ -69,8 +69,8 @@ interface AppContextType {
   securityConfig: SystemSecurityConfig;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  designTheme: 'portal' | 'crextio' | 'mizan';
-  setDesignTheme: (theme: 'portal' | 'crextio' | 'mizan') => void;
+  designTheme: 'portal' | 'crextio';
+  setDesignTheme: (theme: 'portal' | 'crextio') => void;
   toggleDesignTheme: () => void;
   serverSyncStatus: 'synced' | 'syncing' | 'offline';
   
@@ -346,15 +346,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio' | 'mizan'>(() => {
+  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}design_theme`);
-      if (saved === 'portal' || saved === 'crextio' || saved === 'mizan') return saved;
+      if (saved === 'portal' || saved === 'crextio') return saved;
     }
-    return 'mizan'; // Set Mizan as default or high quality theme
+    return 'crextio'; // Default ALL users to Theme 2 (Crextio)
   });
 
-  const setDesignTheme = (newTheme: 'portal' | 'crextio' | 'mizan') => {
+  const setDesignTheme = (newTheme: 'portal' | 'crextio') => {
     setDesignThemeState(newTheme);
     if (typeof window !== 'undefined') {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}design_theme`, newTheme);
@@ -362,7 +362,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleDesignTheme = () => {
-    const next = designTheme === 'mizan' ? 'portal' : designTheme === 'portal' ? 'crextio' : 'mizan';
+    const next = designTheme === 'crextio' ? 'portal' : 'crextio';
     setDesignTheme(next);
   };
 
@@ -464,12 +464,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await api.login(nationalId, password);
       if (res.success && res.user) {
         setCurrentUser(res.user);
-        // If alumni -> Theme 2 (crextio), if admin/supervisor -> Theme 1 (portal)
-        if (res.user.role === 'alumni') {
-          setDesignTheme('crextio');
-        } else {
-          setDesignTheme('portal');
-        }
+        // Every user enters Theme 2 (crextio) by default (Admin/Supervisor can switch to Theme 1 if desired)
+        setDesignTheme('crextio');
         return { success: true };
       }
       return { success: false, message: 'اطلاعات ورود نامعتبر است.' };
@@ -524,12 +520,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const localTarget = users.find(u => u.role === role) || users[0];
       setCurrentUser(localTarget);
     }
-    // Theme persona matching: Alumni defaults to Crextio (Theme 2), Admin/Supervisor defaults to Portal (Theme 1)
-    if (role === 'alumni') {
-      setDesignTheme('crextio');
-    } else {
-      setDesignTheme('portal');
-    }
+    // Default to Theme 2 (crextio) for all roles upon role switch
+    setDesignTheme('crextio');
   };
 
   const unlockAccount = async (userId: string) => {

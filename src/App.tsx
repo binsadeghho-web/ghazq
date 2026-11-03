@@ -45,19 +45,14 @@ const tabTitles: Record<NavTabId, string> = {
 };
 
 const MainLayout: React.FC = () => {
-  const { designTheme, setDesignTheme } = useApp();
+  const { designTheme, setDesignTheme, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // When Theme 3 (Mizan) is selected, render Mizan Workspace
-  if (designTheme === 'mizan') {
-    return <MizanLayout />;
-  }
-
-  // When Theme 2 (Crextio) is selected, render Crextio Workspace
-  if (designTheme === 'crextio') {
+  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio.
+  if (designTheme === 'crextio' || currentUser?.role === 'alumni') {
     return <CrextioLayout onToggleToPortalTheme={() => setDesignTheme('portal')} />;
   }
 
@@ -175,28 +170,20 @@ const MainLayout: React.FC = () => {
         onClose={() => setLoginModalOpen(false)}
       />
 
-      {/* Floating 3-Way Theme Switcher Capsule */}
-      <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
-        <button
-          onClick={() => setDesignTheme('portal')}
-          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all bg-amber-500 text-slate-900 shadow-sm"
-        >
-          تم ۱: پرتال
-        </button>
-        <button
-          onClick={() => setDesignTheme('crextio')}
-          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all text-slate-300 hover:text-white"
-        >
-          تم ۲: کرکستیو
-        </button>
-        <button
-          onClick={() => setDesignTheme('mizan')}
-          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 text-amber-200 hover:text-white"
-        >
-          <span className="w-2 h-2 rounded-full bg-[#158561] animate-pulse" />
-          <span>تم ۳: میزان (جدید)</span>
-        </button>
-      </div>
+      {/* Floating Theme Switcher Capsule (Only for Admin / Supervisor on Theme 1) */}
+      {currentUser && (currentUser.role === 'admin' || currentUser.role === 'supervisor') && (
+        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
+          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-slate-900 shadow-sm">
+            تم ۱: پرتال (فعال)
+          </span>
+          <button
+            onClick={() => setDesignTheme('crextio')}
+            className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer text-slate-300 hover:text-white"
+          >
+            بازگشت به تم ۲ (کرکستیو)
+          </button>
+        </div>
+      )}
     </div>
   );
 };

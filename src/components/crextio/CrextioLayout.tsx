@@ -146,31 +146,24 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
             <div className="flex items-center gap-2">
               {isAdminOrSupervisor && (
-                <button
-                  onClick={() => setIsCustomizerOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
-                >
-                  <Palette className="w-3.5 h-3.5 text-amber-600" />
-                  <span>شخصی‌سازی تم ۲</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => setIsCustomizerOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                  >
+                    <Palette className="w-3.5 h-3.5 text-amber-600" />
+                    <span>شخصی‌سازی تم ۲</span>
+                  </button>
+
+                  <button
+                    onClick={onToggleToPortalTheme}
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                    <span>تغییر به تم ۱ (پرتال)</span>
+                  </button>
+                </>
               )}
-
-              <button
-                onClick={() => setDesignTheme('mizan')}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#DBB155] hover:bg-[#c89f44] text-[#011C11] text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                title="مشاهده تم ۳: طرح فاخر دیوانی میزان"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>مشاهده تم ۳ (میزان)</span>
-              </button>
-
-              <button
-                onClick={onToggleToPortalTheme}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span>تم ۱ (پرتال)</span>
-              </button>
             </div>
           </div>
         ) : null}
