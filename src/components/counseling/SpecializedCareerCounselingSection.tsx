@@ -77,7 +77,7 @@ const INITIAL_SPECIALIZED_CAREER_CONSULTANTS: Consultant[] = [
     bio: 'پژوهشگر ارشد فقه و فناوری‌های نوین، داور اتاق بازرگانی و مشاور تدوین مقالات و کتب تخصصی دانش‌آموختگان.',
     experienceYears: 16,
     availability: 'سه‌شنبه‌ها و پنج‌شنبه‌ها',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    avatarUrl: '/assets/cleric_portrait.jpg',
     academicRank: 'دانشیار پایه ۲۱ دانشگاه علوم قضایی و خدمات اداری',
     resumeDetails: [
       'مدیر گروه حقوق تجارت و فناوری‌های نوظهور پژوهشگاه قوه قضاییه',

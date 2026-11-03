@@ -107,6 +107,28 @@ export interface User {
   permissions?: UserPermissions;
 }
 
+export interface CrextioBentoCardConfig {
+  id: string;
+  order: number;
+  title: string;
+  subtext: string;
+  badge: string;
+  size: '1-col' | '2-col' | '3-col' | 'full';
+  subServices: string[];
+  isVisible?: boolean;
+  accentColor?: string;
+}
+
+export interface CrextioHeroStatItem {
+  id: string;
+  label: string;
+  val: number;
+  trend: string;
+  icon: 'users' | 'graduation' | 'scale' | 'book' | 'award' | 'sparkles' | 'activity' | 'gift' | 'shield';
+  color: string;
+  isVisible?: boolean;
+}
+
 export interface CrextioDashboardConfig {
   showHeroBanner: boolean;
   showCourseShowcase: boolean;
@@ -122,6 +144,52 @@ export interface CrextioDashboardConfig {
   canvasTheme: 'warm_ivory' | 'royal_emerald' | 'pure_minimal';
   heroTitle?: string;
   heroSubtitle?: string;
+  showShowcaseSection?: boolean;
+  showcaseTitle?: string;
+  showcaseSubtitle?: string;
+  showcaseAlumniCount?: string;
+  showcaseCoursesCount?: string;
+  showcaseRulingsCount?: string;
+  showcaseSatisfactionRate?: string;
+  bentoCardsConfig?: CrextioBentoCardConfig[];
+  heroStatsConfig?: CrextioHeroStatItem[];
+  showCounselingPromo?: boolean;
+  counselingPromoTitle?: string;
+  counselingPromoSubtitle?: string;
+  showProductsMiniPromo?: boolean;
+  booksShowcaseTitle?: string;
+  booksShowcaseSubtitle?: string;
+  welfareShowcaseTitle?: string;
+  welfareShowcaseSubtitle?: string;
+  multimediaShowcaseTitle?: string;
+  multimediaShowcaseSubtitle?: string;
+}
+
+export interface MizanDashboardConfig {
+  showHeroSeal: boolean;
+  showBentoGrid: boolean;
+  showStoriesSlider: boolean;
+  showRulingsShelf?: boolean;
+  showRulingsPicks?: boolean;
+  showSynergyHighlights?: boolean;
+  showImpactSection: boolean;
+  showPublicationsShelf?: boolean;
+  heroSealBadge?: string;
+  heroTitle?: string;
+  heroGreeting?: string;
+  heroSubtitle?: string;
+  heroPrimaryActionText?: string;
+  impactAlumniCount: string;
+  impactAlumniSource: string;
+  impactCoursesCount: string;
+  impactCoursesSource: string;
+  impactRulingsCount: string;
+  impactRulingsSource: string;
+  impactSatisfactionRate: string;
+  impactSatisfactionSource: string;
+  brandHue: 'sedr' | 'turquoise' | 'amber';
+  borderRadius: 'sharp' | 'soft' | 'rounded';
+  motionLevel: 'full' | 'reduced' | 'off';
 }
 
 export interface AuditLog {

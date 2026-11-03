@@ -18,7 +18,187 @@ import {
   AuditLog,
   SystemSecurityConfig,
   CrextioDashboardConfig,
+  CrextioBentoCardConfig,
+  CrextioHeroStatItem,
+  MizanDashboardConfig,
 } from '../types';
+
+export const DEFAULT_HERO_STATS: CrextioHeroStatItem[] = [
+  {
+    id: 'stat_alumni',
+    label: 'دانش‌آموختگان نخبه قضایی',
+    val: 1485,
+    trend: '+۱۲٪ این ماه',
+    icon: 'users',
+    color: 'text-emerald-800 bg-emerald-100',
+    isVisible: true
+  },
+  {
+    id: 'stat_courses',
+    label: 'دوره‌ها و کارگاه‌های تخصصی',
+    val: 248,
+    trend: '۴ وبینار زنده',
+    icon: 'graduation',
+    color: 'text-teal-800 bg-teal-100',
+    isVisible: true
+  },
+  {
+    id: 'stat_rulings',
+    label: 'دادنامه‌ها در تالار نقد آراء',
+    val: 865,
+    trend: '۱۸ مباحثه جدید',
+    icon: 'scale',
+    color: 'text-amber-800 bg-amber-100',
+    isVisible: true
+  },
+  {
+    id: 'stat_publications',
+    label: 'کتاب‌ها، رسائل و آثار علمی',
+    val: 1190,
+    trend: '۳ اثر پژوهشی جدید',
+    icon: 'book',
+    color: 'text-emerald-900 bg-emerald-100',
+    isVisible: true
+  }
+];
+
+export const DEFAULT_BENTO_CARDS: CrextioBentoCardConfig[] = [
+  {
+    id: 'People',
+    order: 1,
+    title: 'کارتابل خدمات اداری و استعلامات',
+    subtext: 'ثبت، گردش اسناد رسمی و استعلام پایه‌های قضایی با پاسخگویی دبیرخانه',
+    badge: 'پرونده فعال',
+    size: '2-col',
+    subServices: [
+      'درخواست گواهی اشتغال به قضا',
+      'استعلام ترفیع و ارتقای رتبه قضایی',
+      'درخواست اسناد آموزشی و مدارک'
+    ],
+    accentColor: '#10B981',
+    isVisible: true
+  },
+  {
+    id: 'counseling_specialized',
+    order: 2,
+    title: 'مشاوره تخصصی شغلی و تحصیلی',
+    subtext: 'هدایت مسیر نخبگانی قضایی، موفقیت در اختبار، ترفیع رتبه و مصاحبه‌ها',
+    badge: 'رزرو آنلاین مشاور ارشد',
+    size: '2-col',
+    subServices: [
+      'هدایت تخصصی مصاحبه‌های قضایی',
+      'برنامه‌ریزی جامع ترفیع پایه',
+      'مشاوره تحصیلی دوره‌های دکتری حقوق'
+    ],
+    accentColor: '#F59E0B',
+    isVisible: true
+  },
+  {
+    id: 'Counseling',
+    order: 3,
+    title: 'خدمات مشاوره عمومی و فردی',
+    subtext: 'روان‌شناختی، خانواده، زوج‌درمانی، تاب‌آوری شغلی و مدیریت اضطراب',
+    badge: 'مشاور و درمانگر متخصص',
+    size: '1-col',
+    subServices: [
+      'مشاوره خانواده و زوج‌درمانی',
+      'مدیریت استرس شغلی و تاب‌آوری',
+      'مشاوره پیش از ازدواج'
+    ],
+    accentColor: '#F43F5E',
+    isVisible: true
+  },
+  {
+    id: 'Courses',
+    order: 4,
+    title: 'دوره‌ها و کارگاه‌های تخصصی عالی',
+    subtext: 'کارگاه‌های کاربردی ادله اثبات دعوا، آراء وحدت رویه و متون فقهی-حقوقی',
+    badge: 'دوره فعال با گواهی',
+    size: '1-col',
+    subServices: [
+      'مهارت‌های ادله اثبات در امور کیفری',
+      'تحلیل احکام وحدت رویه دیوان عالی',
+      'کارگاه کاربردی جرایم اقتصادی'
+    ],
+    accentColor: '#06B6D4',
+    isVisible: true
+  },
+  {
+    id: 'Research',
+    order: 5,
+    title: 'راهبری پایان‌نامه‌ها و رساله‌ها',
+    subtext: 'هدایت علمی، مشاوره اساتید عالی‌رتبه و حمایت مادی از رساله‌های تحول قضایی',
+    badge: 'رساله در جریان هدایت',
+    size: '1-col',
+    subServices: [
+      'ثبت پروپوزال و تطبیق با اساتید راهنما',
+      'تخصیص گرنت پژوهشی رساله‌های دکتری',
+      'ارزیابی و داوری مقالات علمی'
+    ],
+    accentColor: '#D97706',
+    isVisible: true
+  },
+  {
+    id: 'Rulings',
+    order: 6,
+    title: 'تالار نقد، ارزیابی و مباحثه آراء قضایی',
+    subtext: 'مطالعه و نقد آراء شعب دادگاه‌ها، اشتراک مستندات قانونی و تحلیل رویه قضایی',
+    badge: 'رأی منتخب داوری‌شده',
+    size: '1-col',
+    subServices: [
+      'نقد دادنامه‌های شعب تجدیدنظر و دیوان',
+      'مباحثه پیرامون آرای وحدت رویه',
+      'ثبت رأی پیشنهادی جهت داوری'
+    ],
+    accentColor: '#EAB308',
+    isVisible: true
+  },
+  {
+    id: 'Products',
+    order: 7,
+    title: 'فروشگاه آثار و منشورات علمی',
+    subtext: 'دسترسی آنلاین و ارسال کتب تخصصی فقه و حقوق، درس‌گفتارها و نشریات',
+    badge: 'اثر علمی و مرجع',
+    size: '1-col',
+    subServices: [
+      'کتب مرجع آیین دادرسی و فقه استدلالی',
+      'مجموعه درس‌گفتارهای حقوق عمومی',
+      'سفارش پستی همراه با تخفیف اعضا'
+    ],
+    accentColor: '#8B5CF6',
+    isVisible: true
+  },
+  {
+    id: 'Welfare',
+    order: 8,
+    title: 'تسهیلات رفاهی، اقامتگاه‌ها و هدایا',
+    subtext: 'رزرو اماکن اقامتی مشهد، قم و شمال، تسهیلات بانکی و سبدهای مصرفی',
+    badge: 'طرح رفاهی فعال',
+    size: '1-col',
+    subServices: [
+      'رزرو اقامتگاه‌های رفاهی زیارتی',
+      'درخواست وام قرض‌الحسنه نخبگانی',
+      'بن‌های معیشتی و سبد مصرفی اعضا'
+    ],
+    accentColor: '#EC4899',
+    isVisible: true
+  },
+  {
+    id: 'Synergy',
+    order: 9,
+    title: 'دیوار هم‌افزایی شغلی و تجربیات',
+    subtext: 'اشتراک تجربیات شعب، پرسش و پاسخ‌های رویه قضایی و ارتباط مستمر دانش‌آموختگان',
+    badge: 'گفتگوی جاری و تبادل آراء',
+    size: '2-col',
+    subServices: [
+      'طرح ابهامات و رویه‌های اختلافی شعب',
+      'هم‌اندیشی پیرامون دعاوی نوظهور',
+      'ارتباط مستقیم با هم‌دوره‌ای‌ها'
+    ],
+    accentColor: '#3B82F6',
+    isVisible: true
+  }
+];
 
 export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   showHeroBanner: true,
@@ -35,6 +215,45 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   canvasTheme: 'warm_ivory',
   heroTitle: 'سامانه و ویترین خدمات دانش‌آموختگان فقه و قضا',
   heroSubtitle: 'دسترسی سریع به کارتابل اداری، گالری دوره‌های آموزشی، انتشارات و تالار آراء',
+  showShowcaseSection: true,
+  showcaseTitle: 'ویترین گزارش خدمات و دستاوردهای سامانه فقه و قضا',
+  showcaseSubtitle: 'گزارش شفاف آمار فعالیت‌ها، خدمت‌رسانی به نخبگان و رضایت‌مندی اعضا',
+  showcaseAlumniCount: '۱,۰۴۲',
+  showcaseCoursesCount: '۴۸',
+  showcaseRulingsCount: '۳۲۰',
+  showcaseSatisfactionRate: '۹۹.۸٪',
+  bentoCardsConfig: DEFAULT_BENTO_CARDS,
+  heroStatsConfig: DEFAULT_HERO_STATS,
+  showCounselingPromo: true,
+  counselingPromoTitle: 'ویترین و درگاه جامع خدمات مشاوره نخبگان',
+  counselingPromoSubtitle: 'مشاوره تخصصی تحصیلی-شغلی قضایی و خدمات روان‌شناختی، خانواده و تاب‌آوری',
+  showProductsMiniPromo: true,
+};
+
+export const DEFAULT_MIZAN_CONFIG: MizanDashboardConfig = {
+  showHeroSeal: true,
+  showBentoGrid: true,
+  showStoriesSlider: true,
+  showRulingsPicks: true,
+  showSynergyHighlights: true,
+  showImpactSection: true,
+  showPublicationsShelf: true,
+  heroSealBadge: 'پرتال رسمی ارتباطی، اداری، پژوهشی و رفاهی',
+  heroTitle: 'سامانه و مجمع نخبگان فقه و قضا',
+  heroGreeting: 'سلام و احترام، خوش‌آمدید',
+  heroSubtitle: 'درگاه یکپارچه خدمات نخبگان قضایی، پژوهش‌های تخصصی فقهی و تسهیلات اعضا',
+  heroPrimaryActionText: 'ثبت درخواست جدید اداری یا آموزشی',
+  impactAlumniCount: '۱,۰۴۲',
+  impactAlumniSource: 'بانک جامع اعضا (دبیرخانه نخبگان فقه و قضا - آبان ۱۴۰۳)',
+  impactCoursesCount: '۴۸',
+  impactCoursesSource: 'سامانه آموزش‌های تخصصی و کارگاه‌های عالی قضایی',
+  impactRulingsCount: '۳۲۰',
+  impactRulingsSource: 'آراء ثبت و داوری‌شده در تالار نقد احکام',
+  impactSatisfactionRate: '۹۹.۴٪',
+  impactSatisfactionSource: 'نظرسنجی دوره‌ای پایان دوره و ارزیابی خدمات اعضا',
+  brandHue: 'sedr',
+  borderRadius: 'soft',
+  motionLevel: 'full',
 };
 
 export const INITIAL_USERS: User[] = [

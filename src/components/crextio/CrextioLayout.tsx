@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { CrextioDashboard } from './CrextioDashboard';
 import { CrextioSubViews } from './CrextioSubViews';
+import { CrextioServicesMegaMenu } from './CrextioServicesMegaMenu';
 import { UserManagementModule } from '../admin/UserManagementModule';
 import { ThemeCustomizerModal } from '../admin/ThemeCustomizerModal';
 import { AlumniDirectorySection } from '../alumni/AlumniDirectorySection';
@@ -35,18 +36,48 @@ import {
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { UserRole } from '../../types';
 
+import { Sidebar, NavTabId } from '../layout/Sidebar';
+
 interface CrextioLayoutProps {
   onToggleToPortalTheme: () => void;
 }
 
 export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTheme }) => {
-  const { currentUser, users, switchUserRole, logout, crextioConfig } = useApp();
+  const { currentUser, users, switchUserRole, logout, crextioConfig, setDesignTheme } = useApp();
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
-  const [hoveredNav, setHoveredNav] = useState<string>('Dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
+  const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const mapNavToTabId = (nav: string): NavTabId => {
+    const n = nav.toLowerCase();
+    if (n === 'people') return 'cartable';
+    if (n === 'specializedcounseling') return 'specialized_counseling';
+    if (n === 'counselinggeneral') return 'counseling';
+    return (n as NavTabId) || 'dashboard';
+  };
+
+  const mapTabIdToNav = (tabId: NavTabId): string => {
+    switch (tabId) {
+      case 'dashboard': return 'Dashboard';
+      case 'cartable': return 'People';
+      case 'courses': return 'Courses';
+      case 'products': return 'Products';
+      case 'counseling': return 'Counseling';
+      case 'specialized_counseling': return 'SpecializedCounseling';
+      case 'research': return 'Research';
+      case 'rulings': return 'Rulings';
+      case 'welfare': return 'Welfare';
+      case 'synergy': return 'Synergy';
+      case 'alumni': return 'Alumni';
+      case 'users': return 'Users';
+      case 'admin': return 'Admin';
+      default: return 'Dashboard';
+    }
+  };
 
   const isAdminOrSupervisor = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
 
@@ -55,8 +86,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'People', label: 'کارتابل', icon: Inbox },
     { id: 'Courses', label: 'گالری دوره‌ها', icon: BookOpen },
     { id: 'Products', label: 'ویترین انتشارات', icon: BookOpen },
-    { id: 'Counseling', label: 'مشاوره عمومی', icon: HeartHandshake },
-    { id: 'SpecializedCounseling', label: 'مشاوره تخصصی شغلی', icon: Scale },
+    { id: 'Counseling', label: 'مشاوره', icon: HeartHandshake },
     { id: 'Research', label: 'راهبری پایان‌نامه‌ها', icon: Compass },
     { id: 'Welfare', label: 'رفاهیات', icon: Gift },
     { id: 'Rulings', label: 'تالار آراء', icon: Laptop },
@@ -78,181 +108,131 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
   return (
     <div
-      className="min-h-screen bg-[#0F1715] text-stone-100 font-sans antialiased selection:bg-emerald-500 relative overflow-x-hidden"
+      className="min-h-screen bg-[#F4F3ED] text-stone-900 font-sans antialiased selection:bg-emerald-500 relative overflow-x-hidden"
       dir="rtl"
     >
       {/* Dynamic Global Mouse Halo and Dust Trail for Theme 2 */}
       <GlobalMouseHalo theme="crextio" />
 
-      {/* Warm Ambient Glows */}
+      {/* Warm Ambient Glows (Subtle and Light) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-0 right-1/4 w-[600px] h-[600px] rounded-full bg-emerald-600/10 blur-[120px]" />
-        <div className="absolute bottom-0 left-1/3 w-[600px] h-[600px] rounded-full bg-amber-600/10 blur-[120px]" />
-        <div className="absolute top-1/2 left-10 w-[400px] h-[400px] rounded-full bg-teal-600/10 blur-[100px]" />
+        <div className="absolute top-0 right-1/4 w-[600px] h-[600px] rounded-full bg-emerald-500/5 blur-[140px]" />
+        <div className="absolute bottom-0 left-1/3 w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-[140px]" />
+        <div className="absolute top-1/2 left-10 w-[400px] h-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Floating Capsule Dock (Theme 1 Vertical Sidebar on Right Edge) */}
+      <Sidebar
+        activeTab={mapNavToTabId(activeNav)}
+        setActiveTab={(t) => setActiveNav(mapTabIdToNav(t))}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+      />
+
+      <div className="relative z-10 max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 lg:pr-28 py-5 space-y-5">
         
-        {/* TOP BAR: THEME SWITCHER BANNER & ROLE INDICATOR */}
-        <div className="w-full bg-[#182622]/90 backdrop-blur-xl rounded-2xl px-5 py-3 border border-[#2A423B] flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-              تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان فقه و قضا
-            </span>
-            <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
-              نقش فعلی: {currentUser?.role === 'alumni' ? 'دانش‌آموخته (قاضی/پژوهشگر)' : currentUser?.role === 'supervisor' ? 'مسئول کارتابل' : 'مدیر ارشد سامانه'}
-            </span>
+        {/* TOP BAR: THEME SWITCHER BANNER & ROLE INDICATOR (Hidden for alumni role as requested) */}
+        {!currentUser || currentUser.role !== 'alumni' ? (
+          <div className="w-full bg-white/90 backdrop-blur-xl rounded-2xl px-4 sm:px-5 py-2.5 border border-stone-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                <Scale className="w-3.5 h-3.5 text-amber-600" />
+                تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان (طرح میزان)
+              </span>
+              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                نقش فعلی: {currentUser?.role === 'supervisor' ? 'مسئول کارتابل' : 'مدیر ارشد سامانه'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isAdminOrSupervisor && (
+                <button
+                  onClick={() => setIsCustomizerOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                >
+                  <Palette className="w-3.5 h-3.5 text-amber-600" />
+                  <span>شخصی‌سازی تم ۲</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setDesignTheme('mizan')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#DBB155] hover:bg-[#c89f44] text-[#011C11] text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                title="مشاهده تم ۳: طرح فاخر دیوانی میزان"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>مشاهده تم ۳ (میزان)</span>
+              </button>
+
+              <button
+                onClick={onToggleToPortalTheme}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>تم ۱ (پرتال)</span>
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* MAIN HEADER: CENTERED MEGA-MENU BUTTON, BRAND ON RIGHT, ACTIONS ON LEFT */}
+        <header className="bg-white/95 backdrop-blur-2xl rounded-[32px] p-3.5 sm:p-4 px-5 sm:px-6 border border-stone-200/90 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-30">
+          {/* Right: Brand Logo */}
+          <button
+            onClick={() => setActiveNav('Dashboard')}
+            className="flex items-center gap-3 group text-right cursor-pointer shrink-0"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-stone-950 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform border border-amber-300">
+              <Scale className="w-7 h-7 stroke-[2.3]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl font-extrabold text-stone-900 tracking-tight">سامانه فقه و قضا</h1>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-900 border border-amber-400/40">
+                  میزان
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-800 font-bold">پرتال و ویترین خدمات نخبگان</p>
+            </div>
+          </button>
+
+          {/* Center: دکمه و درگاه منو و خدمات نرم‌افزار متمرکز در مرکز صفحه */}
+          <div className="flex-1 flex justify-center py-1 md:py-0">
+            <CrextioServicesMegaMenu activeNav={activeNav} onNavigate={setActiveNav} />
           </div>
 
-          <div className="flex items-center gap-2">
-            {isAdminOrSupervisor && (
+          {/* Left: دکمه بازگشت به داشبورد، اعلان‌ها و نمایه کاربری */}
+          <div className="flex items-center justify-end gap-3 shrink-0">
+            {activeNav !== 'Dashboard' && (
               <button
-                onClick={() => setIsCustomizerOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all shadow-xs shrink-0"
+                onClick={() => setActiveNav('Dashboard')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <Palette className="w-3.5 h-3.5" />
-                <span>شخصی‌سازی تم ۲</span>
+                <span>بازگشت به داشبورد</span>
               </button>
             )}
 
-            <button
-              onClick={onToggleToPortalTheme}
-              className="flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 shrink-0"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5" />
-              <span>تغییر به تم ۱ (پرتال اصلی)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* MAIN HEADER & NAVIGATION */}
-        <header className="bg-[#182622]/95 backdrop-blur-2xl rounded-[32px] p-4 sm:p-5 border border-[#2A423B] shadow-xl flex flex-col xl:flex-row xl:items-center justify-between gap-4 relative z-30">
-          {/* Logo Brand */}
-          <div className="flex items-center justify-between sm:justify-start gap-4">
-            <button
-              onClick={() => setActiveNav('Dashboard')}
-              className="flex items-center gap-3 group text-right"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-                <ShieldCheck className="w-7 h-7" />
-              </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-white tracking-tight">فقه و قضا</h1>
-                <p className="text-[11px] text-emerald-400 font-bold">سامانه و ویترین خدمات</p>
-              </div>
-            </button>
-          </div>
-
-          {/* Nav Items with Floating Green Indicator & 1s Return Mechanism */}
-          <nav 
-            className="relative flex items-center gap-1 flex-wrap xl:flex-nowrap p-1.5 bg-[#121E1B] rounded-2xl border border-[#233832] overflow-visible z-40"
-            onMouseLeave={() => {
-              // Reset hover to active tab after 1 second if mouse leaves nav
-              const timer = setTimeout(() => {
-                setHoveredNav(activeNav);
-              }, 1000);
-              return () => clearTimeout(timer);
-            }}
-          >
-            {navItems.map(item => {
-              const isActive = activeNav.toLowerCase() === item.id.toLowerCase() || (item.id === 'Counseling' && (activeNav === 'CounselingSpecial' || activeNav === 'CounselingGeneral'));
-              const isHovered = (hoveredNav || activeNav).toLowerCase() === item.id.toLowerCase();
-              const Icon = item.icon;
-              return (
-                <div key={item.id} className="relative">
-                  <button
-                    onClick={() => {
-                      if (item.id === 'Counseling') {
-                        setCounselingDropdownOpen(!counselingDropdownOpen);
-                      } else {
-                        setCounselingDropdownOpen(false);
-                        setActiveNav(item.id);
-                        setHoveredNav(item.id);
-                      }
-                    }}
-                    onMouseEnter={() => {
-                      setHoveredNav(item.id);
-                      if (item.id !== 'Counseling') setCounselingDropdownOpen(false);
-                    }}
-                    className={`relative z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors duration-200 whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? 'text-stone-950 font-black'
-                        : isHovered
-                        ? 'text-emerald-300'
-                        : 'text-stone-300 hover:text-white'
-                    }`}
-                  >
-                    {/* Floating Green Pill Indicator */}
-                    {isHovered && (
-                      <motion.div
-                        layoutId="crextioNavPill"
-                        className="absolute inset-0 bg-emerald-500 rounded-xl -z-10 shadow-lg shadow-emerald-500/20"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                    <Icon className={`w-4 h-4 ${isActive || isHovered ? 'text-stone-950' : 'text-emerald-400'}`} />
-                    <span>{item.label}</span>
-                    {item.id === 'Counseling' && <ChevronDown className="w-3.5 h-3.5 mr-1" />}
-                  </button>
-
-                  {/* Counseling Dropdown Menu */}
-                  {item.id === 'Counseling' && counselingDropdownOpen && (
-                    <div className="absolute top-full right-0 mt-2 w-72 bg-[#182622] border border-[#2A423B] rounded-2xl shadow-2xl p-2 z-50 space-y-1 text-xs">
-                      <div className="px-3 py-2 text-[10px] font-bold text-emerald-400 border-b border-[#2A423B]">
-                        انتخاب بخش مشاوره:
-                      </div>
-                      <button
-                        onClick={() => {
-                          setActiveNav('CounselingSpecial');
-                          setCounselingDropdownOpen(false);
-                        }}
-                        className="w-full text-right px-3.5 py-2.5 rounded-xl hover:bg-emerald-500/20 text-stone-200 hover:text-white font-bold transition-colors flex items-center justify-between"
-                      >
-                        <span>مشاوره تخصصی تحصیلی و شغلی</span>
-                        <ChevronDown className="w-3 h-3 -rotate-90 text-emerald-400" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setActiveNav('CounselingGeneral');
-                          setCounselingDropdownOpen(false);
-                        }}
-                        className="w-full text-right px-3.5 py-2.5 rounded-xl hover:bg-emerald-500/20 text-stone-200 hover:text-white font-bold transition-colors flex items-center justify-between"
-                      >
-                        <span>خدمات مشاوره عمومی (شخصیت، ازدواج، خانواده و...)</span>
-                        <ChevronDown className="w-3 h-3 -rotate-90 text-emerald-400" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* USER PROFILE & ROLE SWITCHER DROPDOWN */}
-          <div className="relative shrink-0 self-end xl:self-center">
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="relative">
                 <button
                   onClick={() => {
                     setNotificationsOpen(!notificationsOpen);
                     setUserDropdownOpen(false);
                   }}
-                  className="relative p-2.5 rounded-2xl bg-[#233832] hover:bg-[#2C473F] text-stone-200 border border-[#34544B] transition-colors"
+                  className="relative p-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition-colors cursor-pointer"
                 >
                   <Bell className="w-4 h-4" />
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#182622] animate-pulse" />
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white animate-pulse" />
                 </button>
 
                 {/* Notifications Drawer Popover */}
                 {notificationsOpen && (
-                  <div className="absolute left-0 mt-3 w-80 sm:w-96 bg-[#182622] rounded-3xl border border-[#2A423B] shadow-2xl p-4 text-stone-100 z-50 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#2A423B]">
+                  <div className="absolute left-0 mt-3 w-80 sm:w-96 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                       <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs font-bold text-white">اعلان‌ها و رویدادهای ۱,۰۰۰ دانش‌آموخته</span>
+                        <Bell className="w-4 h-4 text-emerald-700" />
+                        <span className="text-xs font-bold text-stone-900">اعلان‌ها و رویدادهای ۱,۰۰۰ دانش‌آموخته</span>
                       </div>
-                      <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
                         {toPersianNumbers('۴')} پیام تازه
                       </span>
                     </div>
@@ -264,19 +244,19 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                         { title: 'نقد جدید در تالار آراء', desc: 'جناب استاد موسوی به رأی شماره ۹۴۳ پاسخ تحلیلی ثبت نمودند.', time: 'دیروز', unread: false },
                         { title: 'عرضه کتاب خارج فقه القضا', desc: 'جلد پنجم موسوعه القضا با تخفیف ویژه اعضا بارگذاری شد.', time: '۳ روز پیش', unread: false },
                       ].map((n, idx) => (
-                        <div key={idx} className={`p-2.5 rounded-2xl border text-xs transition-colors ${n.unread ? 'bg-[#233832] border-emerald-500/30' : 'bg-[#182622] border-[#2A423B]/60 text-stone-400'}`}>
-                          <div className="flex items-center justify-between font-bold text-stone-200">
+                        <div key={idx} className={`p-2.5 rounded-2xl border text-xs transition-colors ${n.unread ? 'bg-emerald-50/70 border-emerald-200' : 'bg-stone-50 border-stone-200/60 text-stone-600'}`}>
+                          <div className="flex items-center justify-between font-bold text-stone-900">
                             <span>{n.title}</span>
-                            <span className="text-[10px] text-stone-400 font-normal">{n.time}</span>
+                            <span className="text-[10px] text-stone-500 font-normal">{n.time}</span>
                           </div>
-                          <p className="text-[11px] text-stone-300 mt-1 leading-relaxed">{n.desc}</p>
+                          <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">{n.desc}</p>
                         </div>
                       ))}
                     </div>
 
                     <button
                       onClick={() => setNotificationsOpen(false)}
-                      className="w-full py-2 rounded-xl bg-emerald-800/40 hover:bg-emerald-800/70 text-emerald-300 text-xs font-bold text-center border border-emerald-700/40 transition-colors"
+                      className="w-full py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold text-center border border-stone-200 transition-colors cursor-pointer"
                     >
                       بستن اعلان‌ها
                     </button>
@@ -284,83 +264,181 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 )}
               </div>
 
-              <button
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-[#233832] hover:bg-[#2C473F] border border-[#34544B] transition-all"
-              >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-md">
-                  {currentUser?.avatarText || 'کاربر'}
-                </div>
-                <div className="text-right text-xs hidden sm:block">
-                  <p className="font-bold text-white">{currentUser?.fullName || 'کاربر سیستم'}</p>
-                  <p className="text-[10px] text-emerald-400 font-medium truncate max-w-[120px]">
-                    {currentUser?.roleTitle || 'دانش‌آموخته'}
-                  </p>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-stone-300 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
+              {/* User Account & Role Switcher */}
+              <div className="relative">
+                <button
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-all cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                    {currentUser?.avatarText || 'کاربر'}
+                  </div>
+                  <div className="text-right text-xs hidden sm:block">
+                    <p className="font-bold text-stone-900">{currentUser?.fullName || 'کاربر سیستم'}</p>
+                    <p className="text-[10px] text-emerald-800 font-medium truncate max-w-[120px]">
+                      {currentUser?.roleTitle || 'دانش‌آموخته'}
+                    </p>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-stone-500 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-            {/* User Account & Role Switcher Dropdown */}
-            {userDropdownOpen && (
-              <div className="absolute left-0 mt-3 w-80 bg-[#182622] rounded-3xl border border-[#2A423B] shadow-2xl p-4 text-stone-100 z-50 space-y-3">
-                {/* Profile Header */}
-                <div className="p-3 bg-[#233832] rounded-2xl space-y-1">
-                  <p className="font-bold text-sm text-white">{currentUser?.fullName}</p>
-                  <p className="text-xs text-emerald-400 font-medium">{currentUser?.roleTitle}</p>
-                  <p className="text-[11px] text-stone-400 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
-                </div>
+                {/* User Account & Role Switcher Dropdown */}
+                {userDropdownOpen && (
+                  <div className="absolute left-0 mt-3 w-80 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
+                    {/* Profile Header */}
+                    <div className="p-3 bg-stone-50 rounded-2xl space-y-1 border border-stone-100">
+                      <p className="font-bold text-sm text-stone-900">{currentUser?.fullName}</p>
+                      <p className="text-xs text-emerald-800 font-medium">{currentUser?.roleTitle}</p>
+                      <p className="text-[11px] text-stone-500 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
+                    </div>
 
-                {/* Role Switcher Menu */}
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold text-stone-400 px-1">تغییر نقش کاربری (تست سامانه):</p>
-                  
-                  {[
-                    { role: 'alumni' as UserRole, name: 'دکتر علیرضا میرزایی', label: 'دانش‌آموخته (مستشار دادگاه)', icon: UserCheck },
-                    { role: 'supervisor' as UserRole, name: 'حجت‌الاسلام موسوی', label: 'مسئول کارتابل خدمات', icon: Shield },
-                    { role: 'admin' as UserRole, name: 'حاج‌ آقا رضایی', label: 'مدیر عالی سامانه', icon: UserPlus }
-                  ].map(u => (
-                    <button
-                      key={u.role}
-                      onClick={() => {
-                        switchUserRole(u.role);
-                        setUserDropdownOpen(false);
-                      }}
-                      className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors ${
-                        currentUser?.role === u.role
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-[#233832]/60 hover:bg-[#233832] text-stone-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <u.icon className="w-4 h-4 text-emerald-300" />
-                        <div className="text-right">
-                          <p>{u.label}</p>
-                          <p className="text-[10px] text-stone-300 font-normal">{u.name}</p>
-                        </div>
-                      </div>
-                      {currentUser?.role === u.role && <span className="text-[10px] bg-emerald-800 px-2 py-0.5 rounded-full">فعال</span>}
-                    </button>
-                  ))}
-                </div>
+                    {/* Role Switcher Menu */}
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-bold text-stone-500 px-1">تغییر نقش کاربری (تست سامانه):</p>
+                      
+                      {[
+                        { role: 'alumni' as UserRole, name: 'دکتر علیرضا میرزایی', label: 'دانش‌آموخته (مستشار دادگاه)', icon: UserCheck },
+                        { role: 'supervisor' as UserRole, name: 'حجت‌الاسلام موسوی', label: 'مسئول کارتابل خدمات', icon: Shield },
+                        { role: 'admin' as UserRole, name: 'حاج‌ آقا رضایی', label: 'مدیر عالی سامانه', icon: UserPlus }
+                      ].map(u => (
+                        <button
+                          key={u.role}
+                          onClick={() => {
+                            switchUserRole(u.role);
+                            setUserDropdownOpen(false);
+                          }}
+                          className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
+                            currentUser?.role === u.role
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-stone-50 hover:bg-stone-100 text-stone-800'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <u.icon className={`w-4 h-4 ${currentUser?.role === u.role ? 'text-white' : 'text-emerald-700'}`} />
+                            <div className="text-right">
+                              <p>{u.label}</p>
+                              <p className={`text-[10px] font-normal ${currentUser?.role === u.role ? 'text-emerald-100' : 'text-stone-500'}`}>{u.name}</p>
+                            </div>
+                          </div>
+                          {currentUser?.role === u.role && <span className="text-[10px] bg-emerald-900 px-2 py-0.5 rounded-full">فعال</span>}
+                        </button>
+                      ))}
+                    </div>
 
-                {/* Logout Action */}
-                <div className="pt-2 border-t border-[#2A423B]">
-                  <button
-                    onClick={() => {
-                      logout();
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-red-900/40 hover:bg-red-900/60 text-red-200 text-xs font-bold flex items-center justify-center gap-2 border border-red-800/40 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4 text-red-300" />
-                    <span>خروج از حساب کاربری</span>
-                  </button>
-                </div>
+                    {/* Logout Action */}
+                    <div className="pt-2 border-t border-stone-200">
+                      <button
+                        onClick={() => {
+                          logout();
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center gap-2 border border-red-200 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4 text-red-600" />
+                        <span>خروج از حساب کاربری</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
           </div>
         </header>
+
+        {/* HORIZONTAL NAVIGATION BAR (RIGHT ALIGNED ON SCREEN) */}
+        <nav className="bg-white/95 backdrop-blur-xl rounded-2xl p-2 px-3 sm:px-4 border border-stone-200/90 shadow-sm overflow-x-auto scrollbar-none z-20">
+          <div className="flex items-center justify-start gap-1.5 min-w-max">
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeNav === item.id;
+
+              if (item.id === 'Counseling') {
+                return (
+                  <div
+                    key={item.id}
+                    className="relative"
+                    onMouseEnter={() => {
+                      if (counselingTimerRef.current) clearTimeout(counselingTimerRef.current);
+                      setCounselingDropdownOpen(true);
+                    }}
+                    onMouseLeave={() => {
+                      if (counselingTimerRef.current) clearTimeout(counselingTimerRef.current);
+                      counselingTimerRef.current = setTimeout(() => {
+                        setCounselingDropdownOpen(false);
+                      }, 2000);
+                    }}
+                  >
+                    <button
+                      onClick={() => setActiveNav('Counseling')}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-emerald-700'}`} />
+                      <span>{item.label}</span>
+                      <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                    </button>
+
+                    {/* 2-Option Counseling Dropdown */}
+                    {counselingDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-stone-200 shadow-xl p-2 z-50 space-y-1">
+                        <button
+                          onClick={() => {
+                            setActiveNav('Counseling');
+                            setCounselingDropdownOpen(false);
+                          }}
+                          className="w-full text-right p-2.5 rounded-xl hover:bg-emerald-50 text-xs font-bold text-stone-800 flex items-center justify-between group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <HeartHandshake className="w-4 h-4 text-emerald-700" />
+                            <div>
+                              <p className="group-hover:text-emerald-900">مشاوره عمومی</p>
+                              <p className="text-[10px] text-stone-500 font-normal">خانواده، شخصیت و ازدواج</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] bg-stone-100 group-hover:bg-emerald-100 text-stone-600 group-hover:text-emerald-800 px-2 py-0.5 rounded-full">عمومی</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActiveNav('SpecializedCounseling');
+                            setCounselingDropdownOpen(false);
+                          }}
+                          className="w-full text-right p-2.5 rounded-xl hover:bg-amber-50 text-xs font-bold text-stone-800 flex items-center justify-between group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Scale className="w-4 h-4 text-amber-600" />
+                            <div>
+                              <p className="group-hover:text-amber-900">مشاوره تخصصی شغلی</p>
+                              <p className="text-[10px] text-stone-500 font-normal">هدایت قضایی و تحصیلی</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">تخصصی</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveNav(item.id)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-emerald-700'}`} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
 
         {/* WARM ELEGANT CONTENT CANVAS */}
         <main className={`${canvasBgClass} rounded-[40px] p-6 sm:p-8 lg:p-10 shadow-2xl border text-stone-900 min-h-[700px] transition-colors duration-500`}>

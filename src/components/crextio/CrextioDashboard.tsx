@@ -35,7 +35,15 @@ import {
   FileText
 } from 'lucide-react';
 import { CourseShowcase } from './CourseShowcase';
+import { CrextioServicesBento } from './CrextioServicesBento';
+import { CounselingPromoShowcase } from './CounselingPromoShowcase';
+import { BooksAndPublicationsShowcase } from './BooksAndPublicationsShowcase';
+import { WelfareAndLoansShowcase } from './WelfareAndLoansShowcase';
+import { MultimediaAndCoursesShowcase } from './MultimediaAndCoursesShowcase';
+import { CrextioHeroStatsCustomizerModal } from './CrextioHeroStatsCustomizerModal';
 import { ThemeCustomizerModal } from '../admin/ThemeCustomizerModal';
+import { AnimatedCounter } from '../common/AnimatedCounter';
+import { DEFAULT_HERO_STATS } from '../../data/mockData';
 
 interface CrextioDashboardProps {
   onNavigateTab?: (tab: string) => void;
@@ -110,10 +118,27 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
   
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isHeroStatsModalOpen, setIsHeroStatsModalOpen] = useState(false);
   const [quickServiceSuccess, setQuickServiceSuccess] = useState<string | null>(null);
 
   const isAlumni = currentUser?.role === 'alumni';
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+
+  const heroStats = (crextioConfig.heroStatsConfig || DEFAULT_HERO_STATS).filter(s => s.isVisible !== false);
+
+  const getStatIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'users': return Users;
+      case 'graduation': return GraduationCap;
+      case 'scale': return Scale;
+      case 'book': return BookOpen;
+      case 'award': return Award;
+      case 'activity': return Activity;
+      case 'gift': return Gift;
+      case 'shield': return ShieldCheck;
+      default: return Sparkles;
+    }
+  };
 
   const myCartableRequests = isAlumni 
     ? cartableRequests.filter(r => r.applicantId === currentUser?.id || r.applicantName.includes(currentUser?.fullName || ''))
@@ -176,483 +201,222 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
         </div>
       )}
 
-      {/* SECTION 1: HERO VIP BANNER WITH DYNAMIC LUMINOUS AURORA */}
-      {crextioConfig.showHeroBanner && (
-        <CrextioCard
-          glowColor="rgba(16, 185, 129, 0.22)"
-          className="rounded-[40px] p-6 sm:p-9 border border-[#E3E0D3] bg-[#FCFCF9]/95 backdrop-blur-2xl shadow-xl"
-        >
-          {/* Animated Atmospheric Background Mesh */}
-          <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-40">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.25, 1],
-                x: [0, 40, 0],
-                y: [0, -30, 0]
-              }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -top-24 -right-24 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-emerald-400/30 via-amber-300/20 to-teal-400/30 blur-3xl"
-            />
-            <motion.div 
-              animate={{ 
-                scale: [1.15, 1, 1.15],
-                x: [0, -45, 0],
-                y: [0, 35, 0]
-              }}
-              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -bottom-24 -left-24 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-amber-300/25 via-emerald-400/20 to-teal-400/25 blur-3xl"
-            />
-          </div>
-
-          <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-            <div className="space-y-4 max-w-2xl">
-              {/* VIP Member Tags & Status */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-800 to-teal-900 text-white text-xs font-black shadow-md flex items-center gap-2 border border-emerald-600/40">
-                  <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300" />
-                  {isAlumni ? 'جامعه نخبگانی دانش‌آموختگان فقه و قضا' : 'درگاه مدیریت و کارتابل خدمات'}
-                </span>
-
-                <span className="px-3.5 py-1.5 rounded-full bg-amber-500/15 text-amber-900 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
-                  عضویت رسمی · {toPersianNumbers('۱,۰۴۲')} عضو فعال
-                </span>
-
-                <span className="px-3.5 py-1.5 rounded-full bg-white/90 text-stone-700 border border-stone-200 text-xs font-bold">
-                  دوره فارغ‌التحصیلی: {toPersianNumbers(currentUser?.graduationYear || '۱۳۹۵')}
-                </span>
-              </div>
-
-              {/* Title & Greeting */}
-              <div>
-                <h1 className="text-2xl sm:text-4xl font-black text-stone-900 leading-snug tracking-tight">
-                  {crextioConfig.heroTitle || `خوش آمدید، ${currentUser ? currentUser.fullName : 'جناب آقای دکتر میرزایی'}`}
-                </h1>
-                <p className="text-xs sm:text-sm text-stone-600 mt-2 leading-relaxed font-medium">
-                  {crextioConfig.heroSubtitle || `${currentUser?.organization} · سمت: ${currentUser?.roleTitle} · آماده دریافت درخواست‌های الکترونیک و دوره‌های توانمندسازی قضایی`}
-                </p>
-              </div>
-
-              {/* VIP Quick Action Micro-buttons */}
-              <div className="pt-2 flex flex-wrap items-center gap-2">
-                {[
-                  { label: 'صدور آنی گواهی اشتغال', icon: FileText, action: 'صدور آنی گواهی اشتغال به قضا' },
-                  { label: 'استعلام ترفیع و رتبه', icon: Award, action: 'استعلام ارتقاء و پایه قضایی' },
-                  { label: 'درخواست تسهیلات رفاهی', icon: Gift, action: 'درخواست تسهیلات اقامتی و زیارتی' },
-                ].map((btn, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleQuickAction(btn.action)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-stone-200/90 text-xs font-bold transition-all shadow-xs active:scale-95"
-                  >
-                    <btn.icon className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>{btn.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Live KPI Cards with Shimmer Borders */}
-            {crextioConfig.showKpiRow && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 xl:gap-4 shrink-0">
-                {[
-                  { 
-                    label: isAlumni ? 'پرونده‌های فعال من' : 'کل دانش‌آموختگان', 
-                    val: isAlumni ? myCartableRequests.length : 1042, 
-                    icon: Users, 
-                    color: 'text-emerald-800 bg-emerald-100', 
-                    trend: '+۸٪ این ماه' 
-                  },
-                  { 
-                    label: 'دوره‌های اختصاصی', 
-                    val: courses.length, 
-                    icon: GraduationCap, 
-                    color: 'text-teal-800 bg-teal-100', 
-                    trend: '۴ وبینار زنده' 
-                  },
-                  { 
-                    label: 'آراء در تالار نقد', 
-                    val: rulings.length, 
-                    icon: Scale, 
-                    color: 'text-amber-800 bg-amber-100', 
-                    trend: '۱۲ مباحثه فقهی' 
-                  },
-                  { 
-                    label: 'کتاب‌ها و رسائل', 
-                    val: products.length || 18, 
-                    icon: BookOpen, 
-                    color: 'text-emerald-900 bg-emerald-100', 
-                    trend: '۳ اثر جدید' 
-                  }
-                ].map((stat, i) => (
-                  <CrextioCard
-                    key={i}
-                    glowColor="rgba(245, 158, 11, 0.25)"
-                    className="bg-white/95 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-[#E7E4D8] shadow-md flex flex-col justify-between"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] font-bold text-stone-500">{stat.label}</span>
-                      <div className={`p-2.5 rounded-2xl ${stat.color} shadow-xs`}>
-                        <stat.icon className="w-4 h-4" />
+      {/* SECTION 1: TOP VIP ROW (HERO BANNER + ALUMNI PROFILE CARD) */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch">
+        {/* Alumni Profile Card (Moved to top alongside Hero Banner) */}
+        {crextioConfig.showProfileCard && (
+          <div className="xl:col-span-1 h-full">
+            <CrextioCard
+              glowColor="rgba(16, 185, 129, 0.3)"
+              className="relative h-full min-h-[280px] w-full rounded-[28px] overflow-hidden shadow-md border border-stone-200/90 group"
+            >
+              <img 
+                src={isAlumni 
+                  ? "/assets/cleric_portrait.jpg" 
+                  : "https://images.unsplash.com/photo-1576722108740-4573177651a3?auto=format&fit=crop&w=700&q=80"
+                } 
+                alt="پرتره دانش‌آموخته نخبه حوزوی و قضایی" 
+                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105" 
+              />
+              
+              {/* Luminous Inner Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A14] via-[#0A1A14]/60 to-transparent flex items-end p-5 text-white">
+                <div className="w-full space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        <span className="text-[10px] font-bold text-amber-300">عضو طلایی قضایی</span>
                       </div>
+                      <h3 className="text-lg font-black text-white">{currentUser?.fullName}</h3>
+                      <p className="text-emerald-300 text-xs font-semibold">{currentUser?.roleTitle}</p>
                     </div>
 
-                    <div className="space-y-1">
-                      <span className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight block">
-                        {toPersianNumbers(stat.val)}
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
-                        {stat.trend}
-                      </span>
-                    </div>
-                  </CrextioCard>
-                ))}
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[11px] font-black backdrop-blur-md shadow-xs">
+                      {isAlumni ? 'دانش‌آموخته' : 'مسئول خدمات'}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px] text-emerald-100 font-medium">
+                    <span>{currentUser?.organization}</span>
+                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> احراز هویت شده
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </CrextioCard>
-      )}
-
-      {/* SECTION 2: FEATURED SERVICE SHOWCASE (CAROUSEL / GRID / COMPACT) */}
-      {crextioConfig.showCourseShowcase && (
-        <CourseShowcase
-          courses={courses}
-          mode={crextioConfig.courseShowcaseMode || 'carousel'}
-          onSelectCourse={() => onNavigateTab && onNavigateTab('Courses')}
-        />
-      )}
-
-      {/* SECTION 3: MAIN 4-COLUMN RICH GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-        
-        {/* COLUMN 1: USER PROFILE & OPERATIONAL SCORE */}
-        {(crextioConfig.showProfileCard || crextioConfig.showPerformanceCard) && (
-          <div className="space-y-6">
-            {/* Profile Card with Luxury Insignia */}
-            {crextioConfig.showProfileCard && (
-              <CrextioCard
-                glowColor="rgba(16, 185, 129, 0.3)"
-                className="relative h-[360px] w-full rounded-[38px] overflow-hidden shadow-xl border border-emerald-800/30 group"
-              >
-                <img 
-                  src={isAlumni 
-                    ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=80" 
-                    : "https://images.unsplash.com/photo-1576722108740-4573177651a3?auto=format&fit=crop&w=700&q=80"
-                  } 
-                  alt="user profile" 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                />
-                
-                {/* Luminous Inner Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A14] via-[#0A1A14]/60 to-transparent flex items-end p-6 text-white">
-                  <div className="w-full space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                          <span className="text-[11px] font-bold text-amber-300">عضو سطح طلایی قضایی</span>
-                        </div>
-                        <h3 className="text-xl font-black text-white">{currentUser?.fullName}</h3>
-                        <p className="text-emerald-300 text-xs font-semibold">{currentUser?.roleTitle}</p>
-                      </div>
-
-                      <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-xs font-black backdrop-blur-md shadow-md">
-                        {isAlumni ? 'دانش‌آموخته' : 'مسئول خدمات'}
-                      </span>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-white/15 flex items-center justify-between text-xs text-emerald-100 font-medium">
-                      <span>سازمان: {currentUser?.organization}</span>
-                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> احراز هویت شده
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CrextioCard>
-            )}
-
-            {/* Operational Progress & Judicial Career Score */}
-            {crextioConfig.showPerformanceCard && (
-              <CrextioCard
-                glowColor="rgba(245, 158, 11, 0.2)"
-                className="bg-[#FCFCF9]/95 p-6 rounded-[38px] border border-[#E3E0D3] shadow-lg space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="font-extrabold text-sm text-stone-900 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-700" />
-                    وضعیت پرونده و پایه قضایی
-                  </h4>
-                  <span className="text-xs font-black text-emerald-950 bg-emerald-200/90 px-3 py-1 rounded-full border border-emerald-300">
-                    پایه {toPersianNumbers(currentUser?.judicialGrade || (isAlumni ? 9 : 11))} قضایی
-                  </span>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-stone-600 font-bold">
-                    <span>امتیاز پژوهشی و سوابق علمی</span>
-                    <span className="text-emerald-800">{toPersianNumbers(isAlumni ? 75 : 90)}٪</span>
-                  </div>
-                  <div className="w-full h-3 bg-stone-200/80 rounded-full overflow-hidden p-0.5 border border-stone-300/60 shadow-inner">
-                    <div className="h-full bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500 rounded-full w-[75%]" />
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs text-stone-600 font-medium">
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                    شماره پرسنلی:
-                  </span>
-                  <span className="font-bold text-emerald-900 bg-emerald-100/90 px-3 py-0.5 rounded-full font-mono">
-                    {toPersianNumbers(currentUser?.personnelId || '۹۹۴۰۱۲')}
-                  </span>
-                </div>
-              </CrextioCard>
-            )}
+            </CrextioCard>
           </div>
         )}
 
-        {/* COLUMN 2: PUBLICATIONS SHOWCASE & CARTABLE REQUESTS */}
-        <div className={`${(crextioConfig.showProfileCard || crextioConfig.showPerformanceCard) ? 'xl:col-span-2' : 'xl:col-span-3'} space-y-6`}>
-          {/* Publications Showcase Gallery */}
-          {crextioConfig.showPublicationsGallery && (
+        {/* Hero VIP Banner */}
+        {crextioConfig.showHeroBanner && (
+          <div className={`${crextioConfig.showProfileCard ? 'xl:col-span-3' : 'xl:col-span-4'} h-full`}>
             <CrextioCard
-              glowColor="rgba(16, 185, 129, 0.18)"
-              className="bg-[#FCFCF9]/95 p-6 sm:p-7 rounded-[38px] border border-[#E3E0D3] shadow-lg space-y-5"
+              glowColor="rgba(16, 185, 129, 0.20)"
+              className="h-full rounded-[28px] p-4 sm:p-5 border border-[#E3E0D3] bg-[#FCFCF9]/95 backdrop-blur-2xl shadow-md flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-black text-base text-stone-900 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-emerald-700" />
-                    ویترین آثار و درس‌گفتارهای خارج فقه و قضا
-                  </h3>
-                  <p className="text-xs text-stone-500 mt-1">جدیدترین موسوعه‌ها، کتب تخصصی و درس‌گفتارهای فقه القضا ویژه اعضا</p>
+              {/* Animated Atmospheric Background Mesh */}
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-35">
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.25, 1],
+                    x: [0, 40, 0],
+                    y: [0, -30, 0]
+                  }}
+                  transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full bg-gradient-to-br from-emerald-400/30 via-amber-300/20 to-teal-400/30 blur-3xl"
+                />
+                <motion.div 
+                  animate={{ 
+                    scale: [1.15, 1, 1.15],
+                    x: [0, -45, 0],
+                    y: [0, 35, 0]
+                  }}
+                  transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute -bottom-24 -left-24 w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-amber-300/25 via-emerald-400/20 to-teal-400/25 blur-3xl"
+                />
+              </div>
+
+              <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+                <div className="space-y-2.5 max-w-2xl">
+                  {/* VIP Member Tags & Status */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-600 text-stone-950 text-[11px] font-black shadow-xs flex items-center gap-1.5 border border-amber-300">
+                      <Scale className="w-3.5 h-3.5 text-stone-950 stroke-[2.3]" />
+                      <span>طرح میزان · نشان عدالت قضایی</span>
+                    </span>
+
+                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-emerald-800 to-teal-900 text-white text-[11px] font-black shadow-xs flex items-center gap-1.5 border border-emerald-600/40">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                      {isAlumni ? 'جامعه نخبگانی دانش‌آموختگان فقه و قضا' : 'درگاه مدیریت و کارتابل خدمات'}
+                    </span>
+
+                    <span className="px-3 py-1 rounded-full bg-amber-500/15 text-amber-900 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1.5">
+                      <Flame className="w-3 h-3 text-amber-600 fill-amber-600" />
+                      عضویت رسمی · {toPersianNumbers('۱,۰۴۲')} عضو فعال
+                    </span>
+
+                    <span className="px-3 py-1 rounded-full bg-white/90 text-stone-700 border border-stone-200 text-[11px] font-bold">
+                      دوره فارغ‌التحصیلی: {toPersianNumbers(currentUser?.graduationYear || '۱۳۹۵')}
+                    </span>
+                  </div>
+
+                  {/* Title & Greeting */}
+                  <div>
+                    <h1 className="text-xl sm:text-2xl xl:text-3xl font-black text-stone-900 leading-snug tracking-tight">
+                      {crextioConfig.heroTitle || `خوش آمدید، ${currentUser ? currentUser.fullName : 'جناب آقای دکتر میرزایی'}`}
+                    </h1>
+                    <p className="text-xs text-stone-600 mt-1.5 leading-relaxed font-medium">
+                      {crextioConfig.heroSubtitle || `${currentUser?.organization} · سمت: ${currentUser?.roleTitle} · آماده دریافت درخواست‌های الکترونیک و دوره‌های توانمندسازی قضایی`}
+                    </p>
+                  </div>
+
+                  {/* VIP Quick Action Micro-buttons */}
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    {[
+                      { label: 'صدور آنی گواهی اشتغال', icon: FileText, action: 'صدور آنی گواهی اشتغال به قضا' },
+                      { label: 'استعلام ترفیع و رتبه', icon: Award, action: 'استعلام ارتقاء و پایه قضایی' },
+                      { label: 'درخواست تسهیلات رفاهی', icon: Gift, action: 'درخواست تسهیلات اقامتی و زیارتی' },
+                    ].map((btn, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleQuickAction(btn.action)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-stone-200/90 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      >
+                        <btn.icon className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>{btn.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {onNavigateTab && (
-                  <button 
-                    onClick={() => onNavigateTab('Products')}
-                    className="text-xs font-black text-emerald-800 hover:text-emerald-950 flex items-center gap-1 hover:underline"
-                  >
-                    مشاهده کل آثار <ChevronLeft className="w-4 h-4" />
-                  </button>
+
+                {/* Live KPI Cards */}
+                {crextioConfig.showKpiRow && (
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {isAdmin && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => setIsHeroStatsModalOpen(true)}
+                          className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                          title="تغییر عناوین، ارقام و مدیریت آمار بنر وی‌آی‌پی"
+                        >
+                          <Sliders className="w-3 h-3 text-amber-700" />
+                          <span>مدیریت آمار بنر</span>
+                        </button>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
+                      {heroStats.map(stat => {
+                        const Icon = getStatIconComponent(stat.icon);
+                        return (
+                          <CrextioCard
+                            key={stat.id}
+                            glowColor="rgba(245, 158, 11, 0.25)"
+                            className="bg-white/95 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl border border-[#E7E4D8] shadow-2xs flex flex-col items-center justify-center text-center space-y-1.5 group"
+                          >
+                            <div className={`p-2.5 rounded-xl ${stat.color} shadow-2xs mx-auto group-hover:scale-110 transition-transform`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+
+                            <span className="text-[10px] font-extrabold text-stone-600 line-clamp-1 block text-center">
+                              {stat.label}
+                            </span>
+
+                            <div className="space-y-0.5 text-center">
+                              <span className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight block">
+                                <AnimatedCounter value={toPersianNumbers(stat.val.toLocaleString('fa-IR'))} duration={1800} />
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+                                {stat.trend}
+                              </span>
+                            </div>
+                          </CrextioCard>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {/* Publications Cards Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {products.slice(0, 2).map(prod => (
-                  <div 
-                    key={prod.id} 
-                    className="bg-white/90 hover:bg-emerald-50/50 border border-stone-200/90 hover:border-emerald-300 p-4 rounded-3xl transition-all shadow-xs flex flex-col justify-between space-y-3 group"
-                  >
-                    <div className="flex gap-3.5">
-                      <div className="w-13 h-15 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-950 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
-                        <BookMarked className="w-6 h-6 text-amber-300" />
-                      </div>
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <h4 className="font-bold text-sm text-stone-900 truncate">{prod.title}</h4>
-                        <p className="text-xs text-stone-600 font-medium truncate">{prod.authorOrPresenter}</p>
-                        <span className="inline-block text-[11px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                          {prod.formatTitle}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-stone-200/80 flex items-center justify-between text-xs">
-                      <span className="font-black text-stone-900">
-                        {prod.price > 0 ? `${toPersianNumbers(prod.price.toLocaleString('fa-IR'))} تومان` : 'رایگان ویژه اعضا'}
-                      </span>
-                      <button 
-                        onClick={() => onNavigateTab && onNavigateTab('Products')}
-                        className="px-3.5 py-1.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center gap-1"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>دریافت اثر</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </CrextioCard>
-          )}
-
-          {/* Pending Cartable Requests Showcase */}
-          {crextioConfig.showCartableSnippet && (
-            <CrextioCard
-              glowColor="rgba(245, 158, 11, 0.18)"
-              className="bg-[#FCFCF9]/95 p-6 sm:p-7 rounded-[38px] border border-[#E3E0D3] shadow-lg space-y-5"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-black text-base text-stone-900 flex items-center gap-2">
-                    <Inbox className="w-5 h-5 text-emerald-700" />
-                    {isAlumni ? 'کارتابل درخواست‌های اداری و آموزشی من' : 'کارتابل درخواست‌های اعضا و استعلامات'}
-                  </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">وضعیت پرونده‌های حقوقی، صدور احکام و گواهی‌های ثبت‌شده</p>
-                </div>
-
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1.5 bg-stone-200/70 p-1 rounded-full text-xs self-start sm:self-auto">
-                  <button 
-                    onClick={() => setSelectedFilter('all')}
-                    className={`px-3 py-1 rounded-full font-bold transition-all ${
-                      selectedFilter === 'all' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    همه ({toPersianNumbers(filteredCartable.length)})
-                  </button>
-                  <button 
-                    onClick={() => setSelectedFilter('pending')}
-                    className={`px-3 py-1 rounded-full font-bold transition-all ${
-                      selectedFilter === 'pending' ? 'bg-white text-amber-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    در جریان
-                  </button>
-                  <button 
-                    onClick={() => setSelectedFilter('completed')}
-                    className={`px-3 py-1 rounded-full font-bold transition-all ${
-                      selectedFilter === 'completed' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    تکمیل‌شده
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {filteredCartable.slice(0, 4).map(req => (
-                  <div 
-                    key={req.id} 
-                    className="p-4 bg-white/90 hover:bg-emerald-50/60 border border-stone-200/90 rounded-3xl transition-all space-y-2.5 shadow-2xs"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[11px] font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full font-mono">
-                        کد: #{toPersianNumbers(req.trackingNumber)}
-                      </span>
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                        req.status === 'completed' 
-                          ? 'bg-emerald-100 text-emerald-900' 
-                          : req.status === 'in_progress'
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-stone-200 text-stone-800'
-                      }`}>
-                        {req.status === 'completed' ? 'تکمیل‌شده' : req.status === 'in_progress' ? 'در حال بررسی' : 'ثبت‌شده'}
-                      </span>
-                    </div>
-
-                    <h4 className="font-bold text-sm text-stone-900 line-clamp-1">{req.title}</h4>
-                    
-                    <div className="flex items-center justify-between text-xs text-stone-500 pt-1.5 border-t border-stone-200/70 font-medium">
-                      <span>متقاضی: {req.applicantName}</span>
-                      <button 
-                        onClick={() => onNavigateTab && onNavigateTab('People')}
-                        className="text-emerald-800 hover:underline font-bold flex items-center gap-0.5"
-                      >
-                        مشاهده جزئیات <ArrowUpRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CrextioCard>
-          )}
-        </div>
-
-        {/* COLUMN 3: QUICK ACTIONS MATRIX & COURT RULINGS */}
-        {(crextioConfig.showQuickActions || crextioConfig.showRulingsSnippet) && (
-          <div className="space-y-6">
-            {/* Quick Action Matrix Card with Sleek Dark Emerald Glass */}
-            {crextioConfig.showQuickActions && (
-              <CrextioCard
-                glowColor="rgba(52, 211, 153, 0.35)"
-                className="bg-gradient-to-br from-[#122A22] via-[#0D1F19] to-[#0A1713] text-white rounded-[38px] p-6 shadow-2xl space-y-5 border border-emerald-500/30"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-black text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-300" />
-                    دسترسی سریع و خدمات ۱۰۰۰ عضو
-                  </h3>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {[
-                    ...(currentUser?.role === 'admin' || currentUser?.role === 'supervisor' ? [
-                      { label: 'دانش‌آموختگان', icon: GraduationCap, tab: 'Alumni' },
-                      { label: 'کاربران', icon: Users, tab: 'Users' },
-                      { label: 'مدیریت', icon: ShieldCheck, tab: 'Admin' },
-                    ] : []),
-                    { label: 'کارتابل', icon: FileCheck, tab: 'People' },
-                    { label: 'آموزش', icon: BookOpen, tab: 'Courses' },
-                    { label: 'آراء قضایی', icon: Scale, tab: 'Rulings' },
-                    { label: 'مشاوره', icon: Laptop, tab: 'Counseling' },
-                    { label: 'رفاهیات', icon: Gift, tab: 'Welfare' },
-                    { label: 'هم‌افزایی', icon: HeartHandshake, tab: 'Synergy' }
-                  ].map((act, i) => (
-                    <motion.button 
-                      key={i} 
-                      whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.18)" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => onNavigateTab && onNavigateTab(act.tab)}
-                      className="flex flex-col items-center gap-2 bg-white/10 rounded-2xl p-3.5 border border-white/15 text-white hover:border-emerald-400/60 transition-all text-center group"
-                    >
-                      <act.icon className="w-5 h-5 text-emerald-300 group-hover:scale-110 transition-transform" />
-                      <span className="text-[11px] font-black">{act.label}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </CrextioCard>
-            )}
-
-            {/* Court Rulings Showcase Snippet */}
-            {crextioConfig.showRulingsSnippet && (
-              <CrextioCard
-                glowColor="rgba(245, 158, 11, 0.2)"
-                className="bg-[#FCFCF9]/95 p-6 rounded-[38px] border border-[#E3E0D3] shadow-lg space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="font-black text-sm text-stone-900 flex items-center gap-2">
-                    <Scale className="w-4 h-4 text-emerald-700" />
-                    آخرین آراء صادره در تالار نقد
-                  </h4>
-                  {onNavigateTab && (
-                    <button 
-                      onClick={() => onNavigateTab('Rulings')}
-                      className="text-xs text-emerald-800 font-bold hover:underline"
-                    >
-                      تالار آراء
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  {rulings.slice(0, 3).map(r => (
-                    <div key={r.id} className="p-3.5 rounded-2xl bg-white hover:bg-emerald-50/60 border border-stone-200/90 flex items-start gap-2.5 text-xs transition-colors shadow-2xs">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <p className="font-bold text-stone-900 truncate">{r.title}</p>
-                        <div className="flex items-center justify-between text-[11px] text-stone-500 font-medium">
-                          <span>{r.courtBranch}</span>
-                          <span className="text-emerald-800 font-bold">
-                            {toPersianNumbers(r.discussions?.length || 0)} نقد حقوقی
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CrextioCard>
-            )}
           </div>
         )}
-
       </div>
+
+      {/* SECTION 2: EXHIBITION SHOWCASE FOR COUNSELING (2s Infinite Auto-Switch & Image Upload) */}
+      <CounselingPromoShowcase
+        onNavigateToGeneral={() => onNavigateTab && onNavigateTab('CounselingGeneral')}
+        onNavigateToSpecialized={() => onNavigateTab && onNavigateTab('SpecializedCounseling')}
+      />
+
+      {/* SECTION 3: BENTO GRID OF 9 CORE SERVICES */}
+      <CrextioServicesBento onNavigateTab={(tab) => onNavigateTab && onNavigateTab(tab)} />
+
+      {/* SECTION 4: SHOWCASE 1 - BOOKS & PUBLICATIONS */}
+      <BooksAndPublicationsShowcase
+        onNavigateToProducts={() => onNavigateTab && onNavigateTab('Products')}
+      />
+
+      {/* SECTION 5: SHOWCASE 2 - WELFARE, LOANS & COOPERATIVE */}
+      <WelfareAndLoansShowcase
+        onNavigateToWelfare={() => onNavigateTab && onNavigateTab('Welfare')}
+      />
+
+      {/* SECTION 6: SHOWCASE 3 - MULTIMEDIA & COURSES */}
+      <MultimediaAndCoursesShowcase
+        onNavigateToCourses={() => onNavigateTab && onNavigateTab('Courses')}
+      />
 
       {/* ADMIN LIVE CUSTOMIZER MODAL */}
       <ThemeCustomizerModal
         isOpen={isCustomizerOpen}
         onClose={() => setIsCustomizerOpen(false)}
+      />
+
+      {/* ADMIN HERO STATS CUSTOMIZER MODAL */}
+      <CrextioHeroStatsCustomizerModal
+        isOpen={isHeroStatsModalOpen}
+        onClose={() => setIsHeroStatsModalOpen(false)}
       />
     </motion.div>
   );

@@ -199,15 +199,26 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           onClick={() => onNavigate('products')}
         />
 
-        {/* ۴. خدمات روان‌شناختی و مشاوره */}
+        {/* ۴. خدمات روان‌شناختی و مشاوره عمومی */}
         <ModernDashboardCard
-          title="خدمات مشاوره"
+          title="خدمات مشاوره عمومی"
           accent="rose"
           icon={<HeartHandshake className="w-6 h-6 text-rose-600 dark:text-rose-400" />}
-          subValue="کوچینگ قضات پیشکسوت، مدیریت استرس دادرسی و مشاوره خانواده"
-          trendContext={`${consultants.length} استاد و مشاور ارشد`}
-          badgeText="مشاوره قضایی"
+          subValue="سلامت روان، تحکیم خانواده، مشاوره فردی، زوج‌درمانی و سبک زندگی"
+          trendContext={`${consultants.filter(c => c.counselingType !== 'specialized_career').length} روان‌شناس و مشاور ارشد`}
+          badgeText="مشاوره عمومی"
           onClick={() => onNavigate('counseling')}
+        />
+
+        {/* ۴.۵. مشاوره تخصصی تحصیلی و شغلی قضا (کارت مستقل) */}
+        <ModernDashboardCard
+          title="مشاوره تخصصی شغلی قضا"
+          accent="amber"
+          icon={<Scale className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
+          subValue="هدایت شغلی-تحصیلی با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار"
+          trendContext={`${consultants.filter(c => c.counselingType === 'specialized_career').length} استاد و قاضی پیشکسوت`}
+          badgeText="هدایت شغلی قضا"
+          onClick={() => onNavigate('specialized_counseling')}
         />
 
         {/* ۵. راهبری پژوهش و رساله‌ها */}

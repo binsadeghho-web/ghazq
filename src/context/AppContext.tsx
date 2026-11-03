@@ -20,6 +20,7 @@ import {
   AuditLog,
   SystemSecurityConfig,
   CrextioDashboardConfig,
+  MizanDashboardConfig,
   AppSectionId,
   PermissionAccessLevel,
   UserSectionPermissions,
@@ -43,6 +44,7 @@ import {
   INITIAL_AUDIT_LOGS,
   INITIAL_SECURITY_CONFIG,
   DEFAULT_CREXTIO_CONFIG,
+  DEFAULT_MIZAN_CONFIG,
 } from '../data/mockData';
 import { api, ApiError } from '../services/apiClient';
 
@@ -66,8 +68,8 @@ interface AppContextType {
   securityConfig: SystemSecurityConfig;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  designTheme: 'portal' | 'crextio';
-  setDesignTheme: (theme: 'portal' | 'crextio') => void;
+  designTheme: 'portal' | 'crextio' | 'mizan';
+  setDesignTheme: (theme: 'portal' | 'crextio' | 'mizan') => void;
   toggleDesignTheme: () => void;
   serverSyncStatus: 'synced' | 'syncing' | 'offline';
   
@@ -148,6 +150,11 @@ interface AppContextType {
   crextioConfig: CrextioDashboardConfig;
   updateCrextioConfig: (updates: Partial<CrextioDashboardConfig>) => void;
   resetCrextioConfig: () => void;
+
+  // Theme 3 Mizan Balanced Layout Customization & Studio
+  mizanConfig: MizanDashboardConfig;
+  updateMizanConfig: (updates: Partial<MizanDashboardConfig>) => void;
+  resetMizanConfig: () => void;
 
   // Enterprise User Management & Dossier
   createUser: (userData: Omit<User, 'id' | 'sessions' | 'tokenVersion' | 'failedAttempts' | 'isLocked'>) => Promise<User>;
@@ -307,15 +314,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio'>(() => {
+  const [mizanConfig, setMizanConfig] = useState<MizanDashboardConfig>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}design_theme`);
-      if (saved === 'portal' || saved === 'crextio') return saved;
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}mizan_config`);
+      if (saved) {
+        try {
+          return { ...DEFAULT_MIZAN_CONFIG, ...JSON.parse(saved) };
+        } catch {}
+      }
     }
-    return 'portal';
+    return DEFAULT_MIZAN_CONFIG;
   });
 
-  const setDesignTheme = (newTheme: 'portal' | 'crextio') => {
+  const updateMizanConfig = (updates: Partial<MizanDashboardConfig>) => {
+    setMizanConfig(prev => {
+      const next = { ...prev, ...updates };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}mizan_config`, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const resetMizanConfig = () => {
+    setMizanConfig(DEFAULT_MIZAN_CONFIG);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}mizan_config`);
+    }
+  };
+
+  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio' | 'mizan'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}design_theme`);
+      if (saved === 'portal' || saved === 'crextio' || saved === 'mizan') return saved;
+    }
+    return 'mizan'; // Set Mizan as default or high quality theme
+  });
+
+  const setDesignTheme = (newTheme: 'portal' | 'crextio' | 'mizan') => {
     setDesignThemeState(newTheme);
     if (typeof window !== 'undefined') {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}design_theme`, newTheme);
@@ -323,7 +359,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleDesignTheme = () => {
-    const next = designTheme === 'portal' ? 'crextio' : 'portal';
+    const next = designTheme === 'mizan' ? 'portal' : designTheme === 'portal' ? 'crextio' : 'mizan';
     setDesignTheme(next);
   };
 
@@ -1502,6 +1538,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         crextioConfig,
         updateCrextioConfig,
         resetCrextioConfig,
+
+        // Theme 3 Mizan Customizer
+        mizanConfig,
+        updateMizanConfig,
+        resetMizanConfig,
 
         // Enterprise User Management
         createUser,

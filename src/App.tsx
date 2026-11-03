@@ -7,6 +7,7 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { LoginModal } from './components/auth/LoginModal';
 import { SessionManagerModal } from './components/auth/SessionManagerModal';
 import { CrextioLayout } from './components/crextio/CrextioLayout';
+import { MizanLayout } from './components/mizan/MizanLayout';
 import { GlobalMouseHalo } from './components/common/GlobalMouseHalo';
 
 // Section components
@@ -49,6 +50,11 @@ const MainLayout: React.FC = () => {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // When Theme 3 (Mizan) is selected, render Mizan Workspace
+  if (designTheme === 'mizan') {
+    return <MizanLayout />;
+  }
 
   // When Theme 2 (Crextio) is selected, render Crextio Workspace
   if (designTheme === 'crextio') {
@@ -169,15 +175,26 @@ const MainLayout: React.FC = () => {
         onClose={() => setLoginModalOpen(false)}
       />
 
-      {/* Floating Theme 2 Switcher Badge */}
-      <div className="fixed bottom-6 left-6 z-50">
+      {/* Floating 3-Way Theme Switcher Capsule */}
+      <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
+        <button
+          onClick={() => setDesignTheme('portal')}
+          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all bg-amber-500 text-slate-900 shadow-sm"
+        >
+          تم ۱: پرتال
+        </button>
         <button
           onClick={() => setDesignTheme('crextio')}
-          className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-[#222222] hover:bg-black text-white text-xs font-bold shadow-2xl border border-white/20 hover:scale-105 transition-all group active:scale-95"
-          title="مشاهده تم دوم (طرح مینیمال Crextio)"
+          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all text-slate-300 hover:text-white"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-[#F8D548] animate-pulse" />
-          <span>مشاهده تم ۲: Crextio Workspace (طرح درخواستی)</span>
+          تم ۲: کرکستیو
+        </button>
+        <button
+          onClick={() => setDesignTheme('mizan')}
+          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 text-amber-200 hover:text-white"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#158561] animate-pulse" />
+          <span>تم ۳: میزان (جدید)</span>
         </button>
       </div>
     </div>

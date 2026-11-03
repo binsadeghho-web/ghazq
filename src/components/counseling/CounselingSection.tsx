@@ -180,7 +180,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
         experienceYears: consultantForm.experienceYears || 5,
         specialties: consultantForm.specialties || ['مشاوره فردی'],
         availability: consultantForm.availability || 'شنبه تا چهارشنبه',
-        avatarUrl: consultantForm.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
+        avatarUrl: consultantForm.avatarUrl || '/assets/cleric_portrait.jpg',
         academicRank: consultantForm.academicRank || 'استاد مدعو',
         resumeDetails: consultantForm.resumeDetails || [],
         isActive: consultantForm.isActive !== false

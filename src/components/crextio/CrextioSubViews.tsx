@@ -110,7 +110,7 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   if (activeNav === 'Apps' || activeNav === 'Counseling' || activeNav === 'CounselingGeneral') {
     return <CounselingSection initialTab="request" />;
   }
-  if (activeNav === 'SpecializedCounseling' || activeNav === 'CounselingSpecial') {
+  if (activeNav === 'SpecializedCounseling' || activeNav === 'CounselingSpecial' || activeNav === 'counseling_specialized') {
     return <SpecializedCareerCounselingSection />;
   }
 
