@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { db, generateUUIDv7 } from './src/server/platform/database';
+import { initializeDatabase, isDatabaseConnected } from './src/server/platform/mysqlDatabase';
 import { logger } from './src/server/platform/logger';
 import { idempotencyMiddleware } from './src/server/platform/idempotency';
 import { rateLimitMiddleware } from './src/server/platform/rateLimiter';
@@ -11,6 +12,11 @@ async function bootstrap() {
   const app = express();
   const port = process.env.PORT || 3000;
   const isDev = process.env.NODE_ENV !== 'production';
+
+  // Automatically initialize and migrate MySQL 8 enterprise database schema
+  initializeDatabase().catch(err => {
+    logger.warn('MySQL initialization notice: ' + (err?.message || err));
+  });
 
   // Request body parsing with bounded size (Section 10)
   app.use(express.json({ limit: '5mb' }));
@@ -67,7 +73,11 @@ async function bootstrap() {
   // Readiness Probe: database & components are initialized
   app.get('/readyz', (_req: Request, res: Response) => {
     if (db.checkReady()) {
-      res.status(200).json({ status: 'ready', time: new Date().toISOString() });
+      res.status(200).json({
+        status: 'ready',
+        mysqlConnected: isDatabaseConnected(),
+        time: new Date().toISOString()
+      });
     } else {
       res.status(503).json({ status: 'not_ready', detail: 'پایگاه داده در حال آماده‌سازی است.' });
     }

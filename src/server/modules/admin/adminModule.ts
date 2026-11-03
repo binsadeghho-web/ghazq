@@ -4,6 +4,8 @@ import { AppError } from '../../platform/errors';
 import { auditChain } from '../../platform/auditChain';
 import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { User, SystemSecurityConfig } from '../../../types';
+import { saveSystemSetting, getSystemSetting, isDatabaseConnected } from '../../platform/mysqlDatabase';
+import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../../../data/mockData';
 
 export class AdminService {
   async getUsers(authCtx: AuthContext): Promise<User[]> {
@@ -94,6 +96,34 @@ export class AdminService {
       brokenAt: res.brokenAt,
       message: res.message,
     };
+  }
+
+  async getDashboardConfig(): Promise<{ crextio: any; mizan: any; source: string; isConnectedToMysql: boolean }> {
+    const fromDb = await getSystemSetting<any>('crextio_dashboard_config');
+    const mizanFromDb = await getSystemSetting<any>('mizan_dashboard_config');
+    return {
+      crextio: fromDb || DEFAULT_CREXTIO_CONFIG,
+      mizan: mizanFromDb || DEFAULT_MIZAN_CONFIG,
+      source: fromDb ? 'mysql' : 'default',
+      isConnectedToMysql: isDatabaseConnected(),
+    };
+  }
+
+  async saveDashboardConfig(authCtx: AuthContext, config: any): Promise<{ success: boolean; persistedToMysql: boolean }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    const saved = await saveSystemSetting('crextio_dashboard_config', config, 'تنظیمات ویترین‌ها و چینش کارت‌های تم دو');
+
+    auditChain.appendEntry({
+      eventType: 'SYSTEM_CONFIG_UPDATED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `تنظیمات و چینش ویترین‌های داشبورد تم ۲ توسط مدیر به‌روزرسانی شد. (وضعیت پایگاه‌داده ابری: ${saved ? 'ذخیره دائم در MySQL' : 'ذخیره موقت سرور'})`,
+      severity: 'info',
+    });
+
+    return { success: true, persistedToMysql: saved };
   }
 
   async resetAllData(authCtx: AuthContext): Promise<{ success: boolean; message: string }> {
@@ -210,14 +240,23 @@ export function createAdminRouter(): Router {
     }
   });
 
-  router.post('/reset-defaults', async (req: Request, res: Response, next) => {
+  router.get('/dashboard-config', async (_req: Request, res: Response, next) => {
+    try {
+      const config = await service.getDashboardConfig();
+      res.json(config);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/dashboard-config', async (req: Request, res: Response, next) => {
     try {
       const authCtx: AuthContext = (req as any).user || {
         userId: (req.headers['x-user-id'] as string) || 'user-admin',
         role: (req.headers['x-user-role'] as any) || 'admin',
         fullName: (req.headers['x-user-name'] as string) || 'حاج‌آقا محمدرضا رضایی',
       };
-      const result = await service.resetAllData(authCtx);
+      const result = await service.saveDashboardConfig(authCtx, req.body);
       res.json(result);
     } catch (err) {
       next(err);

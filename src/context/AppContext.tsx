@@ -293,6 +293,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (typeof window !== 'undefined') {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(next));
       }
+      // Persist to backend / MySQL 8 database
+      api.saveDashboardConfig(next).catch(() => {});
       return next;
     });
   };
@@ -394,6 +396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchedConsumables,
         fetchedSynergy,
         fetchedSecurity,
+        fetchedDashboardConfig,
       ] = await Promise.allSettled([
         api.getCartableRequests(),
         api.getCourses(true),
@@ -405,6 +408,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         api.getConsumables(),
         api.getSynergyPosts(),
         api.getSecurityConfig(),
+        api.getDashboardConfig(),
       ]);
 
       if (fetchedCartable.status === 'fulfilled') setCartableRequests(fetchedCartable.value);
@@ -417,6 +421,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (fetchedConsumables.status === 'fulfilled') setConsumables(fetchedConsumables.value);
       if (fetchedSynergy.status === 'fulfilled') setSynergyPosts(fetchedSynergy.value);
       if (fetchedSecurity.status === 'fulfilled') setSecurityConfig(fetchedSecurity.value);
+      if (fetchedDashboardConfig.status === 'fulfilled' && fetchedDashboardConfig.value?.crextio) {
+        setCrextioConfig(prev => ({ ...prev, ...fetchedDashboardConfig.value.crextio }));
+      }
 
       setServerSyncStatus('synced');
     } catch {

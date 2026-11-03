@@ -206,7 +206,8 @@ export interface AuditLog {
     | 'GLOBAL_LOGOUT'
     | 'ROLE_CHANGED' 
     | 'CARTABLE_STATUS_CHANGE'
-    | 'RULING_APPROVED';
+    | 'RULING_APPROVED'
+    | 'SYSTEM_CONFIG_UPDATED';
   actorId: string;
   actorName: string;
   actorRole: UserRole;
