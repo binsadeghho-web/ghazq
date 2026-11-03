@@ -47,6 +47,7 @@ import {
   DEFAULT_MIZAN_CONFIG,
 } from '../data/mockData';
 import { api, ApiError } from '../services/apiClient';
+import { clearAllDrafts } from '../utils/draftStorage';
 
 interface AppContextType {
   currentUser: User | null;
@@ -483,9 +484,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    // Rule: Clear client-side cache and sensitive memory on logout (Section 7 & 10)
+    // Rule: Clear client-side cache, sensitive memory, and IndexedDB drafts on logout (Section 7, 10 & Item 15)
     setCurrentUser(null);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+    clearAllDrafts().catch(() => {});
   };
 
   const globalLogout = async (userId: string) => {

@@ -1,25 +1,58 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { db, generateUUIDv7 } from './src/server/platform/database';
-import { initializeDatabase, isDatabaseConnected } from './src/server/platform/mysqlDatabase';
+import { checkDatabaseConnection, isDatabaseConnected } from './src/server/platform/mysqlDatabase';
 import { logger } from './src/server/platform/logger';
 import { idempotencyMiddleware } from './src/server/platform/idempotency';
 import { rateLimitMiddleware } from './src/server/platform/rateLimiter';
 import { rfc9457ErrorHandler } from './src/server/platform/errors';
 import { createMasterRouter, metricsStore } from './src/server/routes';
+import { normalizePayload } from './src/server/platform/persianNormalizer';
+import { initStorageDirectories, storageConfig, getStorageHealth } from './src/server/platform/storage';
 
 async function bootstrap() {
   const app = express();
   const port = process.env.PORT || 3000;
   const isDev = process.env.NODE_ENV !== 'production';
 
-  // Automatically initialize and migrate MySQL 8 enterprise database schema
-  initializeDatabase().catch(err => {
-    logger.warn('MySQL initialization notice: ' + (err?.message || err));
+  // Persistent volume storage initialization (/MYDISK)
+  initStorageDirectories();
+
+  // Item 1: Database DDL is executed ONLY via standalone 'npm run db:init', NOT on server startup.
+  // Server only probes readiness for graceful health checks.
+  checkDatabaseConnection().catch(err => {
+    logger.warn('MySQL probe notice: ' + (err?.message || err));
   });
 
   // Request body parsing with bounded size (Section 10)
   app.use(express.json({ limit: '5mb' }));
+
+  // Item 11: Persian / Arabic character & digit normalization at API boundary
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (req.body && typeof req.body === 'object') {
+      req.body = normalizePayload(req.body);
+    }
+    next();
+  });
+
+  // Item 5: HTTP Request Timeout Middleware (15s request budget)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/api/events') return next(); // SSE streams are long-lived
+    const timer = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(504).json({
+          type: 'gateway_timeout',
+          title: 'مهلت زمانی به پایان رسید',
+          status: 504,
+          detail: 'زمان پردازش درخواست بیش از بودجه مجاز (۱۵ ثانیه) به طول انجامید.',
+          code: 'REQUEST_TIMEOUT'
+        });
+      }
+    }, 15000);
+    res.on('finish', () => clearTimeout(timer));
+    res.on('close', () => clearTimeout(timer));
+    next();
+  });
 
   // Security Headers (Section 10)
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -70,18 +103,29 @@ async function bootstrap() {
     res.status(200).json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // Readiness Probe: database & components are initialized
+  // Readiness Probe: database & storage components are initialized
   app.get('/readyz', (_req: Request, res: Response) => {
+    const storageHealth = getStorageHealth();
     if (db.checkReady()) {
       res.status(200).json({
         status: 'ready',
         mysqlConnected: isDatabaseConnected(),
+        storage: storageHealth,
         time: new Date().toISOString()
       });
     } else {
       res.status(503).json({ status: 'not_ready', detail: 'پایگاه داده در حال آماده‌سازی است.' });
     }
   });
+
+  // Persistent Uploads Static File Serving (Section 7: HTTP Cache headers)
+  app.use('/uploads', express.static(storageConfig.uploadsDir, {
+    maxAge: '7d',
+    immutable: true,
+    setHeaders: (res) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    }
+  }));
 
   // Rate Limiting on API routes (Section 9 & 10)
   app.use('/api', rateLimitMiddleware());

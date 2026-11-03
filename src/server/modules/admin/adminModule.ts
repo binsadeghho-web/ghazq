@@ -4,7 +4,12 @@ import { AppError } from '../../platform/errors';
 import { auditChain } from '../../platform/auditChain';
 import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { User, SystemSecurityConfig } from '../../../types';
-import { saveSystemSetting, getSystemSetting, isDatabaseConnected } from '../../platform/mysqlDatabase';
+import { 
+  saveSystemSetting, 
+  getSystemSettingRecord, 
+  updateSystemSettingOptimistic, 
+  isDatabaseConnected 
+} from '../../platform/mysqlDatabase';
 import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../../../data/mockData';
 
 export class AdminService {
@@ -98,20 +103,65 @@ export class AdminService {
     };
   }
 
-  async getDashboardConfig(): Promise<{ crextio: any; mizan: any; source: string; isConnectedToMysql: boolean }> {
-    const fromDb = await getSystemSetting<any>('crextio_dashboard_config');
-    const mizanFromDb = await getSystemSetting<any>('mizan_dashboard_config');
+  async getDashboardConfig(): Promise<{
+    crextio: any;
+    mizan: any;
+    source: string;
+    isConnectedToMysql: boolean;
+    version: number;
+    lastModifiedBy: string;
+    lastModifiedAt: string;
+  }> {
+    const record = await getSystemSettingRecord<any>('crextio_dashboard_config');
+    const mizanRecord = await getSystemSettingRecord<any>('mizan_dashboard_config');
     return {
-      crextio: fromDb || DEFAULT_CREXTIO_CONFIG,
-      mizan: mizanFromDb || DEFAULT_MIZAN_CONFIG,
-      source: fromDb ? 'mysql' : 'default',
+      crextio: record?.value || DEFAULT_CREXTIO_CONFIG,
+      mizan: mizanRecord?.value || DEFAULT_MIZAN_CONFIG,
+      source: record ? 'mysql' : 'default',
       isConnectedToMysql: isDatabaseConnected(),
+      version: record?.version || 1,
+      lastModifiedBy: record?.lastModifiedBy || 'مدیر سیستم',
+      lastModifiedAt: record?.updatedAt || new Date().toISOString(),
     };
   }
 
-  async saveDashboardConfig(authCtx: AuthContext, config: any): Promise<{ success: boolean; persistedToMysql: boolean }> {
+  async saveDashboardConfig(
+    authCtx: AuthContext,
+    config: any,
+    baseVersion?: number
+  ): Promise<{
+    success: boolean;
+    persistedToMysql: boolean;
+    version: number;
+    lastModifiedBy: string;
+    lastModifiedAt: string;
+  }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
-    const saved = await saveSystemSetting('crextio_dashboard_config', config, 'تنظیمات ویترین‌ها و چینش کارت‌های تم دو');
+
+    // Item 1: base_version is mandatory. Missing or NaN = 400 Bad Request
+    if (baseVersion === undefined || baseVersion === null || isNaN(Number(baseVersion))) {
+      throw AppError.badRequest('پارامتر base_version برای کنترل هم‌زمانی و نسخه داده الزامی است.');
+    }
+
+    const numericBaseVersion = Number(baseVersion);
+
+    // Item 1: Optimistic locking via DB: UPDATE ... WHERE setting_key=? AND version=?
+    const updateResult = await updateSystemSettingOptimistic(
+      'crextio_dashboard_config',
+      config,
+      numericBaseVersion,
+      authCtx.fullName
+    );
+
+    // If affectedRows === 0 -> 409 Conflict without auto-merging
+    if (updateResult.conflict) {
+      throw AppError.conflict(
+        'این بخش در این فاصله تغییر کرده؛ صفحه را تازه کنید.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
+    }
+
+    const nowIso = new Date().toISOString();
 
     auditChain.appendEntry({
       eventType: 'SYSTEM_CONFIG_UPDATED',
@@ -119,11 +169,17 @@ export class AdminService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `تنظیمات و چینش ویترین‌های داشبورد تم ۲ توسط مدیر به‌روزرسانی شد. (وضعیت پایگاه‌داده ابری: ${saved ? 'ذخیره دائم در MySQL' : 'ذخیره موقت سرور'})`,
+      details: `تنظیمات و چینش ویترین‌ها توسط مدیر به‌روزرسانی شد. نسخه جدید در دیتابیس: ${updateResult.newVersion}`,
       severity: 'info',
     });
 
-    return { success: true, persistedToMysql: saved };
+    return {
+      success: true,
+      persistedToMysql: updateResult.success,
+      version: updateResult.newVersion,
+      lastModifiedBy: authCtx.fullName,
+      lastModifiedAt: nowIso,
+    };
   }
 
   async resetAllData(authCtx: AuthContext): Promise<{ success: boolean; message: string }> {
@@ -256,7 +312,8 @@ export function createAdminRouter(): Router {
         role: (req.headers['x-user-role'] as any) || 'admin',
         fullName: (req.headers['x-user-name'] as string) || 'حاج‌آقا محمدرضا رضایی',
       };
-      const result = await service.saveDashboardConfig(authCtx, req.body);
+      const baseVersion = req.body?._baseVersion !== undefined ? Number(req.body._baseVersion) : undefined;
+      const result = await service.saveDashboardConfig(authCtx, req.body, baseVersion);
       res.json(result);
     } catch (err) {
       next(err);

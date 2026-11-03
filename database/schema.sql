@@ -17,12 +17,36 @@ SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 
 -- ----------------------------------------------------------------------------
+-- ۰. جدول رهگیری نسخه‌های مهاجرت پایگاه داده (Schema Migrations)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `schema_migrations` (
+  `version` INT NOT NULL PRIMARY KEY,
+  `applied_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `description` VARCHAR(255) NOT NULL,
+  `checksum` CHAR(64) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- ۰.۱. جدول ماتریس دسترسی‌ها و کدهای مجوز نقشی (Role Permissions - اصل ۱۲)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `role_permissions` (
+  `role` VARCHAR(32) NOT NULL,
+  `permission_code` VARCHAR(64) NOT NULL,
+  `description` VARCHAR(255) NULL,
+  `is_granted` BOOLEAN NOT NULL DEFAULT TRUE,
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`role`, `permission_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
 -- ۱. جدول تنظیمات سراسری سامانه، ظاهر و ویترین‌ها (System Settings & Showcases)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `system_settings` (
   `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
   `setting_value` JSON NOT NULL,
   `description` VARCHAR(255) NULL,
+  `version` INT NOT NULL DEFAULT 1,
+  `last_modified_by` VARCHAR(128) NULL,
   `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -90,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
   `is_locked` BOOLEAN NOT NULL DEFAULT FALSE,
   `failed_attempts` INT NOT NULL DEFAULT 0,
-  `lock_expires_at` DATETIME(3) NULL,
+  `locked_until` DATETIME(3) NULL,
   `token_version` INT NOT NULL DEFAULT 1,
   `has_account` BOOLEAN NOT NULL DEFAULT TRUE,
   `judicial_grade` INT NULL,
@@ -111,6 +135,25 @@ CREATE TABLE IF NOT EXISTS `users` (
   `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   INDEX `idx_role_status` (`role`, `is_active`),
   INDEX `idx_province` (`province`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- ۵.۱. جدول نشست‌های امنیتی کاربران (User Sessions - اصل ۱۰: Refresh Token Rotation & Reuse Detection)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_sessions` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `family_id` VARCHAR(64) NOT NULL,
+  `refresh_token_hash` CHAR(64) NOT NULL,
+  `ip_address` VARCHAR(45) NOT NULL,
+  `user_agent` VARCHAR(512) NOT NULL,
+  `is_revoked` BOOLEAN NOT NULL DEFAULT FALSE,
+  `expires_at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_user_expires` (`user_id`, `expires_at`),
+  INDEX `idx_family` (`family_id`),
+  CONSTRAINT `fk_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -205,7 +248,7 @@ CREATE TABLE IF NOT EXISTS `course_enrollments` (
   `admin_note` TEXT NULL,
   `version` INT NOT NULL DEFAULT 1,
   `enrolled_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  INDEX `idx_user_course` (`user_id`, `course_id`),
+  UNIQUE KEY `uq_course_user` (`course_id`, `user_id`),
   CONSTRAINT `fk_enroll_course` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_enroll_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -361,11 +404,22 @@ CREATE TABLE IF NOT EXISTS `consumables` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- ۱۸. جدول درخواست‌های شبکه هم‌افزایی (Synergy Posts)
+-- ۱۷.۱. جدول هویت‌های مجزای دیوار هم‌افزایی (Wall Identities - اصل ۳: ایزولاسیون هویت و عدم الحاق)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `wall_identities` (
+  `user_id` BINARY(16) NOT NULL PRIMARY KEY,
+  `pseudonym` VARCHAR(128) NOT NULL,
+  `identity_hash` CHAR(64) NOT NULL UNIQUE,
+  `salt` CHAR(32) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- ۱۸. جدول درخواست‌های شبکه هم‌افزایی (Synergy Posts - اصل ۷: فاقد هرگونه user_id یا ردپای هویتی)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `synergy_posts` (
   `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `author_id` VARCHAR(36) NOT NULL,
+  `post_token` CHAR(64) NOT NULL UNIQUE,
   `author_pseudonym` VARCHAR(255) NOT NULL,
   `is_anonymous` BOOLEAN NOT NULL DEFAULT TRUE,
   `title` VARCHAR(255) NOT NULL,
@@ -380,12 +434,12 @@ CREATE TABLE IF NOT EXISTS `synergy_posts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- ۱۹. جدول پاسخ‌های شبکه هم‌افزایی (Synergy Responses)
+-- ۱۹. جدول پاسخ‌های شبکه هم‌افزایی (Synergy Responses - فاقد هرگونه user_id)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `synergy_responses` (
   `id` VARCHAR(36) NOT NULL PRIMARY KEY,
   `post_id` VARCHAR(36) NOT NULL,
-  `responder_id` VARCHAR(36) NOT NULL,
+  `response_token` CHAR(64) NOT NULL UNIQUE,
   `responder_pseudonym` VARCHAR(255) NOT NULL,
   `message` TEXT NOT NULL,
   `is_private` BOOLEAN NOT NULL DEFAULT FALSE,

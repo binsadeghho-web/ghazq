@@ -27,12 +27,38 @@ export interface StructuredLogPayload {
 }
 
 export class StructuredLogger {
+  private maskPii(text: string): string {
+    // Mask Iranian mobile numbers (09xxxxxxxxx -> 0912***4567)
+    let masked = text.replace(/(\b09\d{2})\d{4}(\d{3}\b)/g, '$1****$2');
+    // Mask 10-digit national IDs (\b\d{10}\b -> 123****789)
+    masked = masked.replace(/(\b\d{3})\d{4}(\d{3}\b)/g, '$1****$2');
+    return masked;
+  }
+
+  private sanitizeContext(obj: any): any {
+    if (!obj || typeof obj !== 'object') return obj;
+    const sanitized: Record<string, any> = Array.isArray(obj) ? [] : {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (/password|token|secret|pin/i.test(key)) {
+        sanitized[key] = '[REDACTED]';
+      } else if (typeof value === 'string') {
+        sanitized[key] = this.maskPii(value);
+      } else if (typeof value === 'object') {
+        sanitized[key] = this.sanitizeContext(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+
   private formatLog(level: LogLevel, message: string, meta: Partial<StructuredLogPayload> = {}): string {
     const entry: StructuredLogPayload = {
       timestamp: new Date().toISOString(),
       level,
-      message,
+      message: this.maskPii(message),
       ...meta,
+      context: meta.context ? this.sanitizeContext(meta.context) : undefined,
     };
     return JSON.stringify(entry);
   }

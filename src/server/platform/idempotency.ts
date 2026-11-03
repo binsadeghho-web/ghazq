@@ -11,6 +11,17 @@ export interface IdempotencyRecord {
 }
 
 const idempotencyStore = new Map<string, IdempotencyRecord>();
+const inFlightKeys = new Set<string>();
+
+// Periodic cleanup of keys older than 72 hours (Section 6.1 & Item 8)
+setInterval(() => {
+  const cutoff = Date.now() - 72 * 3600 * 1000;
+  for (const [key, record] of idempotencyStore.entries()) {
+    if (new Date(record.createdAt).getTime() < cutoff) {
+      idempotencyStore.delete(key);
+    }
+  }
+}, 3600 * 1000); // Purge hourly
 
 /**
  * Computes deterministic SHA-256 hash of the request body + method + path
@@ -25,7 +36,7 @@ export function computeRequestHash(req: Request): string {
 }
 
 /**
- * Middleware enforcing Idempotency-Key contract (Section 6.1)
+ * Middleware enforcing Idempotency-Key contract (Section 6.1 & Item 8)
  * Table: idempotency_keys (user_id, key, request_hash, response, status_code, created_at)
  */
 export function handleIdempotency(req: Request, res: Response, next: NextFunction): void {
@@ -42,6 +53,14 @@ export function handleIdempotency(req: Request, res: Response, next: NextFunctio
   const actorId = (req as any).user?.id || (req.headers['x-actor-id'] as string) || req.ip || 'anonymous';
   const compositeKey = `${actorId}:${idempotencyKey}`;
   const requestHash = computeRequestHash(req);
+
+  // 1. Check for concurrent in-flight request with same key (Item 8: Return 409 Conflict)
+  if (inFlightKeys.has(compositeKey)) {
+    throw AppError.conflict(
+      'عملیاتی با این کلید هم‌اکنون در حال پردازش در سرور است؛ لطفاً منتظر بمانید.',
+      'CONCURRENT_IDEMPOTENCY_IN_FLIGHT'
+    );
+  }
 
   const existingRecord = idempotencyStore.get(compositeKey);
 
@@ -63,9 +82,13 @@ export function handleIdempotency(req: Request, res: Response, next: NextFunctio
     );
   }
 
-  // Intercept json output to save successful response
+  // Mark in-flight
+  inFlightKeys.add(compositeKey);
+
+  // Intercept json output to save successful response and release in-flight lock
   const originalJson = res.json.bind(res);
   res.json = (body: any): Response => {
+    inFlightKeys.delete(compositeKey);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       idempotencyStore.set(compositeKey, {
         requestHash,
@@ -76,6 +99,10 @@ export function handleIdempotency(req: Request, res: Response, next: NextFunctio
     }
     return originalJson(body);
   };
+
+  res.on('close', () => {
+    inFlightKeys.delete(compositeKey);
+  });
 
   next();
 }

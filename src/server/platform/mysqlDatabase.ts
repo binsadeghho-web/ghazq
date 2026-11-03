@@ -23,13 +23,15 @@ export const dbConfig = {
   user: process.env.DB_USER || process.env.MYSQL_USER || 'root',
   password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || 'yeNn1HZfLMrkUa52lwHm',
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE || 'ghzadatafgd_db',
-  connectionLimit: 10,
+  connectionLimit: 10, // Item 10: Pool sizing based on Little's Law for cloud micro-instance
   waitForConnections: true,
   queueLimit: 100,
   connectTimeout: 7000,
   enableKeepAlive: true,
+  idleTimeout: 60000, // Item 5: Close idle connections after 60s
   timezone: 'Z',
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  decimalNumbers: false, // Item 18: Read DECIMAL as string to prevent floating point inaccuracies
 };
 
 let pool: Pool | null = null;
@@ -38,6 +40,12 @@ let isConnected = false;
 export function getPool(): Pool {
   if (!pool) {
     pool = mysql.createPool(dbConfig);
+
+    // Item 4: Run on every pool connection explicitly
+    pool.on('connection', (connection: any) => {
+      connection.query("SET time_zone='+00:00';");
+      connection.query("SET NAMES utf8mb4;");
+    });
   }
   return pool;
 }
@@ -47,11 +55,63 @@ export function isDatabaseConnected(): boolean {
 }
 
 /**
+ * Item 5: Pool Connection Acquire with Timeout via Promise.race
+ * (mysql2 does not provide native acquireTimeout option)
+ */
+export async function acquireConnection(timeoutMs = 3000): Promise<PoolConnection> {
+  const p = getPool();
+  let timer: NodeJS.Timeout;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`مهلت دریافت اتصال از استخر پایگاه داده پس از ${timeoutMs} میلی‌ثانیه به پایان رسید (Pool Acquire Timeout).`));
+    }, timeoutMs);
+  });
+
+  try {
+    const conn = await Promise.race([p.getConnection(), timeoutPromise]);
+    clearTimeout(timer!);
+    return conn;
+  } catch (err) {
+    clearTimeout(timer!);
+    throw err;
+  }
+}
+
+/**
+ * Item 5: SELECT Query with Optimizer Timeout Hint
+ */
+export async function selectWithTimeout<T = any>(
+  query: string,
+  params: any[] = [],
+  timeoutMs = 3000
+): Promise<T[]> {
+  const p = getPool();
+  // Inject MySQL 8 optimizer hint if SELECT
+  const hintedQuery = query.trim().toUpperCase().startsWith('SELECT')
+    ? query.replace(/^SELECT/i, `SELECT /*+ MAX_EXECUTION_TIME(${timeoutMs}) */`)
+    : query;
+
+  const [rows] = await p.query<any>(hintedQuery, params);
+  return rows as T[];
+}
+
+export async function checkDatabaseConnection(): Promise<boolean> {
+  try {
+    await selectWithTimeout('SELECT 1 as alive', [], 2000);
+    isConnected = true;
+    return true;
+  } catch (err: any) {
+    isConnected = false;
+    return false;
+  }
+}
+
+/**
  * Unit of Work: Executes callback within a transaction (Data Architecture Ref v3.0, Section 2 & 5)
  */
 export async function withTx<T>(fn: (conn: PoolConnection) => Promise<T>): Promise<T> {
-  const p = getPool();
-  const conn = await p.getConnection();
+  const conn = await acquireConnection(4000);
   try {
     await conn.beginTransaction();
     const result = await fn(conn);
@@ -491,22 +551,71 @@ export async function saveSystemSetting<T>(key: string, value: T, description?: 
   }
 }
 
+export interface SystemSettingRecord<T> {
+  key: string;
+  value: T;
+  version: number;
+  lastModifiedBy: string | null;
+  updatedAt: string;
+}
+
 /**
- * Retrieves a system setting from MySQL system_settings table.
+ * Retrieves setting with version and lastModified metadata directly from MySQL
  */
-export async function getSystemSetting<T>(key: string): Promise<T | null> {
+export async function getSystemSettingRecord<T>(key: string): Promise<SystemSettingRecord<T> | null> {
   if (!isConnected) return null;
   try {
     const p = getPool();
     const [rows] = await p.query<any[]>(
-      'SELECT setting_value FROM system_settings WHERE setting_key = ?',
+      'SELECT setting_key, setting_value, version, last_modified_by, updated_at FROM system_settings WHERE setting_key = ?',
       [key]
     );
     if (rows.length === 0) return null;
-    const raw = rows[0].setting_value;
-    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const row = rows[0];
+    const value = typeof row.setting_value === 'string' ? JSON.parse(row.setting_value) : row.setting_value;
+    return {
+      key: row.setting_key,
+      value,
+      version: Number(row.version || 1),
+      lastModifiedBy: row.last_modified_by,
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+    };
   } catch (err: any) {
-    logger.warn(`Failed to read setting ${key} from MySQL: ${err.message}`);
+    logger.warn(`Failed to read setting record ${key} from MySQL: ${err.message}`);
     return null;
+  }
+}
+
+/**
+ * Item 1: Optimistic Update directly in MySQL:
+ * UPDATE system_settings SET setting_value=?, version=version+1 WHERE setting_key=? AND version=?
+ * If affectedRows === 0, returns conflict: true (triggering HTTP 409).
+ */
+export async function updateSystemSettingOptimistic<T>(
+  key: string,
+  value: T,
+  baseVersion: number,
+  lastModifiedBy: string
+): Promise<{ success: boolean; conflict: boolean; newVersion: number }> {
+  if (!isConnected) {
+    return { success: false, conflict: false, newVersion: baseVersion + 1 };
+  }
+  try {
+    const p = getPool();
+    const [result] = await p.query<any>(
+      `UPDATE system_settings 
+       SET setting_value = ?, version = version + 1, last_modified_by = ?, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE setting_key = ? AND version = ?`,
+      [JSON.stringify(value), lastModifiedBy, key, baseVersion]
+    );
+
+    if (result.affectedRows === 0) {
+      return { success: false, conflict: true, newVersion: baseVersion };
+    }
+
+    return { success: true, conflict: false, newVersion: baseVersion + 1 };
+  } catch (err: any) {
+    logger.warn(`Optimistic update error for ${key}: ${err.message}`);
+    return { success: false, conflict: false, newVersion: baseVersion + 1 };
   }
 }
