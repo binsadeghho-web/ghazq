@@ -4,6 +4,7 @@ import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
 import { AuthContext } from '../../platform/authorization';
+import { getCurrentUser } from '../../platform/sessionAuth';
 import { Consultant, CounselingRequest, CounselingCategory } from '../../../types';
 
 export class CounselingService {
@@ -85,11 +86,8 @@ export function createCounselingRouter(): Router {
 
   router.get('/requests', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const items = await service.getRequests(authCtx);
       res.json(items);
     } catch (err) {
@@ -99,11 +97,8 @@ export function createCounselingRouter(): Router {
 
   router.post('/requests', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.book(authCtx, req.body);
       res.status(201).json(item);
     } catch (err) {

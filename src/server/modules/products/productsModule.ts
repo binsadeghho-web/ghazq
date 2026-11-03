@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { AuthContext } from '../../platform/authorization';
+import { getCurrentUser } from '../../platform/sessionAuth';
 import { Product } from '../../../types';
 
 export class ProductsService {
@@ -60,11 +61,8 @@ export function createProductsRouter(): Router {
 
   router.post('/:id/purchase', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.purchase(authCtx, req.params.id);
       res.json(item);
     } catch (err) {

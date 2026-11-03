@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db, generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { AuthContext, AuthorizationPolicy } from '../../platform/authorization';
+import { getCurrentUser } from '../../platform/sessionAuth';
 import { Course, CourseEnrollment } from '../../../types';
 
 export class CoursesService {
@@ -455,11 +456,8 @@ export function createCoursesRouter(): Router {
 
   router.get('/', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const includeDeleted = req.query.includeDeleted === 'true';
       const items = await service.getAll(authCtx, includeDeleted);
       res.json(items);
@@ -470,11 +468,8 @@ export function createCoursesRouter(): Router {
 
   router.get('/enrollments', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const courseId = req.query.courseId as string | undefined;
       const items = await service.getEnrollments(authCtx, courseId);
       res.json(items);
@@ -485,11 +480,8 @@ export function createCoursesRouter(): Router {
 
   router.post('/:id/enroll', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const result = await service.enroll(authCtx, req.params.id, req.body);
       res.json(result);
     } catch (err) {
@@ -499,11 +491,8 @@ export function createCoursesRouter(): Router {
 
   router.post('/', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const created = await service.createCourse(authCtx, req.body);
       res.status(201).json(created);
     } catch (err) {
@@ -513,11 +502,8 @@ export function createCoursesRouter(): Router {
 
   router.put('/:id', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const updated = await service.updateCourse(authCtx, req.params.id, req.body);
       res.json(updated);
     } catch (err) {
@@ -527,11 +513,8 @@ export function createCoursesRouter(): Router {
 
   router.delete('/:id', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const pin = req.body?.pin || (req.headers['x-security-pin'] as string);
       const result = await service.softDeleteCourse(authCtx, req.params.id, pin);
       res.json(result);
@@ -542,11 +525,8 @@ export function createCoursesRouter(): Router {
 
   router.post('/:id/restore', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const result = await service.restoreCourse(authCtx, req.params.id);
       res.json(result);
     } catch (err) {
@@ -556,11 +536,8 @@ export function createCoursesRouter(): Router {
 
   router.post('/:id/sms', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const result = await service.sendCourseSms(authCtx, req.params.id, req.body);
       res.json(result);
     } catch (err) {
@@ -570,11 +547,8 @@ export function createCoursesRouter(): Router {
 
   router.patch('/enrollments/:id/status', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: decodeURIComponent((req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی'),
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const { status, adminNote } = req.body;
       const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote);
       res.json(updated);

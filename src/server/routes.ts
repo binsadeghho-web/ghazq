@@ -36,24 +36,38 @@ export function createMasterRouter(): Router {
   router.use('/synergy', synergyRouter);
   router.use('/admin', createAdminRouter());
 
-  // Golden Signals Observability Metrics (Section 11 & Item 2: Restrict to Admin Session or Constant-Time Secret Token)
+  // Golden Signals Observability Metrics (Section 11 & Item 1: Strict Admin Session or SHA-256 timingSafeEqual Token)
   router.get('/metrics', (req: Request, res: Response) => {
-    const userRole = (req.headers['x-user-role'] as string) || '';
-    const bearerHeader = req.headers['authorization'] || '';
-    const token = bearerHeader.startsWith('Bearer ') ? bearerHeader.slice(7).trim() : (req.headers['x-metrics-token'] as string) || '';
-    const configuredSecret = process.env.METRICS_SECRET || 'ghaza-metrics-token-2026';
+    let isAuthorized = false;
 
-    const isTokenValid = token && token.length === configuredSecret.length &&
-      crypto.timingSafeEqual(Buffer.from(token), Buffer.from(configuredSecret));
+    // 1. Check real server-verified admin session
+    const sessionUser = (req as any).user;
+    if (sessionUser && sessionUser.role === 'admin') {
+      isAuthorized = true;
+    }
 
-    const isAdminSession = userRole === 'admin';
+    // 2. Check METRICS_SECRET environment variable (disabled if env variable is unset)
+    const metricsSecretEnv = process.env.METRICS_SECRET;
+    if (!isAuthorized && metricsSecretEnv && metricsSecretEnv.trim().length > 0) {
+      const authHeader = req.headers['authorization'] || '';
+      const tokenHeader = (req.headers['x-metrics-token'] as string) ||
+        (authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '');
 
-    if (!isAdminSession && !isTokenValid) {
+      if (tokenHeader.length > 0) {
+        const hashExpected = crypto.createHash('sha256').update(metricsSecretEnv.trim()).digest();
+        const hashReceived = crypto.createHash('sha256').update(tokenHeader.trim()).digest();
+        if (crypto.timingSafeEqual(hashExpected, hashReceived)) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
       return res.status(403).json({
         type: 'forbidden',
         title: 'دسترسی غیرمجاز',
         status: 403,
-        detail: 'مشاهده متریک‌های عملکردی سامانه فقط با نشست ادمین یا توکن معتبر مجاز است.',
+        detail: 'مشاهده متریک‌های عملکردی سامانه فقط با نشست ادمین یا توکن معتبر متغیر محیطی مجاز است.',
         code: 'ACCESS_DENIED'
       });
     }
@@ -108,13 +122,10 @@ export function createMasterRouter(): Router {
 
   // Real-time Server-Sent Events (SSE) (Section 8 & Item 2, 8)
   router.get('/events', (req: Request, res: Response) => {
-    // 1. Authenticate via HttpOnly Cookie or Auth Header (No token in URL parameters)
-    const rawCookies = req.headers.cookie || '';
-    const cookieMatch = rawCookies.match(/session_id=([^;]+)/);
-    const userId = (req.headers['x-user-id'] as string) || (cookieMatch ? cookieMatch[1] : null);
-    const userRole = (req.headers['x-user-role'] as string) || 'alumni';
+    // 1. Authenticate strictly via server-verified session (No token in URL parameters, no client identity headers)
+    const currentUser = (req as any).user;
 
-    if (!userId) {
+    if (!currentUser || !currentUser.id) {
       return res.status(401).json({
         type: 'unauthorized',
         title: 'عدم احراز هویت',
@@ -123,6 +134,9 @@ export function createMasterRouter(): Router {
         code: 'UNAUTHENTICATED'
       });
     }
+
+    const userId = currentUser.id;
+    const userRole = currentUser.role;
 
     // 2. Concurrency Capping per User (Item 8: Max 3 concurrent SSE connections per user)
     const activeConns = userSseConnections.get(userId) || new Set<Response>();

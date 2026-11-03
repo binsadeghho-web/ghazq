@@ -31,22 +31,24 @@ function generateClientUUID(): string {
 }
 
 class ApiClient {
-  private currentUserId: string = 'usr_alumni_01';
-  private currentUserRole: string = 'alumni';
-  private currentUserName: string = 'دکتر علیرضا میرزایی';
+  private sessionToken: string = 'demo-session';
 
-  public setAuthContext(userId: string, role: string, name: string): void {
-    this.currentUserId = userId;
-    this.currentUserRole = role;
-    this.currentUserName = name;
+  public setAuthContext(_userId: string, _role: string, _name: string, sessionToken?: string): void {
+    if (sessionToken) {
+      this.sessionToken = sessionToken;
+    }
+  }
+
+  public setSessionToken(token: string): void {
+    this.sessionToken = token;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {});
     headers.set('Content-Type', 'application/json');
-    headers.set('x-user-id', this.currentUserId);
-    headers.set('x-user-role', this.currentUserRole);
-    headers.set('x-user-name', encodeURIComponent(this.currentUserName));
+    if (this.sessionToken) {
+      headers.set('Authorization', `Bearer ${this.sessionToken}`);
+    }
 
     // Attach Idempotency-Key for write operations (Section 6.1)
     if ((options.method === 'POST' || options.method === 'PATCH') && !headers.has('Idempotency-Key')) {

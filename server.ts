@@ -7,8 +7,9 @@ import { idempotencyMiddleware } from './src/server/platform/idempotency';
 import { rateLimitMiddleware } from './src/server/platform/rateLimiter';
 import { rfc9457ErrorHandler } from './src/server/platform/errors';
 import { createMasterRouter, metricsStore } from './src/server/routes';
-import { normalizePayload } from './src/server/platform/persianNormalizer';
+import { persianNormalizerMiddleware } from './src/server/platform/persianNormalizer';
 import { initStorageDirectories, storageConfig, getStorageHealth } from './src/server/platform/storage';
+import { sessionAuthMiddleware } from './src/server/platform/sessionAuth';
 
 async function bootstrap() {
   const app = express();
@@ -27,13 +28,8 @@ async function bootstrap() {
   // Request body parsing with bounded size (Section 10)
   app.use(express.json({ limit: '5mb' }));
 
-  // Item 11: Persian / Arabic character & digit normalization at API boundary
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    if (req.body && typeof req.body === 'object') {
-      req.body = normalizePayload(req.body);
-    }
-    next();
-  });
+  // Item 9 & 11: Persian / Arabic character & digit normalization (skipping sensitive keys)
+  app.use(persianNormalizerMiddleware);
 
   // Item 5: HTTP Request Timeout Middleware (15s request budget)
   app.use((req: Request, res: Response, next: NextFunction) => {
@@ -132,6 +128,9 @@ async function bootstrap() {
 
   // Idempotency Key Middleware on API routes (Section 6.1)
   app.use('/api', idempotencyMiddleware());
+
+  // Strict Server Session Authentication (strips client x-user-* headers)
+  app.use('/api', sessionAuthMiddleware);
 
   // Master API router
   app.use('/api', createMasterRouter());

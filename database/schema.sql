@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
 -- ۲. جدول کلیدهای یکتای عملیات (Idempotency Keys - اصل ۶.۱ معماری داده)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `idempotency_keys` (
-  `user_id` VARCHAR(64) NOT NULL,
+  `user_id` BINARY(16) NOT NULL,
   `key` VARCHAR(64) NOT NULL,
   `request_hash` CHAR(64) NOT NULL,
   `response` JSON NULL,
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `idempotency_keys` (
 -- ۳. جدول پیام‌های تراکنشی رویدادها (Transactional Outbox - اصل ۶.۲ معماری داده)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `outbox` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `topic` VARCHAR(100) NOT NULL,
   `payload` JSON NOT NULL,
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS `outbox` (
 -- ۴. دفترچه ثبت وقایع امنیتی با هش زنجیره‌ای SHA-256 (Audit Logs - اصل ۱۰ معماری داده)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `audit_logs` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `timestamp` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `event_type` VARCHAR(64) NOT NULL,
   `actor_id` VARCHAR(64) NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 -- ۵. جدول کاربران و اعضای نخبه (Users)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `national_id` VARCHAR(10) NOT NULL UNIQUE,
   `username` VARCHAR(64) NULL UNIQUE,
   `password_hash` VARCHAR(255) NULL,
@@ -141,8 +141,8 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- ۵.۱. جدول نشست‌های امنیتی کاربران (User Sessions - اصل ۱۰: Refresh Token Rotation & Reuse Detection)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `user_sessions` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `user_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `user_id` BINARY(16) NOT NULL,
   `family_id` VARCHAR(64) NOT NULL,
   `refresh_token_hash` CHAR(64) NOT NULL,
   `ip_address` VARCHAR(45) NOT NULL,
@@ -160,13 +160,13 @@ CREATE TABLE IF NOT EXISTS `user_sessions` (
 -- ۶. جدول کارتابل درخواست‌های اداری و شغلی (Cartable Requests)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `cartable_requests` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `tracking_number` VARCHAR(32) NOT NULL UNIQUE,
   `category` ENUM('career', 'administrative', 'educational') NOT NULL,
   `category_title` VARCHAR(128) NOT NULL,
   `title` VARCHAR(255) NOT NULL,
   `description` TEXT NOT NULL,
-  `applicant_id` VARCHAR(36) NOT NULL,
+  `applicant_id` BINARY(16) NOT NULL,
   `applicant_name` VARCHAR(255) NOT NULL,
   `applicant_role_title` VARCHAR(128) NOT NULL,
   `priority` ENUM('normal', 'urgent', 'instant') NOT NULL DEFAULT 'normal',
@@ -185,9 +185,9 @@ CREATE TABLE IF NOT EXISTS `cartable_requests` (
 -- ۷. جدول پیام‌های درون کارتابل (Cartable Messages)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `cartable_messages` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `request_id` VARCHAR(36) NOT NULL,
-  `sender_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `request_id` BINARY(16) NOT NULL,
+  `sender_id` BINARY(16) NOT NULL,
   `sender_name` VARCHAR(255) NOT NULL,
   `sender_role` VARCHAR(32) NOT NULL,
   `text` TEXT NOT NULL,
@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS `cartable_messages` (
 -- ۸. جدول دوره‌های آموزشی و توانمندسازی (Courses)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `courses` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
   `instructor` VARCHAR(255) NOT NULL,
   `instructor_title` VARCHAR(128) NULL,
@@ -232,10 +232,10 @@ CREATE TABLE IF NOT EXISTS `courses` (
 -- ۹. جدول ثبت‌نام دوره‌های آموزشی (Course Enrollments)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `course_enrollments` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `course_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `course_id` BINARY(16) NOT NULL,
   `course_title` VARCHAR(255) NOT NULL,
-  `user_id` VARCHAR(36) NOT NULL,
+  `user_id` BINARY(16) NOT NULL,
   `user_name` VARCHAR(255) NOT NULL,
   `user_national_id` VARCHAR(10) NOT NULL,
   `user_phone` VARCHAR(15) NOT NULL,
@@ -257,7 +257,7 @@ CREATE TABLE IF NOT EXISTS `course_enrollments` (
 -- ۱۰. جدول محصولات، کتب و انتشارات (Products)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `products` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
   `subtitle` VARCHAR(255) NULL,
   `author_or_presenter` VARCHAR(255) NOT NULL,
@@ -280,10 +280,10 @@ CREATE TABLE IF NOT EXISTS `products` (
 -- ۱۱. جدول سفارشات محصولات انتشارات (Product Orders)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `product_orders` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `product_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `product_id` BINARY(16) NOT NULL,
   `product_title` VARCHAR(255) NOT NULL,
-  `user_id` VARCHAR(36) NOT NULL,
+  `user_id` BINARY(16) NOT NULL,
   `user_name` VARCHAR(255) NOT NULL,
   `user_phone` VARCHAR(15) NOT NULL,
   `amount_paid` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
@@ -299,7 +299,7 @@ CREATE TABLE IF NOT EXISTS `product_orders` (
 -- ۱۲. جدول اساتید و مشاورین (Consultants)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `consultants` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,
   `title` VARCHAR(255) NOT NULL,
   `specialty` VARCHAR(255) NOT NULL,
@@ -316,13 +316,13 @@ CREATE TABLE IF NOT EXISTS `consultants` (
 -- ۱۳. جدول درخواست‌های مشاوره (Counseling Requests)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `counseling_requests` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `applicant_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `applicant_id` BINARY(16) NOT NULL,
   `applicant_name` VARCHAR(255) NOT NULL,
   `category` VARCHAR(64) NOT NULL,
   `category_title` VARCHAR(128) NOT NULL,
   `counseling_type` ENUM('general', 'specialized_career') NOT NULL DEFAULT 'general',
-  `preferred_consultant_id` VARCHAR(36) NULL,
+  `preferred_consultant_id` BINARY(16) NULL,
   `preferred_consultant_name` VARCHAR(255) NULL,
   `description` TEXT NOT NULL,
   `status` ENUM('pending', 'scheduled', 'attended', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
@@ -338,7 +338,7 @@ CREATE TABLE IF NOT EXISTS `counseling_requests` (
 -- ۱۴. جدول دادنامه‌ها و تالار آراء (Judicial Rulings)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `judicial_rulings` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
   `court_branch` VARCHAR(255) NOT NULL,
   `judge_name` VARCHAR(255) NOT NULL,
@@ -349,7 +349,7 @@ CREATE TABLE IF NOT EXISTS `judicial_rulings` (
   `legal_principles` JSON NULL,
   `full_ruling_text` MEDIUMTEXT NOT NULL,
   `status` ENUM('pending_review', 'selected') NOT NULL DEFAULT 'selected',
-  `submitted_by_id` VARCHAR(36) NOT NULL,
+  `submitted_by_id` BINARY(16) NOT NULL,
   `submitted_by_name` VARCHAR(255) NOT NULL,
   `likes_count` INT NOT NULL DEFAULT 0,
   `version` INT NOT NULL DEFAULT 1,
@@ -360,8 +360,8 @@ CREATE TABLE IF NOT EXISTS `judicial_rulings` (
 -- ۱۵. جدول نظرات و نقدهای تالار آراء (Ruling Discussions)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `ruling_discussions` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `ruling_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `ruling_id` BINARY(16) NOT NULL,
   `author_name` VARCHAR(255) NOT NULL,
   `author_role_title` VARCHAR(128) NOT NULL,
   `comment` TEXT NOT NULL,
@@ -373,8 +373,8 @@ CREATE TABLE IF NOT EXISTS `ruling_discussions` (
 -- ۱۶. جدول درخواست‌های تسهیلات و رفاهیات (Welfare Requests)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `welfare_requests` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `applicant_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `applicant_id` BINARY(16) NOT NULL,
   `applicant_name` VARCHAR(255) NOT NULL,
   `type` ENUM('loan', 'accommodation') NOT NULL,
   `type_title` VARCHAR(128) NOT NULL,
@@ -391,7 +391,7 @@ CREATE TABLE IF NOT EXISTS `welfare_requests` (
 -- ۱۷. جدول اقلام مصرفی تعاونی اعضا (Consumables)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `consumables` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
   `category` VARCHAR(128) NOT NULL,
   `cooperative_price` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS `wall_identities` (
 -- ۱۸. جدول درخواست‌های شبکه هم‌افزایی (Synergy Posts - اصل ۷: فاقد هرگونه user_id یا ردپای هویتی)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `synergy_posts` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `post_token` CHAR(64) NOT NULL UNIQUE,
   `author_pseudonym` VARCHAR(255) NOT NULL,
   `is_anonymous` BOOLEAN NOT NULL DEFAULT TRUE,
@@ -430,15 +430,16 @@ CREATE TABLE IF NOT EXISTS `synergy_posts` (
   `is_empathy` BOOLEAN NOT NULL DEFAULT FALSE,
   `urgency` ENUM('عادی', 'فوری') NOT NULL DEFAULT 'عادی',
   `status` ENUM('open', 'resolved') NOT NULL DEFAULT 'open',
-  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX `idx_created_id` (`created_at`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
 -- ۱۹. جدول پاسخ‌های شبکه هم‌افزایی (Synergy Responses - فاقد هرگونه user_id)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `synergy_responses` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `post_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `post_id` BINARY(16) NOT NULL,
   `response_token` CHAR(64) NOT NULL UNIQUE,
   `responder_pseudonym` VARCHAR(255) NOT NULL,
   `message` TEXT NOT NULL,
@@ -449,11 +450,22 @@ CREATE TABLE IF NOT EXISTS `synergy_responses` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
+-- ۱۹.۱. جدول ایزوله مالکیت پست‌های دیوار (Wall Ownership - فاقد JOIN در کوئری عمومی)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `wall_ownership` (
+  `post_id` BINARY(16) NOT NULL,
+  `user_id` BINARY(16) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`post_id`, `user_id`),
+  INDEX `idx_user_posts` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
 -- ۲۰. جدول تجارب کاربردی و علمی اعضا (Experiences)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `experiences` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
-  `author_id` VARCHAR(36) NOT NULL,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `author_id` BINARY(16) NOT NULL,
   `author_title` VARCHAR(255) NOT NULL,
   `category` VARCHAR(64) NOT NULL,
   `title` VARCHAR(255) NOT NULL,
@@ -468,11 +480,11 @@ CREATE TABLE IF NOT EXISTS `experiences` (
 -- ۲۱. جدول پیام‌های چت اختصاصی و ۱ به ۱ (Private Direct Messages)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `private_messages` (
-  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
   `conversation_topic` VARCHAR(255) NOT NULL,
-  `sender_id` VARCHAR(36) NOT NULL,
+  `sender_id` BINARY(16) NOT NULL,
   `sender_pseudonym` VARCHAR(255) NOT NULL,
-  `recipient_id` VARCHAR(36) NOT NULL,
+  `recipient_id` BINARY(16) NOT NULL,
   `message` TEXT NOT NULL,
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

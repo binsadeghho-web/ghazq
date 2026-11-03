@@ -1,13 +1,23 @@
 /**
- * IndexedDB Draft Storage for long-form user inputs (Section 7 & Item 15)
- * - Persists unsaved drafts of research proposals, ruling critiques, and lengthy requests.
- * - Sensitive credentials (passwords, PINs, tokens) are EXCLUDED by design.
+ * IndexedDB Draft Storage for long-form user inputs (Section 7 & Item 10)
+ * - Persists unsaved drafts of research proposals, ruling critiques, and lengthy academic texts.
+ * - STRICT WHITELIST: Only pre-approved non-sensitive form keys are allowed.
+ * - Any unapproved key (counseling, financial, synergy, auth, passwords) is rejected immediately.
  * - Automatically purges on user logout to prevent data residue on shared machines.
  */
 
 const DB_NAME = 'fegh_ghaza_drafts_db';
 const DB_VERSION = 1;
 const STORE_NAME = 'form_drafts';
+
+// Item 10: Strict Whitelist of approved non-sensitive form keys
+export const ALLOWED_DRAFT_KEYS = new Set([
+  'research-proposal',
+  'article-draft',
+  'ruling-critique-draft',
+  'thesis-proposal-draft',
+  'scientific-essay-draft',
+]);
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -29,21 +39,14 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-// Item 9: Strict prohibition of sensitive domains in IndexedDB
-const PROHIBITED_DRAFT_PATTERNS = [
-  /counseling/i,    // مشاوره و روانشناسی
-  /synergy/i,       // پست‌های هم‌افزایی و هویت ناشناس
-  /anonymous/i,     // محتوای ناشناس
-  /order/i,         // سفارشات و خرید
-  /financial/i,     // اطلاعات مالی و حساب
-  /welfare/i,       // درخواست‌های وام و تسهیلات رفاهی
-  /payment/i,       // پرداخت‌ها
-];
+export function isDraftKeyAllowed(key: string): boolean {
+  return ALLOWED_DRAFT_KEYS.has(key);
+}
 
 export async function saveFormDraft(key: string, data: Record<string, any>): Promise<void> {
-  // Enforce policy: Only non-sensitive forms (e.g. research_proposal, article_draft) allowed
-  if (PROHIBITED_DRAFT_PATTERNS.some(pattern => pattern.test(key))) {
-    throw new Error(`خطای امنیتی: ذخیره‌سازی پیش‌نویس در IndexedDB برای کلید '${key}' (مشاوره، هم‌افزایی ناشناس، سفارشات و داده‌های مالی) اکیداً ممنوع است.`);
+  // Item 10: Enforce strict whitelist
+  if (!ALLOWED_DRAFT_KEYS.has(key)) {
+    throw new Error(`خطای امنیتی: کلید پیش‌نویس '${key}' در لیست سفید مجاز IndexedDB قرار ندارد. ذخیره‌سازی رد شد.`);
   }
 
   try {
@@ -51,12 +54,13 @@ export async function saveFormDraft(key: string, data: Record<string, any>): Pro
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
 
-    // Sanitize sensitive credentials before saving
+    // Defense in depth: sanitize any credential property if present
     const sanitized = { ...data };
     delete sanitized.password;
     delete sanitized.token;
     delete sanitized.nationalId;
     delete sanitized.pin;
+    delete sanitized.otp;
 
     store.put({
       key,
@@ -70,10 +74,15 @@ export async function saveFormDraft(key: string, data: Record<string, any>): Pro
     });
   } catch (err) {
     console.warn('Failed to save draft to IndexedDB:', err);
+    throw err;
   }
 }
 
 export async function getFormDraft<T = Record<string, any>>(key: string): Promise<T | null> {
+  if (!ALLOWED_DRAFT_KEYS.has(key)) {
+    return null;
+  }
+
   try {
     const db = await openDb();
     const tx = db.transaction(STORE_NAME, 'readonly');

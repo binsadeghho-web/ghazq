@@ -10,10 +10,12 @@ export function createResearchRouter(): Router {
   return researchRouter;
 }
 
+import { getCurrentUser } from '../../platform/sessionAuth';
+
 function getAuthenticatedUser(req: Request): User {
-  const userId = req.headers['x-user-id'] as string;
-  const user = db.getState().users.find(u => u.id === userId);
-  return user || db.getState().users[0];
+  const u = getCurrentUser(req);
+  const found = db.getState().users.find(user => user.id === u.id);
+  return found || (u as any);
 }
 
 researchRouter.get('/', (req: Request, res: Response) => {

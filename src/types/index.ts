@@ -519,7 +519,7 @@ export interface ConsumableOrder {
 
 export interface SynergyPost {
   id: string;
-  authorId: string;
+  authorId?: string;
   authorPseudonym: string; // Protects actual identity (e.g. "قاضی شعبه ۱۰ تجدیدنظر"، "پژوهشگر فقه اقتصادی")
   isAnonymous: boolean;
   title: string;
@@ -533,7 +533,7 @@ export interface SynergyPost {
   createdAt: string;
   responses: {
     id: string;
-    responderId: string;
+    responderId?: string;
     responderPseudonym: string;
     message: string;
     isPrivate: boolean;
@@ -561,4 +561,5 @@ export interface SystemSecurityConfig {
   constantTimeDelayMs: number;
   maintenanceMode: boolean;
   autoSessionTimeoutMinutes: number;
+  version?: number;
 }

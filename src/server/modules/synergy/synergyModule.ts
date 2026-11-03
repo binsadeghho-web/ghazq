@@ -2,25 +2,35 @@ import { Router, Request, Response } from 'express';
 import { db, generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { idempotencyMiddleware } from '../../platform/idempotency';
-import { User, SynergyPost } from '../../../types';
+import { getCurrentUser } from '../../platform/sessionAuth';
+import { wallOwnershipRepo } from './wallOwnershipRepository';
+import { SynergyPost } from '../../../types';
 
 export const synergyRouter = Router();
 export function createSynergyRouter(): Router {
   return synergyRouter;
 }
 
-function getAuthenticatedUser(req: Request): User {
-  const userId = req.headers['x-user-id'] as string;
-  const user = db.getState().users.find(u => u.id === userId);
-  return user || db.getState().users[0];
-}
-
+// 1. Get public synergy wall posts (never returns authorId or personal identity)
 synergyRouter.get('/', (_req: Request, res: Response) => {
-  res.json(db.synergyPosts);
+  const sanitized = db.synergyPosts.map(p => {
+    const { authorId: _strip, ...publicFields } = p as any;
+    return publicFields;
+  });
+  res.json(sanitized);
 });
 
+// 2. Get "My Posts" - queried strictly through WallOwnershipRepository without joining public tables
+synergyRouter.get('/my-posts', async (req: Request, res: Response) => {
+  const currentUser = getCurrentUser(req);
+  const myPostIds = await wallOwnershipRepo.findPostIdsByUserId(currentUser.id);
+  const myPosts = db.synergyPosts.filter(p => myPostIds.includes(p.id));
+  res.json(myPosts);
+});
+
+// 3. Create Synergy Post (Records ownership in isolated wall_ownership table)
 synergyRouter.post('/', idempotencyMiddleware, async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
+  const currentUser = getCurrentUser(req);
   const { title, content, provinceOrCity, category, categoryTitle, isEmpathy, urgency, isAnonymous } = req.body;
 
   if (!title || !content) {
@@ -32,9 +42,9 @@ synergyRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
   const pseudonym = isAnonymous ? `همکار قضایی (کد پیگیری: ${randCode})` : currentUser.fullName;
   const now = new Date().toISOString();
 
+  // Public post object: authorId is omitted
   const newPost: SynergyPost & { version: number } = {
     id,
-    authorId: currentUser.id,
     authorPseudonym: pseudonym,
     isAnonymous: Boolean(isAnonymous),
     title,
@@ -52,6 +62,9 @@ synergyRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
 
   await db.withTx(async tx => {
     tx.synergyPosts.unshift(newPost);
+
+    // Record ownership in isolated repository (Item 7)
+    await wallOwnershipRepo.recordOwnership(id, currentUser.id);
 
     tx.emitAudit({
       eventType: 'CARTABLE_STATUS_CHANGE',
@@ -73,8 +86,9 @@ synergyRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
   res.status(201).json(newPost);
 });
 
+// 4. Respond to Post (Anonymized responses with pseudonym)
 synergyRouter.post('/:id/respond', async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
+  const currentUser = getCurrentUser(req);
   const { message, isPrivate, contactShared } = req.body;
 
   if (!message || !message.trim()) {
@@ -83,7 +97,6 @@ synergyRouter.post('/:id/respond', async (req: Request, res: Response) => {
 
   const responseId = generateUUIDv7();
   const timestamp = new Date().toISOString();
-
   let updatedPost: any;
 
   await db.withTx(async tx => {
@@ -95,7 +108,6 @@ synergyRouter.post('/:id/respond', async (req: Request, res: Response) => {
 
     const responseItem = {
       id: responseId,
-      responderId: currentUser.id,
       responderPseudonym,
       message: message.trim(),
       isPrivate: Boolean(isPrivate),

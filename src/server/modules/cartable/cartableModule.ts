@@ -248,6 +248,8 @@ export class CartableService {
   }
 }
 
+import { getCurrentUser } from '../../platform/sessionAuth';
+
 export function createCartableRouter(): Router {
   const router = Router();
   const repo = new CartableRepository();
@@ -255,11 +257,8 @@ export function createCartableRouter(): Router {
 
   router.get('/', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const items = await service.getRequests(authCtx);
       res.json(items);
     } catch (err) {
@@ -269,11 +268,8 @@ export function createCartableRouter(): Router {
 
   router.get('/:id', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.getRequestById(authCtx, req.params.id);
       res.json(item);
     } catch (err) {
@@ -283,11 +279,8 @@ export function createCartableRouter(): Router {
 
   router.post('/', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.createRequest(authCtx, req.body);
       res.status(201).json(item);
     } catch (err) {
@@ -297,11 +290,8 @@ export function createCartableRouter(): Router {
 
   router.post('/:id/reply', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.addReply(authCtx, req.params.id, req.body.text);
       res.json(item);
     } catch (err) {
@@ -311,11 +301,8 @@ export function createCartableRouter(): Router {
 
   router.post('/:id/read', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-alumni',
-        role: (req.headers['x-user-role'] as any) || 'alumni',
-        fullName: (req.headers['x-user-name'] as string) || 'دکتر علیرضا میرزایی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.markAsRead(authCtx, req.params.id);
       res.json(item);
     } catch (err) {
@@ -325,11 +312,8 @@ export function createCartableRouter(): Router {
 
   router.patch('/:id/status', async (req: Request, res: Response, next) => {
     try {
-      const authCtx: AuthContext = (req as any).user || {
-        userId: (req.headers['x-user-id'] as string) || 'user-supervisor',
-        role: (req.headers['x-user-role'] as any) || 'supervisor',
-        fullName: (req.headers['x-user-name'] as string) || 'حجت‌الاسلام سید مرتضی موسوی',
-      };
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const expectedVersion = Number(req.body.expectedVersion || 1);
       const item = await service.updateStatus(authCtx, req.params.id, req.body.status, expectedVersion);
       res.json(item);

@@ -11,7 +11,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "db:init": "tsx scripts/initDb.ts",
-    "db:backup": "tsx scripts/backupDb.ts"
+    "db:backup": "tsx scripts/backupDb.ts",
+    "admin:reset-2fa": "tsx scripts/reset2fa.ts"
   },
   "dependencies": {
     "@fontsource/vazirmatn": "^5.3.0",
