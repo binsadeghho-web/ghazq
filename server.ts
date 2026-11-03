@@ -1,3 +1,16 @@
+console.log('----------------------------------------------------');
+console.log('🚀 راه اندازی سرور سامانه فقه و قضا (Enterprise Production Server v3.0)');
+console.log(`📡 محیط اجرا: ${process.env.NODE_ENV || 'development'} | پورت: ${process.env.PORT || 3000}`);
+console.log('----------------------------------------------------');
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ FATAL UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ UNHANDLED REJECTION:', reason);
+});
+
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { db, generateUUIDv7 } from './src/server/platform/database';
