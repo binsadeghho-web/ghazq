@@ -228,6 +228,15 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   counselingPromoTitle: 'ویترین و درگاه جامع خدمات مشاوره نخبگان',
   counselingPromoSubtitle: 'مشاوره تخصصی تحصیلی-شغلی قضایی و خدمات روان‌شناختی، خانواده و تاب‌آوری',
   showProductsMiniPromo: true,
+  showRulingsShowcase: true,
+  rulingsShowcaseTitle: 'تالار نقد، ارزیابی و مباحثه آراء و دادنامه‌های قضایی',
+  rulingsShowcaseSubtitle: 'میدان تحلیل رویه‌های قضایی، آراء وحدت رویه و نقدهای حقوقی مستند دانش‌آموختگان نخبه',
+  rulingsShowcaseBadge: 'آراء بحث‌برانگیز و منتخب دیوان و تجدیدنظر',
+  showResearchPromoShowcase: true,
+  researchPromoTitle: 'باشگاه نخبگانی راهبری رساله‌ها، پایان‌نامه‌ها و پژوهش‌های تحول قضایی',
+  researchPromoSubtitle: 'تطبیق با اساتید برجسته خارج فقه و دکتری، تخصیص گرنت پژوهشی، چاپ کتاب و دفاع مقتدرانه',
+  researchPromoBadge: 'حمایت مادی و معنوی ویژه نخبگان',
+  researchPromoGrantAmount: 'تا ۵۰ میلیون تومان گرنت پژوهشی + اسکان مشهد و قم',
 };
 
 export const DEFAULT_MIZAN_CONFIG: MizanDashboardConfig = {

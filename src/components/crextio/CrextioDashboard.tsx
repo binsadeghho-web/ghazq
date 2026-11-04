@@ -41,6 +41,8 @@ import { BooksAndPublicationsShowcase } from './BooksAndPublicationsShowcase';
 import { WelfareAndLoansShowcase } from './WelfareAndLoansShowcase';
 import { MultimediaAndCoursesShowcase } from './MultimediaAndCoursesShowcase';
 import { CrextioHeroStatsCustomizerModal } from './CrextioHeroStatsCustomizerModal';
+import { CrextioRulingsShowcase } from './CrextioRulingsShowcase';
+import { ResearchPromoShowcase } from './ResearchPromoShowcase';
 import { ThemeCustomizerModal } from '../admin/ThemeCustomizerModal';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { DEFAULT_HERO_STATS } from '../../data/mockData';
@@ -205,6 +207,8 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
       {(() => {
         const defaultOrder = [
           'top_vip_row',
+          'rulings_showcase',
+          'research_promo',
           'course_showcase',
           'counseling_promo',
           'welfare_showcase',
@@ -397,6 +401,26 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                     </div>
                   )}
                 </div>
+              );
+
+            case 'rulings_showcase':
+              return (
+                crextioConfig.showRulingsShowcase !== false && (
+                  <CrextioRulingsShowcase
+                    key="rulings_showcase"
+                    onNavigateToRulings={() => onNavigateTab && onNavigateTab('Rulings')}
+                  />
+                )
+              );
+
+            case 'research_promo':
+              return (
+                crextioConfig.showResearchPromoShowcase !== false && (
+                  <ResearchPromoShowcase
+                    key="research_promo"
+                    onNavigateToResearch={() => onNavigateTab && onNavigateTab('Research')}
+                  />
+                )
               );
 
             case 'course_showcase':

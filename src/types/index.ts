@@ -165,6 +165,17 @@ export interface CrextioDashboardConfig {
   welfareShowcaseSubtitle?: string;
   multimediaShowcaseTitle?: string;
   multimediaShowcaseSubtitle?: string;
+  // ویترین تالار نقد و مناظره آراء قضایی
+  showRulingsShowcase?: boolean;
+  rulingsShowcaseTitle?: string;
+  rulingsShowcaseSubtitle?: string;
+  rulingsShowcaseBadge?: string;
+  // ویترین تبلیغی و ترغیبی راهبری پژوهش و رساله‌ها
+  showResearchPromoShowcase?: boolean;
+  researchPromoTitle?: string;
+  researchPromoSubtitle?: string;
+  researchPromoBadge?: string;
+  researchPromoGrantAmount?: string;
   dashboardSectionOrder?: string[];
   hiddenDashboardSections?: Record<string, boolean>;
 }

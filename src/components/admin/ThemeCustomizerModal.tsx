@@ -36,7 +36,7 @@ interface ThemeCustomizerModalProps {
 
 export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOpen, onClose }) => {
   const { crextioConfig, updateCrextioConfig, resetCrextioConfig } = useApp();
-  const [activeTab, setActiveTab] = useState<'modules' | 'modes' | 'styling' | 'showcase' | 'cards' | 'stats'>('modules');
+  const [activeTab, setActiveTab] = useState<'modules' | 'rulings' | 'research' | 'modes' | 'styling' | 'showcase' | 'cards' | 'stats'>('modules');
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState(false);
 
@@ -185,6 +185,28 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
             <span>ماژول‌ها و بخش‌های فعال</span>
           </button>
           <button
+            onClick={() => setActiveTab('rulings')}
+            className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'rulings'
+                ? 'border-amber-700 text-amber-900'
+                : 'border-transparent text-stone-500 hover:text-stone-900'
+            }`}
+          >
+            <Scale className="w-4 h-4 text-amber-700" />
+            <span>ویترین تالار آراء قضایی</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('research')}
+            className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'research'
+                ? 'border-emerald-700 text-emerald-900'
+                : 'border-transparent text-stone-500 hover:text-stone-900'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-emerald-700" />
+            <span>ویترین راهبری پژوهش (ترغیبی)</span>
+          </button>
+          <button
             onClick={() => setActiveTab('cards')}
             className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'cards'
@@ -284,6 +306,8 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                 {(() => {
                   const defaultOrder = [
                     'top_vip_row',
+                    'rulings_showcase',
+                    'research_promo',
                     'course_showcase',
                     'counseling_promo',
                     'welfare_showcase',
@@ -298,6 +322,8 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
 
                   const sectionMeta: Record<string, { title: string; desc: string }> = {
                     top_vip_row: { title: 'بنر وی‌آی‌پی بالای صفحه و کارت پرتره دانش‌آموخته', desc: 'کادر خوش‌آمدگویی هوشمند و پرتره پرسنلی قاضی/دانش‌آموخته' },
+                    rulings_showcase: { title: 'ویترین تالار نقد و مناظره آراء قضایی (جدید)', desc: 'باکس تعاملی دادنامه‌های داغ، استدلال‌ها و ثبت مستقیم نقد و رأی' },
+                    research_promo: { title: 'ویترین ترغیبی و تبلیغی باشگاه راهبری پژوهش (جدید)', desc: 'جذب نخبگان به رساله‌ها با گرنت ۵۰ میلیونی، اسکان و اساتید طراز اول' },
                     course_showcase: { title: 'ویترین ویژه دوره‌های علمی (اسلایدر دوره‌ها)', desc: 'اسلایدر متحرک دوره‌های توانمندسازی علمی فقه القضا' },
                     counseling_promo: { title: 'ویترین خدمات مشاوره و روانشناسی نخبگان', desc: 'درگاه مشاوره تخصصی شغلی و عمومی با اسلاید ۴ ثانیه‌ای' },
                     welfare_showcase: { title: 'ویترین خدمات رفاهی، تسهیلات و وام‌ها', desc: 'وام ۱۰۰ میلیونی، اسکان مشهد/قم، خدمات درمانی و اقلام تعاونی' },
@@ -394,6 +420,8 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                 <h4 className="font-extrabold text-xs text-stone-900">تنظیمات ریزماژول‌های داخل بنر و کادرها:</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {[
+                    { key: 'showRulingsShowcase' as const, title: 'ویترین تالار نقد و مناظره آراء قضایی', desc: 'نمایش دادنامه‌های جنجالی و داغ و امکان ثبت نقد مستقیم', icon: Scale },
+                    { key: 'showResearchPromoShowcase' as const, title: 'ویترین ترغیبی باشگاه راهبری رساله‌ها', desc: 'بنر مجلل ترغیب نخبگان با گرنت، اسکان و اساتید طراز اول', icon: Sparkles },
                     { key: 'showHeroBanner' as const, title: 'بنر متحرک بالای صفحه (Hero Banner)', desc: 'باکس خوش‌آمدگویی هوشمند همراه با امواج نوری زنده', icon: Sparkles },
                     { key: 'showKpiRow' as const, title: 'کارت‌های آمار زنده (KPI Counter)', desc: 'شمارنده‌های پرونده‌ها، اعضا، آراء و کتب', icon: Sliders },
                     { key: 'showCourseShowcase' as const, title: 'ویترین اختصاصی دوره‌ها (Course Showcase)', desc: 'اسلایدر متحرک یا گالری دوره‌های علمی فقه القضا', icon: GraduationCap },
@@ -432,6 +460,194 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: RULINGS SHOWCASE MANAGEMENT (100% ADMIN CONTROL) */}
+          {activeTab === 'rulings' && (
+            <div className="space-y-5">
+              <div className="p-5 rounded-3xl bg-amber-50/80 border border-amber-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center font-bold">
+                      <Scale className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-amber-950">
+                        تنظیمات و محتوای ۱۰۰٪ ویترین تالار نقد آراء قضایی
+                      </h4>
+                      <p className="text-[11px] text-amber-800/80 mt-0.5">
+                        ویرایش کامل تیتر، زیرعنوان، نشان بالایی و روشن/خاموش کردن ویترین
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggle('showRulingsShowcase')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                      crextioConfig.showRulingsShowcase !== false
+                        ? 'bg-amber-800 text-white'
+                        : 'bg-stone-300 text-stone-700'
+                    }`}
+                  >
+                    {crextioConfig.showRulingsShowcase !== false ? 'نمایش ویترین: فعال' : 'نمایش ویترین: مخفی'}
+                  </button>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      نشان ویژه بالای ویترین (Badge):
+                    </label>
+                    <input
+                      type="text"
+                      value={crextioConfig.rulingsShowcaseBadge || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ rulingsShowcaseBadge: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="مثال: تالار مناظره و نقد آراء منتخب"
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      عنوان اصلی ویترین آراء:
+                    </label>
+                    <input
+                      type="text"
+                      value={crextioConfig.rulingsShowcaseTitle || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ rulingsShowcaseTitle: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="مثال: تالار نقد، ارزیابی و مباحثه آراء و دادنامه‌های قضایی"
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-black text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      توضیحات و زیرعنوان ویترین:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={crextioConfig.rulingsShowcaseSubtitle || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ rulingsShowcaseSubtitle: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="میدان تحلیل رویه‌های قضایی، آراء وحدت رویه و نقدهای حقوقی مستند دانش‌آموختگان نخبه"
+                      className="w-full p-3 rounded-2xl bg-white border border-stone-200 text-xs font-medium text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600 leading-relaxed"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: RESEARCH PROMO MANAGEMENT (100% ADMIN CONTROL) */}
+          {activeTab === 'research' && (
+            <div className="space-y-5">
+              <div className="p-5 rounded-3xl bg-emerald-50/80 border border-emerald-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl bg-emerald-200 text-emerald-900 flex items-center justify-center font-bold">
+                      <Sparkles className="w-5 h-5 text-emerald-800" />
+                    </span>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-emerald-950">
+                        تنظیمات و محتوای ۱۰۰٪ ویترین ترغیبی راهبری پژوهش و رساله‌ها
+                      </h4>
+                      <p className="text-[11px] text-emerald-800/80 mt-0.5">
+                        رویکرد ترغیبی و تبلیغی جهت جذب نخبگان به ثبت رساله، دریافت اسکان و گرنت
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggle('showResearchPromoShowcase')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                      crextioConfig.showResearchPromoShowcase !== false
+                        ? 'bg-emerald-800 text-white'
+                        : 'bg-stone-300 text-stone-700'
+                    }`}
+                  >
+                    {crextioConfig.showResearchPromoShowcase !== false ? 'نمایش ویترین: فعال' : 'نمایش ویترین: مخفی'}
+                  </button>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        نشان ترغیبی بالا (Badge):
+                      </label>
+                      <input
+                        type="text"
+                        value={crextioConfig.researchPromoBadge || ''}
+                        onChange={e => {
+                          updateCrextioConfig({ researchPromoBadge: e.target.value });
+                          triggerSuccess();
+                        }}
+                        placeholder="حمایت مادی و معنوی ویژه نخبگان"
+                        className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        میزان گرنت و مشوق پژوهشی (Highlight):
+                      </label>
+                      <input
+                        type="text"
+                        value={crextioConfig.researchPromoGrantAmount || ''}
+                        onChange={e => {
+                          updateCrextioConfig({ researchPromoGrantAmount: e.target.value });
+                          triggerSuccess();
+                        }}
+                        placeholder="تا ۵۰ میلیون تومان گرنت پژوهشی + اسکان مشهد و قم"
+                        className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      عنوان هیجان‌انگیز و ترغیبی ویترین:
+                    </label>
+                    <input
+                      type="text"
+                      value={crextioConfig.researchPromoTitle || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ researchPromoTitle: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="باشگاه نخبگانی راهبری رساله‌ها، پایان‌نامه‌ها و پژوهش‌های تحول قضایی"
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-black text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      توضیحات اغواکننده و تشویقی برای ثبت پژوهش:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={crextioConfig.researchPromoSubtitle || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ researchPromoSubtitle: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="تطبیق با اساتید برجسته خارج فقه و دکتری، تخصیص گرنت پژوهشی، چاپ کتاب و دفاع مقتدرانه"
+                      className="w-full p-3 rounded-2xl bg-white border border-stone-200 text-xs font-medium text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700 leading-relaxed"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
