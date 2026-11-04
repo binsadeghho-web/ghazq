@@ -285,39 +285,6 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       <p className="text-[11px] text-stone-500 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
                     </div>
 
-                    {/* Role Switcher Menu */}
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] font-bold text-stone-500 px-1">تغییر نقش کاربری (تست سامانه):</p>
-                      
-                      {[
-                        { role: 'alumni' as UserRole, name: 'دکتر علیرضا میرزایی', label: 'دانش‌آموخته (مستشار دادگاه)', icon: UserCheck },
-                        { role: 'supervisor' as UserRole, name: 'حجت‌الاسلام موسوی', label: 'مسئول کارتابل خدمات', icon: Shield },
-                        { role: 'admin' as UserRole, name: 'حاج‌ آقا رضایی', label: 'مدیر عالی سامانه', icon: UserPlus }
-                      ].map(u => (
-                        <button
-                          key={u.role}
-                          onClick={() => {
-                            switchUserRole(u.role);
-                            setUserDropdownOpen(false);
-                          }}
-                          className={`w-full p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors cursor-pointer ${
-                            currentUser?.role === u.role
-                              ? 'bg-emerald-700 text-white'
-                              : 'bg-stone-50 hover:bg-stone-100 text-stone-800'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <u.icon className={`w-4 h-4 ${currentUser?.role === u.role ? 'text-white' : 'text-emerald-700'}`} />
-                            <div className="text-right">
-                              <p>{u.label}</p>
-                              <p className={`text-[10px] font-normal ${currentUser?.role === u.role ? 'text-emerald-100' : 'text-stone-500'}`}>{u.name}</p>
-                            </div>
-                          </div>
-                          {currentUser?.role === u.role && <span className="text-[10px] bg-emerald-900 px-2 py-0.5 rounded-full">فعال</span>}
-                        </button>
-                      ))}
-                    </div>
-
                     {/* Logout Action */}
                     <div className="pt-2 border-t border-stone-200">
                       <button

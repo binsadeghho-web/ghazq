@@ -92,9 +92,20 @@ class ApiClient {
 
   // Auth endpoints
   async login(nationalId: string, password: string) {
-    return this.request<{ success: boolean; user: any; session: any }>('/api/auth/login', {
+    const res = await this.request<{ success: boolean; user: any; session: any; token?: string; mustChangePassword?: boolean; message?: string }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ nationalId, password }),
+    });
+    if (res.token) {
+      this.setSessionToken(res.token);
+    }
+    return res;
+  }
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return this.request<{ success: boolean; user: any }>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
     });
   }
 

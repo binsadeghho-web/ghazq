@@ -121,62 +121,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="text-[11px] text-slate-400">دستگاه</span>
                 </button>
 
-                {/* Quick Role Switcher Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-300 text-xs font-bold hover:bg-amber-500/20 transition-all cursor-pointer"
-                    title="تغییر نقش کاربری جهت تست و عیب‌یابی"
-                  >
-                    <span>نقش: {getRoleLabel(currentUser.role)}</span>
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-
-                  {roleDropdownOpen && (
-                    <div
-                      className="absolute left-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 text-xs space-y-1"
-                      onClick={() => setRoleDropdownOpen(false)}
-                    >
-                      <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                        تغییر سریع نقش کاربری:
-                      </div>
-                      <button
-                        onClick={() => switchUserRole('admin')}
-                        className={`w-full text-right px-3 py-2 rounded-xl transition-colors font-bold flex items-center justify-between ${
-                          currentUser.role === 'admin'
-                            ? 'bg-amber-500 text-stone-950 font-black'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <span>👑 مدیر ارشد (Admin)</span>
-                        {currentUser.role === 'admin' && <span>✓</span>}
-                      </button>
-                      <button
-                        onClick={() => switchUserRole('supervisor')}
-                        className={`w-full text-right px-3 py-2 rounded-xl transition-colors font-bold flex items-center justify-between ${
-                          currentUser.role === 'supervisor'
-                            ? 'bg-amber-500 text-stone-950 font-black'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <span>🛡️ مسئول بخش (Supervisor)</span>
-                        {currentUser.role === 'supervisor' && <span>✓</span>}
-                      </button>
-                      <button
-                        onClick={() => switchUserRole('alumni')}
-                        className={`w-full text-right px-3 py-2 rounded-xl transition-colors font-bold flex items-center justify-between ${
-                          currentUser.role === 'alumni'
-                            ? 'bg-amber-500 text-stone-950 font-black'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <span>🎓 دانش‌آموخته (Alumni)</span>
-                        {currentUser.role === 'alumni' && <span>✓</span>}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
                 {/* Unboxed User Identity Label */}
                 <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
                   <div className="w-6 h-6 rounded-md bg-slate-900 dark:bg-slate-700 text-white flex items-center justify-center text-[11px] font-bold">

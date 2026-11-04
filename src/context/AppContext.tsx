@@ -51,6 +51,7 @@ import { clearAllDrafts } from '../utils/draftStorage';
 
 interface AppContextType {
   currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
   users: User[];
   cartableRequests: CartableRequest[];
   courses: Course[];
@@ -1449,6 +1450,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         currentUser,
+        setCurrentUser,
         users,
         cartableRequests,
         courses,

@@ -357,24 +357,6 @@ export const MizanLayout: React.FC = () => {
                     <div className="text-[11px] text-[#698F81]">{currentUser?.phone}</div>
                   </div>
 
-                  <div className="text-[10px] font-bold text-[#698F81] px-1 pt-1">تغییر شبیه‌سازی نقش:</div>
-                  <div className="grid grid-cols-1 gap-1">
-                    {(['alumni', 'supervisor', 'admin'] as UserRole[]).map(role => (
-                      <button
-                        key={role}
-                        onClick={() => { switchUserRole(role); setRoleDropdownOpen(false); }}
-                        className={`text-right px-2.5 py-1.5 rounded-lg flex items-center justify-between ${
-                          currentUser?.role === role ? 'bg-[#EBF8F2] text-[#158561] font-bold' : 'hover:bg-[#F6FAF8] text-[#2C5747]'
-                        }`}
-                      >
-                        <span>
-                          {role === 'alumni' ? 'دانش‌آموخته (قاضی/پژوهشگر)' : role === 'supervisor' ? 'مسئول کارتابل و دبیرخانه' : 'مدیر ارشد سامانه'}
-                        </span>
-                        {currentUser?.role === role && <CheckCircle2 className="w-3.5 h-3.5 text-[#158561]" />}
-                      </button>
-                    ))}
-                  </div>
-
                   <div className="border-t border-[#E5EFEA] pt-2">
                     <button
                       onClick={() => { logout(); setRoleDropdownOpen(false); }}

@@ -5,6 +5,7 @@ import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTabId } from './components/layout/Sidebar';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { LoginModal } from './components/auth/LoginModal';
+import { ModernLoginPage } from './components/auth/ModernLoginPage';
 import { SessionManagerModal } from './components/auth/SessionManagerModal';
 import { CrextioLayout } from './components/crextio/CrextioLayout';
 import { MizanLayout } from './components/mizan/MizanLayout';
@@ -50,6 +51,11 @@ const MainLayout: React.FC = () => {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // If user is logged out, render the modern full-page login view
+  if (!currentUser) {
+    return <ModernLoginPage isFullPage={true} />;
+  }
 
   // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio.
   if (designTheme === 'crextio' || currentUser?.role === 'alumni') {
