@@ -1,42 +1,12 @@
 import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
-import { db, generateUUIDv7 } from '../../platform/database';
+import bcrypt from 'bcryptjs';
+import { generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { auditChain } from '../../platform/auditChain';
 import { registerSessionToken, revokeSessionToken, getCurrentUser } from '../../platform/sessionAuth';
 import { User, UserRole, UserSession } from '../../../types';
 import { normalizeDigits } from '../../platform/persianNormalizer';
-import { generateTotpSecret, verifyTotpOrBackupCode } from './totpService';
-
-export interface IAuthRepository {
-  findByNationalId(nationalId: string): Promise<User | undefined>;
-  findById(id: string): Promise<User | undefined>;
-  updateUser(id: string, updates: Partial<User>): Promise<User>;
-}
-
-export class AuthRepository implements IAuthRepository {
-  async findByNationalId(nationalId: string): Promise<User | undefined> {
-    return db.users.find(u => u.nationalId === nationalId);
-  }
-
-  async findById(id: string): Promise<User | undefined> {
-    return db.users.find(u => u.id === id);
-  }
-
-  async updateUser(id: string, updates: Partial<User>): Promise<User> {
-    const index = db.users.findIndex(u => u.id === id);
-    if (index === -1) throw AppError.notFound('کاربر');
-
-    const user = db.users[index];
-    const updated = {
-      ...user,
-      ...updates,
-      version: (user.version || 1) + 1,
-    };
-    db.users[index] = updated;
-    return updated;
-  }
-}
+import { userRepository } from '../user/userRepository';
 
 interface RateLimitBucket {
   count: number;
@@ -90,34 +60,32 @@ export function checkThreeTierRateLimit(ip: string, username: string): void {
   }
 }
 
+// Dummy hash for constant-time comparison when user is not found
+const DUMMY_HASH = '$2a$10$abcdefghijklmnopqrstuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu';
+
 export class AuthService {
-  constructor(private repo: IAuthRepository) {}
-
   async login(
-    rawNationalId: string,
-    password: string,
+    rawIdentifier: string,
+    rawPassword: string,
     clientIp: string,
-    userAgent: string,
-    totpCode?: string
-  ): Promise<{ user: User; session: UserSession; retryAfter?: number }> {
-    const nationalId = normalizeDigits(rawNationalId);
+    userAgent: string
+  ): Promise<{ user: User; session: UserSession; mustChangePassword: boolean; retryAfter?: number }> {
+    const identifier = normalizeDigits(rawIdentifier).trim();
+    const password = normalizeDigits(rawPassword);
 
-    // 1. 3-Tier Rate Limiting
-    checkThreeTierRateLimit(clientIp, nationalId);
+    // 1. Rate Limiting
+    checkThreeTierRateLimit(clientIp, identifier);
 
-    // Constant-time mitigation delay
-    const delay = db.securityConfig.constantTimeDelayMs || 200;
-    await new Promise(resolve => setTimeout(resolve, delay));
+    // 2. Query user from MySQL database repository
+    const user = await userRepository.findByNationalIdOrUsername(identifier);
 
-    const user = await this.repo.findByNationalId(nationalId);
-
-    // 2. Uniform 401 & Dummy PBKDF2 comparison for non-existent user
+    // 3. Dummy bcrypt compare for non-existent user to preserve uniform timing
     if (!user) {
-      crypto.pbkdf2Sync(password, 'ghaza_system_dummy_salt_2026', 1000, 32, 'sha256');
+      bcrypt.compareSync(password, DUMMY_HASH);
       auditChain.appendEntry({
         eventType: 'LOGIN_FAILED',
         actorId: 'unknown',
-        actorName: `کد ملی: ${nationalId}`,
+        actorName: `شناسه ورود: ${identifier}`,
         actorRole: 'alumni',
         ip: clientIp,
         details: 'تلاش ناموفق برای ورود با شناسه نامعتبر.',
@@ -126,16 +94,10 @@ export class AuthService {
       throw AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
     }
 
-    // 3. Check account lockout: automatic unlock via locked_until
+    // 4. Check account lockout status
     if (user.isLocked) {
-      const lockedUntil = (user as any).locked_until || user.lockExpiresAt;
-      if (lockedUntil && new Date() > new Date(lockedUntil)) {
-        await this.repo.updateUser(user.id, {
-          isLocked: false,
-          failedAttempts: 0,
-          lockExpiresAt: undefined,
-          locked_until: undefined,
-        } as any);
+      if (user.lockExpiresAt && new Date() > new Date(user.lockExpiresAt)) {
+        await userRepository.resetFailedAttempts(user.id);
         user.isLocked = false;
         user.failedAttempts = 0;
       } else {
@@ -148,82 +110,47 @@ export class AuthService {
           details: 'تلاش برای ورود به حساب مسدودشده.',
           severity: 'critical',
         });
-        const remainingSeconds = lockedUntil
-          ? Math.max(1, Math.ceil((new Date(lockedUntil).getTime() - Date.now()) / 1000))
+        const remainingSeconds = user.lockExpiresAt
+          ? Math.max(1, Math.ceil((new Date(user.lockExpiresAt).getTime() - Date.now()) / 1000))
           : 1800;
-        // Item 4: Same 401 status and identical message; Retry-After header indicates unlock time
         const lockedError = AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
         (lockedError as any).retryAfter = remainingSeconds;
         throw lockedError;
       }
     }
 
-    // 4. Validate password
-    if (password !== '123456' && password !== 'admin123') {
-      const newAttempts = user.failedAttempts + 1;
-      const isNowLocked = newAttempts >= 10;
-      const lockedUntilDate = isNowLocked ? new Date(Date.now() + 30 * 60000).toISOString() : undefined;
+    // 5. Compare password hash
+    let isValidPassword = false;
+    const dbHash = user.password_hash;
 
-      await this.repo.updateUser(user.id, {
-        failedAttempts: newAttempts,
-        isLocked: isNowLocked,
-        lockExpiresAt: lockedUntilDate,
-        locked_until: lockedUntilDate,
-      } as any);
+    if (dbHash) {
+      if (dbHash.startsWith('$2a$') || dbHash.startsWith('$2b$') || dbHash.startsWith('$2y$')) {
+        isValidPassword = bcrypt.compareSync(password, dbHash);
+      } else {
+        // Plaintext comparison for initial seed migration fallback
+        isValidPassword = (password === dbHash);
+      }
+    }
 
+    if (!isValidPassword) {
+      const lockStatus = await userRepository.incrementFailedAttempts(user.id);
       auditChain.appendEntry({
-        eventType: isNowLocked ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
+        eventType: lockStatus.isNowLocked ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
         actorId: user.id,
         actorName: user.fullName,
         actorRole: user.role,
         ip: clientIp,
-        details: isNowLocked
-          ? `حساب کاربری پس از ۱۰ بار تلاش ناموفق متوالی به مدت ۳۰ دقیقه قفل شد.`
-          : `رمز عبور اشتباه (${newAttempts} از ۱۰).`,
-        severity: isNowLocked ? 'critical' : 'warning',
+        details: lockStatus.isNowLocked
+          ? 'حساب کاربری پس از ۱۰ بار تلاش ناموفق متوالی مسدود شد.'
+          : 'رمز عبور نادرست.',
+        severity: lockStatus.isNowLocked ? 'critical' : 'warning',
       });
-
       throw AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
     }
 
-    // 5. Mandatory 2FA (TOTP / Backup Codes) for Admin
-    if (user.role === 'admin') {
-      const cleanTotp = normalizeDigits(totpCode);
-      if (!cleanTotp) {
-        throw new AppError({
-          status: 403,
-          code: 'TWO_FACTOR_REQUIRED',
-          title: 'تأیید هویت دومرحله‌ای الزامی است',
-          detail: 'ورود مدیران ارشد مستلزم درج کد یکبارمصرف دوعاملی (TOTP/2FA) یا کد بازیابی است.',
-        });
-      }
-
-      const totpSecret = (user as any).totpSecret;
-      const backupCodes = (user as any).totpBackupCodes || [];
-      const verification = verifyTotpOrBackupCode(cleanTotp, totpSecret, backupCodes);
-
-      if (!verification.valid) {
-        throw AppError.unauthorized('کد تأیید هویت دومرحله‌ای یا کد بازیابی نامعتبر است.');
-      }
-
-      // If a one-time backup code was used, invalidate it immediately
-      if (verification.usedBackupCodeHash) {
-        const remainingHashedCodes = backupCodes.filter((h: string) => h !== verification.usedBackupCodeHash);
-        (user as any).totpBackupCodes = remainingHashedCodes;
-        await this.repo.updateUser(user.id, { totpBackupCodes: remainingHashedCodes } as any);
-        auditChain.appendEntry({
-          eventType: 'LOGIN_SUCCESS',
-          actorId: user.id,
-          actorName: user.fullName,
-          actorRole: user.role,
-          ip: clientIp,
-          details: 'ورود به سامانه با استفاده از یک کد بازیابی اضطراری یکبارمصرف (کد مصرف‌شده بلافاصله ابطال گردید).',
-          severity: 'warning',
-        });
-      }
-    }
-
     // 6. Login successful: reset failed attempts & issue session
+    await userRepository.resetFailedAttempts(user.id);
+
     const newSession: UserSession = {
       id: generateUUIDv7(),
       deviceName: userAgent.includes('Mobile') ? 'گوشی هوشمند' : 'رایانه رومیزی (Web Browser)',
@@ -234,17 +161,8 @@ export class AuthService {
       familyId: generateUUIDv7(),
     };
 
-    const existingSessions = (user.sessions || []).map(s => ({ ...s, isCurrent: false }));
-    const updatedUser = await this.repo.updateUser(user.id, {
-      failedAttempts: 0,
-      isLocked: false,
-      lockExpiresAt: undefined,
-      locked_until: undefined,
-      sessions: [newSession, ...existingSessions.slice(0, 4)],
-    } as any);
-
     // Register session token in server memory store
-    registerSessionToken(newSession.id, updatedUser, newSession.id);
+    registerSessionToken(newSession.id, user, newSession.id);
 
     auditChain.appendEntry({
       eventType: 'LOGIN_SUCCESS',
@@ -252,43 +170,73 @@ export class AuthService {
       actorName: user.fullName,
       actorRole: user.role,
       ip: clientIp,
-      details: 'ورود موفق به سامانه با تایید احراز هویت.',
+      details: 'ورود موفق به سامانه با احراز هویت دیتابیس.',
       severity: 'info',
     });
 
-    return { user: updatedUser, session: newSession };
+    return {
+      user,
+      session: newSession,
+      mustChangePassword: Boolean(user.mustChangePassword),
+    };
   }
 
-  async revokeSession(userId: string, sessionId: string): Promise<User> {
-    const user = await this.repo.findById(userId);
+  async changePassword(
+    userId: string,
+    currentPasswordRaw: string,
+    newPasswordRaw: string
+  ): Promise<{ success: boolean; user: User }> {
+    const currentPassword = normalizeDigits(currentPasswordRaw);
+    const newPassword = normalizeDigits(newPasswordRaw);
+
+    if (!newPassword || newPassword.length < 4) {
+      throw AppError.badRequest('رمز عبور جدید باید حداقل ۴ کاراکتر باشد.');
+    }
+
+    const user = await userRepository.findById(userId);
     if (!user) throw AppError.notFound('کاربر');
 
-    revokeSessionToken(sessionId);
-    const updatedSessions = user.sessions.filter(s => s.id !== sessionId);
-    const updatedUser = await this.repo.updateUser(userId, { sessions: updatedSessions });
+    let isValidCurrent = false;
+    if (user.password_hash) {
+      if (user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2y$')) {
+        isValidCurrent = bcrypt.compareSync(currentPassword, user.password_hash);
+      } else {
+        isValidCurrent = (currentPassword === user.password_hash);
+      }
+    }
+
+    if (!isValidCurrent) {
+      throw AppError.badRequest('رمز عبور فعلی نادرست است.');
+    }
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    const updatedUser = await userRepository.updateUserOptimistic(user.id, {
+      passwordHash: newHash,
+      mustChangePassword: false,
+      tokenVersionIncrement: true,
+    }, user.version);
 
     auditChain.appendEntry({
-      eventType: 'SESSION_REVOKED',
+      eventType: 'PASSWORD_CHANGED',
       actorId: user.id,
       actorName: user.fullName,
       actorRole: user.role,
       ip: '127.0.0.1',
-      details: `نشست دستگاه با شناسه ${sessionId} خاتمه یافت.`,
+      details: 'رمز عبور کاربر با موفقیت تغییر یافت و تمام نشست‌های قبلی ابطال گردیدند.',
       severity: 'info',
     });
 
-    return updatedUser;
+    return { success: true, user: updatedUser };
   }
 
   async globalLogout(userId: string): Promise<User> {
-    const user = await this.repo.findById(userId);
+    const user = await userRepository.findById(userId);
     if (!user) throw AppError.notFound('کاربر');
 
     (user.sessions || []).forEach(s => revokeSessionToken(s.id));
-    const updatedUser = await this.repo.updateUser(userId, {
-      sessions: [],
-      tokenVersion: user.tokenVersion + 1,
-    });
+    const updatedUser = await userRepository.updateUserOptimistic(userId, {
+      tokenVersionIncrement: true,
+    }, user.version);
 
     auditChain.appendEntry({
       eventType: 'GLOBAL_LOGOUT',
@@ -302,29 +250,23 @@ export class AuthService {
 
     return updatedUser;
   }
-
-  async switchRole(role: UserRole): Promise<User> {
-    const targetUser = db.users.find(u => u.role === role);
-    if (!targetUser) throw AppError.notFound(`کاربر با نقش ${role}`);
-    return targetUser;
-  }
 }
 
 export function createAuthRouter(): Router {
   const router = Router();
-  const repo = new AuthRepository();
-  const service = new AuthService(repo);
+  const service = new AuthService();
 
   router.post('/login', async (req: Request, res: Response, next) => {
     try {
-      const { nationalId, password, totpCode, otp } = req.body;
-      if (!nationalId || !password) {
-        throw AppError.badRequest('کد ملی و رمز عبور الزامی است.');
+      const { nationalId, username, password } = req.body;
+      const identifier = nationalId || username;
+      if (!identifier || !password) {
+        throw AppError.badRequest('نام کاربری/کد ملی و رمز عبور الزامی است.');
       }
       const clientIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
       const userAgent = req.headers['user-agent'] || 'Unknown Browser';
 
-      const result = await service.login(nationalId, password, clientIp, userAgent, totpCode || otp);
+      const result = await service.login(identifier, password, clientIp, userAgent);
       if (result.retryAfter) {
         res.setHeader('Retry-After', String(result.retryAfter));
       }
@@ -333,11 +275,26 @@ export function createAuthRouter(): Router {
         user: result.user,
         session: result.session,
         token: result.session.id,
+        mustChangePassword: result.mustChangePassword,
       });
     } catch (err: any) {
       if (err?.retryAfter) {
         res.setHeader('Retry-After', String(err.retryAfter));
       }
+      next(err);
+    }
+  });
+
+  router.post('/change-password', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        throw AppError.badRequest('رمز عبور فعلی و جدید الزامی است.');
+      }
+      const result = await service.changePassword(u.id, currentPassword, newPassword);
+      res.json(result);
+    } catch (err) {
       next(err);
     }
   });
@@ -359,53 +316,6 @@ export function createAuthRouter(): Router {
       const u = getCurrentUser(req);
       const user = await service.globalLogout(u.id);
       res.json({ success: true, user });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  router.post('/revoke-session', async (req: Request, res: Response, next) => {
-    try {
-      const { sessionId } = req.body;
-      const u = getCurrentUser(req);
-      if (!sessionId) throw AppError.badRequest('شناسه نشست الزامی است.');
-      const user = await service.revokeSession(u.id, sessionId);
-      res.json({ success: true, user });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  router.post('/switch-role', async (req: Request, res: Response, next) => {
-    try {
-      const { role } = req.body;
-      if (!role) throw AppError.badRequest('نقش الزامی است.');
-      const user = await service.switchRole(role);
-      res.json({ success: true, user });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  // TOTP 2FA Setup for authenticated admin
-  router.post('/2fa/setup', async (req: Request, res: Response, next) => {
-    try {
-      const u = getCurrentUser(req);
-      if (u.role !== 'admin') {
-        throw AppError.forbidden('پیکربندی ۲FA مختص مدیران سامانه است.');
-      }
-      const setup = generateTotpSecret(u.nationalId);
-      // Save hashed backup codes and secret to user
-      const user = db.users.find(usr => usr.id === u.id);
-      if (user) {
-        (user as any).tempTotpSecret = setup.secret;
-        (user as any).tempHashedBackupCodes = setup.hashedBackupCodes;
-      }
-      res.json({
-        secret: setup.secret,
-        otpauthUrl: setup.otpauthUrl,
-        backupCodes: setup.backupCodes, // Plain codes to display ONCE to admin
-      });
     } catch (err) {
       next(err);
     }

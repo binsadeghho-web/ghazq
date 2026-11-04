@@ -61,8 +61,10 @@ export interface User {
   failedAttempts: number;
   lockExpiresAt?: string;
   tokenVersion: number;
+  mustChangePassword?: boolean;
   sessions: UserSession[];
   hasAccount?: boolean; // نشان‌دهنده وجود یا عدم وجود حساب کاربری فعال
+  version?: number;
   
   // دسترسی‌های ریز و ماتریسی بخش‌های نرم‌افزار
   sectionPermissions?: UserSectionPermissions;
@@ -207,7 +209,10 @@ export interface AuditLog {
     | 'ROLE_CHANGED' 
     | 'CARTABLE_STATUS_CHANGE'
     | 'RULING_APPROVED'
-    | 'SYSTEM_CONFIG_UPDATED';
+    | 'SYSTEM_CONFIG_UPDATED'
+    | 'USER_CREATED'
+    | 'USER_UPDATED'
+    | 'PASSWORD_CHANGED';
   actorId: string;
   actorName: string;
   actorRole: UserRole;

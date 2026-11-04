@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `failed_attempts` INT NOT NULL DEFAULT 0,
   `locked_until` DATETIME(3) NULL,
   `token_version` INT NOT NULL DEFAULT 1,
+  `must_change_password` BOOLEAN NOT NULL DEFAULT FALSE,
   `has_account` BOOLEAN NOT NULL DEFAULT TRUE,
   `judicial_grade` INT NULL,
   `court_branch` VARCHAR(128) NULL,

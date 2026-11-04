@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { db } from './database';
 import { User, UserRole } from '../../types';
 import { AppError } from './errors';
+import { userRepository } from '../modules/user/userRepository';
 
 export interface AuthenticatedUser {
   id: string;
@@ -38,7 +38,7 @@ export function revokeSessionToken(token: string): void {
  * Strictly resolves user identity from verified server session/token.
  * NEVER trusts client-supplied headers (x-user-id, x-user-role).
  */
-export function sessionAuthMiddleware(req: Request, _res: Response, next: NextFunction): void {
+export async function sessionAuthMiddleware(req: Request, _res: Response, next: NextFunction): Promise<void> {
   // CRITICAL SECURITY RULE: Strip any client-injected identity headers
   delete req.headers['x-user-id'];
   delete req.headers['x-user-role'];
@@ -59,38 +59,6 @@ export function sessionAuthMiddleware(req: Request, _res: Response, next: NextFu
     if (cached) {
       (req as any).user = cached;
       return next();
-    }
-
-    // 2. Lookup session in database users
-    for (const u of db.users) {
-      const match = (u.sessions || []).find(s => s.id === token || s.familyId === token);
-      if (match) {
-        const authed: AuthenticatedUser = {
-          id: u.id,
-          nationalId: u.nationalId,
-          fullName: u.fullName,
-          role: u.role,
-          sessionId: match.id,
-        };
-        activeSessionTokens.set(token, authed);
-        (req as any).user = authed;
-        return next();
-      }
-    }
-  }
-
-  // Fallback for initial demo state: default user session if token is 'demo-session'
-  if (token === 'demo-session' || (!token && process.env.NODE_ENV !== 'production')) {
-    // Development fallback uses first alumni user, NEVER trusting client headers
-    const defaultUser = db.users[0];
-    if (defaultUser) {
-      (req as any).user = {
-        id: defaultUser.id,
-        nationalId: defaultUser.nationalId,
-        fullName: defaultUser.fullName,
-        role: defaultUser.role,
-        sessionId: 'demo-session',
-      };
     }
   }
 
@@ -131,12 +99,5 @@ export function getCurrentUser(req: Request): AuthenticatedUser {
   if ((req as any).user) {
     return (req as any).user;
   }
-  const defaultUser = db.users[0];
-  return {
-    id: defaultUser?.id || 'usr_alumni_01',
-    nationalId: defaultUser?.nationalId || '0012345678',
-    fullName: defaultUser?.fullName || 'دکتر علیرضا میرزایی',
-    role: defaultUser?.role || 'alumni',
-    sessionId: 'session_default',
-  };
+  throw AppError.unauthorized('کاربر احراز هویت نشده است.');
 }
