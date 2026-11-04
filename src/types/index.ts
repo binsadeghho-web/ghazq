@@ -167,15 +167,45 @@ export interface CrextioDashboardConfig {
   multimediaShowcaseSubtitle?: string;
   // ویترین تالار نقد و مناظره آراء قضایی
   showRulingsShowcase?: boolean;
+  rulingsShowcaseMode?: 'expanded' | 'compact';
   rulingsShowcaseTitle?: string;
   rulingsShowcaseSubtitle?: string;
   rulingsShowcaseBadge?: string;
+  rulingsCustomList?: JudicialRuling[];
+
   // ویترین تبلیغی و ترغیبی راهبری پژوهش و رساله‌ها
   showResearchPromoShowcase?: boolean;
   researchPromoTitle?: string;
   researchPromoSubtitle?: string;
   researchPromoBadge?: string;
   researchPromoGrantAmount?: string;
+  researchPromoPrimaryBtnText?: string;
+  researchPromoPrimaryAction?: 'quick_modal' | 'navigate_research' | 'external_link';
+  researchPromoPrimaryActionUrl?: string;
+  researchPromoSecondaryBtnText?: string;
+  researchPromoSecondaryAction?: 'navigate_research' | 'quick_modal' | 'external_link';
+  researchPromoSecondaryActionUrl?: string;
+  researchPromoCards?: {
+    id: string;
+    title: string;
+    desc: string;
+    tag: string;
+    icon?: string;
+    clickAction?: 'quick_modal' | 'navigate_research' | 'none';
+  }[];
+
+  // سامانه اختصاصی تغییر اندازه فونت‌های ویترین‌ها به تفکیک نوع متن (اصلاح ۴)
+  fontSizes?: {
+    heroTitle?: 'text-lg' | 'text-xl' | 'text-2xl' | 'text-3xl' | 'text-4xl';
+    heroSubtitle?: 'text-[11px]' | 'text-xs' | 'text-sm' | 'text-base';
+    rulingsTitle?: 'text-sm' | 'text-base' | 'text-lg' | 'text-xl' | 'text-2xl';
+    rulingsBody?: 'text-[10px]' | 'text-[11px]' | 'text-xs' | 'text-sm';
+    researchTitle?: 'text-base' | 'text-lg' | 'text-xl' | 'text-2xl' | 'text-3xl';
+    researchBody?: 'text-[10px]' | 'text-[11px]' | 'text-xs' | 'text-sm';
+    cardTitles?: 'text-xs' | 'text-sm' | 'text-base' | 'text-lg';
+    cardSubtitles?: 'text-[10px]' | 'text-[11px]' | 'text-xs';
+  };
+
   dashboardSectionOrder?: string[];
   hiddenDashboardSections?: Record<string, boolean>;
 }

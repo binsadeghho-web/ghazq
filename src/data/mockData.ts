@@ -229,6 +229,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   counselingPromoSubtitle: 'مشاوره تخصصی تحصیلی-شغلی قضایی و خدمات روان‌شناختی، خانواده و تاب‌آوری',
   showProductsMiniPromo: true,
   showRulingsShowcase: true,
+  rulingsShowcaseMode: 'expanded',
   rulingsShowcaseTitle: 'تالار نقد، ارزیابی و مباحثه آراء و دادنامه‌های قضایی',
   rulingsShowcaseSubtitle: 'میدان تحلیل رویه‌های قضایی، آراء وحدت رویه و نقدهای حقوقی مستند دانش‌آموختگان نخبه',
   rulingsShowcaseBadge: 'آراء بحث‌برانگیز و منتخب دیوان و تجدیدنظر',
@@ -237,6 +238,54 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   researchPromoSubtitle: 'تطبیق با اساتید برجسته خارج فقه و دکتری، تخصیص گرنت پژوهشی، چاپ کتاب و دفاع مقتدرانه',
   researchPromoBadge: 'حمایت مادی و معنوی ویژه نخبگان',
   researchPromoGrantAmount: 'تا ۵۰ میلیون تومان گرنت پژوهشی + اسکان مشهد و قم',
+  researchPromoPrimaryBtnText: 'ثبت فوری پروپوزال و دریافت اسکان',
+  researchPromoPrimaryAction: 'quick_modal',
+  researchPromoSecondaryBtnText: 'میز کار راهبری پژوهش',
+  researchPromoSecondaryAction: 'navigate_research',
+  researchPromoCards: [
+    {
+      id: 'card_grant',
+      title: 'تخصیص گرنت مالی بلاعوض',
+      desc: 'کمک‌هزینه ویژه تأمین منابع، خرید کتب مرجع فقهی و مصاحبه با صاحب‌نظران تا سقف ۵۰ میلیون تومان.',
+      tag: 'بلاعوض نخبگان',
+      icon: 'coins',
+      clickAction: 'quick_modal'
+    },
+    {
+      id: 'card_supervisor',
+      title: 'استاد راهنمای اختصاصی طراز اول',
+      desc: 'همراهی گام‌به‌گام مراجع فقهی، قضات عالی‌رتبه دیوان عالی و اساتید دکتری در ویراستاری فصول.',
+      tag: 'استاد معین',
+      icon: 'graduation',
+      clickAction: 'navigate_research'
+    },
+    {
+      id: 'card_accommodation',
+      title: 'اسکان پژوهشی رایگان مشهد و قم',
+      desc: 'اقامت اختصاصی برای پژوهشگر و خانواده در جوار کتابخانه‌های مرجع فیضیه، آستان قدس و دانشگاه.',
+      tag: 'اقامت تا ۱۰ روز',
+      icon: 'home',
+      clickAction: 'quick_modal'
+    },
+    {
+      id: 'card_publish',
+      title: 'چاپ سراسری کتاب و موسوعه',
+      desc: 'تبدیل رساله برگزیده به اثر فاخر کتابخانه‌ای با نشان مرکز و پخش در مجتمع‌های قضایی کشور.',
+      tag: 'انتشار رسمی',
+      icon: 'book',
+      clickAction: 'navigate_research'
+    }
+  ],
+  fontSizes: {
+    heroTitle: 'text-2xl',
+    heroSubtitle: 'text-xs',
+    rulingsTitle: 'text-lg',
+    rulingsBody: 'text-xs',
+    researchTitle: 'text-2xl',
+    researchBody: 'text-xs',
+    cardTitles: 'text-sm',
+    cardSubtitles: 'text-[11px]'
+  }
 };
 
 export const DEFAULT_MIZAN_CONFIG: MizanDashboardConfig = {

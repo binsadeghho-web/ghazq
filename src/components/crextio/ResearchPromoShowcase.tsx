@@ -16,7 +16,8 @@ import {
   Send,
   X,
   ShieldCheck,
-  ChevronLeft
+  ChevronLeft,
+  ExternalLink
 } from 'lucide-react';
 
 interface ResearchPromoShowcaseProps {
@@ -33,6 +34,89 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
   const [accommodation, setAccommodation] = useState(false);
   const [city, setCity] = useState<'قم' | 'تهران' | 'مشهد'>('قم');
   const [successMsg, setSuccessMsg] = useState(false);
+
+  // Font sizes from config
+  const titleFontSize = crextioConfig.fontSizes?.researchTitle || 'text-2xl';
+  const bodyFontSize = crextioConfig.fontSizes?.researchBody || 'text-xs';
+
+  // Configurable cards list
+  const cardsList = crextioConfig.researchPromoCards && crextioConfig.researchPromoCards.length > 0
+    ? crextioConfig.researchPromoCards
+    : [
+        {
+          id: 'card_grant',
+          title: 'تخصیص گرنت مالی بلاعوض',
+          desc: 'کمک‌هزینه ویژه تأمین منابع، خرید کتب مرجع فقهی و مصاحبه با صاحب‌نظران تا سقف ۵۰ میلیون تومان.',
+          tag: 'بلاعوض نخبگان',
+          icon: 'coins',
+          clickAction: 'quick_modal' as const
+        },
+        {
+          id: 'card_supervisor',
+          title: 'استاد راهنمای اختصاصی طراز اول',
+          desc: 'همراهی گام‌به‌گام مراجع فقهی، قضات عالی‌رتبه دیوان عالی و اساتید دکتری در ویراستاری فصول.',
+          tag: 'استاد معین',
+          icon: 'graduation',
+          clickAction: 'navigate_research' as const
+        },
+        {
+          id: 'card_accommodation',
+          title: 'اسکان پژوهشی رایگان مشهد و قم',
+          desc: 'اقامت اختصاصی برای پژوهشگر و خانواده در جوار کتابخانه‌های مرجع فیضیه، آستان قدس و دانشگاه.',
+          tag: 'اقامت تا ۱۰ روز',
+          icon: 'home',
+          clickAction: 'quick_modal' as const
+        },
+        {
+          id: 'card_publish',
+          title: 'چاپ سراسری کتاب و موسوعه',
+          desc: 'تبدیل رساله برگزیده به اثر فاخر کتابخانه‌ای با نشان مرکز و پخش در مجتمع‌های قضایی کشور.',
+          tag: 'انتشار رسمی',
+          icon: 'book',
+          clickAction: 'navigate_research' as const
+        }
+      ];
+
+  const getCardIcon = (iconName?: string) => {
+    switch (iconName) {
+      case 'coins': return Coins;
+      case 'graduation': return GraduationCap;
+      case 'home': return Home;
+      case 'book': return BookOpen;
+      case 'award': return Award;
+      default: return Sparkles;
+    }
+  };
+
+  const handleCardClick = (clickAction?: string) => {
+    if (clickAction === 'quick_modal') {
+      setQuickModalOpen(true);
+    } else if (clickAction === 'navigate_research' && onNavigateToResearch) {
+      onNavigateToResearch();
+    }
+  };
+
+  const handlePrimaryBtnClick = () => {
+    const action = crextioConfig.researchPromoPrimaryAction || 'quick_modal';
+    if (action === 'quick_modal') {
+      setQuickModalOpen(true);
+    } else if (action === 'navigate_research' && onNavigateToResearch) {
+      onNavigateToResearch();
+    } else if (action === 'external_link' && crextioConfig.researchPromoPrimaryActionUrl) {
+      window.open(crextioConfig.researchPromoPrimaryActionUrl, '_blank');
+    }
+  };
+
+  const handleSecondaryBtnClick = () => {
+    const action = crextioConfig.researchPromoSecondaryAction || 'navigate_research';
+    if (action === 'quick_modal') {
+      setQuickModalOpen(true);
+    } else if (action === 'navigate_research' && onNavigateToResearch) {
+      onNavigateToResearch();
+    } else if (action === 'external_link' && crextioConfig.researchPromoSecondaryActionUrl) {
+      window.open(crextioConfig.researchPromoSecondaryActionUrl, '_blank');
+    }
+  };
 
   const handleQuickSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,14 +146,14 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
     <div className="w-full space-y-4">
       {/* Master Promo Showcase Card */}
       <div className="relative rounded-[32px] overflow-hidden border border-[#D5E3D8] bg-gradient-to-br from-[#0F261E] via-[#143228] to-[#0A1D16] text-white shadow-xl">
-        {/* Background Atmosphere Image with Scrim */}
-        <div className="absolute inset-0 pointer-events-none z-0 opacity-25">
+        {/* Background Atmosphere Image with Scrim (NEW: Dignified Islamic Scholarly Chamber without women) */}
+        <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
           <img
-            src="/src/assets/images/research_mentorship_hall_1793828929855.jpg"
-            alt="باشگاه نخبگانی راهبری رساله‌ها"
+            src="/src/assets/images/scholarly_research_chamber_1793830009917.jpg"
+            alt="باشگاه نخبگانی راهبری رساله‌ها و اساتید فقه و حقوق"
             className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1D16] via-[#0A1D16]/75 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1D16] via-[#0A1D16]/80 to-transparent" />
         </div>
 
         {/* Ambient Glows */}
@@ -94,67 +178,47 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
                 </span>
               </div>
 
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight tracking-tight">
+              <h2 className={`${titleFontSize} font-black text-white leading-tight tracking-tight`}>
                 {crextioConfig.researchPromoTitle || 'باشگاه نخبگانی راهبری رساله‌ها، پایان‌نامه‌ها و پژوهش‌های تحول قضایی'}
               </h2>
-              <p className="text-xs sm:text-sm text-emerald-100/80 font-medium leading-relaxed">
+              <p className={`${bodyFontSize} text-emerald-100/80 font-medium leading-relaxed`}>
                 {crextioConfig.researchPromoSubtitle || 'تطبیق با اساتید برجسته خارج فقه و دکتری، تخصیص گرنت پژوهشی، چاپ کتاب و دفاع مقتدرانه'}
               </p>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions (Admin Configurable Labels & Actions) */}
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <button
-                onClick={() => setQuickModalOpen(true)}
+                onClick={handlePrimaryBtnClick}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg transition-all active:scale-95 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-stone-950" />
-                <span>ثبت فوری پروپوزال و دریافت اسکان</span>
+                <span>{crextioConfig.researchPromoPrimaryBtnText || 'ثبت فوری پروپوزال و دریافت اسکان'}</span>
               </button>
 
               <button
-                onClick={onNavigateToResearch}
+                onClick={handleSecondaryBtnClick}
                 className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs backdrop-blur-md transition-all cursor-pointer"
               >
-                <span>میز کار راهبری پژوهش</span>
+                <span>{crextioConfig.researchPromoSecondaryBtnText || 'میز کار راهبری پژوهش'}</span>
                 <ArrowUpRight className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* 4 Enticing Opportunity Pillars */}
+          {/* 4 Enticing Opportunity Pillars (100% Configurable by Admin) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2">
-            {[
-              {
-                icon: Coins,
-                title: 'تخصیص گرنت مالی بلاعوض',
-                desc: 'کمک‌هزینه ویژه تأمین منابع، خرید کتب مرجع فقهی و مصاحبه با صاحب‌نظران تا سقف ۵۰ میلیون تومان.',
-                tag: 'بلاعوض نخبگان'
-              },
-              {
-                icon: GraduationCap,
-                title: 'استاد راهنمای اختصاصی طراز اول',
-                desc: 'همراهی گام‌به‌گام مراجع فقهی، قضات عالی‌رتبه دیوان عالی و اساتید دکتری در ویراستاری فصول.',
-                tag: 'استاد معین'
-              },
-              {
-                icon: Home,
-                title: 'اسکان پژوهشی رایگان مشهد و قم',
-                desc: 'اقامت اختصاصی برای پژوهشگر و خانواده در جوار کتابخانه‌های مرجع فیضیه، آستان قدس و دانشگاه.',
-                tag: 'اقامت تا ۱۰ روز'
-              },
-              {
-                icon: BookOpen,
-                title: 'چاپ سراسری کتاب و موسوعه',
-                desc: 'تبدیل رساله برگزیده به اثر فاخر کتابخانه‌ای با نشان مرکز و پخش در مجتمع‌های قضایی کشور.',
-                tag: 'انتشار رسمی'
-              }
-            ].map((pillar, idx) => {
-              const Icon = pillar.icon;
+            {cardsList.map((pillar) => {
+              const Icon = getCardIcon(pillar.icon);
+              const isClickable = pillar.clickAction && pillar.clickAction !== 'none';
+
               return (
                 <div
-                  key={idx}
-                  className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all backdrop-blur-sm space-y-2 group"
+                  key={pillar.id}
+                  onClick={() => handleCardClick(pillar.clickAction)}
+                  className={`p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all backdrop-blur-sm space-y-2 group ${
+                    isClickable ? 'cursor-pointer hover:shadow-lg active:scale-98' : ''
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-400/30 group-hover:scale-110 transition-transform">
@@ -171,6 +235,13 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
                   <p className="text-[11px] text-emerald-100/70 leading-relaxed font-medium">
                     {pillar.desc}
                   </p>
+
+                  {isClickable && (
+                    <div className="pt-1 flex items-center gap-1 text-[10px] font-bold text-amber-300/80 group-hover:text-amber-300">
+                      <span>اقدام سریع</span>
+                      <ChevronLeft className="w-3 h-3" />
+                    </div>
+                  )}
                 </div>
               );
             })}
