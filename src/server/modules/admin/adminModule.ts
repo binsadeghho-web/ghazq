@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db, generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
+import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
 import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
@@ -70,6 +71,12 @@ export class AdminService {
       mustChangePassword: data.mustChangePassword !== undefined ? data.mustChangePassword : true,
     });
 
+    outbox.enqueue('user.created', {
+      userId: createdUser.id,
+      nationalId: createdUser.nationalId,
+      role: createdUser.role,
+    });
+
     auditChain.appendEntry({
       eventType: 'USER_CREATED',
       actorId: authCtx.userId,
@@ -125,6 +132,11 @@ export class AdminService {
       updateFields,
       Number(baseVersion)
     );
+
+    outbox.enqueue('user.updated', {
+      userId: updatedUser.id,
+      version: updatedUser.version,
+    });
 
     auditChain.appendEntry({
       eventType: 'USER_UPDATED',
@@ -210,6 +222,11 @@ export class AdminService {
       version: ((db.securityConfig.version || 1) + 1),
     };
 
+    outbox.enqueue('admin.security_config_updated', {
+      version: (db.securityConfig as any).version || 1,
+      actorId: authCtx.userId,
+    });
+
     auditChain.appendEntry({
       eventType: 'SYSTEM_CONFIG_UPDATED',
       actorId: authCtx.userId,
@@ -277,6 +294,12 @@ export class AdminService {
         'CONCURRENT_MODIFICATION_CONFLICT'
       );
     }
+
+    outbox.enqueue('admin.dashboard_config_updated', {
+      version: updateResult.newVersion,
+      lastModifiedBy: authCtx.fullName,
+      config,
+    });
 
     auditChain.appendEntry({
       eventType: 'SYSTEM_CONFIG_UPDATED',

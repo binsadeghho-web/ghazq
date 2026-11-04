@@ -435,6 +435,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     refreshFromServer();
+
+    // Guaranteed heartbeat sync every 6 seconds (< 7s limit) for zero-refresh consistency
+    const syncInterval = setInterval(() => {
+      refreshFromServer();
+    }, 6000);
+
+    return () => clearInterval(syncInterval);
   }, [refreshFromServer]);
 
   // Real-time SSE synchronization listener (Section 8)
@@ -445,14 +452,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         api.getCartableRequests().then(setCartableRequests).catch(() => {});
       } else if (event.type.startsWith('courses.')) {
         api.getCourses().then(setCourses).catch(() => {});
+        api.getCourseEnrollments().then(setCourseEnrollments).catch(() => {});
       } else if (event.type.startsWith('products.')) {
         api.getProducts().then(setProducts).catch(() => {});
+      } else if (event.type.startsWith('counseling.')) {
+        api.getCounselingRequests().then(setCounselingRequests).catch(() => {});
+      } else if (event.type.startsWith('research.')) {
+        api.getResearchProjects().then(setResearchMentorships).catch(() => {});
       } else if (event.type.startsWith('rulings.')) {
         api.getRulings().then(setRulings).catch(() => {});
       } else if (event.type.startsWith('welfare.')) {
         api.getWelfareRequests().then(setWelfareRequests).catch(() => {});
+        api.getConsumables().then(setConsumables).catch(() => {});
       } else if (event.type.startsWith('synergy.')) {
         api.getSynergyPosts().then(setSynergyPosts).catch(() => {});
+      } else if (event.type === 'admin.dashboard_config_updated') {
+        api.getDashboardConfig().then(cfg => {
+          if (cfg?.crextio) {
+            setCrextioConfig(prev => ({ ...prev, ...cfg.crextio }));
+          }
+          if (cfg?.mizan) {
+            setMizanConfig(prev => ({ ...prev, ...cfg.mizan }));
+          }
+        }).catch(() => {});
+      } else if (event.type === 'admin.security_config_updated') {
+        api.getSecurityConfig().then(setSecurityConfig).catch(() => {});
+      } else if (event.type.startsWith('user.')) {
+        api.getUsers().then(setUsers).catch(() => {});
       }
     });
 

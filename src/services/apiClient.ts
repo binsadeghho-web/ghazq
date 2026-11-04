@@ -329,8 +329,18 @@ class ApiClient {
   }
 
   // Admin endpoints
+  async getUsers(search?: string, role?: string) {
+    let url = '/api/admin/users';
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (role) params.set('role', role);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+    return this.request<any[]>(url);
+  }
+
   async getAdminUsers() {
-    return this.request<any[]>('/api/admin/users');
+    return this.getUsers();
   }
 
   async unlockUser(userId: string) {
@@ -417,6 +427,8 @@ class ApiClient {
           'cartable.message_added',
           'cartable.status_changed',
           'courses.enrolled',
+          'courses.created',
+          'courses.updated',
           'products.purchased',
           'counseling.requested',
           'research.project_submitted',
@@ -426,6 +438,10 @@ class ApiClient {
           'welfare.order_placed',
           'synergy.post_created',
           'synergy.response_added',
+          'admin.dashboard_config_updated',
+          'admin.security_config_updated',
+          'user.created',
+          'user.updated',
         ];
 
         for (const evt of domainEvents) {

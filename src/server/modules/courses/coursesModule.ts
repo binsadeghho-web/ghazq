@@ -270,6 +270,11 @@ export class CoursesService {
         severity: 'info',
       });
 
+      tx.emitOutbox('courses.created', {
+        courseId: newCourse.id,
+        title: newCourse.title,
+      });
+
       return newCourse;
     });
   }
@@ -303,6 +308,11 @@ export class CoursesService {
         ip: '127.0.0.1',
         details: `تنظیمات و اطلاعات دوره [${course.title}] توسط مسئول آموزش بروزرسانی شد.`,
         severity: 'info',
+      });
+
+      tx.emitOutbox('courses.updated', {
+        courseId,
+        title: course.title,
       });
 
       return updated;
