@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { User } from '../../types';
+import { apiClient } from '../../services/apiClient';
 import {
   GraduationCap,
   Search,
@@ -30,7 +31,9 @@ import {
   UserCheck,
   Calendar,
   Lock,
-  KeyRound
+  KeyRound,
+  Upload,
+  Image
 } from 'lucide-react';
 
 interface AlumniDirectorySectionProps {
@@ -284,15 +287,19 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-900 text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
-                        {alumni.avatarText || alumni.fullName.slice(0, 2)}
-                      </div>
+                      {alumni.profilePictureUrl ? (
+                        <img src={alumni.profilePictureUrl} alt={alumni.fullName} className="w-12 h-12 rounded-2xl object-cover shrink-0 shadow-xs border border-stone-200" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-900 text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
+                          {alumni.avatarText || alumni.fullName.slice(0, 2)}
+                        </div>
+                      )}
                       <div>
                         <h3 className="font-black text-sm text-stone-900 line-clamp-1">
                           {alumni.fullName}
                         </h3>
                         <p className="text-xs text-stone-500 font-semibold line-clamp-1">
-                          {alumni.roleTitle}
+                          {alumni.siteTitle ? `${alumni.siteTitle} · ${alumni.roleTitle || ''}` : alumni.roleTitle}
                         </p>
                       </div>
                     </div>
@@ -426,12 +433,18 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
                   return (
                     <tr key={alumni.id} className="hover:bg-emerald-50/40 transition-colors">
                       <td className="py-4 px-4 pr-6 font-bold text-stone-900 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-black text-xs shrink-0">
-                          {alumni.avatarText || alumni.fullName.slice(0, 2)}
-                        </div>
+                        {alumni.profilePictureUrl ? (
+                          <img src={alumni.profilePictureUrl} alt={alumni.fullName} className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-xs border border-stone-200" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-black text-xs shrink-0">
+                            {alumni.avatarText || alumni.fullName.slice(0, 2)}
+                          </div>
+                        )}
                         <div>
                           <p className="font-black text-stone-900">{alumni.fullName}</p>
-                          <p className="text-[11px] text-stone-500">{alumni.roleTitle}</p>
+                          <p className="text-[11px] text-stone-500">
+                            {alumni.siteTitle ? `${alumni.siteTitle} · ${alumni.roleTitle || ''}` : alumni.roleTitle}
+                          </p>
                         </div>
                       </td>
 
@@ -702,9 +715,13 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
         {/* Header */}
         <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-black text-lg shadow-md">
-              {alumni.avatarText || alumni.fullName.slice(0, 2)}
-            </div>
+            {alumni.profilePictureUrl ? (
+              <img src={alumni.profilePictureUrl} alt={alumni.fullName} className="w-12 h-12 rounded-2xl object-cover shrink-0 shadow-md border border-stone-200" />
+            ) : (
+              <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-black text-lg shadow-md">
+                {alumni.avatarText || alumni.fullName.slice(0, 2)}
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-black text-stone-900">پرونده جامع الکترونیک: {alumni.fullName}</h3>
@@ -1203,10 +1220,13 @@ interface RegisterAlumnusModalProps {
 const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose, onRegister }) => {
   const [activeTab, setActiveTab] = useState<'identity' | 'academic' | 'association' | 'career'>('identity');
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [formData, setFormData] = useState({
     // سربرگ ۱: اطلاعات هویتی
     fullName: '',
+    siteTitle: '',
+    profilePictureUrl: '',
     nationalId: '',
     phone: '',
     email: '',
@@ -1249,6 +1269,34 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
     // Default account flag: false initially until account button clicked, or true
     hasAccount: false,
   });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        if (!base64) {
+          setUploadingImage(false);
+          return;
+        }
+        const res = await apiClient.uploadProfilePicture(base64, file.name);
+        if (res.success && res.url) {
+          setFormData(prev => ({ ...prev, profilePictureUrl: res.url }));
+        } else {
+          alert('خطا در بارگذاری تصویر پروفایل');
+        }
+        setUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1345,6 +1393,17 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
               </div>
 
               <div className="space-y-1.5">
+                <label className="font-bold text-stone-700">عنوان در سایت:</label>
+                <input
+                  type="text"
+                  value={formData.siteTitle}
+                  onChange={e => setFormData({ ...formData, siteTitle: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  placeholder="مثال: قاضی دادگاه تجدیدنظر و پژوهشگر ارشد"
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="font-bold text-stone-700">کد ملی (۱۰ رقم):</label>
                 <input
                   type="text"
@@ -1388,16 +1447,6 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="font-bold text-stone-700">رایانامه (ایمیل):</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                />
-              </div>
-
               <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
                 <label className="font-bold text-stone-700">نشانی سکونت:</label>
                 <input
@@ -1406,6 +1455,49 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
                   onChange={e => setFormData({ ...formData, residentialAddress: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-medium text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 />
+              </div>
+
+              {/* Upload Profile Picture to PROFILE_PICTURE directory */}
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-3 bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200">
+                <label className="font-bold text-stone-800 flex items-center gap-2">
+                  <Image className="w-4 h-4 text-emerald-800" />
+                  <span>تصویر پروفایل (آپلود و ذخیره‌سازی در پوشه PROFILE_PICTURE):</span>
+                </label>
+                <div className="flex items-center gap-4 pt-1">
+                  {formData.profilePictureUrl ? (
+                    <div className="relative group shrink-0">
+                      <img
+                        src={formData.profilePictureUrl}
+                        alt="پروفایل دانش‌آموخته"
+                        className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-700 shadow-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, profilePictureUrl: '' })}
+                        className="absolute -top-2 -right-2 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 shadow-xs"
+                        title="حذف تصویر"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-stone-200 border-2 border-dashed border-stone-300 flex items-center justify-center text-stone-400 shrink-0">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      className="block w-full text-xs text-stone-600 file:ml-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-800 file:text-white hover:file:bg-emerald-900 cursor-pointer"
+                    />
+                    <p className="text-[11px] text-stone-500">
+                      {uploadingImage ? 'در حال آپلود و ذخیره‌سازی در پوشه PROFILE_PICTURE...' : 'فایل انتخابی به‌صورت خودکار در مسیر storage/uploads/PROFILE_PICTURE ذخیره می‌گردد.'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

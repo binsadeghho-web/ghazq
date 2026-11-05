@@ -389,6 +389,13 @@ class ApiClient {
     });
   }
 
+  async uploadProfilePicture(base64Data: string, filename?: string) {
+    return this.request<{ success: boolean; url: string; filename: string; message: string }>('/api/upload/profile-picture', {
+      method: 'POST',
+      body: JSON.stringify({ base64Data, filename }),
+    });
+  }
+
   async getMetrics() {
     return this.request<any>('/api/metrics');
   }
@@ -480,3 +487,4 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+export const apiClient = api;

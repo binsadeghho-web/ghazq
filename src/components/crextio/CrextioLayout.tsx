@@ -263,9 +263,13 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-all cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center font-bold text-sm shadow-xs">
-                    {currentUser?.avatarText || 'کاربر'}
-                  </div>
+                  {currentUser?.profilePictureUrl ? (
+                    <img src={currentUser.profilePictureUrl} alt={currentUser?.fullName || 'کاربر'} className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-xs border border-stone-200" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                      {currentUser?.avatarText || 'کاربر'}
+                    </div>
+                  )}
                   <div className="text-right text-xs hidden sm:block">
                     <p className="font-bold text-stone-900">{currentUser?.fullName || 'کاربر سیستم'}</p>
                     <p className="text-[10px] text-emerald-800 font-medium truncate max-w-[120px]">

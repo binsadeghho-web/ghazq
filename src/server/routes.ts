@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { outbox, OutboxMessage } from './platform/outbox';
+import { generateUUIDv7 } from './platform/database';
+import { storageConfig } from './platform/storage';
 import { createAuthRouter } from './modules/auth/authModule';
 import { createCartableRouter } from './modules/cartable/cartableModule';
 import { createCoursesRouter } from './modules/courses/coursesModule';
@@ -35,6 +39,60 @@ export function createMasterRouter(): Router {
   router.use('/welfare', welfareRouter);
   router.use('/synergy', synergyRouter);
   router.use('/admin', createAdminRouter());
+
+  // Profile picture upload endpoint saving directly into PROFILE_PICTURE folder
+  router.post('/upload/profile-picture', async (req: Request, res: Response) => {
+    try {
+      const { base64Data, filename: origName } = req.body || {};
+      if (!base64Data || typeof base64Data !== 'string') {
+        return res.status(400).json({ success: false, message: 'دیتا یا تصویر نامعتبر است.' });
+      }
+
+      // Extract mime type and raw base64
+      const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      let buffer: Buffer;
+      let ext = '.jpg';
+
+      if (matches && matches.length === 3) {
+        const mime = matches[1];
+        if (mime.includes('png')) ext = '.png';
+        else if (mime.includes('webp')) ext = '.webp';
+        else if (mime.includes('gif')) ext = '.gif';
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      }
+
+      const safeFilename = `profile_${Date.now()}_${generateUUIDv7().slice(0, 8)}${ext}`;
+      const uploadsProfileDir = path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE');
+      const rootProfileDir = path.join(storageConfig.rootPath, 'PROFILE_PICTURE');
+
+      if (!fs.existsSync(uploadsProfileDir)) {
+        fs.mkdirSync(uploadsProfileDir, { recursive: true, mode: 0o755 });
+      }
+      if (!fs.existsSync(rootProfileDir)) {
+        fs.mkdirSync(rootProfileDir, { recursive: true, mode: 0o755 });
+      }
+
+      const destPath1 = path.join(uploadsProfileDir, safeFilename);
+      const destPath2 = path.join(rootProfileDir, safeFilename);
+
+      await fs.promises.writeFile(destPath1, buffer);
+      try {
+        await fs.promises.writeFile(destPath2, buffer);
+      } catch {}
+
+      const url = `/uploads/PROFILE_PICTURE/${safeFilename}`;
+      res.json({
+        success: true,
+        filename: safeFilename,
+        url,
+        message: 'عکس پروفایل با موفقیت در پوشه PROFILE_PICTURE ذخیره گردید.'
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: `خطا در ذخیره‌سازی عکس پروفایل: ${err?.message || err}` });
+    }
+  });
 
   // Golden Signals Observability Metrics (Section 11 & Item 1: Strict Admin Session or SHA-256 timingSafeEqual Token)
   router.get('/metrics', (req: Request, res: Response) => {

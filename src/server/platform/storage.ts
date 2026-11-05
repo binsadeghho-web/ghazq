@@ -14,6 +14,7 @@ import { generateUUIDv7 } from './uuidv7';
 export interface StorageConfig {
   rootPath: string;
   uploadsDir: string;
+  profilePictureDir: string;
   backupsDir: string;
   auditDir: string;
   tempDir: string;
@@ -40,6 +41,7 @@ const rootPath = resolveStorageRoot();
 export const storageConfig: StorageConfig = {
   rootPath,
   uploadsDir: path.join(rootPath, 'uploads'),
+  profilePictureDir: path.join(rootPath, 'uploads', 'PROFILE_PICTURE'),
   backupsDir: path.join(rootPath, 'backups'),
   auditDir: path.join(rootPath, 'audit'),
   tempDir: path.join(rootPath, 'temp'),
@@ -53,6 +55,8 @@ export function initStorageDirectories(): void {
   const dirs = [
     storageConfig.rootPath,
     storageConfig.uploadsDir,
+    path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE'),
+    path.join(storageConfig.rootPath, 'PROFILE_PICTURE'),
     storageConfig.backupsDir,
     storageConfig.auditDir,
     storageConfig.tempDir,

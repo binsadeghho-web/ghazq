@@ -53,6 +53,8 @@ export interface User {
   phone: string;
   role: UserRole;
   roleTitle: string; // e.g. "مدیر ارشد سامانه", "مسئول خدمات و کارتابل", "مستشار دادگاه تجدیدنظر"
+  siteTitle?: string; // عنوان در سایت (مثال: "پژوهشگر ارشد فقه القضاء", "مستشار عالی دیوان")
+  profilePictureUrl?: string; // آدرس عکس پروفایل ذخیره‌شده در پوشه PROFILE_PICTURE
   organization: string; // e.g. "قوه قضائیه - دادگستری کل استان", "پژوهشکده فقه و حقوق"
   graduationYear: string;
   avatarText: string;

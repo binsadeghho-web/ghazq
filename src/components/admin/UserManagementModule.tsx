@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { User, UserRole, AppSectionId, PermissionAccessLevel, UserSectionPermissions } from '../../types';
+import { api } from '../../services/apiClient';
 import {
   Users,
   UserPlus,
@@ -323,9 +324,13 @@ export const UserManagementModule: React.FC = () => {
                     {/* COLUMN 1: نام {عنوان اون فرد} */}
                     <td className="p-4 pr-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-900 text-white flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
-                          {u.avatarText || u.fullName.slice(0, 2)}
-                        </div>
+                        {u.profilePictureUrl ? (
+                          <img src={u.profilePictureUrl} alt={u.fullName} className="w-10 h-10 rounded-2xl object-cover shrink-0 shadow-xs border border-stone-200" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-900 text-white flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
+                            {u.avatarText || u.fullName.slice(0, 2)}
+                          </div>
+                        )}
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5">
                             <span className="font-extrabold text-stone-900 text-sm">{u.fullName}</span>
@@ -336,7 +341,7 @@ export const UserManagementModule: React.FC = () => {
                             )}
                           </div>
                           <p className="text-[11px] text-stone-500 font-semibold line-clamp-1">
-                            {u.roleTitle || 'عضو سامانه'}
+                            {u.siteTitle ? `${u.siteTitle} · ${u.roleTitle || 'عضو سامانه'}` : (u.roleTitle || 'عضو سامانه')}
                           </p>
                         </div>
                       </div>
@@ -1003,6 +1008,8 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
     password: '',
     role: 'alumni' as UserRole,
     roleTitle: 'مستشار دادگاه تجدیدنظر استان',
+    siteTitle: '',
+    profilePictureUrl: '',
     organization: 'قوه قضائیه',
     graduationYear: '۱۴۰۰',
     judicialGrade: 8,
@@ -1011,6 +1018,29 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
   });
 
   const [loading, setLoading] = useState(false);
+  const [uploadingPic, setUploadingPic] = useState(false);
+
+  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPic(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const base64 = evt.target?.result as string;
+      try {
+        const res = await api.uploadProfilePicture(base64, file.name);
+        if (res.success && res.url) {
+          setFormData(prev => ({ ...prev, profilePictureUrl: res.url }));
+        }
+      } catch (err: any) {
+        alert(`خطا در آپلود تصویر پروفایل: ${err?.message || err}`);
+      } finally {
+        setUploadingPic(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1023,6 +1053,7 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
       ...formData,
       username,
       password,
+      siteTitle: formData.siteTitle.trim() || formData.roleTitle,
       hasAccount: true,
       avatarText: formData.fullName.slice(0, 2),
       isActive: true,
@@ -1060,7 +1091,7 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
             </div>
             <div>
               <h3 className="text-lg font-extrabold text-stone-900">ایجاد کاربر و حساب جدید</h3>
-              <p className="text-xs text-stone-500">تخصیص شناسه، نام کاربری و رمز عبور در پایگاه داده</p>
+              <p className="text-xs text-stone-500">تخصیص شناسه، عنوان در سایت و عکس پروفایل در پوشه PROFILE_PICTURE</p>
             </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
@@ -1099,6 +1130,58 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 placeholder="0012345678"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">عنوان در سایت:</label>
+              <input
+                type="text"
+                value={formData.siteTitle}
+                onChange={e => setFormData({ ...formData, siteTitle: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                placeholder="مثال: پژوهشگر ارشد فقه القضاء، مستشار دیوان"
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2 p-3.5 rounded-2xl bg-stone-100/80 border border-stone-200">
+              <label className="font-bold text-stone-800 block mb-1">
+                عکس پروفایل کاربر (ذخیره‌سازی مستقیم در پوشه PROFILE_PICTURE):
+              </label>
+              <div className="flex items-center gap-3">
+                {formData.profilePictureUrl ? (
+                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-emerald-700 shrink-0">
+                    <img src={formData.profilePictureUrl} alt="عکس پروفایل" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, profilePictureUrl: '' })}
+                      className="absolute top-0 right-0 bg-red-600 text-white w-4 h-4 text-[10px] flex items-center justify-center font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-stone-200 border-2 border-dashed border-stone-300 flex items-center justify-center text-stone-400 font-bold text-xs shrink-0">
+                    بدون تصویر
+                  </div>
+                )}
+
+                <label className="px-4 py-2.5 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-xs">
+                  <span>{uploadingPic ? 'در حال آپلود...' : 'انتخاب و آپلود تصویر پروفایل'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingPic}
+                    onChange={handleProfilePicUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {formData.profilePictureUrl && (
+                  <span className="text-[11px] font-mono text-emerald-800 font-bold truncate max-w-[220px]">
+                    {formData.profilePictureUrl}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">

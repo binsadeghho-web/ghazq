@@ -327,8 +327,12 @@ export const MizanLayout: React.FC = () => {
               onClick={() => setRoleDropdownOpen(prev => !prev)}
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-[#F0F5F2] border border-transparent hover:border-[#D5E5DE] transition-all"
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#158561]/40 bg-[#EBF8F2] flex items-center justify-center text-xs font-bold text-[#158561]">
-                <span>{currentUser?.avatarText || currentUser?.fullName?.slice(0, 1) || 'ق'}</span>
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#158561]/40 bg-[#EBF8F2] flex items-center justify-center text-xs font-bold text-[#158561] shrink-0">
+                {currentUser?.profilePictureUrl ? (
+                  <img src={currentUser.profilePictureUrl} alt={currentUser?.fullName || 'کاربر'} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{currentUser?.avatarText || currentUser?.fullName?.slice(0, 1) || 'ق'}</span>
+                )}
               </div>
               <div className="hidden lg:block text-right">
                 <div className="text-xs font-bold text-[#0D3829] leading-tight flex items-center gap-1">

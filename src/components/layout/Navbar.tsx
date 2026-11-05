@@ -123,9 +123,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 {/* Unboxed User Identity Label */}
                 <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-                  <div className="w-6 h-6 rounded-md bg-slate-900 dark:bg-slate-700 text-white flex items-center justify-center text-[11px] font-bold">
-                    {currentUser.avatarText}
-                  </div>
+                  {currentUser.profilePictureUrl ? (
+                    <img src={currentUser.profilePictureUrl} alt={currentUser.fullName} className="w-6 h-6 rounded-md object-cover shrink-0" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-md bg-slate-900 dark:bg-slate-700 text-white flex items-center justify-center text-[11px] font-bold">
+                      {currentUser.avatarText}
+                    </div>
+                  )}
                   <div className="hidden sm:flex items-center gap-1.5 text-xs">
                     <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
                       {currentUser.fullName}
