@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   MessageSquare
 } from 'lucide-react';
+import { AdminCounselingGeneralSuite } from './AdminCounselingGeneralSuite';
 
 interface CounselingSectionProps {
   initialTab?: 'request' | 'my_history' | 'consultants' | 'admin_queue' | 'academic_special' | 'articles';
@@ -49,6 +50,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
   } = useApp();
 
   const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const [viewMode, setViewMode] = useState<'admin' | 'student'>(isOfficial ? 'admin' : 'student');
 
   const [activeTab, setActiveTab] = useState<'request' | 'my_history' | 'consultants' | 'admin_queue' | 'academic_special' | 'articles'>(initialTab);
 
@@ -189,8 +191,28 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
     }
   };
 
+  if (isOfficial && viewMode === 'admin') {
+    return <AdminCounselingGeneralSuite onSwitchToStudentPreview={() => setViewMode('student')} />;
+  }
+
   return (
     <div className="space-y-6">
+      {/* Return to Admin Mode floating banner if admin is previewing student mode */}
+      {isOfficial && viewMode === 'student' && (
+        <div className="bg-amber-100 border border-amber-300 text-amber-900 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
+          <span className="text-xs font-bold flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+            در حال مشاهده پیش‌نمایش فرم و محیط دانش‌آموخته هستید.
+          </span>
+          <button
+            onClick={() => setViewMode('admin')}
+            className="px-4 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+          >
+            بازگشت به میز مدیریت ادمین
+          </button>
+        </div>
+      )}
+
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <ModernMetricCard

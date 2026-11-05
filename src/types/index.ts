@@ -157,16 +157,56 @@ export interface CrextioDashboardConfig {
   showcaseSatisfactionRate?: string;
   bentoCardsConfig?: CrextioBentoCardConfig[];
   heroStatsConfig?: CrextioHeroStatItem[];
+  // ویترین دوره‌ها و کارگاه‌های آموزشی
+  courseShowcaseTitle?: string;
+  courseShowcaseSubtitle?: string;
+  courseShowcaseBadge?: string;
+  courseShowcaseCtaText?: string;
+  courseShowcaseInterval?: number;
+
+  // ویترین خدمات مشاوره نخبگان
   showCounselingPromo?: boolean;
   counselingPromoTitle?: string;
   counselingPromoSubtitle?: string;
+  counselingPromoBadge?: string;
+  counselingPromoSpecializedTitle?: string;
+  counselingPromoSpecializedDesc?: string;
+  counselingPromoSpecializedBadge?: string;
+  counselingPromoSpecializedBtnText?: string;
+  counselingPromoGeneralTitle?: string;
+  counselingPromoGeneralDesc?: string;
+  counselingPromoGeneralBadge?: string;
+  counselingPromoGeneralBtnText?: string;
+
+  // ویترین خدمات رفاهی و تسهیلات
+  showWelfareShowcase?: boolean;
+  welfareShowcaseTitle?: string;
+  welfareShowcaseSubtitle?: string;
+  welfareShowcaseBadge?: string;
+  welfareShowcaseCtaText?: string;
+  welfareShowcaseLoanAmount?: string;
+  welfareShowcaseCards?: Array<{ id: string; title: string; subtitle: string; tag: string; icon: string; badge: string }>;
+
+  // ویترین کتب و انتشارات
   showProductsMiniPromo?: boolean;
   booksShowcaseTitle?: string;
   booksShowcaseSubtitle?: string;
-  welfareShowcaseTitle?: string;
-  welfareShowcaseSubtitle?: string;
+  booksShowcaseBadge?: string;
+  booksShowcaseCtaText?: string;
+  booksShowcaseDiscountNotice?: string;
+
+  // ویترین درس‌گفتارها و چندرسانه‌ای
+  showMultimediaShowcase?: boolean;
   multimediaShowcaseTitle?: string;
   multimediaShowcaseSubtitle?: string;
+  multimediaShowcaseBadge?: string;
+  multimediaShowcaseCtaText?: string;
+  multimediaLecturesCount?: string;
+
+  // ویترین هیرو و بنر خوش‌آمدگویی
+  heroBadgeText?: string;
+  showHeroStats?: boolean;
+
   // ویترین تالار نقد و مناظره آراء قضایی
   showRulingsShowcase?: boolean;
   rulingsShowcaseMode?: 'expanded' | 'compact';
@@ -580,12 +620,18 @@ export interface WelfareRequest {
 export interface ConsumableItem {
   id: string;
   title: string;
+  name?: string;
   category: string;
   cooperativePrice: number;
+  memberPrice?: number;
   marketPrice: number;
   unit: string;
   stock: number;
   description: string;
+  brand?: string;
+  discountPercent?: number;
+  rating?: number;
+  imageUrl?: string;
 }
 
 export interface ConsumableOrder {

@@ -431,11 +431,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (fetchedSynergy.status === 'fulfilled') setSynergyPosts(fetchedSynergy.value);
       if (fetchedSecurity.status === 'fulfilled') setSecurityConfig(fetchedSecurity.value);
       if (fetchedDashboardConfig.status === 'fulfilled' && fetchedDashboardConfig.value?.crextio) {
-        setCrextioConfig(prev => ({
-          ...prev,
-          ...fetchedDashboardConfig.value.crextio,
-          _baseVersion: fetchedDashboardConfig.value.version || (prev as any)._baseVersion || 1,
-        }));
+        setCrextioConfig(prev => {
+          const serverVer = fetchedDashboardConfig.value.version || 1;
+          const localVer = (prev as any)._baseVersion || 1;
+          if (serverVer >= localVer) {
+            const nextConfig = {
+              ...prev,
+              ...fetchedDashboardConfig.value.crextio,
+              _baseVersion: serverVer,
+            };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(nextConfig));
+            }
+            return nextConfig;
+          }
+          return prev;
+        });
       }
 
       setServerSyncStatus('synced');

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ConsumableItem, WelfareRequest } from '../../types';
 import { ModernMetricCard } from '../common/ModernMetricCard';
+import { AdminWelfareSuite } from './AdminWelfareSuite';
 import {
   Gift,
   Coins,
@@ -59,6 +60,7 @@ export const WelfareSection: React.FC = () => {
   const [propDesc, setPropDesc] = useState('');
 
   const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const [viewMode, setViewMode] = useState<'admin' | 'student'>(isOfficial ? 'admin' : 'student');
 
   const myWelfareList = welfareRequests.filter(r => isOfficial || r.applicantId === currentUser?.id);
 
@@ -154,8 +156,28 @@ export const WelfareSection: React.FC = () => {
     alert('پیشنهاد کالای شما به مدیریت تعاونی ارسال شد.');
   };
 
+  if (isOfficial && viewMode === 'admin') {
+    return <AdminWelfareSuite onSwitchToStudentPreview={() => setViewMode('student')} />;
+  }
+
   return (
     <div className="space-y-6">
+      {/* Return to Admin Mode floating banner if admin is previewing student mode */}
+      {isOfficial && viewMode === 'student' && (
+        <div className="bg-teal-100 border border-teal-300 text-teal-900 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
+          <span className="text-xs font-bold flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
+            در حال مشاهده پیش‌نمایش فرم و محیط رفاهیات دانش‌آموخته هستید.
+          </span>
+          <button
+            onClick={() => setViewMode('admin')}
+            className="px-4 py-1.5 rounded-xl bg-teal-850 bg-teal-900 hover:bg-teal-950 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+          >
+            بازگشت به میز مدیریت ادمین
+          </button>
+        </div>
+      )}
+
       {/* 4 Metric Cards Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <ModernMetricCard
