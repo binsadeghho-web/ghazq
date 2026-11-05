@@ -91,7 +91,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
               onClick={onNavigateToRulings}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer"
             >
-              <span>ورود به تالار جامع آراء</span>
+              <span>{crextioConfig.rulingsPrimaryBtnText || 'ورود به تالار جامع آراء'}</span>
               <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
@@ -159,7 +159,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
             {/* Left Column (5 Cols): Rulings Selector List */}
             <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-l border-[#ECE7DA] p-4 sm:p-5 space-y-3 bg-[#FAF8F2]/60">
               <div className="flex items-center justify-between pb-1">
-                <span className="text-xs font-black text-stone-700">دادنامه‌های داغ و برگزیده این هفته</span>
+                <span className="text-xs font-black text-stone-700">{crextioConfig.rulingsShowcaseSectionTitle || 'دادنامه‌های داغ و برگزیده این هفته'}</span>
                 <span className="text-[10px] text-stone-500 font-semibold">برای بررسی کلیک کنید</span>
               </div>
 

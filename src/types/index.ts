@@ -171,6 +171,8 @@ export interface CrextioDashboardConfig {
   rulingsShowcaseTitle?: string;
   rulingsShowcaseSubtitle?: string;
   rulingsShowcaseBadge?: string;
+  rulingsPrimaryBtnText?: string;
+  rulingsShowcaseSectionTitle?: string;
   rulingsCustomList?: JudicialRuling[];
 
   // ویترین تبلیغی و ترغیبی راهبری پژوهش و رساله‌ها
@@ -179,6 +181,7 @@ export interface CrextioDashboardConfig {
   researchPromoSubtitle?: string;
   researchPromoBadge?: string;
   researchPromoGrantAmount?: string;
+  researchPromoBgImage?: string;
   researchPromoPrimaryBtnText?: string;
   researchPromoPrimaryAction?: 'quick_modal' | 'navigate_research' | 'external_link';
   researchPromoPrimaryActionUrl?: string;
@@ -191,7 +194,8 @@ export interface CrextioDashboardConfig {
     desc: string;
     tag: string;
     icon?: string;
-    clickAction?: 'quick_modal' | 'navigate_research' | 'none';
+    clickAction?: 'quick_modal' | 'navigate_research' | 'external_link' | 'none';
+    actionUrl?: string;
   }[];
 
   // سامانه اختصاصی تغییر اندازه فونت‌های ویترین‌ها به تفکیک نوع متن (اصلاح ۴)

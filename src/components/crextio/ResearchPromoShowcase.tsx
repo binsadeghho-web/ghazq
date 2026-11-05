@@ -88,11 +88,13 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
     }
   };
 
-  const handleCardClick = (clickAction?: string) => {
+  const handleCardClick = (clickAction?: string, actionUrl?: string) => {
     if (clickAction === 'quick_modal') {
       setQuickModalOpen(true);
     } else if (clickAction === 'navigate_research' && onNavigateToResearch) {
       onNavigateToResearch();
+    } else if (clickAction === 'external_link' && actionUrl) {
+      window.open(actionUrl, '_blank');
     }
   };
 
@@ -146,10 +148,10 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
     <div className="w-full space-y-4">
       {/* Master Promo Showcase Card */}
       <div className="relative rounded-[32px] overflow-hidden border border-[#D5E3D8] bg-gradient-to-br from-[#0F261E] via-[#143228] to-[#0A1D16] text-white shadow-xl">
-        {/* Background Atmosphere Image with Scrim (NEW: Dignified Islamic Scholarly Chamber without women) */}
+        {/* Background Atmosphere Image with Scrim (Configurable Background) */}
         <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
           <img
-            src="/src/assets/images/scholarly_research_chamber_1793830009917.jpg"
+            src={crextioConfig.researchPromoBgImage || '/src/assets/images/scholarly_research_chamber_1793830009917.jpg'}
             alt="باشگاه نخبگانی راهبری رساله‌ها و اساتید فقه و حقوق"
             className="w-full h-full object-cover object-center"
           />
@@ -215,7 +217,7 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
               return (
                 <div
                   key={pillar.id}
-                  onClick={() => handleCardClick(pillar.clickAction)}
+                  onClick={() => handleCardClick(pillar.clickAction, pillar.actionUrl)}
                   className={`p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all backdrop-blur-sm space-y-2 group ${
                     isClickable ? 'cursor-pointer hover:shadow-lg active:scale-98' : ''
                   }`}

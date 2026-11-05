@@ -490,7 +490,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                         تنظیمات و محتوای ۱۰۰٪ ویترین تالار نقد آراء قضایی
                       </h4>
                       <p className="text-[11px] text-amber-800/80 mt-0.5">
-                        ویرایش کامل تیتر، زیرعنوان، نشان بالایی و روشن/خاموش کردن ویترین
+                        ویرایش کامل تیتر، زیرعنوان، نشان، دکمه اقدام، آراء و شعب قضایی
                       </p>
                     </div>
                   </div>
@@ -509,24 +509,42 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                 </div>
 
                 <div className="space-y-3 pt-2">
-                  <div>
-                    <label className="font-bold text-stone-700 block mb-1">
-                      نشان ویژه بالای ویترین (Badge):
-                    </label>
-                    <input
-                      type="text"
-                      value={crextioConfig.rulingsShowcaseBadge || ''}
-                      onChange={e => {
-                        updateCrextioConfig({ rulingsShowcaseBadge: e.target.value });
-                        triggerSuccess();
-                      }}
-                      placeholder="مثال: تالار مناظره و نقد آراء منتخب"
-                      className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1 text-xs">
+                        نشان ویژه بالای ویترین (Badge):
+                      </label>
+                      <input
+                        type="text"
+                        value={crextioConfig.rulingsShowcaseBadge || ''}
+                        onChange={e => {
+                          updateCrextioConfig({ rulingsShowcaseBadge: e.target.value });
+                          triggerSuccess();
+                        }}
+                        placeholder="مثال: تالار مناظره و نقد آراء منتخب"
+                        className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1 text-xs">
+                        متن دکمه ورود به تالار (CTA):
+                      </label>
+                      <input
+                        type="text"
+                        value={crextioConfig.rulingsPrimaryBtnText || ''}
+                        onChange={e => {
+                          updateCrextioConfig({ rulingsPrimaryBtnText: e.target.value });
+                          triggerSuccess();
+                        }}
+                        placeholder="مثال: ورود به تالار جامع آراء"
+                        className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1">
+                    <label className="font-bold text-stone-700 block mb-1 text-xs">
                       عنوان اصلی ویترین آراء:
                     </label>
                     <input
@@ -542,41 +560,73 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   </div>
 
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1">
-                      حالت پیش‌فرض نمایش ویترین آراء (اصلاح ۳):
+                    <label className="font-bold text-stone-700 block mb-1 text-xs">
+                      زیرعنوان و توضیحات ویترین آراء:
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateCrextioConfig({ rulingsShowcaseMode: 'expanded' });
-                          triggerSuccess();
-                        }}
-                        className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
-                          crextioConfig.rulingsShowcaseMode !== 'compact'
-                            ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
-                            : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                        }`}
-                      >
-                        <span className="block font-black text-xs">۱. حالت تفصیلی و کامل (دو ستونه)</span>
-                        <span className="text-[10px] text-stone-500 font-normal">نمایش فهرست آراء + پنل نقد و مباحثه زنده و قواعد فقهی</span>
-                      </button>
+                    <input
+                      type="text"
+                      value={crextioConfig.rulingsShowcaseSubtitle || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ rulingsShowcaseSubtitle: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="مثال: میدان تحلیل رویه‌های قضایی، آراء وحدت رویه و نقدهای حقوقی..."
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-medium text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                    />
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateCrextioConfig({ rulingsShowcaseMode: 'compact' });
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1 text-xs">
+                        عنوان بالای ستون فهرست آراء (در حالت کامل):
+                      </label>
+                      <input
+                        type="text"
+                        value={crextioConfig.rulingsShowcaseSectionTitle || ''}
+                        onChange={e => {
+                          updateCrextioConfig({ rulingsShowcaseSectionTitle: e.target.value });
                           triggerSuccess();
                         }}
-                        className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
-                          crextioConfig.rulingsShowcaseMode === 'compact'
-                            ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
-                            : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                        }`}
-                      >
-                        <span className="block font-black text-xs">۲. حالت مختصر و فشرده (شبکه ۳ تایی)</span>
-                        <span className="text-[10px] text-stone-500 font-normal">کارت‌های مختصر افقی متناسب با مرور سریع و اشغال کمتر صفحه</span>
-                      </button>
+                        placeholder="مثال: دادنامه‌های داغ و برگزیده این هفته"
+                        className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1 text-xs">
+                        حالت پیش‌فرض نمایش ویترین آراء (مدیریت انحصاری ادمین):
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateCrextioConfig({ rulingsShowcaseMode: 'expanded' });
+                            triggerSuccess();
+                          }}
+                          className={`p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                            crextioConfig.rulingsShowcaseMode !== 'compact'
+                              ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
+                              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                          }`}
+                        >
+                          <span className="block font-black text-xs">۱. حالت تفصیلی (کامل)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateCrextioConfig({ rulingsShowcaseMode: 'compact' });
+                            triggerSuccess();
+                          }}
+                          className={`p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                            crextioConfig.rulingsShowcaseMode === 'compact'
+                              ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
+                              : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                          }`}
+                        >
+                          <span className="block font-black text-xs">۲. حالت مختصر (فشرده)</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -584,7 +634,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   <div className="pt-3 border-t border-amber-200/80 space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="font-extrabold text-xs text-amber-950 block">
-                        فهرست دادنامه‌های اختصاصی ویترین (ویرایش ۱۰۰٪ متن، شعب و آراء):
+                        فهرست دادنامه‌های اختصاصی ویترین (ویرایش ۱۰۰٪ متن، شعب، قضات و استدلال‌ها):
                       </label>
                       <button
                         type="button"
@@ -617,12 +667,12 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                       </button>
                     </div>
 
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
                       {(crextioConfig.rulingsCustomList || rulings).map((r, idx) => (
-                        <div key={r.id} className="p-3.5 rounded-2xl bg-white border border-stone-200 space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-[10px]">
-                              {toPersianNumbers(idx + 1)}
+                        <div key={r.id} className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
+                          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-black text-xs">
+                              دادنامه شماره {toPersianNumbers(idx + 1)}
                             </span>
                             <button
                               type="button"
@@ -631,14 +681,14 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                                 updateCrextioConfig({ rulingsCustomList: currentList });
                                 triggerSuccess();
                               }}
-                              className="text-[10px] text-red-600 hover:text-red-800 font-bold"
+                              className="text-[11px] text-red-600 hover:text-red-800 font-bold cursor-pointer"
                             >
                               حذف این دادنامه
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="sm:col-span-2">
                               <label className="text-[10px] text-stone-500 font-bold block mb-0.5">عنوان دادنامه:</label>
                               <input
                                 type="text"
@@ -656,6 +706,25 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                             </div>
 
                             <div>
+                              <label className="text-[10px] text-stone-500 font-bold block mb-0.5">دسته‌بندی موضوعی:</label>
+                              <input
+                                type="text"
+                                value={r.caseTypeTitle}
+                                onChange={e => {
+                                  const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
+                                  const target = currentList.find(item => item.id === r.id);
+                                  if (target) {
+                                    target.caseTypeTitle = e.target.value;
+                                    updateCrextioConfig({ rulingsCustomList: currentList });
+                                  }
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-bold text-amber-900"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
                               <label className="text-[10px] text-stone-500 font-bold block mb-0.5">مرجع صدور و شعبه:</label>
                               <input
                                 type="text"
@@ -665,6 +734,40 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                                   const target = currentList.find(item => item.id === r.id);
                                   if (target) {
                                     target.courtBranch = e.target.value;
+                                    updateCrextioConfig({ rulingsCustomList: currentList });
+                                  }
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-900"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-stone-500 font-bold block mb-0.5">نام قاضی انشاءکننده:</label>
+                              <input
+                                type="text"
+                                value={r.judgeName || ''}
+                                onChange={e => {
+                                  const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
+                                  const target = currentList.find(item => item.id === r.id);
+                                  if (target) {
+                                    target.judgeName = e.target.value;
+                                    updateCrextioConfig({ rulingsCustomList: currentList });
+                                  }
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-900"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-stone-500 font-bold block mb-0.5">تاریخ صدور:</label>
+                              <input
+                                type="text"
+                                value={r.rulingDate || ''}
+                                onChange={e => {
+                                  const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
+                                  const target = currentList.find(item => item.id === r.id);
+                                  if (target) {
+                                    target.rulingDate = e.target.value;
                                     updateCrextioConfig({ rulingsCustomList: currentList });
                                   }
                                 }}
@@ -686,7 +789,43 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                                   updateCrextioConfig({ rulingsCustomList: currentList });
                                 }
                               }}
-                              className="w-full p-2 rounded-xl border border-stone-200 text-xs text-stone-800"
+                              className="w-full p-2.5 rounded-xl border border-stone-200 text-xs text-stone-800 leading-relaxed"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-stone-500 font-bold block mb-0.5">متن کامل دادنامه:</label>
+                            <textarea
+                              rows={3}
+                              value={r.fullRulingText || ''}
+                              onChange={e => {
+                                const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
+                                const target = currentList.find(item => item.id === r.id);
+                                if (target) {
+                                  target.fullRulingText = e.target.value;
+                                  updateCrextioConfig({ rulingsCustomList: currentList });
+                                }
+                              }}
+                              placeholder="متن تفصیلی رأی..."
+                              className="w-full p-2.5 rounded-xl border border-stone-200 text-xs text-stone-800 font-serif leading-relaxed"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-stone-500 font-bold block mb-0.5">مستندات و قواعد فقهی (با ویرگول جدا کنید):</label>
+                            <input
+                              type="text"
+                              value={r.legalPrinciples?.join('، ') || ''}
+                              onChange={e => {
+                                const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
+                                const target = currentList.find(item => item.id === r.id);
+                                if (target) {
+                                  target.legalPrinciples = e.target.value.split('،').map(s => s.trim()).filter(Boolean);
+                                  updateCrextioConfig({ rulingsCustomList: currentList });
+                                }
+                              }}
+                              placeholder="قاعده لاضرر، ماده ۹۷۵ قانون مدنی"
+                              className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-emerald-900"
                             />
                           </div>
                         </div>
@@ -712,7 +851,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                         تنظیمات و محتوای ۱۰۰٪ ویترین ترغیبی راهبری پژوهش و رساله‌ها
                       </h4>
                       <p className="text-[11px] text-emerald-800/80 mt-0.5">
-                        رویکرد ترغیبی و تبلیغی، ویرایش متن‌ها، کارت‌های ۴گانه و اکشن کلیک‌ها
+                        رویکرد ترغیبی، ویرایش متن‌ها، تصویر پس‌زمینه، کارت‌های ۴گانه و کلیک‌ها
                       </p>
                     </div>
                   </div>
@@ -733,7 +872,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                 <div className="space-y-3 pt-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="font-bold text-stone-700 block mb-1">
+                      <label className="font-bold text-stone-700 block mb-1 text-xs">
                         نشان ترغیبی بالا (Badge):
                       </label>
                       <input
@@ -749,7 +888,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                     </div>
 
                     <div>
-                      <label className="font-bold text-stone-700 block mb-1">
+                      <label className="font-bold text-stone-700 block mb-1 text-xs">
                         میزان گرنت و مشوق پژوهشی (Highlight):
                       </label>
                       <input
@@ -766,7 +905,23 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   </div>
 
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1">
+                    <label className="font-bold text-stone-700 block mb-1 text-xs">
+                      آدرس یا مسیر تصویر پس‌زمینه ویترین پژوهش:
+                    </label>
+                    <input
+                      type="text"
+                      value={crextioConfig.researchPromoBgImage || ''}
+                      onChange={e => {
+                        updateCrextioConfig({ researchPromoBgImage: e.target.value });
+                        triggerSuccess();
+                      }}
+                      placeholder="/src/assets/images/scholarly_research_chamber_1793830009917.jpg"
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-mono text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1 text-xs">
                       عنوان هیجان‌انگیز و ترغیبی ویترین:
                     </label>
                     <input
@@ -782,7 +937,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   </div>
 
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1">
+                    <label className="font-bold text-stone-700 block mb-1 text-xs">
                       توضیحات اغواکننده و تشویقی برای ثبت پژوهش:
                     </label>
                     <textarea
@@ -803,7 +958,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                       تنظیمات دکمه‌های اکشن و کلیک‌های ویترین پژوهش:
                     </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-2xl bg-white border border-stone-200 space-y-2">
+                      <div className="p-3.5 rounded-2xl bg-white border border-stone-200 space-y-2">
                         <label className="font-bold text-stone-800 block text-xs">متن دکمه اصلی:</label>
                         <input
                           type="text"
@@ -821,9 +976,18 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                           <option value="navigate_research">انتقال مستقیم به تب میز کار پژوهش</option>
                           <option value="external_link">انتقال به آدرس اینترنتی بیرونی</option>
                         </select>
+                        {crextioConfig.researchPromoPrimaryAction === 'external_link' && (
+                          <input
+                            type="text"
+                            value={crextioConfig.researchPromoPrimaryActionUrl || ''}
+                            onChange={e => updateCrextioConfig({ researchPromoPrimaryActionUrl: e.target.value })}
+                            placeholder="https://example.com"
+                            className="w-full px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-mono text-stone-900"
+                          />
+                        )}
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-white border border-stone-200 space-y-2">
+                      <div className="p-3.5 rounded-2xl bg-white border border-stone-200 space-y-2">
                         <label className="font-bold text-stone-800 block text-xs">متن دکمه دوم:</label>
                         <input
                           type="text"
@@ -841,6 +1005,15 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                           <option value="quick_modal">باز شدن مودال ثبت فوری طرح و اسکان</option>
                           <option value="external_link">انتقال به آدرس اینترنتی بیرونی</option>
                         </select>
+                        {crextioConfig.researchPromoSecondaryAction === 'external_link' && (
+                          <input
+                            type="text"
+                            value={crextioConfig.researchPromoSecondaryActionUrl || ''}
+                            onChange={e => updateCrextioConfig({ researchPromoSecondaryActionUrl: e.target.value })}
+                            placeholder="https://example.com"
+                            className="w-full px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-mono text-stone-900"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -848,36 +1021,61 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   {/* ویرایش ۱۰۰ درصدی کارت‌های ۴‌گانه ویترین پژوهش */}
                   <div className="pt-3 border-t border-emerald-200/80 space-y-3">
                     <h5 className="font-black text-xs text-emerald-950">
-                      ویرایش عناوین، توضیحات، نشان و کلیک‌های هر ۴ کارت ویترین پژوهش:
+                      ویرایش عناوین، آیکون، توضیحات، نشان و کلیک‌های کارت‌های ویترین پژوهش:
                     </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {(crextioConfig.researchPromoCards || [
-                        { id: 'card_grant', title: 'تخصیص گرنت مالی بلاعوض', desc: 'کمک‌هزینه ویژه تأمین منابع، خرید کتب مرجع فقهی و مصاحبه با صاحب‌نظران تا سقف ۵۰ میلیون تومان.', tag: 'بلاعوض نخبگان', clickAction: 'quick_modal' },
-                        { id: 'card_supervisor', title: 'استاد راهنمای اختصاصی طراز اول', desc: 'همراهی گام‌به‌گام مراجع فقهی، قضات عالی‌رتبه دیوان عالی و اساتید دکتری در ویراستاری فصول.', tag: 'استاد معین', clickAction: 'navigate_research' },
-                        { id: 'card_accommodation', title: 'اسکان پژوهشی رایگان مشهد و قم', desc: 'اقامت اختصاصی برای پژوهشگر و خانواده در جوار کتابخانه‌های مرجع فیضیه، آستان قدس و دانشگاه.', tag: 'اقامت تا ۱۰ روز', clickAction: 'quick_modal' },
-                        { id: 'card_publish', title: 'چاپ سراسری کتاب و موسوعه', desc: 'تبدیل رساله برگزیده به اثر فاخر کتابخانه‌ای با نشان مرکز و پخش در مجتمع‌های قضایی کشور.', tag: 'انتشار رسمی', clickAction: 'navigate_research' }
+                        { id: 'card_grant', title: 'تخصیص گرنت مالی بلاعوض', desc: 'کمک‌هزینه ویژه تأمین منابع، خرید کتب مرجع فقهی و مصاحبه با صاحب‌نظران تا سقف ۵۰ میلیون تومان.', tag: 'بلاعوض نخبگان', icon: 'coins', clickAction: 'quick_modal' },
+                        { id: 'card_supervisor', title: 'استاد راهنمای اختصاصی طراز اول', desc: 'همراهی گام‌به‌گام مراجع فقهی، قضات عالی‌رتبه دیوان عالی و اساتید دکتری در ویراستاری فصول.', tag: 'استاد معین', icon: 'graduation', clickAction: 'navigate_research' },
+                        { id: 'card_accommodation', title: 'اسکان پژوهشی رایگان مشهد و قم', desc: 'اقامت اختصاصی برای پژوهشگر و خانواده در جوار کتابخانه‌های مرجع فیضیه، آستان قدس و دانشگاه.', tag: 'اقامت تا ۱۰ روز', icon: 'home', clickAction: 'quick_modal' },
+                        { id: 'card_publish', title: 'چاپ سراسری کتاب و موسوعه', desc: 'تبدیل رساله برگزیده به اثر فاخر کتابخانه‌ای با نشان مرکز و پخش در مجتمع‌های قضایی کشور.', tag: 'انتشار رسمی', icon: 'book', clickAction: 'navigate_research' }
                       ]).map((c, cIdx) => (
-                        <div key={c.id} className="p-3.5 rounded-2xl bg-white border border-stone-200 space-y-2">
+                        <div key={c.id} className="p-3.5 rounded-2xl bg-white border border-stone-200 space-y-2.5">
                           <div className="flex items-center justify-between text-stone-500 text-[11px] font-bold">
                             <span>کارت شماره {toPersianNumbers(cIdx + 1)}</span>
                             <span className="text-emerald-700">شناسه: {c.id}</span>
                           </div>
 
-                          <div>
-                            <label className="text-[10px] text-stone-600 font-bold block mb-0.5">عنوان کارت:</label>
-                            <input
-                              type="text"
-                              value={c.title}
-                              onChange={e => {
-                                const newCards = [...(crextioConfig.researchPromoCards || [])];
-                                const target = newCards.find(item => item.id === c.id);
-                                if (target) {
-                                  target.title = e.target.value;
-                                  updateCrextioConfig({ researchPromoCards: newCards });
-                                }
-                              }}
-                              className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-bold text-stone-900"
-                            />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-stone-600 font-bold block mb-0.5">عنوان کارت:</label>
+                              <input
+                                type="text"
+                                value={c.title}
+                                onChange={e => {
+                                  const newCards = [...(crextioConfig.researchPromoCards || [])];
+                                  const target = newCards.find(item => item.id === c.id);
+                                  if (target) {
+                                    target.title = e.target.value;
+                                    updateCrextioConfig({ researchPromoCards: newCards });
+                                  }
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-bold text-stone-900"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-stone-600 font-bold block mb-0.5">آیکون کارت:</label>
+                              <select
+                                value={c.icon || 'sparkles'}
+                                onChange={e => {
+                                  const newCards = [...(crextioConfig.researchPromoCards || [])];
+                                  const target = newCards.find(item => item.id === c.id);
+                                  if (target) {
+                                    target.icon = e.target.value;
+                                    updateCrextioConfig({ researchPromoCards: newCards });
+                                  }
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-800"
+                              >
+                                <option value="coins">سکه / گرنت (Coins)</option>
+                                <option value="graduation">کلاه فارغ‌التحصیلی / استاد (Graduation)</option>
+                                <option value="home">خانه / اسکان (Home)</option>
+                                <option value="book">کتاب / انتشار (Book)</option>
+                                <option value="award">مدال / نخبگان (Award)</option>
+                                <option value="sparkles">درخشش (Sparkles)</option>
+                              </select>
+                            </div>
                           </div>
 
                           <div>
@@ -930,8 +1128,26 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                             >
                               <option value="quick_modal">باز شدن مودال ثبت فوری پروپوزال</option>
                               <option value="navigate_research">انتقال به میز کار پژوهش</option>
+                              <option value="external_link">لینک بیرونی</option>
                               <option value="none">بدون کلیک (فقط نمایشی)</option>
                             </select>
+
+                            {c.clickAction === 'external_link' && (
+                              <input
+                                type="text"
+                                value={c.actionUrl || ''}
+                                onChange={e => {
+                                  const newCards = [...(crextioConfig.researchPromoCards || [])];
+                                  const target = newCards.find(item => item.id === c.id);
+                                  if (target) {
+                                    target.actionUrl = e.target.value;
+                                    updateCrextioConfig({ researchPromoCards: newCards });
+                                  }
+                                }}
+                                placeholder="https://example.com"
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-mono text-stone-900 mt-1"
+                              />
+                            )}
                           </div>
                         </div>
                       ))}

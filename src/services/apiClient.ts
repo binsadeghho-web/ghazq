@@ -379,11 +379,11 @@ class ApiClient {
   }
 
   async getDashboardConfig() {
-    return this.request<{ crextio: any; mizan: any; source: string; isConnectedToMysql: boolean }>('/api/admin/dashboard-config');
+    return this.request<{ crextio: any; mizan: any; source: string; isConnectedToMysql: boolean; version?: number }>('/api/admin/dashboard-config');
   }
 
   async saveDashboardConfig(config: any) {
-    return this.request<{ success: boolean; persistedToMysql: boolean }>('/api/admin/dashboard-config', {
+    return this.request<{ success: boolean; persistedToMysql: boolean; version?: number }>('/api/admin/dashboard-config', {
       method: 'PUT',
       body: JSON.stringify(config),
     });

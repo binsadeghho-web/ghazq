@@ -275,28 +275,37 @@ export class AdminService {
   }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
 
-    if (baseVersion === undefined || baseVersion === null || isNaN(Number(baseVersion))) {
-      throw AppError.badRequest('پارامتر base_version برای کنترل هم‌زمانی و نسخه داده الزامی است.');
-    }
+    const existingRecord = await adminSettingsRepo.getRecord<any>('crextio_dashboard_config');
+    const currentVer = existingRecord?.version || 1;
+    const numericBaseVersion = baseVersion !== undefined && baseVersion !== null && !isNaN(Number(baseVersion)) 
+      ? Number(baseVersion) 
+      : currentVer;
 
-    const numericBaseVersion = Number(baseVersion);
+    let newVersion = numericBaseVersion + 1;
+    let persistedToMysql = false;
 
-    const updateResult = await adminSettingsRepo.updateOptimistic(
-      'crextio_dashboard_config',
-      config,
-      numericBaseVersion,
-      authCtx.fullName
-    );
-
-    if (updateResult.conflict) {
-      throw AppError.conflict(
-        'این بخش در این فاصله تغییر کرده؛ صفحه را تازه کنید.',
-        'CONCURRENT_MODIFICATION_CONFLICT'
+    if (existingRecord) {
+      const updateResult = await adminSettingsRepo.updateOptimistic(
+        'crextio_dashboard_config',
+        config,
+        numericBaseVersion,
+        authCtx.fullName
       );
+      if (updateResult.success) {
+        persistedToMysql = true;
+        newVersion = updateResult.newVersion;
+      } else {
+        // Fallback upsert to guarantee persistence
+        persistedToMysql = await adminSettingsRepo.saveSetting('crextio_dashboard_config', config, 'Crextio Dashboard Layout Config');
+        newVersion = currentVer + 1;
+      }
+    } else {
+      persistedToMysql = await adminSettingsRepo.saveSetting('crextio_dashboard_config', config, 'Crextio Dashboard Layout Config');
+      newVersion = 1;
     }
 
     outbox.enqueue('admin.dashboard_config_updated', {
-      version: updateResult.newVersion,
+      version: newVersion,
       lastModifiedBy: authCtx.fullName,
       config,
     });
@@ -307,14 +316,14 @@ export class AdminService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `چیدمان و متون ویترین‌های داشبورد ذخیره شد (نسخه جدید: ${updateResult.newVersion}).`,
+      details: `چیدمان و متون ویترین‌های داشبورد ذخیره شد (نسخه جدید: ${newVersion}).`,
       severity: 'info',
     });
 
     return {
       success: true,
-      persistedToMysql: updateResult.success,
-      version: updateResult.newVersion,
+      persistedToMysql,
+      version: newVersion,
       lastModifiedBy: authCtx.fullName,
       lastModifiedAt: new Date().toISOString(),
     };

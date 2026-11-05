@@ -296,7 +296,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(next));
       }
       // Persist to backend / MySQL 8 database
-      api.saveDashboardConfig(next).catch(() => {});
+      api.saveDashboardConfig({
+        ...next,
+        _baseVersion: (prev as any)._baseVersion || 1,
+      }).then(res => {
+        if (res && res.version) {
+          setCrextioConfig(curr => ({ ...curr, _baseVersion: res.version }));
+        }
+      }).catch(() => {});
       return next;
     });
   };
@@ -424,7 +431,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (fetchedSynergy.status === 'fulfilled') setSynergyPosts(fetchedSynergy.value);
       if (fetchedSecurity.status === 'fulfilled') setSecurityConfig(fetchedSecurity.value);
       if (fetchedDashboardConfig.status === 'fulfilled' && fetchedDashboardConfig.value?.crextio) {
-        setCrextioConfig(prev => ({ ...prev, ...fetchedDashboardConfig.value.crextio }));
+        setCrextioConfig(prev => ({
+          ...prev,
+          ...fetchedDashboardConfig.value.crextio,
+          _baseVersion: fetchedDashboardConfig.value.version || (prev as any)._baseVersion || 1,
+        }));
       }
 
       setServerSyncStatus('synced');
