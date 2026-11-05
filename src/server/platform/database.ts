@@ -15,7 +15,15 @@ import {
   SynergyPost,
   MemberProductProposal,
   SystemSecurityConfig,
+  WelfareSectionConfig,
+  WelfareLoanTermsAndRules,
+  CooperativeSectionInfo,
 } from '../../types';
+import {
+  DEFAULT_WELFARE_SECTIONS,
+  DEFAULT_LOAN_TERMS_AND_RULES,
+  DEFAULT_COOPERATIVE_INFO,
+} from '../../data/welfareData';
 import {
   INITIAL_USERS,
   INITIAL_CARTABLE_REQUESTS,
@@ -68,6 +76,9 @@ export interface DatabaseState {
   synergyPosts: (SynergyPost & { version: number })[];
   productProposals: (MemberProductProposal & { version: number })[];
   securityConfig: SystemSecurityConfig;
+  welfareSectionsConfig: WelfareSectionConfig[];
+  loanTermsAndRules: WelfareLoanTermsAndRules;
+  cooperativeSectionInfo: CooperativeSectionInfo;
   outbox: Array<{
     id: string;
     topic: string;
@@ -109,6 +120,9 @@ export class InMemoryDatabaseEngine {
       synergyPosts: addVersion(cloneDeep(INITIAL_SYNERGY_POSTS)),
       productProposals: addVersion(cloneDeep(INITIAL_PRODUCT_PROPOSALS)),
       securityConfig: cloneDeep(INITIAL_SECURITY_CONFIG),
+      welfareSectionsConfig: cloneDeep(DEFAULT_WELFARE_SECTIONS),
+      loanTermsAndRules: cloneDeep(DEFAULT_LOAN_TERMS_AND_RULES),
+      cooperativeSectionInfo: cloneDeep(DEFAULT_COOPERATIVE_INFO),
       outbox: [],
     };
   }
@@ -130,6 +144,12 @@ export class InMemoryDatabaseEngine {
   get productProposals() { return this.state.productProposals; }
   get securityConfig() { return this.state.securityConfig; }
   set securityConfig(cfg: SystemSecurityConfig) { this.state.securityConfig = cfg; }
+  get welfareSectionsConfig() { return this.state.welfareSectionsConfig; }
+  set welfareSectionsConfig(cfg: WelfareSectionConfig[]) { this.state.welfareSectionsConfig = cfg; }
+  get loanTermsAndRules() { return this.state.loanTermsAndRules; }
+  set loanTermsAndRules(ltr: WelfareLoanTermsAndRules) { this.state.loanTermsAndRules = ltr; }
+  get cooperativeSectionInfo() { return this.state.cooperativeSectionInfo; }
+  set cooperativeSectionInfo(info: CooperativeSectionInfo) { this.state.cooperativeSectionInfo = info; }
   get outbox() { return this.state.outbox; }
 
   checkReady(): boolean {

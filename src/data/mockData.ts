@@ -1412,43 +1412,93 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
   {
     id: 'cnsm_1',
     title: 'برنج طارم هاشمی درجه یک مازندران (کشت اول معطر)',
+    name: 'برنج طارم هاشمی مازندران',
+    brand: 'تعاونی کشاورزان دابودشت',
     category: 'غلات و برنج',
-    cooperativePrice: 105000,
-    marketPrice: 145000,
-    unit: 'کیلوگرم (کیسه ۱۰ کیلویی)',
+    cooperativePrice: 1050000,
+    memberPrice: 1050000,
+    marketPrice: 1450000,
+    discountPercent: 28,
+    unit: 'کیسه ۱۰ کیلوگرمی',
     stock: 85,
     description: 'محصول مستقیم تعاونی کشاورزان دابودشت مازندران؛ الک شده با عطر و قد عالی بدون شکستگی و ناخالصی.',
+    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'cnsm_2',
     title: 'روغن زیتون فرابکر رودبار (عصاره اول استخراج سرد)',
+    name: 'روغن زیتون فرابکر رودبار',
+    brand: 'باغات زیتون سبز رودبار',
     category: 'روغن‌های سلامت',
     cooperativePrice: 380000,
+    memberPrice: 380000,
     marketPrice: 510000,
+    discountPercent: 26,
     unit: 'بطری ۱ لیتری شیشه‌ای تیره',
     stock: 120,
     description: 'تهیه‌شده از باغات زیتون رودبار بدون اسید و نگهدارنده با تاییدیه‌های بهداشت و کنترل کیفی آزمایشگاه استاندارد.',
+    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'cnsm_3',
     title: 'مغز گردوی درجه یک تویسرکان (سفید و پرچرب)',
+    name: 'مغز گردوی تویسرکان',
+    brand: 'تعاونی باغداران الوند',
     category: 'خشکبار',
     cooperativePrice: 620000,
+    memberPrice: 620000,
     marketPrice: 840000,
+    discountPercent: 26,
     unit: 'بسته ۱ کیلوگرمی وکیوم',
     stock: 45,
     description: 'گردوی امساله تویسرکان همدان، پوست کاغذی و مغز سفید بدون تلخی، سرشار از امگا ۳ و طراوت بالا.',
+    imageUrl: 'https://images.unsplash.com/photo-1582293041079-7814c2f12063?auto=format&fit=crop&w=600&q=80'
   },
   {
     id: 'cnsm_4',
     title: 'عسل طبیعی کوهستان سبلان (ساکارز زیر ۲ درصد با برگه آزمایش)',
+    name: 'عسل طبیعی کوهستان سبلان',
+    brand: 'کندوداران سبلان اردبیل',
     category: 'محصولات طبیعی',
     cooperativePrice: 340000,
+    memberPrice: 340000,
     marketPrice: 470000,
+    discountPercent: 28,
     unit: 'ظرف ۱ کیلوگرمی',
     stock: 60,
     description: 'عسل صد درصد خالص دامنه کوهستان سبلان، عطر گل‌های آویشن و گون با تاییدیه کتبی آزمایشگاه جهاد دانشگاهی.',
+    imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=600&q=80'
   },
+  {
+    id: 'cnsm_5',
+    title: 'چای بهاره سرگل فومنات (دستچین مزارع لاهیجان)',
+    name: 'چای بهاره سرگل لاهیجان',
+    brand: 'تعاونی چای‌کاران گیلان',
+    category: 'نوشیدنی‌های سنتی',
+    cooperativePrice: 240000,
+    memberPrice: 240000,
+    marketPrice: 360000,
+    discountPercent: 33,
+    unit: 'بسته ۵۰۰ گرمی متالایز',
+    stock: 90,
+    description: 'چای سیاه بهاره گیلان با عطر طبیعی بدون رنگ‌افزا و اسانس مصنوعی با ماندگاری و طعم سنتی ایرانی.',
+    imageUrl: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80'
+  },
+  {
+    id: 'cnsm_6',
+    title: 'خرمای پیارم صادراتی حاجی‌آباد هرمزگان',
+    name: 'خرمای پیارم حاجی‌آباد',
+    brand: 'نخلستان‌های جنوب',
+    category: 'خشکبار',
+    cooperativePrice: 310000,
+    memberPrice: 310000,
+    marketPrice: 450000,
+    discountPercent: 31,
+    unit: 'بسته ۸۰۰ گرمی بهداشتی',
+    stock: 75,
+    description: 'خرمای شکلاتی شاه‌پسند حاجی‌آباد، گوشتی و مرغوب با قند فروکتوز طبیعی مناسب رژیم‌های سلامت قضات و اساتید.',
+    imageUrl: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80'
+  }
 ];
 
 export const INITIAL_CONSUMABLE_ORDERS: ConsumableOrder[] = [
@@ -1462,9 +1512,48 @@ export const INITIAL_CONSUMABLE_ORDERS: ConsumableOrder[] = [
     ],
     totalAmount: 2860000,
     deliveryAddress: 'تهران، میدان تجریش، خیابان باهنر، پلاک ۲۴، واحد ۶',
-    status: 'dispatched',
+    status: 'delivered',
     createdAt: '۱۴۰۳/۰۷/۲۸',
   },
+  {
+    id: 'ord_902',
+    applicantId: 'usr_alumni_02',
+    applicantName: 'حجت‌الاسلام سیدمحمدرضا حسینی',
+    items: [
+      { itemId: 'cnsm_1', title: 'برنج طارم هاشمی درجه یک مازندران', quantity: 3, unitPrice: 1050000 },
+      { itemId: 'cnsm_3', title: 'مغز گردوی درجه یک تویسرکان', quantity: 1, unitPrice: 620000 }
+    ],
+    totalAmount: 3770000,
+    deliveryAddress: 'قم، بلوار امین، خیابان مصلی، کوچه ۱۲، پلاک ۳',
+    status: 'dispatched',
+    createdAt: '۱۴۰۳/۰۸/۰۲'
+  },
+  {
+    id: 'ord_903',
+    applicantId: 'usr_alumni_03',
+    applicantName: 'قاضی مرتضی کاظمی',
+    items: [
+      { itemId: 'cnsm_4', title: 'عسل طبیعی کوهستان سبلان', quantity: 2, unitPrice: 340000 },
+      { itemId: 'cnsm_2', title: 'روغن زیتون فرابکر رودبار', quantity: 1, unitPrice: 380000 }
+    ],
+    totalAmount: 1060000,
+    deliveryAddress: 'مشهد مقدس، دادگستری کل خراسان رضوی، شعبه ۷ دادگاه حقوقی',
+    status: 'prepared',
+    createdAt: '۱۴۰۳/۰۸/۰۴'
+  },
+  {
+    id: 'ord_904',
+    applicantId: 'usr_alumni_04',
+    applicantName: 'دکتر هادی صادقی‌کیا',
+    items: [
+      { itemId: 'cnsm_1', title: 'برنج طارم هاشمی درجه یک مازندران', quantity: 1, unitPrice: 1050000 },
+      { itemId: 'cnsm_3', title: 'مغز گردوی درجه یک تویسرکان', quantity: 2, unitPrice: 620000 }
+    ],
+    totalAmount: 2290000,
+    deliveryAddress: 'شیراز، خیابان ملاصدرا، کوچه قصرالدشت، مجتمع قضایی وحدت',
+    status: 'registered',
+    createdAt: '۱۴۰۳/۰۸/۰۵'
+  }
 ];
 
 export const INITIAL_PRODUCT_PROPOSALS: MemberProductProposal[] = [

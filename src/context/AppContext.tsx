@@ -24,6 +24,9 @@ import {
   AppSectionId,
   PermissionAccessLevel,
   UserSectionPermissions,
+  WelfareSectionConfig,
+  WelfareLoanTermsAndRules,
+  CooperativeSectionInfo,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -46,6 +49,12 @@ import {
   DEFAULT_CREXTIO_CONFIG,
   DEFAULT_MIZAN_CONFIG,
 } from '../data/mockData';
+import {
+  DEFAULT_WELFARE_SECTIONS,
+  DEFAULT_LOAN_TERMS_AND_RULES,
+  DEFAULT_COOPERATIVE_INFO,
+  INITIAL_EXTENDED_ORDERS,
+} from '../data/welfareData';
 import { api, ApiError } from '../services/apiClient';
 import { clearAllDrafts } from '../utils/draftStorage';
 
@@ -142,6 +151,18 @@ interface AppContextType {
   placeConsumableOrder: (items: { itemId: string; title: string; quantity: number; unitPrice: number }[], deliveryAddress: string) => Promise<void>;
   submitProductProposal: (data: Omit<MemberProductProposal, 'id' | 'status' | 'createdAt'>) => void;
   updateConsumableStock: (itemId: string, newStock: number) => void;
+  updateConsumableItem: (id: string, updates: Partial<ConsumableItem>) => void;
+  addConsumableItem: (item: Omit<ConsumableItem, 'id'>) => void;
+  deleteConsumableItem: (id: string) => void;
+  updateConsumableOrderStatus: (orderId: string, status: ConsumableOrder['status'], notes?: string) => void;
+
+  // 100% Configurable Welfare Sections, Loan Rules & Cooperative Settings
+  welfareSectionsConfig: WelfareSectionConfig[];
+  updateWelfareSectionsConfig: (configs: WelfareSectionConfig[]) => void;
+  loanTermsAndRules: WelfareLoanTermsAndRules;
+  updateLoanTermsAndRules: (updates: Partial<WelfareLoanTermsAndRules>) => void;
+  cooperativeSectionInfo: CooperativeSectionInfo;
+  updateCooperativeSectionInfo: (updates: Partial<CooperativeSectionInfo>) => void;
 
   // Synergy methods
   createSynergyPost: (data: Omit<SynergyPost, 'id' | 'createdAt' | 'responses'>) => Promise<void>;
@@ -225,8 +246,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [researchMentorships, setResearchMentorships] = useState<ResearchMentorship[]>(INITIAL_RESEARCH_MENTORSHIPS);
   const [rulings, setRulings] = useState<JudicialRuling[]>(INITIAL_RULINGS);
   const [welfareRequests, setWelfareRequests] = useState<WelfareRequest[]>(INITIAL_WELFARE_REQUESTS);
-  const [consumables, setConsumables] = useState<ConsumableItem[]>(INITIAL_CONSUMABLES);
-  const [consumableOrders, setConsumableOrders] = useState<ConsumableOrder[]>(INITIAL_CONSUMABLE_ORDERS);
+  const [consumables, setConsumables] = useState<ConsumableItem[]>(() => {
+    try {
+      const s = localStorage.getItem('cooperative_consumables');
+      return s ? JSON.parse(s) : INITIAL_CONSUMABLES;
+    } catch {
+      return INITIAL_CONSUMABLES;
+    }
+  });
+  const [consumableOrders, setConsumableOrders] = useState<ConsumableOrder[]>(() => {
+    try {
+      const s = localStorage.getItem('consumable_orders');
+      return s ? JSON.parse(s) : INITIAL_EXTENDED_ORDERS;
+    } catch {
+      return INITIAL_EXTENDED_ORDERS;
+    }
+  });
+  const [welfareSectionsConfig, setWelfareSectionsConfig] = useState<WelfareSectionConfig[]>(() => {
+    try {
+      const s = localStorage.getItem('welfare_sections_config');
+      return s ? JSON.parse(s) : DEFAULT_WELFARE_SECTIONS;
+    } catch {
+      return DEFAULT_WELFARE_SECTIONS;
+    }
+  });
+  const [loanTermsAndRules, setLoanTermsAndRules] = useState<WelfareLoanTermsAndRules>(() => {
+    try {
+      const s = localStorage.getItem('welfare_loan_rules');
+      return s ? JSON.parse(s) : DEFAULT_LOAN_TERMS_AND_RULES;
+    } catch {
+      return DEFAULT_LOAN_TERMS_AND_RULES;
+    }
+  });
+  const [cooperativeSectionInfo, setCooperativeSectionInfo] = useState<CooperativeSectionInfo>(() => {
+    try {
+      const s = localStorage.getItem('welfare_cooperative_info');
+      return s ? JSON.parse(s) : DEFAULT_COOPERATIVE_INFO;
+    } catch {
+      return DEFAULT_COOPERATIVE_INFO;
+    }
+  });
   const [synergyPosts, setSynergyPosts] = useState<SynergyPost[]>(INITIAL_SYNERGY_POSTS);
   const [productProposals, setProductProposals] = useState<MemberProductProposal[]>(INITIAL_PRODUCT_PROPOSALS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
@@ -1399,7 +1458,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateConsumableStock = (itemId: string, newStock: number) => {
-    setConsumables(prev => prev.map(c => (c.id === itemId ? { ...c, stock: newStock } : c)));
+    setConsumables(prev => {
+      const next = prev.map(c => (c.id === itemId ? { ...c, stock: newStock } : c));
+      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const updateConsumableItem = (id: string, updates: Partial<ConsumableItem>) => {
+    setConsumables(prev => {
+      const next = prev.map(c => (c.id === id ? { ...c, ...updates } : c));
+      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const addConsumableItem = (itemData: Omit<ConsumableItem, 'id'>) => {
+    const newItem: ConsumableItem = {
+      ...itemData,
+      id: `cnsm_${Date.now()}`,
+    };
+    setConsumables(prev => {
+      const next = [newItem, ...prev];
+      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const deleteConsumableItem = (id: string) => {
+    setConsumables(prev => {
+      const next = prev.filter(c => c.id !== id);
+      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const updateConsumableOrderStatus = (orderId: string, status: ConsumableOrder['status'], notes?: string) => {
+    setConsumableOrders(prev => {
+      const next = prev.map(o => (o.id === orderId ? { ...o, status, notes: notes !== undefined ? notes : (o as any).notes } : o));
+      try { localStorage.setItem('consumable_orders', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const updateWelfareSectionsConfig = (configs: WelfareSectionConfig[]) => {
+    setWelfareSectionsConfig(configs);
+    try { localStorage.setItem('welfare_sections_config', JSON.stringify(configs)); } catch (e) {}
+  };
+
+  const updateLoanTermsAndRules = (updates: Partial<WelfareLoanTermsAndRules>) => {
+    setLoanTermsAndRules(prev => {
+      const next = { ...prev, ...updates };
+      try { localStorage.setItem('welfare_loan_rules', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const updateCooperativeSectionInfo = (updates: Partial<CooperativeSectionInfo>) => {
+    setCooperativeSectionInfo(prev => {
+      const next = { ...prev, ...updates };
+      try { localStorage.setItem('welfare_cooperative_info', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
   };
 
   // Synergy methods
@@ -1576,6 +1696,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         placeConsumableOrder,
         submitProductProposal,
         updateConsumableStock,
+        updateConsumableItem,
+        addConsumableItem,
+        deleteConsumableItem,
+        updateConsumableOrderStatus,
+        welfareSectionsConfig,
+        updateWelfareSectionsConfig,
+        loanTermsAndRules,
+        updateLoanTermsAndRules,
+        cooperativeSectionInfo,
+        updateCooperativeSectionInfo,
 
         createSynergyPost,
         respondToSynergyPost,

@@ -646,7 +646,8 @@ export interface ConsumableOrder {
   }[];
   totalAmount: number;
   deliveryAddress: string;
-  status: 'registered' | 'prepared' | 'dispatched' | 'delivered';
+  status: 'registered' | 'prepared' | 'dispatched' | 'delivered' | 'cancelled';
+  notes?: string;
   createdAt: string;
 }
 
@@ -696,3 +697,5 @@ export interface SystemSecurityConfig {
   autoSessionTimeoutMinutes: number;
   version?: number;
 }
+
+export * from './welfare';

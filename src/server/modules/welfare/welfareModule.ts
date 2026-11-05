@@ -184,3 +184,168 @@ welfareRouter.post('/proposals', idempotencyMiddleware, async (req: Request, res
 
   res.status(201).json(newProposal);
 });
+
+welfareRouter.post('/consumables', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('فقط ادمین می‌تواند کالای جدید تعریف کند.');
+  }
+  const id = generateUUIDv7();
+  const newItem = {
+    ...req.body,
+    id,
+    version: 1,
+  };
+  await db.withTx(async tx => {
+    tx.consumables.unshift(newItem);
+    tx.emitAudit({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `افزودن کالای تعاونی: ${newItem.title}`,
+      severity: 'info',
+    });
+  });
+  res.status(201).json(newItem);
+});
+
+welfareRouter.put('/consumables/:id', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را ویرایش کند.');
+  }
+  const { id } = req.params;
+  let updatedItem: any = null;
+  await db.withTx(async tx => {
+    const idx = tx.consumables.findIndex(c => c.id === id);
+    if (idx === -1) throw AppError.notFound('کالای مورد نظر یافت نشد.');
+    tx.consumables[idx] = {
+      ...tx.consumables[idx],
+      ...req.body,
+      id,
+      version: (tx.consumables[idx].version || 1) + 1,
+    };
+    updatedItem = tx.consumables[idx];
+    tx.emitAudit({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `ویرایش کالای تعاونی: ${updatedItem.title}`,
+      severity: 'info',
+    });
+  });
+  res.json(updatedItem);
+});
+
+welfareRouter.delete('/consumables/:id', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را حذف کند.');
+  }
+  const { id } = req.params;
+  await db.withTx(async tx => {
+    const idx = tx.consumables.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      const removed = tx.consumables.splice(idx, 1)[0];
+      tx.emitAudit({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `حذف کالای تعاونی: ${removed.title}`,
+        severity: 'info',
+      });
+    }
+  });
+  res.json({ success: true });
+});
+
+welfareRouter.patch('/orders/:id/status', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('فقط ادمین می‌تواند وضعیت سفارش را تغییر دهد.');
+  }
+  const { id } = req.params;
+  const { status, notes } = req.body;
+  let updatedOrder: any = null;
+  await db.withTx(async tx => {
+    const idx = tx.consumableOrders.findIndex(o => o.id === id);
+    if (idx === -1) throw AppError.notFound('سفارش یافت نشد.');
+    tx.consumableOrders[idx] = {
+      ...tx.consumableOrders[idx],
+      status: status || tx.consumableOrders[idx].status,
+      notes: notes !== undefined ? notes : (tx.consumableOrders[idx] as any).notes,
+      version: (tx.consumableOrders[idx].version || 1) + 1,
+    };
+    updatedOrder = tx.consumableOrders[idx];
+    tx.emitAudit({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `تغییر وضعیت سفارش تعاونی ${id} به ${status}`,
+      severity: 'info',
+    });
+  });
+  res.json(updatedOrder);
+});
+
+// GET & PUT welfare sections configuration
+welfareRouter.get('/sections-config', (_req: Request, res: Response) => {
+  res.json(db.welfareSectionsConfig);
+});
+
+welfareRouter.put('/sections-config', (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('تنها مدیر می‌تواند دسته‌بندی‌ها و بخش‌های رفاهیات را ویرایش کند.');
+  }
+  const configs = req.body;
+  if (!Array.isArray(configs)) {
+    throw AppError.badRequest('پیکربندی بخش‌ها باید به صورت آرایه باشد.');
+  }
+  db.welfareSectionsConfig = configs;
+  res.json({ success: true, data: db.welfareSectionsConfig });
+});
+
+// GET & PUT loan fund terms & rules
+welfareRouter.get('/loan-rules', (_req: Request, res: Response) => {
+  res.json(db.loanTermsAndRules);
+});
+
+welfareRouter.put('/loan-rules', (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('تنها مدیر سامانه مجاز به ویرایش اساسنامه و شرایط تسهیلات است.');
+  }
+  const rules = req.body;
+  if (!rules || !rules.fundName) {
+    throw AppError.badRequest('اطلاعات ضوابط و اساسنامه نامعتبر است.');
+  }
+  db.loanTermsAndRules = rules;
+  res.json({ success: true, data: db.loanTermsAndRules });
+});
+
+// GET & PUT cooperative section info
+welfareRouter.get('/cooperative-info', (_req: Request, res: Response) => {
+  res.json(db.cooperativeSectionInfo);
+});
+
+welfareRouter.put('/cooperative-info', (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    throw AppError.forbidden('تنها مدیر سامانه مجاز به تغییر اطلاعات ویترین تعاونی است.');
+  }
+  const info = req.body;
+  if (!info || !info.title) {
+    throw AppError.badRequest('اطلاعات تعاونی ناقص است.');
+  }
+  db.cooperativeSectionInfo = info;
+  res.json({ success: true, data: db.cooperativeSectionInfo });
+});
