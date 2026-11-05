@@ -65,16 +65,6 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
 
   const serviceCards = [
     {
-      id: 'Dashboard',
-      title: 'داشبورد اصلی و بوم یکپارچه',
-      subtext: 'نمای کلی، آمار زنده، ویترین‌ها و بنرهای اختصاصی دانش‌آموختگان',
-      badge: 'صفحه اصلی',
-      tag: 'نمای کلان',
-      icon: Home,
-      accent: '#059669',
-      category: 'عمومی'
-    },
-    {
       id: 'People',
       title: 'کارتابل خدمات اداری و استعلامات',
       subtext: 'ثبت، گردش اسناد رسمی و استعلام پایه‌های قضایی با پاسخگویی دبیرخانه',
@@ -224,43 +214,87 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
       onMouseLeave={handleMouseLeave}
       className="relative flex items-center justify-center z-50"
     >
-      {/* دکمه مرکزی چشم‌نواز با تغییر رنگ زنده و انیمیشن پرتو */}
+      {/* دکمه مرکزی بسیار چشم‌نواز با رنگ‌های درخشان و چرخه کامل رنگی */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="group relative flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-stone-900 font-black shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden border border-emerald-500/40 bg-white"
+        whileHover={{ scale: 1.04, y: -2 }}
+        whileTap={{ scale: 0.96 }}
+        animate={{
+          borderColor: [
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(245, 158, 11, 0.9)',
+            'rgba(79, 70, 229, 0.9)',
+            'rgba(225, 29, 72, 0.9)',
+            'rgba(13, 148, 136, 0.9)',
+            'rgba(16, 185, 129, 0.8)'
+          ],
+          boxShadow: [
+            '0 0 25px rgba(16, 185, 129, 0.4), 0 6px 16px rgba(0,0,0,0.15)',
+            '0 0 30px rgba(245, 158, 11, 0.5), 0 6px 16px rgba(0,0,0,0.15)',
+            '0 0 30px rgba(79, 70, 229, 0.5), 0 6px 16px rgba(0,0,0,0.15)',
+            '0 0 30px rgba(225, 29, 72, 0.5), 0 6px 16px rgba(0,0,0,0.15)',
+            '0 0 25px rgba(16, 185, 129, 0.4), 0 6px 16px rgba(0,0,0,0.15)'
+          ]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+        className="group relative flex items-center gap-3 px-6 py-3 rounded-2xl text-stone-900 font-black shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden border-2 bg-white"
       >
-        {/* کادر با گرادینت زمردی-زرین */}
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 via-amber-50/40 to-teal-50 opacity-90 transition-all group-hover:opacity-100" />
-        
-        {/* انیمیشن موج نور متحرک */}
+        {/* کادر با گرادینت درخشان که به طور کامل در چرخه رنگی تغییر می‌کند */}
         <motion.div
-          animate={{ x: ['-100%', '200%'] }}
-          transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-          className="absolute inset-y-0 w-20 bg-gradient-to-r from-transparent via-emerald-200/40 to-transparent skew-x-12 pointer-events-none"
+          animate={{
+            background: [
+              'linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(254, 243, 199, 0.8), rgba(204, 251, 241, 0.98))',
+              'linear-gradient(135deg, rgba(254, 243, 199, 0.98), rgba(254, 226, 226, 0.8), rgba(254, 240, 138, 0.98))',
+              'linear-gradient(135deg, rgba(238, 242, 255, 0.98), rgba(224, 231, 255, 0.8), rgba(254, 226, 226, 0.98))',
+              'linear-gradient(135deg, rgba(255, 228, 230, 0.98), rgba(254, 243, 199, 0.8), rgba(236, 253, 245, 0.98))',
+              'linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(254, 243, 199, 0.8), rgba(204, 251, 241, 0.98))'
+            ]
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute inset-0 opacity-95 transition-all group-hover:opacity-100"
+        />
+        
+        {/* انیمیشن موج نور درخشان و برق سریع که هر ۴ ثانیه تکرار می‌شود */}
+        <motion.div
+          animate={{ x: ['-180%', '280%'] }}
+          transition={{ repeat: Infinity, duration: 0.8, repeatDelay: 3.2, ease: 'easeInOut' }}
+          className="absolute inset-y-0 w-32 bg-gradient-to-r from-transparent via-white/90 to-transparent skew-x-12 pointer-events-none filter blur-[1px]"
         />
 
-        {/* محتوای دکمه */}
-        <div className="relative z-10 flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-700 to-teal-800 text-white flex items-center justify-center shadow-xs group-hover:rotate-6 transition-transform">
-            <LayoutGrid className="w-3.5 h-3.5 stroke-[2.3]" />
-          </div>
+        {/* محتوای دکمه با ایکون و تگ درخشان */}
+        <div className="relative z-10 flex items-center gap-3">
+          <motion.div
+            animate={{
+              rotate: [0, 10, -10, 0],
+              scale: [1, 1.12, 1]
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-600 to-indigo-700 text-white flex items-center justify-center shadow-md"
+          >
+            <LayoutGrid className="w-4 h-4 stroke-[2.5]" />
+          </motion.div>
 
           <div className="text-right">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs sm:text-sm font-black text-stone-900 tracking-tight group-hover:text-emerald-800 transition-colors">
-                منو و خدمات نرم‌افزار
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm font-black text-stone-900 tracking-tight group-hover:text-emerald-900 transition-colors drop-shadow-xs">
+                منو و خدمات سامانه
               </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                <Sparkles className="w-2.5 h-2.5 text-amber-600" />
-                <span>۱۲ بخش</span>
-              </span>
+              <motion.span
+                animate={{
+                  scale: [1, 1.05, 1],
+                  borderColor: ['rgba(16, 185, 129, 0.4)', 'rgba(245, 158, 11, 0.7)', 'rgba(16, 185, 129, 0.4)']
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border shadow-xs"
+              >
+                <Sparkles className="w-3 h-3 text-amber-600 animate-spin" style={{ animationDuration: '6s' }} />
+                <span>۱۱ بخش ویژه</span>
+              </motion.span>
             </div>
           </div>
 
           <ChevronDown
-            className={`w-3.5 h-3.5 text-stone-600 transition-transform duration-200 mr-0.5 ${
+            className={`w-4 h-4 text-stone-700 transition-transform duration-300 mr-1 ${
               isOpen ? 'rotate-180 text-emerald-700' : 'group-hover:translate-y-0.5'
             }`}
           />

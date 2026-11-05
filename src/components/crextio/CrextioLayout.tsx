@@ -189,7 +189,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             </div>
           </button>
 
-          {/* Center: دکمه و درگاه منو و خدمات نرم‌افزار متمرکز در مرکز صفحه */}
+          {/* Center: دکمه و درگاه منو و خدمات سامانه متمرکز در مرکز صفحه */}
           <div className="flex-1 flex justify-center py-1 md:py-0">
             <CrextioServicesMegaMenu activeNav={activeNav} onNavigate={setActiveNav} />
           </div>
