@@ -58,8 +58,10 @@ import {
   Download,
   Check,
   XCircle,
-  Paperclip
+  Paperclip,
+  Settings
 } from 'lucide-react';
+import { CourseAdminPanelModal } from './CourseAdminPanelModal';
 
 const PRESET_COURSE_COVERS = [
   {
@@ -141,6 +143,9 @@ export const CoursesSection: React.FC = () => {
 
   // Course Details / Attendance Modal
   const [attendanceCourse, setAttendanceCourse] = useState<Course | null>(null);
+
+  // Dedicated Admin Course Management Modal
+  const [dedicatedCourseAdmin, setDedicatedCourseAdmin] = useState<Course | null>(null);
 
   // Admin Receipt Inspection Modal
   const [inspectingEnrollment, setInspectingEnrollment] = useState<CourseEnrollment | null>(null);
@@ -938,13 +943,31 @@ export const CoursesSection: React.FC = () => {
 
                     {/* Course Details Body */}
                     <div className="p-5 space-y-3.5">
-                      <h3
-                        onClick={() => handleOpenRegistration(course)}
-                        className="text-base font-black text-slate-900 dark:text-white line-clamp-2 leading-relaxed min-h-[48px] cursor-pointer hover:text-emerald-600 transition-colors"
-                        title="کلیک جهت مشاهده کامل توضیحات و سرفصل‌ها"
-                      >
-                        {course.title}
-                      </h3>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3
+                          onClick={() => {
+                            if (isOfficial) {
+                              setDedicatedCourseAdmin(course);
+                            } else {
+                              handleOpenRegistration(course);
+                            }
+                          }}
+                          className="text-base font-black text-slate-900 dark:text-white line-clamp-2 leading-relaxed min-h-[48px] cursor-pointer hover:text-emerald-600 transition-colors flex-1"
+                          title={isOfficial ? "کلیک جهت ورود به پنل مدیریت ویژه این دوره (ثبت‌نامی‌ها، پرداخت‌ها و تنظیم محتوا)" : "کلیک جهت مشاهده کامل توضیحات و ثبت‌نام"}
+                        >
+                          {course.title}
+                        </h3>
+                        {isOfficial && (
+                          <button
+                            onClick={() => setDedicatedCourseAdmin(course)}
+                            className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 text-[10px] font-black border border-amber-500/30 flex items-center gap-1 shrink-0 transition-transform active:scale-95"
+                            title="ورود به پنل مدیریت این دوره"
+                          >
+                            <Settings className="w-3 h-3" />
+                            <span>مدیریت دوره</span>
+                          </button>
+                        )}
+                      </div>
 
                       <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
                         {course.description}
@@ -1005,55 +1028,68 @@ export const CoursesSection: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {/* Enrolled Status Actions */}
-                      {isEnrolled ? (
-                        isConfirmed ? (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleOpenAttendance(course)}
-                            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>ورود به کلاس</span>
-                          </motion.button>
-                        ) : isPendingReview ? (
-                          <span className="px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 animate-spin" />
-                            <span>بررسی فیش</span>
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-600 text-xs font-bold">
-                            عدم تایید
-                          </span>
-                        )
-                      ) : course.status === 'completed' ? (
-                        canAccessArchive ? (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleOpenAttendance(course)}
-                            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
-                          >
-                            <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>آرشیو جلسات</span>
-                          </motion.button>
-                        ) : (
-                          <span className="px-3 py-1.5 rounded-xl bg-stone-500/10 text-stone-400 border border-stone-500/20 text-xs font-medium flex items-center gap-1">
-                            <Lock className="w-3.5 h-3.5" />
-                            <span>مخصوص اعضا</span>
-                          </span>
-                        )
-                      ) : (
+                      {/* Action buttons: When user is official (Admin/Supervisor), show dedicated course management button instead of user enrollment/class entry */}
+                      {isOfficial ? (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => handleOpenRegistration(course)}
-                          className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer"
+                          onClick={() => setDedicatedCourseAdmin(course)}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/20 cursor-pointer"
                         >
-                          <span>مشاهده و ثبت‌نام</span>
-                          <ChevronLeft className="w-3.5 h-3.5" />
+                          <Settings className="w-3.5 h-3.5 text-emerald-200" />
+                          <span>پنل مدیریت دوره</span>
                         </motion.button>
+                      ) : (
+                        /* Regular Alumni Actions */
+                        isEnrolled ? (
+                          isConfirmed ? (
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleOpenAttendance(course)}
+                              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>ورود به کلاس</span>
+                            </motion.button>
+                          ) : isPendingReview ? (
+                            <span className="px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 animate-spin" />
+                              <span>بررسی فیش</span>
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-600 text-xs font-bold">
+                              عدم تایید
+                            </span>
+                          )
+                        ) : course.status === 'completed' ? (
+                          canAccessArchive ? (
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleOpenAttendance(course)}
+                              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>آرشیو جلسات</span>
+                            </motion.button>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-xl bg-stone-500/10 text-stone-400 border border-stone-500/20 text-xs font-medium flex items-center gap-1">
+                              <Lock className="w-3.5 h-3.5" />
+                              <span>مخصوص اعضا</span>
+                            </span>
+                          )
+                        ) : (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleOpenRegistration(course)}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer"
+                          >
+                            <span>مشاهده و ثبت‌نام</span>
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </motion.button>
+                        )
                       )}
 
                       {/* Officials Management Actions: Roster, Edit, Soft Delete */}
@@ -1842,15 +1878,15 @@ export const CoursesSection: React.FC = () => {
               </div>
 
               <div className="p-6 overflow-y-auto space-y-5 flex-1">
-                {/* Course Banner Clickable to Lightbox */}
-                {attendanceCourse.coverImage && (
+                {/* 1. Custom Post-Enrollment Banner or Course Cover */}
+                {(attendanceCourse.postEnrollmentBanner || attendanceCourse.coverImage) && (
                   <div
-                    onClick={() => setLightboxImage({ url: attendanceCourse.coverImage!, title: attendanceCourse.title })}
-                    className="w-full h-36 rounded-2xl overflow-hidden relative shadow cursor-pointer group"
+                    onClick={() => setLightboxImage({ url: (attendanceCourse.postEnrollmentBanner || attendanceCourse.coverImage)!, title: attendanceCourse.title })}
+                    className="w-full h-44 rounded-2xl overflow-hidden relative shadow-md cursor-pointer group border border-slate-200 dark:border-slate-800"
                     title="جهت مشاهده تصویر در اندازه اصلی کلیک فرمایید"
                   >
                     <img
-                      src={attendanceCourse.coverImage}
+                      src={attendanceCourse.postEnrollmentBanner || attendanceCourse.coverImage}
                       alt={attendanceCourse.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
@@ -1861,95 +1897,200 @@ export const CoursesSection: React.FC = () => {
                   </div>
                 )}
 
-                {/* Skyroom / Online Class Link */}
-                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                      <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
-                      <span>ورود به تالار آنلاین اسکای‌روم کلاس:</span>
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600">
-                      پخش زنده Full HD
-                    </span>
-                  </div>
-
-                  <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-800 dark:text-slate-200 truncate dir-ltr max-w-sm">
-                      {attendanceCourse.meetingLink}
-                    </span>
-                    <button
-                      onClick={() => handleCopy(attendanceCourse.meetingLink, 'link')}
-                      className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>{copiedPhone === 'link' ? 'کپی شد' : 'کپی لینک'}</span>
-                    </button>
-                  </div>
-
-                  {attendanceCourse.meetingAccessGuide && (
-                    <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-                      <strong>راهنمای ورود: </strong>{attendanceCourse.meetingAccessGuide}
+                {/* 2. Admin Configured Message & Reminder Box with dynamic font size and colors */}
+                {attendanceCourse.postEnrollmentMessage ? (
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    attendanceCourse.welcomeBoxBgColor === 'amber'
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100 border-amber-300 dark:border-amber-800'
+                      : attendanceCourse.welcomeBoxBgColor === 'slate'
+                      ? 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700'
+                      : attendanceCourse.welcomeBoxBgColor === 'indigo'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 border-indigo-300 dark:border-indigo-800'
+                      : attendanceCourse.welcomeBoxBgColor === 'rose'
+                      ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-950 dark:text-rose-100 border-rose-300 dark:border-rose-800'
+                      : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 border-emerald-300 dark:border-emerald-800'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2 font-black text-xs opacity-80">
+                      <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>پیام و راهنمای دوره ویژه ثبت‌نام‌شدگان گرامی:</span>
                     </div>
+                    <p className={`font-semibold leading-relaxed ${
+                      attendanceCourse.welcomeBoxFontSize === 'sm' ? 'text-xs' : attendanceCourse.welcomeBoxFontSize === 'lg' ? 'text-base' : attendanceCourse.welcomeBoxFontSize === 'xl' ? 'text-lg font-black' : 'text-sm'
+                    }`}>
+                      {attendanceCourse.postEnrollmentMessage}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100 text-sm font-semibold leading-relaxed">
+                    ضمن تشکر و تبریک ثبت‌نام قطعی شما در دوره تخصصی «{attendanceCourse.title}»، دسترسی شما به تالار کلاس و منابع آموزشی برقرار گردید.
+                  </div>
+                )}
+
+                {/* 3. Online Class Meeting Box (اگر آنلاین باشد یا لینک داشته باشد) */}
+                {(attendanceCourse.holdingFormat !== 'in_person' || attendanceCourse.meetingLink) && (
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                      <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
+                        <span>اطلاعات ورود به جلسه آنلاین / وبینار برخط:</span>
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600">
+                        پخش زنده Skyroom
+                      </span>
+                    </div>
+
+                    {/* Schedule Reminders */}
+                    {(attendanceCourse.reminderDate || attendanceCourse.reminderSchedule || attendanceCourse.schedule) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">تاریخ برگزاری / شروع:</span>
+                          <strong className="text-slate-900 dark:text-white font-bold">
+                            {attendanceCourse.reminderDate || attendanceCourse.startDate || 'طبق تقویم آموزشی'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">ساعت و روزهای برگزاری:</span>
+                          <strong className="text-slate-900 dark:text-white font-bold">
+                            {attendanceCourse.reminderSchedule || attendanceCourse.schedule}
+                          </strong>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Meeting Link & Quick Copy */}
+                    <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-800 dark:text-slate-200 truncate dir-ltr max-w-sm">
+                        {attendanceCourse.meetingLink}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(attendanceCourse.meetingLink, 'link')}
+                        className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{copiedPhone === 'link' ? 'کپی شد' : 'کپی لینک'}</span>
+                      </button>
+                    </div>
+
+                    {attendanceCourse.meetingAccessGuide && (
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                        <strong>راهنمای ورود: </strong>{attendanceCourse.meetingAccessGuide}
+                      </div>
+                    )}
+
+                    <a
+                      href={attendanceCourse.meetingLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-xl text-xs font-black shadow-md cursor-pointer transition-colors"
+                    >
+                      <span>ورود مستقیم به تالار مجازی کلاس آنلاین</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                )}
+
+                {/* 4. Offline Course Downloads Section (اگر فایل دانلودی یا راهنمای آفلاین داشته باشد) */}
+                <div className="p-4 rounded-2xl bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/50 space-y-3">
+                  <div className="flex items-center justify-between border-b border-sky-200 dark:border-sky-900/50 pb-2">
+                    <h4 className="text-xs font-black text-sky-900 dark:text-sky-300 flex items-center gap-2">
+                      <Download className="w-4 h-4 text-sky-600" />
+                      <span>فایل‌های دوره آفلاین و اسلایدهای آموزشی جهت دانلود:</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+                      دانلود با ترافیک نیم‌بهاء
+                    </span>
+                  </div>
+
+                  {attendanceCourse.offlineDownloadGuide && (
+                    <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {attendanceCourse.offlineDownloadGuide}
+                    </p>
                   )}
 
-                  <a
-                    href={attendanceCourse.meetingLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-xl text-xs font-black shadow-md cursor-pointer transition-colors"
-                  >
-                    <span>ورود مستقیم به تالار مجازی کلاس</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
+                  {/* Offline Download Files List */}
+                  {attendanceCourse.offlineDownloadFiles && attendanceCourse.offlineDownloadFiles.length > 0 ? (
+                    <div className="space-y-2">
+                      {attendanceCourse.offlineDownloadFiles.map(file => (
+                        <div
+                          key={file.id}
+                          className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <span className="w-8 h-8 rounded-lg bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-xs shrink-0">
+                              {file.format || 'ZIP'}
+                            </span>
+                            <div className="truncate">
+                              <strong className="text-slate-900 dark:text-white block font-bold truncate">{file.title}</strong>
+                              <span className="text-[10px] text-slate-400 font-mono">حجم: {file.size || 'نامشخص'}</span>
+                            </div>
+                          </div>
 
-                {/* Archive & Downloadable Resources */}
-                <div className="space-y-3 pt-2">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-sky-500" />
-                    <span>آرشیو جلسات ضبط‌شده و اسلایدهای آموزشی دوره:</span>
-                  </h4>
-
-                  {attendanceCourse.archiveResources && attendanceCourse.archiveResources.length > 0 ? (
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>دانلود فایل</span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : attendanceCourse.archiveResources && attendanceCourse.archiveResources.length > 0 ? (
                     <div className="space-y-2">
                       {attendanceCourse.archiveResources.map(res => (
                         <div
                           key={res.id}
-                          className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs hover:border-emerald-500/40 transition-colors"
+                          className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs"
                         >
                           <div className="flex items-center gap-2.5">
-                            {res.type === 'video' ? (
-                              <Video className="w-4 h-4 text-sky-500" />
-                            ) : res.type === 'audio' ? (
-                              <PlayCircle className="w-4 h-4 text-amber-500" />
-                            ) : (
-                              <FileText className="w-4 h-4 text-emerald-500" />
-                            )}
+                            {res.type === 'video' ? <Video className="w-4 h-4 text-sky-500" /> : <FileText className="w-4 h-4 text-emerald-500" />}
                             <div>
                               <span className="font-bold text-slate-900 dark:text-white block">{res.title}</span>
                               {res.size && <span className="text-[10px] text-slate-400 font-mono">حجم: {res.size}</span>}
                             </div>
                           </div>
-
-                          <button
-                            onClick={() => alert(`دانلود فایل «${res.title}» آغاز گردید.`)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-emerald-500 hover:text-stone-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all cursor-pointer"
+                          <a
+                            href={res.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs"
                           >
-                            <FileDown className="w-3.5 h-3.5" />
+                            <Download className="w-3.5 h-3.5" />
                             <span>دریافت فایل</span>
-                          </button>
+                          </a>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-950 text-center text-[11px] text-slate-400">
-                      جلسات جدید این دوره پس از برگزاری هر هفته در این بخش بارگذاری و برای شما فعال خواهد شد.
+                    <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 text-center text-[11px] text-slate-500">
+                      فایل‌های جلسات آموزشی این دوره به زودی در این قسمت قرار خواهد گرفت.
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* =========================================================================
+          MODAL 2.5: DEDICATED COURSE ADMIN PANEL (پنل مدیریت ویژه دوره برای ادمین)
+          شامل لیست ثبت‌نامی‌ها، وضعیت پرداخت‌ها و تنظیم محتوای پس از ثبت‌نام
+          ========================================================================= */}
+      <AnimatePresence>
+        {dedicatedCourseAdmin && (
+          <CourseAdminPanelModal
+            course={dedicatedCourseAdmin}
+            onClose={() => setDedicatedCourseAdmin(null)}
+            onOpenSmsModal={(c, recipient) => handleOpenSmsModal(c, recipient)}
+            onInspectReceipt={(enr) => setInspectingEnrollment(enr)}
+            onOpenBuilder={(c) => {
+              setDedicatedCourseAdmin(null);
+              handleOpenCourseBuilder(c);
+            }}
+          />
         )}
       </AnimatePresence>
 

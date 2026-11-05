@@ -155,7 +155,7 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                     onClick={() => onSelectCourse?.(c)}
                     className="px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all"
                   >
-                    مشاهده و ثبت‌نام
+                    {isAdmin ? 'مدیریت دوره' : 'مشاهده و ثبت‌نام'}
                   </button>
                 </div>
               </motion.div>
@@ -191,7 +191,7 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
               onClick={() => onSelectCourse?.(currentCourse)}
               className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all"
             >
-              ورود به دوره
+              {isAdmin ? 'مدیریت دوره' : 'ورود به دوره'}
             </button>
           </div>
         </div>
@@ -257,6 +257,12 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                   ثبت‌نام شده
                 </span>
               )}
+              <button
+                onClick={() => onSelectCourse?.(currentCourse)}
+                className="px-4 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs shadow-md transition-all cursor-pointer"
+              >
+                {isAdmin ? 'پنل مدیریت دوره' : 'مشاهده و ثبت‌نام'}
+              </button>
             </div>
 
             <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">

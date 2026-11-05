@@ -348,6 +348,41 @@ export interface Course {
   enrollmentStatus?: 'pending_review' | 'confirmed' | 'rejected';
   hasArchiveAccess?: boolean;
   archiveNotes?: string;
+
+  // تنظیمات اختصاصی پنل مدیریت دوره و محتوای پس از ثبت‌نام دانش‌آموختگان
+  deliveryMode?: 'online' | 'offline'; // حالت برخط با جلسه و وبینار یا آفلاین با پکیج دانلودی
+  studentWelcomeMessage?: string; // پیام تشکر و خوش‌آمدگویی پس از ثبت‌نام
+  studentNoticeBox?: {
+    enabled?: boolean;
+    title?: string;
+    content?: string;
+    fontSize?: 'sm' | 'base' | 'lg' | 'xl';
+    fontColor?: string;
+    bannerUrl?: string; // بنر اطلاعیه یا پیام تبریک
+  };
+  onlineSessionDate?: string; // تاریخ و ساعت شروع جلسه آنلاین
+  onlineSessionTopic?: string; // موضوع جلسه
+  onlineReminderNotes?: string; // یادآوری‌های پیش از ورود به کلاس
+  offlineDownloadDescription?: string; // توضیحات فایل‌ها و شیوه مطالعه
+  offlineBannerUrl?: string; // بنر ویژه دانلود دوره آفلاین
+  postEnrollmentBanner?: string; // بنر اختصاصی داخل دوره بعد از تایید
+  postEnrollmentMessage?: string; // پیام خوش‌آمد و یادآوری (مثلاً: ضمن تشکر از ثبت‌نام شما، دوره فلان...)
+  welcomeBoxFontSize?: 'sm' | 'base' | 'lg' | 'xl'; // اندازه فونت باکس پیام
+  welcomeBoxBgColor?: 'emerald' | 'amber' | 'slate' | 'indigo' | 'rose'; // تم رنگی باکس پیام
+  reminderDate?: string; // تاریخ برگزاری یا شروع جلسه آنلاین
+  reminderSchedule?: string; // روزها و ساعت دقیق برگزاری جلسه
+  offlineDownloadUrl?: string; // آدرس لینک دانلود فایل‌های دوره آفلاین
+  offlineDownloadGuide?: string; // توضیحات و راهنمای دانلود فایل‌ها و اسلایدهای دوره آفلاین
+  offlineDownloadFiles?: Array<{
+    id: string;
+    title: string;
+    url?: string;
+    downloadUrl?: string;
+    size?: string;
+    fileType?: string;
+    format?: string;
+    description?: string;
+  }>;
   version?: number;
 }
 
