@@ -151,7 +151,7 @@ const MainLayout: React.FC = () => {
                   {activeTab === 'specialized_counseling' && <SpecializedCareerCounselingSection />}
                   {activeTab === 'research' && <CrextioSubViews activeNav="Research" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'rulings' && <CrextioSubViews activeNav="Rulings" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
-                  {activeTab === 'welfare' && <CrextioSubViews activeNav="Welfare" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
+                  {activeTab === 'welfare' && <WelfareSection />}
                   {activeTab === 'synergy' && <CrextioSubViews activeNav="Synergy" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'alumni' && <AlumniDirectorySection onNavigate={setActiveTab} />}
                   {activeTab === 'users' && <UserManagementModule />}

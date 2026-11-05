@@ -118,44 +118,7 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
      5. WELFARE & LOANS (خدمات رفاهی و تسهیلات)
      ======================================================================== */
   if (activeNav === 'Salary' || activeNav === 'Welfare') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              خدمات رفاهی
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">تسهیلات، وام و اقلام تعاونی</h2>
-            <p className="text-xs text-stone-500 mt-0.5">وام قرض‌الحسنه صندوق رفاه، اسکان زیارتی و توزیع اقلام معیشتی</p>
-          </div>
-          <span className="px-4 py-2 rounded-full bg-emerald-800 text-white text-xs font-bold shadow-xs">
-            سقف وام صندوق: {toPersianNumbers('150,000,000')} تومان
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {consumables.map(item => (
-            <div key={item.id} className={cardStyle}>
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="text-stone-500 font-medium">موجود: {toPersianNumbers(item.stock)} عدد</span>
-                <span className="text-emerald-900 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">یارانه تعاونی</span>
-              </div>
-
-              <h3 className="text-base font-bold text-stone-900">{item.title}</h3>
-
-              <div className="mt-4 pt-3 border-t border-stone-200/80 flex items-center justify-between">
-                <span className="text-sm font-extrabold text-stone-900">
-                  {toPersianNumbers(item.cooperativePrice.toLocaleString('fa-IR'))} تومان
-                </span>
-                <button className="px-4 py-1.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-colors">
-                  افزودن به سبد
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <WelfareSection />;
   }
 
   /* ========================================================================
@@ -169,103 +132,7 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
      7. COURT RULINGS HALL (تالار آراء قضایی)
      ======================================================================== */
   if (activeNav === 'Reviews' || activeNav === 'Rulings') {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
-              تالار آراء قضایی
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">
-              تالار نقد و ارزیابی دادنامه‌ها ({toPersianNumbers(rulings.length)})
-            </h2>
-            <p className="text-xs text-stone-500 mt-0.5">آراء مدلل محاکم بدوی، تجدیدنظر و دیوان عالی کشور همراه با مباحثه علمی اعضا</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {rulings.map(ruling => (
-            <div key={ruling.id} className={cardStyle}>
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                  {ruling.courtBranch}
-                </span>
-                <span className="text-stone-600 font-medium">قاضی صادرکننده: {ruling.judgeName}</span>
-              </div>
-
-              <h3 className="text-base font-bold text-stone-900 leading-snug">{ruling.title}</h3>
-              <p className="text-xs text-stone-600 mt-2 line-clamp-3 leading-relaxed font-serif bg-[#F5F4EE] p-3 rounded-2xl border border-stone-200/80">
-                {ruling.summary}
-              </p>
-
-              <div className="mt-4 pt-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
-                <span className="text-stone-500 font-bold">
-                  {toPersianNumbers(ruling.discussions?.length || 0)} دیدگاه ثبت‌شده
-                </span>
-                <button 
-                  onClick={() => setSelectedItem(ruling)}
-                  className="px-4 py-1.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-colors"
-                >
-                  مطالعه رأی و ثبت نقد
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Modal for Ruling Discussion */}
-        {selectedItem && (
-          <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#FCFCFA] rounded-[36px] p-6 max-w-2xl w-full space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-start border-b border-stone-200 pb-3">
-                <div>
-                  <span className="text-xs font-bold text-emerald-800">{selectedItem.courtBranch}</span>
-                  <h3 className="font-extrabold text-lg text-stone-900">{selectedItem.title}</h3>
-                </div>
-                <button onClick={() => setSelectedItem(null)} className="text-stone-400 hover:text-stone-600 font-bold">✕</button>
-              </div>
-
-              <div className="p-4 bg-[#F5F4EE] rounded-2xl text-xs leading-relaxed text-stone-800 space-y-2">
-                <h4 className="font-bold text-stone-900">خلاصه دادنامه:</h4>
-                <p>{selectedItem.summary}</p>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-bold text-sm text-stone-900">نقدها و دیدگاه‌های حقوقی:</h4>
-                {selectedItem.discussions?.map((d: any, idx: number) => (
-                  <div key={idx} className="p-3 bg-emerald-50/80 rounded-2xl border border-emerald-100 text-xs space-y-1">
-                    <span className="font-bold text-emerald-950">{d.authorName}</span>
-                    <p className="text-stone-700">{d.comment}</p>
-                  </div>
-                ))}
-
-                <div className="flex gap-2 pt-2">
-                  <input 
-                    type="text" 
-                    placeholder="نقد تخصصی خود را بنویسید..." 
-                    value={commentText}
-                    onChange={e => setCommentText(e.target.value)}
-                    className="flex-1 px-4 py-2 bg-[#F5F4EE] border border-stone-200 rounded-full text-xs text-stone-900 font-medium"
-                  />
-                  <button 
-                    onClick={() => {
-                      if (commentText.trim()) {
-                        addRulingDiscussion(selectedItem.id, commentText);
-                        setCommentText('');
-                        setSelectedItem(null);
-                      }
-                    }}
-                    className="px-5 py-2 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold"
-                  >
-                    ارسال
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    return <JudicialRulingsSection />;
   }
 
   /* ========================================================================

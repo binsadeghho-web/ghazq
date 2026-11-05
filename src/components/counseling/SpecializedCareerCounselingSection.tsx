@@ -101,7 +101,7 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
   } = useApp();
 
   const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
-  const [viewMode, setViewMode] = useState<'admin' | 'student'>(isOfficial ? 'admin' : 'student');
+  const [previewStudentMode, setPreviewStudentMode] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'request' | 'advisors' | 'tariffs' | 'my_history' | 'admin_queue'>('request');
 
@@ -188,21 +188,21 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
     }
   };
 
-  if (isOfficial && viewMode === 'admin') {
-    return <AdminSpecializedCounselingSuite onSwitchToStudentPreview={() => setViewMode('student')} />;
+  if (isOfficial && !previewStudentMode) {
+    return <AdminSpecializedCounselingSuite onSwitchToStudentPreview={() => setPreviewStudentMode(true)} />;
   }
 
   return (
     <div className="space-y-6">
       {/* Return to Admin Mode floating banner if admin is previewing student mode */}
-      {isOfficial && viewMode === 'student' && (
+      {isOfficial && previewStudentMode && (
         <div className="bg-amber-100 border border-amber-300 text-amber-900 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
           <span className="text-xs font-bold flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
             در حال مشاهده پیش‌نمایش فرم و محیط دانش‌آموخته هستید.
           </span>
           <button
-            onClick={() => setViewMode('admin')}
+            onClick={() => setPreviewStudentMode(false)}
             className="px-4 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             بازگشت به میز مدیریت ادمین

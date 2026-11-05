@@ -60,7 +60,7 @@ export const WelfareSection: React.FC = () => {
   const [propDesc, setPropDesc] = useState('');
 
   const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
-  const [viewMode, setViewMode] = useState<'admin' | 'student'>(isOfficial ? 'admin' : 'student');
+  const [previewStudentMode, setPreviewStudentMode] = useState(false);
 
   const myWelfareList = welfareRequests.filter(r => isOfficial || r.applicantId === currentUser?.id);
 
@@ -156,22 +156,22 @@ export const WelfareSection: React.FC = () => {
     alert('پیشنهاد کالای شما به مدیریت تعاونی ارسال شد.');
   };
 
-  if (isOfficial && viewMode === 'admin') {
-    return <AdminWelfareSuite onSwitchToStudentPreview={() => setViewMode('student')} />;
+  if (isOfficial && !previewStudentMode) {
+    return <AdminWelfareSuite onSwitchToStudentPreview={() => setPreviewStudentMode(true)} />;
   }
 
   return (
     <div className="space-y-6">
       {/* Return to Admin Mode floating banner if admin is previewing student mode */}
-      {isOfficial && viewMode === 'student' && (
+      {isOfficial && previewStudentMode && (
         <div className="bg-teal-100 border border-teal-300 text-teal-900 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
           <span className="text-xs font-bold flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
             در حال مشاهده پیش‌نمایش فرم و محیط رفاهیات دانش‌آموخته هستید.
           </span>
           <button
-            onClick={() => setViewMode('admin')}
-            className="px-4 py-1.5 rounded-xl bg-teal-850 bg-teal-900 hover:bg-teal-950 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            onClick={() => setPreviewStudentMode(false)}
+            className="px-4 py-1.5 rounded-xl bg-teal-900 hover:bg-teal-950 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             بازگشت به میز مدیریت ادمین
           </button>
