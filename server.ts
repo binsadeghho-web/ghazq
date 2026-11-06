@@ -139,7 +139,15 @@ async function bootstrap() {
     });
   });
 
-  // Persistent Uploads Static File Serving (Section 7: HTTP Cache headers)
+  // Block direct public URL access to private consultation and research directories
+  app.use('/uploads/consultations', (_req: Request, res: Response) => {
+    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی مشاوره غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایند.' });
+  });
+  app.use('/uploads/research', (_req: Request, res: Response) => {
+    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی پژوهش غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایند.' });
+  });
+
+  // Public Persistent Uploads Static File Serving (avatars, products, courses, verdicts, misc)
   app.use('/uploads', express.static(storageConfig.uploadsDir, {
     maxAge: '7d',
     immutable: true,

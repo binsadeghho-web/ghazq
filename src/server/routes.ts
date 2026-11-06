@@ -4,7 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import { outbox, OutboxMessage } from './platform/outbox';
 import { generateUUIDv7 } from './platform/database';
-import { storageConfig } from './platform/storage';
+import { storageConfig, UploadCategory } from './platform/storage';
+import { storageAdapter } from './platform/storageAdapter';
 import { createAuthRouter } from './modules/auth/authModule';
 import { createCartableRouter } from './modules/cartable/cartableModule';
 import { createCoursesRouter } from './modules/courses/coursesModule';
@@ -40,57 +41,85 @@ export function createMasterRouter(): Router {
   router.use('/synergy', synergyRouter);
   router.use('/admin', createAdminRouter());
 
-  // Profile picture upload endpoint saving directly into PROFILE_PICTURE folder
-  router.post('/upload/profile-picture', async (req: Request, res: Response) => {
+  // Generic Categorized Upload Endpoint (avatars, products, courses, consultations, research, verdicts, misc)
+  router.post('/upload/:category', async (req: Request, res: Response) => {
     try {
+      const rawCategory = req.params.category as string;
+      const validCategories: UploadCategory[] = ['avatar', 'product', 'course', 'consultation', 'research', 'verdict', 'misc'];
+      
+      // Handle alias for profile-picture
+      const category: UploadCategory = (rawCategory === 'profile-picture' || rawCategory === 'avatars')
+        ? 'avatar'
+        : validCategories.includes(rawCategory as UploadCategory)
+          ? (rawCategory as UploadCategory)
+          : 'misc';
+
       const { base64Data, filename: origName } = req.body || {};
       if (!base64Data || typeof base64Data !== 'string') {
-        return res.status(400).json({ success: false, message: 'دیتا یا تصویر نامعتبر است.' });
+        return res.status(400).json({ success: false, message: 'دیتا یا فایل نامعتبر است.' });
       }
 
-      // Extract mime type and raw base64
+      // Parse base64 buffer
       const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       let buffer: Buffer;
-      let ext = '.jpg';
+      let extFromMime = '.jpg';
 
       if (matches && matches.length === 3) {
         const mime = matches[1];
-        if (mime.includes('png')) ext = '.png';
-        else if (mime.includes('webp')) ext = '.webp';
-        else if (mime.includes('gif')) ext = '.gif';
+        if (mime.includes('png')) extFromMime = '.png';
+        else if (mime.includes('webp')) extFromMime = '.webp';
+        else if (mime.includes('pdf')) extFromMime = '.pdf';
+        else if (mime.includes('word') || mime.includes('document')) extFromMime = '.docx';
         buffer = Buffer.from(matches[2], 'base64');
       } else {
-        buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+        buffer = Buffer.from(base64Data.replace(/^data:[^;]+;base64,/, ''), 'base64');
       }
 
-      const safeFilename = `profile_${Date.now()}_${generateUUIDv7().slice(0, 8)}${ext}`;
-      const uploadsProfileDir = path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE');
-      const rootProfileDir = path.join(storageConfig.rootPath, 'PROFILE_PICTURE');
+      const originalFilename = origName || `file${extFromMime}`;
+      const result = await storageAdapter.saveCategorizedUpload(category, originalFilename, buffer);
 
-      try {
-        await fs.promises.mkdir(uploadsProfileDir, { recursive: true, mode: 0o755 });
-      } catch {}
-      try {
-        await fs.promises.mkdir(rootProfileDir, { recursive: true, mode: 0o755 });
-      } catch {}
-
-      const destPath1 = path.join(uploadsProfileDir, safeFilename);
-      const destPath2 = path.join(rootProfileDir, safeFilename);
-
-      await fs.promises.writeFile(destPath1, buffer);
-      try {
-        await fs.promises.writeFile(destPath2, buffer);
-      } catch {}
-
-      const url = `/uploads/PROFILE_PICTURE/${safeFilename}`;
       res.json({
         success: true,
-        filename: safeFilename,
-        url,
-        message: 'عکس پروفایل با موفقیت در پوشه PROFILE_PICTURE ذخیره گردید.'
+        filename: result.filename,
+        url: result.url,
+        category: result.category,
+        isPrivate: result.isPrivate,
+        message: `فایل با موفقیت در پوشه اختصاصی ${result.category} بر روی دیسک ماندگار ذخیره گردید.`
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: `خطا در ذخیره‌سازی عکس پروفایل: ${err?.message || err}` });
+      res.status(500).json({ success: false, message: `خطا در آپلود فایل: ${err?.message || err}` });
+    }
+  });
+
+  // Protected Private File Serving Endpoint (consultations & research)
+  router.get('/storage/private/:category/:filename', (req: Request, res: Response) => {
+    try {
+      const { category, filename } = req.params;
+      const user = (req as any).user;
+
+      if (!user) {
+        return res.status(401).json({ error: 'جهت دسترسی به فایل‌های خصوصی، ثبت ورود الزامی است.' });
+      }
+
+      if (category !== 'consultations' && category !== 'research') {
+        return res.status(400).json({ error: 'دسته‌بندی فایل خصوصی نامعتبر است.' });
+      }
+
+      const catConfig = storageConfig.categories[category as UploadCategory];
+      if (!catConfig) {
+        return res.status(404).json({ error: 'پوشه یافت نشد.' });
+      }
+
+      const safeFilename = path.basename(filename);
+      const filePath = path.join(catConfig.path, safeFilename);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'فایل درخواستی روی دیسک یافت نشد.' });
+      }
+
+      res.sendFile(filePath);
+    } catch (err: any) {
+      res.status(500).json({ error: `خطا در دریافت فایل خصوصی: ${err?.message || err}` });
     }
   });
 

@@ -4,17 +4,19 @@ import { logger } from './logger';
 import { generateUUIDv7 } from './uuidv7';
 
 /**
- * Storage Service for Persistent Volume Mounts (e.g., Runflare /MYDISK)
+ * Categorized Persistent Disk Storage Service
  * Compliant with Zero-Build-Impact Architecture:
- * - NO synchronous disk I/O, exists checks, or mkdir in top-level module scope or during imports.
- * - Directory initialization is strictly asynchronous and deferred until after HTTP server starts.
- * - Guaranteed 5-second timeout safeguard to prevent hanging if volume mount is slow or unavailable.
+ * - Pure path resolution during module import (NO fs I/O or existsSync at build time).
+ * - Async folder initialization strictly deferred until after server startup.
+ * - Non-blocking 5-second watchdog safeguard with category-level failure tolerance.
  */
+
+export type UploadCategory = 'avatar' | 'product' | 'course' | 'consultation' | 'research' | 'verdict' | 'misc';
 
 export interface StorageConfig {
   rootPath: string;
   uploadsDir: string;
-  profilePictureDir: string;
+  categories: Record<UploadCategory, { path: string; isPrivate: boolean; folderName: string }>;
   backupsDir: string;
   auditDir: string;
   tempDir: string;
@@ -22,7 +24,6 @@ export interface StorageConfig {
   isInitialized: boolean;
 }
 
-// Pure path resolution without any disk I/O or existsSync calls
 function resolveStorageRoot(): string {
   if (process.env.STORAGE_PATH && process.env.STORAGE_PATH.trim() !== '') {
     return path.resolve(process.env.STORAGE_PATH.trim());
@@ -30,16 +31,24 @@ function resolveStorageRoot(): string {
   if (process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim() !== '') {
     return path.dirname(path.resolve(process.env.UPLOAD_DIR.trim()));
   }
-  // Default path without probing filesystem at import time
   return path.resolve(process.cwd(), 'storage');
 }
 
 const rootPath = resolveStorageRoot();
+const uploadsDir = process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(rootPath, 'uploads');
 
 export const storageConfig: StorageConfig = {
   rootPath,
-  uploadsDir: process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(rootPath, 'uploads'),
-  profilePictureDir: path.join(rootPath, 'uploads', 'PROFILE_PICTURE'),
+  uploadsDir,
+  categories: {
+    avatar: { path: path.join(uploadsDir, 'avatars'), isPrivate: false, folderName: 'avatars' },
+    product: { path: path.join(uploadsDir, 'products'), isPrivate: false, folderName: 'products' },
+    course: { path: path.join(uploadsDir, 'courses'), isPrivate: false, folderName: 'courses' },
+    consultation: { path: path.join(uploadsDir, 'consultations'), isPrivate: true, folderName: 'consultations' },
+    research: { path: path.join(uploadsDir, 'research'), isPrivate: true, folderName: 'research' },
+    verdict: { path: path.join(uploadsDir, 'verdicts'), isPrivate: false, folderName: 'verdicts' },
+    misc: { path: path.join(uploadsDir, 'misc'), isPrivate: false, folderName: 'misc' },
+  },
   backupsDir: path.join(rootPath, 'backups'),
   auditDir: path.join(rootPath, 'audit'),
   tempDir: path.join(rootPath, 'temp'),
@@ -48,54 +57,62 @@ export const storageConfig: StorageConfig = {
 };
 
 /**
- * Ensures all required storage directories exist with appropriate permissions.
- * STRICT RUNTIME ONLY: Called asynchronously after server.listen, with 5s timeout.
+ * Asynchronously initializes all required storage directories after server listen.
  */
 export async function initStorageDirectories(timeoutMs = 5000): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     let resolved = false;
 
-    // Timeout watchdog: ensure we never hang the process
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         storageConfig.isMounted = false;
-        logger.warn(`Storage initialization timed out after ${timeoutMs}ms. Running with storage disabled/fallback.`);
+        logger.warn(`Storage initialization timed out after ${timeoutMs}ms. System running in fallback mode.`);
         resolve(false);
       }
     }, timeoutMs);
 
-    // Execute asynchronously in background
     (async () => {
       try {
-        const dirs = [
+        const dirsToCreate = [
           storageConfig.rootPath,
           storageConfig.uploadsDir,
-          storageConfig.profilePictureDir,
+          storageConfig.categories.avatar.path,
+          storageConfig.categories.product.path,
+          storageConfig.categories.course.path,
+          storageConfig.categories.consultation.path,
+          storageConfig.categories.research.path,
+          storageConfig.categories.verdict.path,
+          storageConfig.categories.misc.path,
+          // Legacy backwards compatibility folder
+          path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE'),
           storageConfig.backupsDir,
           storageConfig.auditDir,
           storageConfig.tempDir,
         ];
 
-        for (const dir of dirs) {
+        let successCount = 0;
+        for (const dir of dirsToCreate) {
           try {
             await fs.promises.mkdir(dir, { recursive: true, mode: 0o755 });
+            successCount++;
           } catch (dirErr: any) {
-            // EEXIST is fine, other errors log warning without halting
             if (dirErr.code !== 'EEXIST') {
-              logger.warn(`Warning creating storage dir (${dir}): ${dirErr?.message || dirErr}`);
+              logger.warn(`هشدار در ایجاد پوشه (${dir}): ${dirErr?.message || dirErr}`);
+            } else {
+              successCount++;
             }
           }
         }
 
-        // Quick write probe to verify write permission
+        // Test write probe
         const testFile = path.join(storageConfig.tempDir, `.probe_${Date.now()}.tmp`);
         try {
           await fs.promises.writeFile(testFile, 'probe');
           await fs.promises.unlink(testFile);
           storageConfig.isMounted = true;
           storageConfig.isInitialized = true;
-          logger.info(`💾 سیستم ذخیره‌سازی فایل‌های ماندگار با موفقیت متصل شد. مسیر ریشه: ${storageConfig.rootPath}`);
+          logger.info(`💾 سیستم ذخیره‌سازی پوشه‌های طبقه‌بندی‌شده (/MYDISK/uploads/...) با موفقیت راه‌اندازی شد.`);
         } catch (probeErr: any) {
           storageConfig.isMounted = false;
           logger.warn(`مسیر دیسک در دسترس برای نوشتن نیست (${storageConfig.rootPath}): ${probeErr?.message}`);
@@ -107,7 +124,7 @@ export async function initStorageDirectories(timeoutMs = 5000): Promise<boolean>
           resolve(storageConfig.isMounted);
         }
       } catch (err: any) {
-        logger.warn(`Storage initialization failed gracefully: ${err?.message || err}`);
+        logger.warn(`خطا در مقداردهی اولیه پوشه‌های ذخیره‌سازی: ${err?.message || err}`);
         storageConfig.isMounted = false;
         if (!resolved) {
           resolved = true;
@@ -120,28 +137,37 @@ export async function initStorageDirectories(timeoutMs = 5000): Promise<boolean>
 }
 
 /**
- * Generates a secure, path-traversal-safe file path within the specified directory.
+ * Generates a safe UUIDv7 file path for a specific category.
  */
-export function generateSafeFilePath(subDir: 'uploads' | 'backups' | 'audit' | 'temp', originalFilename: string): { filename: string; fullPath: string } {
-  const ext = path.extname(originalFilename).toLowerCase().replace(/[^a-z0-9.]/g, '');
-  const safeBaseName = `${generateUUIDv7()}${ext}`;
-  const targetDir = storageConfig[subDir === 'uploads' ? 'uploadsDir' : subDir === 'backups' ? 'backupsDir' : subDir === 'audit' ? 'auditDir' : 'tempDir'];
-  const fullPath = path.join(targetDir, safeBaseName);
+export function generateSafeCategoryFilePath(
+  category: UploadCategory,
+  originalFilename: string
+): { filename: string; fullPath: string; url: string; isPrivate: boolean } {
+  const catConfig = storageConfig.categories[category] || storageConfig.categories.misc;
+  const ext = path.extname(originalFilename).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.bin';
+  const safeFilename = `${category}_${generateUUIDv7()}${ext}`;
+  const fullPath = path.join(catConfig.path, safeFilename);
+
+  const url = catConfig.isPrivate
+    ? `/api/storage/private/${catConfig.folderName}/${safeFilename}`
+    : `/uploads/${catConfig.folderName}/${safeFilename}`;
 
   return {
-    filename: safeBaseName,
+    filename: safeFilename,
     fullPath,
+    url,
+    isPrivate: catConfig.isPrivate,
   };
 }
 
 /**
- * Returns disk usage statistics for health checks and dashboard metrics.
+ * Returns health & directory metrics.
  */
 export function getStorageHealth(): { status: 'healthy' | 'degraded'; rootPath: string; isMounted: boolean; accessibleDirs: string[] } {
   return {
     status: storageConfig.isMounted ? 'healthy' : 'degraded',
     rootPath: storageConfig.rootPath,
     isMounted: storageConfig.isMounted,
-    accessibleDirs: storageConfig.isMounted ? ['uploads', 'backups', 'audit'] : [],
+    accessibleDirs: storageConfig.isMounted ? Object.keys(storageConfig.categories) : [],
   };
 }
