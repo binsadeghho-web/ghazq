@@ -67,12 +67,12 @@ export function createMasterRouter(): Router {
       const uploadsProfileDir = path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE');
       const rootProfileDir = path.join(storageConfig.rootPath, 'PROFILE_PICTURE');
 
-      if (!fs.existsSync(uploadsProfileDir)) {
-        fs.mkdirSync(uploadsProfileDir, { recursive: true, mode: 0o755 });
-      }
-      if (!fs.existsSync(rootProfileDir)) {
-        fs.mkdirSync(rootProfileDir, { recursive: true, mode: 0o755 });
-      }
+      try {
+        await fs.promises.mkdir(uploadsProfileDir, { recursive: true, mode: 0o755 });
+      } catch {}
+      try {
+        await fs.promises.mkdir(rootProfileDir, { recursive: true, mode: 0o755 });
+      } catch {}
 
       const destPath1 = path.join(uploadsProfileDir, safeFilename);
       const destPath2 = path.join(rootProfileDir, safeFilename);

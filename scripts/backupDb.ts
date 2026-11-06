@@ -17,7 +17,7 @@ async function runBackup() {
   console.log(`📡 دیتابیس: ${dbConfig.database} روی ${dbConfig.host}:${dbConfig.port}`);
   console.log('----------------------------------------------------');
 
-  initStorageDirectories();
+  await initStorageDirectories();
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupFileName = `backup_${dbConfig.database}_${timestamp}.sql`;

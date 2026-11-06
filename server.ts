@@ -23,15 +23,13 @@ import { rfc9457ErrorHandler } from './src/server/platform/errors';
 import { createMasterRouter, metricsStore } from './src/server/routes';
 import { persianNormalizerMiddleware } from './src/server/platform/persianNormalizer';
 import { initStorageDirectories, storageConfig, getStorageHealth } from './src/server/platform/storage';
+import { storageAdapter } from './src/server/platform/storageAdapter';
 import { sessionAuthMiddleware } from './src/server/platform/sessionAuth';
 
 async function bootstrap() {
   const app = express();
   const port = process.env.PORT || 3000;
   const isDev = process.env.NODE_ENV !== 'production';
-
-  // Persistent volume storage initialization (/MYDISK)
-  initStorageDirectories();
 
   // Item 1: Database DDL is executed ONLY via standalone 'npm run db:init', NOT on server startup.
   // Server only probes readiness for graceful health checks.
@@ -184,6 +182,15 @@ async function bootstrap() {
     console.log(`[Runflare] Server successfully bound to ${HOST}:${PORT}`);
     logger.info(`Enterprise Data Architecture Server v3.0 running on ${HOST}:${PORT}`, {
       context: { port: PORT, host: HOST, env: process.env.NODE_ENV || 'development' },
+    });
+
+    // STRICT RUNTIME ONLY: Initialize persistent storage after server is already listening
+    // Guaranteed non-blocking with 5s timeout watchdog, never delays server startup or build
+    initStorageDirectories(5000).catch(err => {
+      logger.warn(`Storage async initialization notice: ${err?.message || err}`);
+    });
+    storageAdapter.initialize(5000).catch(err => {
+      logger.warn(`StorageAdapter async initialization notice: ${err?.message || err}`);
     });
   });
 

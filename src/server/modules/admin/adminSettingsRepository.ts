@@ -15,16 +15,19 @@ export interface SystemSettingRecord<T> {
 export class AdminSettingsRepository {
   private memoryCache: Map<string, SystemSettingRecord<any>> = new Map();
   private diskFilePath: string;
+  private hasLoadedDisk = false;
 
   constructor() {
     this.diskFilePath = path.join(storageConfig.rootPath, 'system_settings.json');
-    this.loadFromDisk();
+    // NO synchronous fs calls in constructor during import or build time
   }
 
-  private loadFromDisk(): void {
+  private async ensureLoadedFromDisk(): Promise<void> {
+    if (this.hasLoadedDisk) return;
+    this.hasLoadedDisk = true;
     try {
-      if (fs.existsSync(this.diskFilePath)) {
-        const raw = fs.readFileSync(this.diskFilePath, 'utf-8');
+      if (storageConfig.isMounted) {
+        const raw = await fs.promises.readFile(this.diskFilePath, 'utf-8');
         const data = JSON.parse(raw);
         if (data && typeof data === 'object') {
           for (const [k, v] of Object.entries(data)) {
@@ -33,18 +36,19 @@ export class AdminSettingsRepository {
           logger.info(`Loaded ${this.memoryCache.size} system settings from persistent disk.`);
         }
       }
-    } catch (err: any) {
-      logger.warn(`Failed to read system settings from disk: ${err?.message || err}`);
+    } catch {
+      // Ignored gracefully if file does not exist yet
     }
   }
 
-  private saveToDisk(): void {
+  private async saveToDisk(): Promise<void> {
+    if (!storageConfig.isMounted) return;
     try {
       const obj: Record<string, any> = {};
       for (const [k, v] of this.memoryCache.entries()) {
         obj[k] = v;
       }
-      fs.writeFileSync(this.diskFilePath, JSON.stringify(obj, null, 2), 'utf-8');
+      await fs.promises.writeFile(this.diskFilePath, JSON.stringify(obj, null, 2), 'utf-8');
     } catch (err: any) {
       logger.warn(`Failed to save system settings to disk: ${err?.message || err}`);
     }
@@ -55,6 +59,7 @@ export class AdminSettingsRepository {
    * Priority: MySQL (if connected) -> Disk/Memory Cache
    */
   async getRecord<T>(key: string): Promise<SystemSettingRecord<T> | null> {
+    await this.ensureLoadedFromDisk();
     if (isDatabaseConnected()) {
       try {
         const p = getPool();
