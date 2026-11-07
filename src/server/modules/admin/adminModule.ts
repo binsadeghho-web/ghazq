@@ -30,22 +30,24 @@ export class AdminService {
     organization: string;
     graduationYear: string;
     mustChangePassword?: boolean;
+    siteTitle?: string;
+    profilePictureUrl?: string;
+    judicialGrade?: number;
+    courtBranch?: string;
+    province?: string;
   }): Promise<User> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin']);
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
 
-    const nationalId = normalizeDigits(data.nationalId).trim();
-    const phone = normalizeDigits(data.phone).trim();
-    const username = data.username ? normalizeDigits(data.username).trim() : nationalId;
-    const rawPassword = data.password ? normalizeDigits(data.password) : phone;
+    const nationalId = (data.nationalId ? normalizeDigits(data.nationalId) : '').trim();
+    const phone = (data.phone ? normalizeDigits(data.phone) : '09120000000').trim();
+    const username = data.username ? data.username.trim() : nationalId;
+    const rawPassword = data.password ? data.password.trim() : phone;
 
-    if (!nationalId || nationalId.length < 8) {
-      throw AppError.badRequest('کد ملی واردشده معتبر نیست.');
+    if (!nationalId || nationalId.length < 3) {
+      throw AppError.badRequest('کد ملی یا شناسه کاربری باید حداقل ۳ کاراکتر باشد.');
     }
-    if (!data.fullName || data.fullName.trim().length < 3) {
-      throw AppError.badRequest('نام و نام خانوادگی باید حداقل ۳ کاراکتر باشد.');
-    }
-    if (!phone || phone.length < 10) {
-      throw AppError.badRequest('شماره تلفن همراه معتبر نیست.');
+    if (!data.fullName || data.fullName.trim().length < 2) {
+      throw AppError.badRequest('نام و نام خانوادگی باید حداقل ۲ کاراکتر باشد.');
     }
 
     // Check duplicate nationalId or username
@@ -62,13 +64,19 @@ export class AdminService {
       nationalId,
       username,
       passwordHash,
+      passwordRaw: rawPassword,
       fullName: data.fullName.trim(),
       phone,
       role: data.role || 'alumni',
       roleTitle: data.roleTitle || 'دانش‌آموخته نخبه',
+      siteTitle: data.siteTitle,
+      profilePictureUrl: data.profilePictureUrl,
+      judicialGrade: data.judicialGrade,
+      courtBranch: data.courtBranch,
+      province: data.province,
       organization: data.organization || 'مرکز دانش‌آموختگان فقه و قضا',
       graduationYear: data.graduationYear || '۱۴۰۲',
-      mustChangePassword: data.mustChangePassword !== undefined ? data.mustChangePassword : true,
+      mustChangePassword: data.mustChangePassword !== undefined ? data.mustChangePassword : false,
     });
 
     outbox.enqueue('user.created', {

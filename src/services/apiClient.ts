@@ -343,6 +343,20 @@ class ApiClient {
     return this.getUsers();
   }
 
+  async createUser(userData: any) {
+    return this.request<any>('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async updateUser(userId: string, updates: any) {
+    return this.request<any>(`/api/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
   async unlockUser(userId: string) {
     return this.request<any>(`/api/admin/users/${userId}/unlock`, { method: 'POST' });
   }

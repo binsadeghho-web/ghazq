@@ -49,6 +49,7 @@ export interface User {
   nationalId: string; // کد ملی (شناسه ورود)
   username?: string; // نام کاربری (پیش‌فرض کد ملی)
   password?: string; // رمز عبور (پیش‌فرض شماره موبایل)
+  password_hash?: string; // هش ذخیره‌شده در دیتابیس
   fullName: string;
   phone: string;
   role: UserRole;

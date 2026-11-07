@@ -73,11 +73,18 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
           setCurrentUser(res.user);
           if (onClose) onClose();
         }
+        return;
       } else {
         setErrorMsg(res.message || 'نام کاربری/کد ملی یا رمز عبور اشتباه است.');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'خطا در برقراری ارتباط با سرور احراز هویت.');
+      // Fallback to Context login for offline or local registered users
+      const fallbackRes = await login(identifier, password);
+      if (fallbackRes.success) {
+        if (onClose) onClose();
+        return;
+      }
+      setErrorMsg(err.message || 'نام کاربری/کد ملی یا رمز عبور اشتباه است.');
     } finally {
       setLoading(false);
     }

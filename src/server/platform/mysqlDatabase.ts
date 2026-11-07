@@ -108,6 +108,13 @@ export async function selectWithTimeout<T = any>(
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
     await selectWithTimeout('SELECT 1 as alive', [], 2000);
+    // Verify that the core users table is initialized
+    const tables = await selectWithTimeout<{ [key: string]: string }>("SHOW TABLES LIKE 'users'", [], 2000);
+    if (!tables || tables.length === 0) {
+      logger.warn('MySQL is reachable, but `users` table does not exist. Using persistent fallback engine.');
+      isConnected = false;
+      return false;
+    }
     isConnected = true;
     return true;
   } catch (err: any) {
