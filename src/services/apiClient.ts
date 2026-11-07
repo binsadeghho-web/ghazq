@@ -421,13 +421,6 @@ class ApiClient {
     });
   }
 
-  async updateUser(userId: string, updates: any) {
-    return this.request<any>(`/api/admin/users/${userId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
   async unlockUser(userId: string) {
     return this.request<any>(`/api/admin/users/${userId}/unlock`, { method: 'POST' });
   }
@@ -443,6 +436,13 @@ class ApiClient {
   async deleteUser(userId: string) {
     return this.request<{ success: boolean; message: string }>(`/api/admin/users/${userId}`, {
       method: 'DELETE',
+    });
+  }
+
+  async updateUser(userId: string, updates: any) {
+    return this.request<any>(`/api/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
     });
   }
 

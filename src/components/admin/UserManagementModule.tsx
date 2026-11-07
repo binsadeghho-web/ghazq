@@ -61,6 +61,7 @@ export const UserManagementModule: React.FC = () => {
     users,
     currentUser,
     createUser,
+    updateUserDetails,
     deleteUser,
     toggleUserLock,
     updateUserCredentials,
@@ -81,9 +82,8 @@ export const UserManagementModule: React.FC = () => {
   // Selected user for Permissions modal
   const [permissionModalUser, setPermissionModalUser] = useState<User | null>(null);
 
-  // Selected user for editing username & password
-  const [editingCredentialsUser, setEditingCredentialsUser] = useState<User | null>(null);
-  const [credForm, setCredForm] = useState({ username: '', password: '' });
+  // Selected user for full profile & credentials editing
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // PIN security modal state
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -131,20 +131,17 @@ export const UserManagementModule: React.FC = () => {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Open Edit Credentials Modal
-  const openEditCredentials = (user: User) => {
-    setEditingCredentialsUser(user);
-    setCredForm({
-      username: user.username || user.nationalId,
-      password: user.password || user.phone,
-    });
+  // Open Edit Full User Modal
+  const openEditUser = (user: User) => {
+    setEditingUser(user);
   };
 
-  const handleSaveCredentials = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCredentialsUser) return;
-    await updateUserCredentials(editingCredentialsUser.id, credForm.username, credForm.password);
-    setEditingCredentialsUser(null);
+  const handleSaveEditUser = async (userId: string, updates: Partial<User>) => {
+    await updateUserDetails(userId, updates);
+    if (updates.username || (updates as any).password) {
+      await updateUserCredentials(userId, updates.username || '', (updates as any).password || '');
+    }
+    setEditingUser(null);
   };
 
   // Handle PIN verification
@@ -377,9 +374,9 @@ export const UserManagementModule: React.FC = () => {
                           {copiedKey === `un_${u.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                         <button
-                          onClick={() => openEditCredentials(u)}
+                          onClick={() => openEditUser(u)}
                           className="p-1 rounded-md text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
-                          title="ویرایش مستقیم نام کاربری و رمز"
+                          title="ویرایش کامل مشخصات، نام کاربری و رمز عبور"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
@@ -409,9 +406,9 @@ export const UserManagementModule: React.FC = () => {
                               {copiedKey === `pw_${u.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>
                             <button
-                              onClick={() => openEditCredentials(u)}
+                              onClick={() => openEditUser(u)}
                               className="p-1 rounded-md text-stone-400 hover:text-amber-700 hover:bg-amber-50 transition-colors"
-                              title="تغییر این رمز"
+                              title="ویرایش کامل مشخصات و رمز عبور"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
@@ -457,6 +454,15 @@ export const UserManagementModule: React.FC = () => {
                     {/* COLUMN 6: تنظیم سطح دسترسی برای اون کاربر */}
                     <td className="p-4 pl-6 text-center">
                       <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEditUser(u)}
+                          className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-300/80 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                          title="ویرایش تمامی اطلاعات و مشخصات این کاربر"
+                        >
+                          <Edit className="w-3.5 h-3.5 text-amber-700" />
+                          <span>ویرایش اطلاعات</span>
+                        </button>
+
                         <button
                           onClick={() => setPermissionModalUser(u)}
                           className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
@@ -523,75 +529,15 @@ export const UserManagementModule: React.FC = () => {
       )}
 
       {/* ========================================================================
-          MODAL 2: EDIT CREDENTIALS MODAL (ویرایش مستقیم نام کاربری و رمز)
+          MODAL 2: EDIT FULL USER DETAILS & PROFILE MODAL
           ======================================================================== */}
-      {editingCredentialsUser && (
-        <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-4" dir="rtl">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-md border border-stone-200 shadow-2xl overflow-hidden p-6 space-y-5"
-          >
-            <div className="flex items-center justify-between border-b pb-3 border-stone-200">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-stone-900">ویرایش نام کاربری و رمز عبور</h3>
-                  <p className="text-xs text-stone-500">{editingCredentialsUser.fullName} ({toPersianNumbers(editingCredentialsUser.nationalId)})</p>
-                </div>
-              </div>
-              <button onClick={() => setEditingCredentialsUser(null)} className="p-1 rounded-lg hover:bg-stone-100 text-stone-400">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCredentials} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-bold text-stone-700">نام کاربری جدید:</label>
-                <input
-                  type="text"
-                  required
-                  value={credForm.username}
-                  onChange={e => setCredForm({ ...credForm, username: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                  placeholder="کد ملی یا نام کاربری دلخواه"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-stone-700">رمز عبور جدید:</label>
-                <input
-                  type="text"
-                  required
-                  value={credForm.password}
-                  onChange={e => setCredForm({ ...credForm, password: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                  placeholder="رمز عبور دلخواه"
-                />
-                <p className="text-[11px] text-stone-500">پیشنهاد: تلفن همراه یا رمز ترکیبی قوی</p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingCredentialsUser(null)}
-                  className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold flex items-center gap-1.5 shadow-sm"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>ذخیره مشخصات ورود</span>
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
+      {editingUser && (
+        <EditUserFullModal
+          user={editingUser}
+          isOpen={!!editingUser}
+          onClose={() => setEditingUser(null)}
+          onSave={handleSaveEditUser}
+        />
       )}
 
       {/* ========================================================================
@@ -1464,6 +1410,405 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
             >
               <Check className="w-4 h-4" />
               <span>{loading ? 'در حال ثبت...' : 'ایجاد حساب کاربری'}</span>
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+/* ========================================================================
+   SUB-COMPONENT: EDIT FULL USER DETAILS MODAL
+   ======================================================================== */
+interface EditUserFullModalProps {
+  user: User;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (userId: string, updates: Partial<User>) => Promise<void>;
+}
+
+const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, onSave }) => {
+  type UserCategory = 'alumni' | 'supervisor' | 'staff' | 'admin';
+  
+  const initialCategory: UserCategory = 
+    user.role === 'admin' ? 'admin' :
+    user.role === 'supervisor' ? 'supervisor' :
+    (user.judicialGrade && user.judicialGrade > 0) ? 'alumni' : 'staff';
+
+  const [userCategory, setUserCategory] = useState<UserCategory>(initialCategory);
+
+  const [formData, setFormData] = useState({
+    fullName: user.fullName || '',
+    nationalId: user.nationalId || '',
+    phone: user.phone || '',
+    username: user.username || user.nationalId || '',
+    password: user.password || user.phone || '123456',
+    role: user.role || 'alumni',
+    roleTitle: user.roleTitle || '',
+    siteTitle: user.siteTitle || '',
+    profilePictureUrl: user.profilePictureUrl || '',
+    organization: user.organization || 'قوه قضائیه',
+    graduationYear: user.graduationYear || '۱۴۰۰',
+    judicialGrade: user.judicialGrade || 8,
+    courtBranch: user.courtBranch || '',
+    province: user.province || 'تهران',
+    isActive: user.isActive !== undefined ? user.isActive : true,
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [uploadingPic, setUploadingPic] = useState(false);
+
+  const handleCategoryChange = (category: UserCategory) => {
+    setUserCategory(category);
+    if (category === 'alumni') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'alumni',
+        roleTitle: prev.roleTitle || 'مستشار دادگاه تجدیدنظر استان',
+        organization: prev.organization || 'قوه قضائیه',
+        judicialGrade: prev.judicialGrade || 8,
+        courtBranch: prev.courtBranch || 'شعبه دادگاه عمومی و تجدیدنظر',
+      }));
+    } else if (category === 'supervisor') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'supervisor',
+        roleTitle: prev.roleTitle || 'مسئول کارتابل و هماهنگی سامانه',
+        organization: 'سامانه فقه و قضا',
+        judicialGrade: 0,
+        courtBranch: prev.courtBranch || 'دبیرخانه و دفتر نظارت مرکزی',
+      }));
+    } else if (category === 'staff') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'alumni',
+        roleTitle: prev.roleTitle || 'کارمند اداری / کاربر سامانه',
+        organization: prev.organization || 'امور اداری و پشتیبانی',
+        judicialGrade: 0,
+        courtBranch: prev.courtBranch || 'واحد امور اداری و دفتری',
+      }));
+    } else if (category === 'admin') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'admin',
+        roleTitle: prev.roleTitle || 'مدیر ارشد سامانه',
+        organization: 'مرکز فناوری و نظارت سامانه',
+        judicialGrade: 0,
+        courtBranch: prev.courtBranch || 'مرکز فناوری اطلاعات و داده',
+      }));
+    }
+  };
+
+  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPic(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const base64 = evt.target?.result as string;
+      try {
+        const res = await api.uploadProfilePicture(base64, file.name);
+        if (res.success && res.url) {
+          setFormData(prev => ({ ...prev, profilePictureUrl: res.url }));
+        }
+      } catch (err: any) {
+        alert(`خطا در آپلود تصویر پروفایل: ${err?.message || err}`);
+      } finally {
+        setUploadingPic(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const isAlumni = userCategory === 'alumni';
+
+    await onSave(user.id, {
+      ...formData,
+      siteTitle: formData.siteTitle.trim() || formData.roleTitle,
+      avatarText: formData.fullName.slice(0, 2),
+      judicialGrade: isAlumni ? Number(formData.judicialGrade) || 1 : 0,
+      graduationYear: isAlumni ? formData.graduationYear : '-',
+    });
+
+    setLoading(false);
+  };
+
+  const isAlumni = userCategory === 'alumni';
+
+  return (
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+      >
+        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-md">
+              <Edit className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-extrabold text-stone-900">ویرایش کامل اطلاعات و مشخصات کاربر</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                  {user.fullName}
+                </span>
+              </div>
+              <p className="text-xs text-stone-500">ویرایش تمامی مشخصات هویتی، نام کاربری، رمز عبور، نقش و عنوان سازمانی</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+          {/* USER CATEGORY SELECTOR */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-stone-100/90 border border-stone-200">
+            <label className="font-extrabold text-stone-800 block">
+              رسته و نوع جایگاه کاربر در سامانه:
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'alumni' as const, label: 'دانش‌آموخته قضایی', desc: 'قاضی، مستشار، پژوهشگر' },
+                { id: 'supervisor' as const, label: 'مسئول سامانه', desc: 'کارشناس مسئول، کارتابل' },
+                { id: 'staff' as const, label: 'کاربر اداری / پرسنل', desc: 'کارمند دفتری، کاربر عادی' },
+                { id: 'admin' as const, label: 'مدیر ارشد', desc: 'ادمین با دسترسی کل' },
+              ].map(cat => (
+                <button
+                  type="button"
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className={`p-2.5 rounded-xl text-right transition-all border text-xs flex flex-col justify-between ${
+                    userCategory === cat.id
+                      ? 'bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-500/30 font-extrabold'
+                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                  }`}
+                >
+                  <span className="font-black text-xs block mb-0.5">{cat.label}</span>
+                  <span className={`text-[10px] leading-tight ${userCategory === cat.id ? 'text-amber-100' : 'text-stone-400'}`}>
+                    {cat.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* FULL NAME */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">نام و نام خانوادگی:</label>
+              <input
+                type="text"
+                required
+                value={formData.fullName}
+                onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* NATIONAL ID */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">کد ملی (۱۰ رقم):</label>
+              <input
+                type="text"
+                required
+                value={formData.nationalId}
+                onChange={e => setFormData({ ...formData, nationalId: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* PHONE */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">شماره تلفن همراه:</label>
+              <input
+                type="text"
+                required
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* SITE TITLE */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">عنوان نمایشی در سایت:</label>
+              <input
+                type="text"
+                value={formData.siteTitle}
+                onChange={e => setFormData({ ...formData, siteTitle: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* PROFILE PICTURE */}
+            <div className="space-y-1.5 sm:col-span-2 p-3.5 rounded-2xl bg-stone-100/80 border border-stone-200">
+              <label className="font-bold text-stone-800 block mb-1">
+                عکس پروفایل کاربر (ذخیره‌سازی مستقیم در پوشه PROFILE_PICTURE):
+              </label>
+              <div className="flex items-center gap-3">
+                {formData.profilePictureUrl ? (
+                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-600 shrink-0">
+                    <img src={formData.profilePictureUrl} alt="عکس پروفایل" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, profilePictureUrl: '' })}
+                      className="absolute top-0 right-0 bg-red-600 text-white w-4 h-4 text-[10px] flex items-center justify-center font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-stone-200 border-2 border-dashed border-stone-300 flex items-center justify-center text-stone-400 font-bold text-xs shrink-0">
+                    بدون تصویر
+                  </div>
+                )}
+
+                <label className="px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-xs">
+                  <span>{uploadingPic ? 'در حال آپلود...' : 'انتخاب و آپلود تصویر جدید'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingPic}
+                    onChange={handleProfilePicUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {formData.profilePictureUrl && (
+                  <span className="text-[11px] font-mono text-stone-700 font-bold truncate max-w-[220px]">
+                    {formData.profilePictureUrl}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* USERNAME FIELD */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-stone-700">نام کاربری اختصاصی:</label>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, username: prev.nationalId }))}
+                  className="text-[10px] text-amber-700 hover:underline font-bold"
+                >
+                  🔄 تنظیم همسان با کد ملی
+                </button>
+              </div>
+              <input
+                type="text"
+                value={formData.username}
+                onChange={e => setFormData({ ...formData, username: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* PASSWORD FIELD */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-stone-700">رمز عبور اختصاصی:</label>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, password: prev.phone }))}
+                  className="text-[10px] text-amber-700 hover:underline font-bold"
+                >
+                  🔄 تنظیم همسان با موبایل
+                </button>
+              </div>
+              <input
+                type="text"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* ROLE / OFFICIAL TITLE */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">
+                {isAlumni ? 'سمت قضایی رسمی:' : 'سمت و عنوان سازمانی / شغلی:'}
+              </label>
+              <input
+                type="text"
+                value={formData.roleTitle}
+                onChange={e => setFormData({ ...formData, roleTitle: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* ORGANIZATION / INSTITUTION */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">سازمان یا نهاد متبوع:</label>
+              <input
+                type="text"
+                value={formData.organization}
+                onChange={e => setFormData({ ...formData, organization: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* CONDITIONAL JUDICIAL GRADE - ONLY FOR ALUMNI */}
+            {isAlumni && (
+              <div className="space-y-1.5">
+                <label className="font-bold text-stone-700">پایه قضایی (۱ تا ۱۱):</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={11}
+                  value={formData.judicialGrade}
+                  onChange={e => setFormData({ ...formData, judicialGrade: parseInt(e.target.value) || 1 })}
+                  className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+                />
+              </div>
+            )}
+
+            {/* BRANCH OR OFFICE */}
+            <div className={`space-y-1.5 ${isAlumni ? '' : 'sm:col-span-2'}`}>
+              <label className="font-bold text-stone-700">
+                {isAlumni ? 'شعبه و مجتمع قضایی محل خدمت:' : 'واحد، اداره یا بخش محل خدمت:'}
+              </label>
+              <input
+                type="text"
+                value={formData.courtBranch}
+                onChange={e => setFormData({ ...formData, courtBranch: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* PROVINCE */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="font-bold text-stone-700">استان / حوزه قضایی:</label>
+              <input
+                type="text"
+                value={formData.province}
+                onChange={e => setFormData({ ...formData, province: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-full border border-stone-300 text-stone-700 font-bold"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold shadow-md flex items-center gap-1.5"
+            >
+              <Save className="w-4 h-4" />
+              <span>{loading ? 'در حال ثبت تغییرات...' : 'ذخیره کامل تغییرات کاربر'}</span>
             </button>
           </div>
         </form>

@@ -812,25 +812,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUserDetails = async (userId: string, updates: Partial<User>) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const updated = { ...u, ...updates };
-      if (currentUser?.id === userId) {
-        setCurrentUser(updated);
-      }
-      return updated;
-    }));
+    let serverUpdated: any = null;
+    try {
+      serverUpdated = await api.updateUser(userId, updates);
+    } catch (apiErr: any) {
+      console.warn('Backend user update notice:', apiErr?.message);
+    }
+
+    setUsers(prev => {
+      const next = prev.map(u => {
+        if (u.id !== userId) return u;
+        const newFullName = updates.fullName !== undefined ? updates.fullName : u.fullName;
+        const nameParts = (newFullName || '').trim().split(' ');
+        const newAvatarText = nameParts.length > 1
+          ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+          : nameParts[0].slice(0, 2);
+
+        const updated: User = {
+          ...u,
+          ...updates,
+          ...(serverUpdated || {}),
+          avatarText: newAvatarText || u.avatarText,
+        };
+        if (currentUser?.id === userId) {
+          setCurrentUser(updated);
+        }
+        return updated;
+      });
+      try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
+      return next;
+    });
 
     // Add Audit Log
     const newLog: AuditLog = {
       id: `aud_${Date.now()}`,
       timestamp: new Date().toLocaleTimeString('fa-IR'),
-      eventType: 'ROLE_CHANGED',
+      eventType: 'USER_UPDATED',
       actorId: currentUser?.id || 'admin',
       actorName: currentUser?.fullName || 'مدیر سیستم',
       actorRole: currentUser?.role || 'admin',
       ip: '127.0.0.1',
-      details: `بروزرسانی مشخصات و پرونده قضایی کاربر [${userId}]`,
+      details: `بروزرسانی کامل و جامع اطلاعات حساب کاربری [${updates.fullName || userId}]`,
       severity: 'info',
     };
     setAuditLogs(prev => [newLog, ...prev]);
