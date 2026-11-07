@@ -25,6 +25,7 @@ import { persianNormalizerMiddleware } from './src/server/platform/persianNormal
 import { initStorageDirectories, storageConfig, getStorageHealth } from './src/server/platform/storage';
 import { storageAdapter } from './src/server/platform/storageAdapter';
 import { sessionAuthMiddleware } from './src/server/platform/sessionAuth';
+import { ipBlockEnforcementMiddleware, maintenanceEnforcementMiddleware } from './src/server/modules/ops/opsModule';
 
 async function bootstrap() {
   const app = express();
@@ -164,6 +165,10 @@ async function bootstrap() {
 
   // Strict Server Session Authentication (strips client x-user-* headers)
   app.use('/api', sessionAuthMiddleware);
+
+  // OPS Enforcements: Real-time IP Block & Maintenance Mode (Section 7, 9 & 10)
+  app.use(ipBlockEnforcementMiddleware);
+  app.use(maintenanceEnforcementMiddleware);
 
   // Master API router
   app.use('/api', createMasterRouter());

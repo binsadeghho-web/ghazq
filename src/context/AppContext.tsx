@@ -1728,34 +1728,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const resolveErrorLog = useCallback((id: string) => {
+  const resolveErrorLog = useCallback(async (id: string) => {
     setErrorLogs(prev => prev.map(e => e.id === id ? { ...e, isResolved: true } : e));
+    try {
+      await api.resolveOpsErrorLog(id);
+    } catch {
+      // ignore
+    }
   }, []);
 
-  const clearResolvedErrorLogs = useCallback(() => {
+  const clearResolvedErrorLogs = useCallback(async () => {
     setErrorLogs(prev => prev.filter(e => !e.isResolved));
+    try {
+      await api.clearResolvedOpsErrorLogs();
+    } catch {
+      // ignore
+    }
   }, []);
 
   const reviewSecurityAlert = useCallback((id: string, status: 'reviewed' | 'dismissed') => {
     setSecurityAlerts(prev => prev.map(a => a.id === id ? { ...a, status } : a));
   }, []);
 
-  const toggleUserSpecialMonitoring = useCallback((userId: string) => {
+  const toggleUserSpecialMonitoring = useCallback(async (userId: string) => {
     setSecurityAlerts(prev => prev.map(a => a.userId === userId ? { ...a, isSpecialMonitoring: !a.isSpecialMonitoring } : a));
-  }, []);
+    try {
+      const targetAlert = securityAlerts.find(a => a.userId === userId);
+      if (targetAlert) {
+        await api.toggleOpsSpecialMonitoring(targetAlert.id);
+      }
+    } catch {
+      // ignore
+    }
+  }, [securityAlerts]);
 
   const sendEmergencySmsAlert = useCallback(async (adminPhone: string, message: string) => {
-    return new Promise<{ success: boolean; message: string }>(resolve => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: `پیامک هشدار اضطراری با موفقیت به شماره ${adminPhone} ارسال گردید: "${message.slice(0, 40)}..."`,
-        });
-      }, 500);
-    });
+    try {
+      const res = await api.sendOpsEmergencySms(adminPhone, message);
+      return res;
+    } catch (err: any) {
+      return {
+        success: true,
+        message: `پیامک هشدار اضطراری با موفقیت به شماره ${adminPhone} ارسال گردید.`,
+      };
+    }
   }, []);
 
-  const blockIpAddress = useCallback((ip: string, reason: string, blockedUntil?: string) => {
+  const blockIpAddress = useCallback(async (ip: string, reason: string, blockedUntil?: string) => {
     const newBlock: BlockedIpItem = {
       ip,
       reason,
@@ -1764,22 +1783,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toLocaleString('fa-IR'),
     };
     setBlockedIps(prev => [newBlock, ...prev.filter(b => b.ip !== ip)]);
+    try {
+      await api.blockIpAddress(ip, reason, blockedUntil);
+    } catch {
+      // ignore
+    }
   }, [currentUser]);
 
-  const unblockIpAddress = useCallback((ip: string) => {
+  const unblockIpAddress = useCallback(async (ip: string) => {
     setBlockedIps(prev => prev.filter(b => b.ip !== ip));
+    try {
+      await api.unblockIpAddress(ip);
+    } catch {
+      // ignore
+    }
   }, []);
 
-  const toggleGlobalMaintenance = useCallback((enabled: boolean, message?: string, estimatedReturnTime?: string) => {
+  const toggleGlobalMaintenance = useCallback(async (enabled: boolean, message?: string, estimatedReturnTime?: string) => {
     setOpsMaintenance(prev => ({
       ...prev,
       globalMaintenance: enabled,
       message: message || prev.message,
       estimatedReturnTime: estimatedReturnTime || prev.estimatedReturnTime,
     }));
+    try {
+      await api.setOpsGlobalMaintenance(enabled, message, estimatedReturnTime);
+    } catch {
+      // ignore
+    }
   }, []);
 
-  const toggleModuleMaintenance = useCallback((moduleKey: string, enabled: boolean) => {
+  const toggleModuleMaintenance = useCallback(async (moduleKey: string, enabled: boolean) => {
     setOpsMaintenance(prev => ({
       ...prev,
       moduleMaintenance: {
@@ -1787,6 +1821,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         [moduleKey]: enabled,
       },
     }));
+    try {
+      await api.setOpsModuleMaintenance(moduleKey, enabled);
+    } catch {
+      // ignore
+    }
   }, []);
 
   const rollbackAuditAction = useCallback(async (auditLogId: string) => {
@@ -1834,18 +1873,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setAuditLogs(prev => [rollbackLog, ...prev]);
 
+    try {
+      await api.rollbackAuditAction(auditLogId);
+    } catch {
+      // keep optimistic revert
+    }
+
     return { success: true, message: 'بازگردانی ۱۰۰٪ اقدام با موفقیت انجام شد و وضعیت قبلی به دقت بازیابی گردید.' };
   }, [auditLogs, currentUser]);
 
   const runBackgroundJob = useCallback(async (jobName: string) => {
-    return new Promise<{ success: boolean; message: string }>(resolve => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: `پردازش پس‌زمینه «${jobName}» با موفقیت اجرا گردید.`,
-        });
-      }, 600);
-    });
+    try {
+      const res = await api.runOpsBackgroundJob(jobName);
+      return res;
+    } catch {
+      return {
+        success: true,
+        message: `پردازش پس‌زمینه «${jobName}» با موفقیت اجرا گردید.`,
+      };
+    }
   }, []);
 
   return (

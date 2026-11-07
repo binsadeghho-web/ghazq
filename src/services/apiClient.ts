@@ -498,6 +498,126 @@ class ApiClient {
     return this.request<any>('/api/metrics');
   }
 
+  // --- OPS Command Operations Center Endpoints ---
+  async getOpsHealth() {
+    return this.request<any>('/api/ops/health');
+  }
+
+  async getOpsSessions() {
+    return this.request<any[]>('/api/ops/sessions');
+  }
+
+  async revokeOpsSession(sessionId: string) {
+    return this.request<{ success: boolean; message: string }>(`/api/ops/sessions/${sessionId}/revoke`, {
+      method: 'POST',
+    });
+  }
+
+  async getOpsErrorLogs() {
+    return this.request<any[]>('/api/ops/error-logs');
+  }
+
+  async resolveOpsErrorLog(id: string) {
+    return this.request<{ success: boolean; message: string }>(`/api/ops/error-logs/${id}/resolve`, {
+      method: 'POST',
+    });
+  }
+
+  async clearResolvedOpsErrorLogs() {
+    return this.request<{ success: boolean; message: string }>('/api/ops/error-logs/resolved', {
+      method: 'DELETE',
+    });
+  }
+
+  async pingDatabase() {
+    return this.request<{ success: boolean; connected: boolean; latencyMs: number; message: string }>('/api/ops/database/ping', {
+      method: 'POST',
+    });
+  }
+
+  async rollbackAuditAction(auditLogId: string) {
+    return this.request<{ success: boolean; message: string; rollbackEntry?: any }>(`/api/ops/audit-logs/${auditLogId}/rollback`, {
+      method: 'POST',
+    });
+  }
+
+  async getOpsSecurityAlerts() {
+    return this.request<any[]>('/api/ops/security-alerts');
+  }
+
+  async toggleOpsSpecialMonitoring(id: string) {
+    return this.request<{ success: boolean; alert: any }>(`/api/ops/security-alerts/${id}/toggle-monitor`, {
+      method: 'POST',
+    });
+  }
+
+  async sendOpsEmergencySms(phone: string, message: string) {
+    return this.request<{ success: boolean; message: string }>('/api/ops/send-emergency-sms', {
+      method: 'POST',
+      body: JSON.stringify({ phone, message }),
+    });
+  }
+
+  async getOpsMaintenance() {
+    return this.request<any>('/api/ops/maintenance');
+  }
+
+  async setOpsGlobalMaintenance(enabled: boolean, message?: string, estimatedReturnTime?: string) {
+    return this.request<{ success: boolean; maintenance: any }>('/api/ops/maintenance/global', {
+      method: 'POST',
+      body: JSON.stringify({ enabled, message, estimatedReturnTime }),
+    });
+  }
+
+  async setOpsModuleMaintenance(moduleKey: string, enabled: boolean) {
+    return this.request<{ success: boolean; maintenance: any }>('/api/ops/maintenance/module', {
+      method: 'POST',
+      body: JSON.stringify({ moduleKey, enabled }),
+    });
+  }
+
+  async getOpsBackups() {
+    return this.request<Array<{ name: string; size: string; createdAt: string }>>('/api/ops/backups');
+  }
+
+  async createOpsBackup() {
+    return this.request<{ success: boolean; message: string }>('/api/ops/backups/create', {
+      method: 'POST',
+    });
+  }
+
+  async getOpsBlockedIps() {
+    return this.request<any[]>('/api/ops/blocked-ips');
+  }
+
+  async blockIpAddress(ip: string, reason?: string, blockedUntil?: string) {
+    return this.request<{ success: boolean; message: string }>('/api/ops/blocked-ips', {
+      method: 'POST',
+      body: JSON.stringify({ ip, reason, blockedUntil }),
+    });
+  }
+
+  async unblockIpAddress(ip: string) {
+    return this.request<{ success: boolean; message: string }>(`/api/ops/blocked-ips/${encodeURIComponent(ip)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getOpsSecretsCheck() {
+    return this.request<any>('/api/ops/secrets-check');
+  }
+
+  async runOpsBackgroundJob(jobName: string) {
+    return this.request<{ success: boolean; message: string }>('/api/ops/jobs/run', {
+      method: 'POST',
+      body: JSON.stringify({ jobName }),
+    });
+  }
+
+  async getOpsWeeklyDigest() {
+    return this.request<any>('/api/ops/weekly-digest');
+  }
+
   /**
    * Subscribe to real-time Server-Sent Events (SSE) (Section 8)
    * with automatic exponential backoff reconnection.

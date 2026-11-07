@@ -183,6 +183,10 @@ export class TamperEvidentAuditService {
   public getEntries(): TamperEvidentAuditEntry[] {
     return this.getAll();
   }
+
+  public getAuditLogs(): TamperEvidentAuditEntry[] {
+    return this.getAll();
+  }
 }
 
 export const auditChain = new TamperEvidentAuditService();

@@ -16,6 +16,7 @@ import { rulingsRouter } from './modules/rulings/rulingsModule';
 import { welfareRouter } from './modules/welfare/welfareModule';
 import { synergyRouter } from './modules/synergy/synergyModule';
 import { createAdminRouter } from './modules/admin/adminModule';
+import { createOpsRouter } from './modules/ops/opsModule';
 
 // Metrics tracker for Golden Signals (Section 11)
 export const metricsStore = {
@@ -40,6 +41,7 @@ export function createMasterRouter(): Router {
   router.use('/welfare', welfareRouter);
   router.use('/synergy', synergyRouter);
   router.use('/admin', createAdminRouter());
+  router.use('/ops', createOpsRouter());
 
   // Generic Categorized Upload Endpoint (avatars, products, courses, consultations, research, verdicts, misc)
   router.post('/upload/:category', async (req: Request, res: Response) => {
