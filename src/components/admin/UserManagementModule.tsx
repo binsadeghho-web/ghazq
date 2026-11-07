@@ -263,7 +263,7 @@ export const UserManagementModule: React.FC = () => {
               { id: 'all' as const, label: 'همه' },
               { id: 'admin' as const, label: 'مدیران' },
               { id: 'supervisor' as const, label: 'مسئولین' },
-              { id: 'alumni' as const, label: 'دانش‌آموختگان' },
+              { id: 'alumni' as const, label: 'کاربران و اعضا' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -438,9 +438,19 @@ export const UserManagementModule: React.FC = () => {
                           ? 'bg-purple-100 text-purple-900 border border-purple-200' 
                           : u.role === 'supervisor' 
                           ? 'bg-teal-100 text-teal-900 border border-teal-200' 
-                          : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          : (u.judicialGrade && u.judicialGrade > 0)
+                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          : 'bg-stone-100 text-stone-800 border border-stone-200'
                       }`}>
-                        {u.role === 'admin' ? 'مدیر ارشد' : u.role === 'supervisor' ? 'مسئول کارتابل' : 'دانش‌آموخته'}
+                        {u.role === 'admin' 
+                          ? 'مدیر ارشد' 
+                          : u.role === 'supervisor' 
+                          ? 'مسئول سامانه' 
+                          : (u.judicialGrade && u.judicialGrade > 0)
+                          ? 'دانش‌آموخته قضایی'
+                          : (u.roleTitle && (u.roleTitle.includes('اداری') || u.roleTitle.includes('کارمند') || u.roleTitle.includes('کاربر')))
+                          ? 'کاربر اداری / پرسنل'
+                          : 'کاربر سامانه'}
                       </span>
                     </td>
 
@@ -1000,6 +1010,11 @@ interface NewUserModalProps {
 }
 
 const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegister }) => {
+  type UserCategory = 'alumni' | 'supervisor' | 'staff' | 'admin';
+  const [userCategory, setUserCategory] = useState<UserCategory>('alumni');
+  const [isUsernameEdited, setIsUsernameEdited] = useState(false);
+  const [isPasswordEdited, setIsPasswordEdited] = useState(false);
+
   const [formData, setFormData] = useState({
     fullName: '',
     nationalId: '',
@@ -1019,6 +1034,85 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
 
   const [loading, setLoading] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
+
+  const handleCategoryChange = (category: UserCategory) => {
+    setUserCategory(category);
+    if (category === 'alumni') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'alumni',
+        roleTitle: 'مستشار دادگاه تجدیدنظر استان',
+        organization: 'قوه قضائیه',
+        judicialGrade: 8,
+        courtBranch: 'شعبه دادگاه عمومی و تجدیدنظر',
+        graduationYear: '۱۴۰۰',
+      }));
+    } else if (category === 'supervisor') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'supervisor',
+        roleTitle: 'مسئول کارتابل و هماهنگی سامانه',
+        organization: 'سامانه فقه و قضا',
+        judicialGrade: 0,
+        courtBranch: 'دبیرخانه و دفتر نظارت مرکزی',
+        graduationYear: '-',
+      }));
+    } else if (category === 'staff') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'alumni',
+        roleTitle: 'کارمند اداری / کاربر سامانه',
+        organization: 'امور اداری و پشتیبانی',
+        judicialGrade: 0,
+        courtBranch: 'واحد امور اداری و دفتری',
+        graduationYear: '-',
+      }));
+    } else if (category === 'admin') {
+      setFormData(prev => ({
+        ...prev,
+        role: 'admin',
+        roleTitle: 'مدیر ارشد سامانه',
+        organization: 'مرکز فناوری و نظارت سامانه',
+        judicialGrade: 0,
+        courtBranch: 'مرکز فناوری اطلاعات و داده',
+        graduationYear: '-',
+      }));
+    }
+  };
+
+  const handleNationalIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      nationalId: val,
+      username: isUsernameEdited ? prev.username : val,
+    }));
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsUsernameEdited(true);
+    setFormData(prev => ({
+      ...prev,
+      username: e.target.value,
+    }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      phone: val,
+      password: isPasswordEdited ? prev.password : val,
+    }));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsPasswordEdited(true);
+    setFormData(prev => ({
+      ...prev,
+      password: e.target.value,
+    }));
+  };
 
   const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1046,6 +1140,7 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
     e.preventDefault();
     setLoading(true);
 
+    const isAlumni = userCategory === 'alumni';
     const username = formData.username.trim() || formData.nationalId.trim();
     const password = formData.password.trim() || formData.phone.trim();
 
@@ -1058,24 +1153,27 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
       avatarText: formData.fullName.slice(0, 2),
       isActive: true,
       personnelId: String(Math.floor(100000 + Math.random() * 900000)),
-      judicialGrade: Number(formData.judicialGrade),
+      judicialGrade: isAlumni ? Number(formData.judicialGrade) || 1 : 0,
+      graduationYear: isAlumni ? formData.graduationYear : '-',
       sectionPermissions: {
         dashboard: formData.role === 'admin' ? 'manage_all' : formData.role === 'supervisor' ? 'view_all' : 'view_own',
-        cartable: formData.role === 'alumni' ? 'manage_own' : 'manage_all',
+        cartable: formData.role === 'admin' || formData.role === 'supervisor' ? 'manage_all' : 'manage_own',
         courses: 'view_all',
         products: 'view_all',
-        counseling: formData.role === 'alumni' ? 'manage_own' : 'manage_all',
-        research: formData.role === 'alumni' ? 'manage_own' : 'manage_all',
-        rulings: formData.role === 'alumni' ? 'manage_own' : 'manage_all',
-        welfare: formData.role === 'alumni' ? 'manage_own' : 'manage_all',
-        synergy: formData.role === 'alumni' ? 'manage_own' : 'manage_all',
-        alumni: formData.role === 'alumni' ? 'none' : 'manage_all',
+        counseling: formData.role === 'admin' || formData.role === 'supervisor' ? 'manage_all' : 'manage_own',
+        research: formData.role === 'admin' || formData.role === 'supervisor' ? 'manage_all' : 'manage_own',
+        rulings: formData.role === 'admin' || formData.role === 'supervisor' ? 'manage_all' : (isAlumni ? 'manage_own' : 'view_all'),
+        welfare: formData.role === 'admin' || formData.role === 'supervisor' ? 'manage_all' : 'manage_own',
+        synergy: formData.role === 'admin' || formData.role === 'supervisor' ? 'manage_all' : 'manage_own',
+        alumni: formData.role === 'admin' ? 'manage_all' : formData.role === 'supervisor' ? 'view_all' : 'none',
         users: formData.role === 'admin' ? 'manage_all' : formData.role === 'supervisor' ? 'view_all' : 'none',
       }
     });
 
     setLoading(false);
   };
+
+  const isAlumni = userCategory === 'alumni';
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
@@ -1091,7 +1189,7 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
             </div>
             <div>
               <h3 className="text-lg font-extrabold text-stone-900">ایجاد کاربر و حساب جدید</h3>
-              <p className="text-xs text-stone-500">تخصیص شناسه، عنوان در سایت و عکس پروفایل در پوشه PROFILE_PICTURE</p>
+              <p className="text-xs text-stone-500">پشتیبانی از انواع کاربران (قضایی، مسئول، کارمند اداری، مدیر ارشد)</p>
             </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
@@ -1100,7 +1198,39 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+          {/* USER CATEGORY SELECTOR */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-stone-100/90 border border-stone-200">
+            <label className="font-extrabold text-stone-800 block">
+              رسته و نوع جایگاه کاربر در سامانه:
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'alumni' as const, label: 'دانش‌آموخته قضایی', desc: 'قاضی، مستشار، پژوهشگر' },
+                { id: 'supervisor' as const, label: 'مسئول سامانه', desc: 'کارشناس مسئول، کارتابل' },
+                { id: 'staff' as const, label: 'کاربر اداری / پرسنل', desc: 'کارمند دفتری، کاربر عادی' },
+                { id: 'admin' as const, label: 'مدیر ارشد', desc: 'ادمین با دسترسی کل' },
+              ].map(cat => (
+                <button
+                  type="button"
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className={`p-2.5 rounded-xl text-right transition-all border text-xs flex flex-col justify-between ${
+                    userCategory === cat.id
+                      ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs ring-2 ring-emerald-600/30'
+                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                  }`}
+                >
+                  <span className="font-black text-xs block mb-0.5">{cat.label}</span>
+                  <span className={`text-[10px] leading-tight ${userCategory === cat.id ? 'text-emerald-100' : 'text-stone-400'}`}>
+                    {cat.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* FULL NAME */}
             <div className="space-y-1.5">
               <label className="font-bold text-stone-700">نام و نام خانوادگی:</label>
               <input
@@ -1109,40 +1239,55 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
                 value={formData.fullName}
                 onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                placeholder="مثال: دکتر مهدی حسینی"
+                placeholder={isAlumni ? "مثال: دکتر مهدی حسینی" : "مثال: احمد رضایی"}
               />
             </div>
 
+            {/* NATIONAL ID - WITH REAL-TIME CONTINUOUS MIRRORING */}
             <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">کد ملی (۱۰ رقم):</label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-stone-700">کد ملی (۱۰ رقم):</label>
+                <span className="text-[10px] text-stone-400 font-medium">همگام‌سازی لحظه‌ای با نام کاربری</span>
+              </div>
               <input
                 type="text"
                 required
                 value={formData.nationalId}
-                onChange={e => {
-                  const val = e.target.value;
-                  setFormData({
-                    ...formData,
-                    nationalId: val,
-                    username: formData.username || val,
-                  });
-                }}
+                onChange={handleNationalIdChange}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 placeholder="0012345678"
               />
             </div>
 
+            {/* PHONE - WITH REAL-TIME CONTINUOUS MIRRORING */}
             <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">عنوان در سایت:</label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-stone-700">شماره تلفن همراه:</label>
+                <span className="text-[10px] text-stone-400 font-medium">همگام‌سازی لحظه‌ای با رمز عبور</span>
+              </div>
+              <input
+                type="text"
+                required
+                value={formData.phone}
+                onChange={handlePhoneChange}
+                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                placeholder="09121112233"
+              />
+            </div>
+
+            {/* SITE TITLE */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-stone-700">عنوان نمایشی در سایت:</label>
               <input
                 type="text"
                 value={formData.siteTitle}
                 onChange={e => setFormData({ ...formData, siteTitle: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                placeholder="مثال: پژوهشگر ارشد فقه القضاء، مستشار دیوان"
+                placeholder={isAlumni ? "مثال: پژوهشگر ارشد فقه القضاء" : "مثال: کارشناس مسئول هماهنگی"}
               />
             </div>
 
+            {/* PROFILE PICTURE */}
             <div className="space-y-1.5 sm:col-span-2 p-3.5 rounded-2xl bg-stone-100/80 border border-stone-200">
               <label className="font-bold text-stone-800 block mb-1">
                 عکس پروفایل کاربر (ذخیره‌سازی مستقیم در پوشه PROFILE_PICTURE):
@@ -1184,96 +1329,124 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
               </div>
             </div>
 
+            {/* USERNAME FIELD */}
             <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">شماره تلفن همراه:</label>
-              <input
-                type="text"
-                required
-                value={formData.phone}
-                onChange={e => {
-                  const val = e.target.value;
-                  setFormData({
-                    ...formData,
-                    phone: val,
-                    password: formData.password || val,
-                  });
-                }}
-                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                placeholder="09121112233"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">نقش اولیه در سامانه:</label>
-              <select
-                value={formData.role}
-                onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })}
-                className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-              >
-                <option value="alumni">دانش‌آموخته قضایی (قاضی/پژوهشگر)</option>
-                <option value="supervisor">مسئول کارتابل و هماهنگی</option>
-                <option value="admin">مدیر ارشد سامانه</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">نام کاربری اختصاصی (پیش‌فرض کد ملی):</label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-stone-700">نام کاربری اختصاصی:</label>
+                {isUsernameEdited ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUsernameEdited(false);
+                      setFormData(prev => ({ ...prev, username: prev.nationalId }));
+                    }}
+                    className="text-[10px] text-emerald-700 hover:underline font-bold"
+                  >
+                    🔄 بازنشانی با کد ملی
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                    ✓ همگام با کد ملی
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={formData.username}
-                onChange={e => setFormData({ ...formData, username: e.target.value })}
+                onChange={handleUsernameChange}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                placeholder={formData.nationalId || 'کد ملی'}
+                placeholder={formData.nationalId || 'همان کد ملی'}
               />
             </div>
 
+            {/* PASSWORD FIELD */}
             <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">رمز عبور اختصاصی (پیش‌فرض شماره موبایل):</label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-stone-700">رمز عبور اختصاصی:</label>
+                {isPasswordEdited ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPasswordEdited(false);
+                      setFormData(prev => ({ ...prev, password: prev.phone }));
+                    }}
+                    className="text-[10px] text-emerald-700 hover:underline font-bold"
+                  >
+                    🔄 بازنشانی با موبایل
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                    ✓ همگام با شماره موبایل
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                onChange={handlePasswordChange}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                placeholder={formData.phone || 'شماره موبایل'}
+                placeholder={formData.phone || 'همان شماره موبایل'}
               />
             </div>
 
+            {/* ROLE / OFFICIAL TITLE */}
             <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">سمت قضایی رسمی:</label>
+              <label className="font-bold text-stone-700">
+                {isAlumni ? 'سمت قضایی رسمی:' : 'سمت و عنوان سازمانی / شغلی:'}
+              </label>
               <input
                 type="text"
                 value={formData.roleTitle}
                 onChange={e => setFormData({ ...formData, roleTitle: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                placeholder={isAlumni ? "مستشار دادگاه تجدیدنظر..." : "کارشناس مسئول دبیرخانه / امور اداری..."}
               />
             </div>
 
+            {/* ORGANIZATION / INSTITUTION */}
             <div className="space-y-1.5">
-              <label className="font-bold text-stone-700">پایه قضایی (۱ تا ۱۱):</label>
+              <label className="font-bold text-stone-700">سازمان یا نهاد متبوع:</label>
               <input
-                type="number"
-                min={1}
-                max={11}
-                value={formData.judicialGrade}
-                onChange={e => setFormData({ ...formData, judicialGrade: parseInt(e.target.value) || 1 })}
+                type="text"
+                value={formData.organization}
+                onChange={e => setFormData({ ...formData, organization: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                placeholder="قوه قضائیه، سامانه، دادگستری..."
               />
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="font-bold text-stone-700">شعبه و مجتمع قضایی محل خدمت:</label>
+            {/* CONDITIONAL JUDICIAL GRADE - ONLY FOR ALUMNI */}
+            {isAlumni && (
+              <div className="space-y-1.5">
+                <label className="font-bold text-stone-700">پایه قضایی (۱ تا ۱۱):</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={11}
+                  value={formData.judicialGrade}
+                  onChange={e => setFormData({ ...formData, judicialGrade: parseInt(e.target.value) || 1 })}
+                  className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                />
+              </div>
+            )}
+
+            {/* BRANCH OR OFFICE */}
+            <div className={`space-y-1.5 ${isAlumni ? '' : 'sm:col-span-2'}`}>
+              <label className="font-bold text-stone-700">
+                {isAlumni ? 'شعبه و مجتمع قضایی محل خدمت:' : 'واحد، اداره یا بخش محل خدمت:'}
+              </label>
               <input
                 type="text"
                 value={formData.courtBranch}
                 onChange={e => setFormData({ ...formData, courtBranch: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                placeholder="شعبه ۴ تجدیدنظر استان..."
+                placeholder={isAlumni ? "شعبه ۴ تجدیدنظر استان..." : "دبیرخانه مرکزی، امور اداری، فناوری اطلاعات..."}
               />
             </div>
           </div>
 
           <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-[11px] leading-relaxed">
-            * به طور پیش‌فرض، کد ملی به عنوان نام کاربری و شماره موبایل به عنوان رمز عبور پیشنهاد شده و بلافاصله حساب کاربری رسمی فعال می‌گردد.
+            * کد ملی به طور پیوسته همگام با نام کاربری و شماره موبایل همگام با رمز عبور ثبت می‌شوند؛ در صورت تمایل می‌توانید در فیلدهای مربوطه آن‌ها را شخصی‌سازی نمایید.
           </div>
 
           <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2">
