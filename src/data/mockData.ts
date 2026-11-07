@@ -21,6 +21,10 @@ import {
   CrextioBentoCardConfig,
   CrextioHeroStatItem,
   MizanDashboardConfig,
+  ErrorLogItem,
+  SecurityAlertItem,
+  BlockedIpItem,
+  OpsMaintenanceConfig,
 } from '../types';
 
 export const DEFAULT_HERO_STATS: CrextioHeroStatItem[] = [
@@ -1630,6 +1634,36 @@ export const INITIAL_SYNERGY_POSTS: SynergyPost[] = [
 
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
+    id: 'aud_role_1',
+    timestamp: '۱۴۰۳/۰۸/۰۶ - ۱۱:۳۰:۰۰',
+    eventType: 'ROLE_CHANGED',
+    actorId: 'usr_admin_01',
+    actorName: 'حاج‌ آقا محمدرضا رضایی',
+    actorRole: 'admin',
+    ip: '192.168.1.105',
+    details: 'ارتقای سطح دسترسی کاربر «دکتر علیرضا میرزایی» به مسئول کارتابل',
+    severity: 'warning',
+    beforeState: { userId: 'usr_alumni_01', role: 'alumni', roleTitle: 'دانش‌آموخته' },
+    afterState: { userId: 'usr_alumni_01', role: 'supervisor', roleTitle: 'مسئول کارتابل' },
+    isRollbackable: true,
+    isRolledBack: false,
+  },
+  {
+    id: 'aud_user_mod_1',
+    timestamp: '۱۴۰۳/۰۸/۰۵ - ۱۶:۴۵:۱۲',
+    eventType: 'USER_UPDATED',
+    actorId: 'usr_admin_01',
+    actorName: 'حاج‌ آقا محمدرضا رضایی',
+    actorRole: 'admin',
+    ip: '192.168.1.105',
+    details: 'تغییر وضعیت حساب کاربر «صادق حسینی» به غیرفعال موقت',
+    severity: 'warning',
+    beforeState: { userId: 'usr_alumni_02', isActive: true },
+    afterState: { userId: 'usr_alumni_02', isActive: false },
+    isRollbackable: true,
+    isRolledBack: false,
+  },
+  {
     id: 'aud_1',
     timestamp: '۱۴۰۳/۰۸/۰۵ - ۰۸:۰۹:۳۷',
     eventType: 'LOGIN_SUCCESS',
@@ -1639,6 +1673,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     ip: '192.168.1.105',
     details: 'ورود موفق به سامانه با توکن JWT دوگانه و نشست امن Chrome/Win11',
     severity: 'info',
+    isRollbackable: false,
   },
   {
     id: 'aud_2',
@@ -1650,6 +1685,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     ip: '10.20.45.62',
     details: 'ورود موفق از شعبه ۱۴ دادگاه تجدیدنظر',
     severity: 'info',
+    isRollbackable: false,
   },
   {
     id: 'aud_3',
@@ -1661,6 +1697,10 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     ip: '192.168.1.118',
     details: 'تغییر وضعیت درخواست TRK-1403-9844 به «نیازمند تکمیل مدارک»',
     severity: 'info',
+    beforeState: { requestId: 'req_102', status: 'pending' },
+    afterState: { requestId: 'req_102', status: 'need_info' },
+    isRollbackable: true,
+    isRolledBack: false,
   },
   {
     id: 'aud_4',
@@ -1672,6 +1712,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     ip: '185.122.90.14',
     details: 'تلاش ناموفق برای ورود؛ زمان‌سنجی ثابت DUMMY_HASH اعمال شد (ضد Timing Attack)',
     severity: 'warning',
+    isRollbackable: false,
   },
   {
     id: 'aud_5',
@@ -1683,8 +1724,124 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     ip: '192.168.1.105',
     details: 'تایید و درج رأی شماره ۷۰۱ پیرامون خسارت تاخیر تادیه در تالار رأی',
     severity: 'info',
+    beforeState: { rulingId: 'rul_101', status: 'pending_review' },
+    afterState: { rulingId: 'rul_101', status: 'selected' },
+    isRollbackable: true,
+    isRolledBack: false,
   },
 ];
+
+export const INITIAL_ERROR_LOGS: ErrorLogItem[] = [
+  {
+    id: 'err_001',
+    level: 'critical',
+    message: 'خطای عدم تطابق HMAC در تایید زنجیره هش audit_logs در بلوک #۱۴۲',
+    stack: 'Error: Hash chain validation failed at block 142\n  at verifyAuditChain (server/platform/auditChain.ts:48)\n  at processRequest (server/controllers/opsController.ts:102)',
+    source: 'AuditChainVerifier',
+    requestId: 'req_err_981',
+    userId: 'usr_admin_01',
+    userName: 'حاج‌ آقا محمدرضا رضایی',
+    isResolved: false,
+    createdAt: '۱۴۰۳/۰۸/۰۶ - ۰۲:۱۴:۲۲',
+  },
+  {
+    id: 'err_002',
+    level: 'warning',
+    message: 'تخلف از نرخ مجاز (Rate Limit Burst) روی مسیر /api/auth/login از IP: 185.122.90.14',
+    stack: 'RateLimitError: 6 failed login attempts in 2 minutes\n  at checkRateLimit (server/platform/rateLimiter.ts:24)',
+    source: 'AuthRateLimiter',
+    requestId: 'req_err_840',
+    isResolved: true,
+    createdAt: '۱۴۰۳/۰۸/۰۵ - ۲۳:۵۰:۱۲',
+  },
+  {
+    id: 'err_003',
+    level: 'error',
+    message: 'خطای Timeout اتصال به MySQL Pool پس از ۵۰۰۰ میلی‌ثانیه',
+    stack: 'PoolTimeoutError: Connection acquisition timeout\n  at Pool.getConnection (mysql2/promise/pool.js:88)',
+    source: 'MySQLPoolDriver',
+    requestId: 'req_err_712',
+    isResolved: false,
+    createdAt: '۱۴۰۳/۰۸/۰۴ - ۱۸:۳۰:۰۰',
+  },
+];
+
+export const INITIAL_SECURITY_ALERTS: SecurityAlertItem[] = [
+  {
+    id: 'alt_001',
+    type: 'AFTER_HOURS_ACTIVITY',
+    userId: 'usr_sup_01',
+    userName: 'حجت‌الاسلام سید مرتضی موسوی',
+    severity: 'high',
+    details: {
+      action: 'تغییر نقش دسترسی و ویرایش فایل‌های کارتابل',
+      time: '۰۳:۱۵ بامداد (خارج از ساعات اداری ۰۸:۰۰ الی ۲۰:۰۰)',
+      ip: '5.160.220.18',
+      location: 'تهران - IP متغیر',
+    },
+    status: 'unreviewed',
+    isSpecialMonitoring: true,
+    createdAt: '۱۴۰۳/۰۸/۰۶ - ۰۳:۱۵:۰۴',
+  },
+  {
+    id: 'alt_002',
+    type: 'FAILED_LOGIN_BURST',
+    userName: 'کاربر ناشناس',
+    severity: 'critical',
+    details: {
+      action: '۸ تلاش متوالی ورود با رمز اشتباه در بازه ۴۰ ثانیه',
+      targetUsername: 'SADEGH_HOSSEINI',
+      ip: '185.122.90.14',
+    },
+    status: 'unreviewed',
+    isSpecialMonitoring: false,
+    createdAt: '۱۴۰۳/۰۸/۰۵ - ۲۳:۵۰:۱۰',
+  },
+  {
+    id: 'alt_003',
+    type: 'UNUSUAL_VOLUME',
+    userId: 'usr_alumni_01',
+    userName: 'دکتر علیرضا میرزایی',
+    severity: 'medium',
+    details: {
+      action: 'استعلام دسته‌ای بیش از ۴۵ پرونده در کمتر از ۳ دقیقه',
+      averageDailyCount: '۵ استعلام در روز',
+      ratio: '۹ برابر حد نرمال',
+    },
+    status: 'reviewed',
+    isSpecialMonitoring: false,
+    createdAt: '۱۴۰۳/۰۸/۰۴ - ۱۴:۲۰:۰۰',
+  },
+];
+
+export const INITIAL_BLOCKED_IPS: BlockedIpItem[] = [
+  {
+    ip: '185.122.90.14',
+    reason: 'تلاش حمله Brute-Force و تخلف متوالی از نرخ مجاز ورود',
+    blockedBy: 'سامانه خودکار پایش امنیت',
+    blockedUntil: 'دائمی (تا لغو ادمین)',
+    createdAt: '۱۴۰۳/۰۸/۰۵ - ۲۳:۵۱:۰۰',
+  },
+  {
+    ip: '91.240.118.5',
+    reason: 'اسکن آسیب‌پذیری و ارسال درخواست‌های نامعتبر به مسیرهای حساس',
+    blockedBy: 'حاج‌ آقا محمدرضا رضایی (مدیر ارشد)',
+    createdAt: '۱۴۰۳/۰۸/۰۱ - ۱۰:۱۵:۰۰',
+  },
+];
+
+export const INITIAL_OPS_MAINTENANCE: OpsMaintenanceConfig = {
+  globalMaintenance: false,
+  moduleMaintenance: {
+    courses: false,
+    products: false,
+    counseling: false,
+    welfare: false,
+    cartable: false,
+  },
+  message: 'سامانه جهت ارتقای زیرساخت و به‌روزرسانی امنیتی موقتاً در دست تعمیر است. لطفاً دقایقی دیگر مراجعه فرمایید.',
+  estimatedReturnTime: '۱۵ دقیقه دیگر',
+};
 
 export const INITIAL_SECURITY_CONFIG: SystemSecurityConfig = {
   rateLimitMaxAttempts: 5,

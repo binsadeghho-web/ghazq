@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { ModernMetricCard } from '../common/ModernMetricCard';
 import { UserManagementModule } from './UserManagementModule';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
+import { CommandCenterSection } from './CommandCenterSection';
 import {
   ShieldAlert,
   Users,
@@ -24,7 +25,8 @@ import {
   Radio,
   RefreshCw,
   Sliders,
-  Palette
+  Palette,
+  Terminal
 } from 'lucide-react';
 
 export const AdminControlCenter: React.FC = () => {
@@ -45,7 +47,7 @@ export const AdminControlCenter: React.FC = () => {
     refreshMetrics,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('diagnostics');
+  const [activeTab, setActiveTab] = useState<'ops' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('ops');
   const [logFilter, setLogFilter] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
   const [searchUser, setSearchUser] = useState('');
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
@@ -186,6 +188,17 @@ export const AdminControlCenter: React.FC = () => {
       {/* Segmented Tab Navigation */}
       <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors text-xs overflow-x-auto">
         <button
+          onClick={() => setActiveTab('ops')}
+          className={`px-4 py-2 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            activeTab === 'ops'
+              ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+              : 'bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
+          }`}
+        >
+          <Terminal className="w-3.5 h-3.5" />
+          <span>اتاق فرماندهی سامانه (۱۲ ابزار OPS)</span>
+        </button>
+        <button
           onClick={() => setActiveTab('diagnostics')}
           className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
             activeTab === 'diagnostics'
@@ -236,6 +249,11 @@ export const AdminControlCenter: React.FC = () => {
           زنجیره وقایع و صحت هش ({auditLogs.length})
         </button>
       </div>
+
+      {/* Tab 0: OPS Command Operations Center (12 Tools) */}
+      {activeTab === 'ops' && (
+        <CommandCenterSection />
+      )}
 
       {/* Tab 1: Diagnostics & Quick Fixes */}
       {activeTab === 'diagnostics' && (

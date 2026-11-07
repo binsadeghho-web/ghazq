@@ -27,6 +27,10 @@ import {
   WelfareSectionConfig,
   WelfareLoanTermsAndRules,
   CooperativeSectionInfo,
+  ErrorLogItem,
+  SecurityAlertItem,
+  BlockedIpItem,
+  OpsMaintenanceConfig,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -48,6 +52,10 @@ import {
   INITIAL_SECURITY_CONFIG,
   DEFAULT_CREXTIO_CONFIG,
   DEFAULT_MIZAN_CONFIG,
+  INITIAL_ERROR_LOGS,
+  INITIAL_SECURITY_ALERTS,
+  INITIAL_BLOCKED_IPS,
+  INITIAL_OPS_MAINTENANCE,
 } from '../data/mockData';
 import {
   DEFAULT_WELFARE_SECTIONS,
@@ -228,6 +236,23 @@ interface AppContextType {
   updateSecurityConfig: (updates: Partial<SystemSecurityConfig>) => Promise<void>;
   verifyAuditIntegrity: () => Promise<{ isValid: boolean; checkedCount: number; message: string }>;
   resetAllDataToDefault: () => Promise<void>;
+
+  // Command Operations Center (OPS) State & Methods
+  errorLogs: ErrorLogItem[];
+  securityAlerts: SecurityAlertItem[];
+  blockedIps: BlockedIpItem[];
+  opsMaintenance: OpsMaintenanceConfig;
+  resolveErrorLog: (id: string) => void;
+  clearResolvedErrorLogs: () => void;
+  reviewSecurityAlert: (id: string, status: 'reviewed' | 'dismissed') => void;
+  toggleUserSpecialMonitoring: (userId: string) => void;
+  sendEmergencySmsAlert: (adminPhone: string, message: string) => Promise<{ success: boolean; message: string }>;
+  blockIpAddress: (ip: string, reason: string, blockedUntil?: string) => void;
+  unblockIpAddress: (ip: string) => void;
+  toggleGlobalMaintenance: (enabled: boolean, message?: string, estimatedReturnTime?: string) => void;
+  toggleModuleMaintenance: (moduleKey: string, enabled: boolean) => void;
+  rollbackAuditAction: (auditLogId: string) => Promise<{ success: boolean; message: string }>;
+  runBackgroundJob: (jobName: string) => Promise<{ success: boolean; message: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -297,6 +322,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [productProposals, setProductProposals] = useState<MemberProductProposal[]>(INITIAL_PRODUCT_PROPOSALS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
   const [securityConfig, setSecurityConfig] = useState<SystemSecurityConfig>(INITIAL_SECURITY_CONFIG);
+
+  // Command Operations Center (OPS) State
+  const [errorLogs, setErrorLogs] = useState<ErrorLogItem[]>(INITIAL_ERROR_LOGS);
+  const [securityAlerts, setSecurityAlerts] = useState<SecurityAlertItem[]>(INITIAL_SECURITY_ALERTS);
+  const [blockedIps, setBlockedIps] = useState<BlockedIpItem[]>(INITIAL_BLOCKED_IPS);
+  const [opsMaintenance, setOpsMaintenance] = useState<OpsMaintenanceConfig>(INITIAL_OPS_MAINTENANCE);
   const [serverSyncStatus, setServerSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
   const [auditIntegrity, setAuditIntegrity] = useState<{
     isValid: boolean;
@@ -1697,6 +1728,126 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const resolveErrorLog = useCallback((id: string) => {
+    setErrorLogs(prev => prev.map(e => e.id === id ? { ...e, isResolved: true } : e));
+  }, []);
+
+  const clearResolvedErrorLogs = useCallback(() => {
+    setErrorLogs(prev => prev.filter(e => !e.isResolved));
+  }, []);
+
+  const reviewSecurityAlert = useCallback((id: string, status: 'reviewed' | 'dismissed') => {
+    setSecurityAlerts(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  }, []);
+
+  const toggleUserSpecialMonitoring = useCallback((userId: string) => {
+    setSecurityAlerts(prev => prev.map(a => a.userId === userId ? { ...a, isSpecialMonitoring: !a.isSpecialMonitoring } : a));
+  }, []);
+
+  const sendEmergencySmsAlert = useCallback(async (adminPhone: string, message: string) => {
+    return new Promise<{ success: boolean; message: string }>(resolve => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: `پیامک هشدار اضطراری با موفقیت به شماره ${adminPhone} ارسال گردید: "${message.slice(0, 40)}..."`,
+        });
+      }, 500);
+    });
+  }, []);
+
+  const blockIpAddress = useCallback((ip: string, reason: string, blockedUntil?: string) => {
+    const newBlock: BlockedIpItem = {
+      ip,
+      reason,
+      blockedBy: currentUser?.fullName || 'مدیر ارشد سامانه',
+      blockedUntil: blockedUntil || 'دائمی (تا لغو ادمین)',
+      createdAt: new Date().toLocaleString('fa-IR'),
+    };
+    setBlockedIps(prev => [newBlock, ...prev.filter(b => b.ip !== ip)]);
+  }, [currentUser]);
+
+  const unblockIpAddress = useCallback((ip: string) => {
+    setBlockedIps(prev => prev.filter(b => b.ip !== ip));
+  }, []);
+
+  const toggleGlobalMaintenance = useCallback((enabled: boolean, message?: string, estimatedReturnTime?: string) => {
+    setOpsMaintenance(prev => ({
+      ...prev,
+      globalMaintenance: enabled,
+      message: message || prev.message,
+      estimatedReturnTime: estimatedReturnTime || prev.estimatedReturnTime,
+    }));
+  }, []);
+
+  const toggleModuleMaintenance = useCallback((moduleKey: string, enabled: boolean) => {
+    setOpsMaintenance(prev => ({
+      ...prev,
+      moduleMaintenance: {
+        ...prev.moduleMaintenance,
+        [moduleKey]: enabled,
+      },
+    }));
+  }, []);
+
+  const rollbackAuditAction = useCallback(async (auditLogId: string) => {
+    const logItem = auditLogs.find(a => a.id === auditLogId);
+    if (!logItem) {
+      return { success: false, message: 'رکورد وقایع امنیتی مربوطه یافت نشد.' };
+    }
+    if (!logItem.beforeState) {
+      return { success: false, message: 'اطلاعات وضعیت قبل (beforeState) برای این رکورد موجود نیست.' };
+    }
+
+    const { beforeState } = logItem;
+
+    if (beforeState.userId && beforeState.role) {
+      setUsers(prev => prev.map(u => u.id === beforeState.userId ? { ...u, role: beforeState.role, roleTitle: beforeState.roleTitle || u.roleTitle } : u));
+    }
+    if (beforeState.userId && beforeState.isActive !== undefined) {
+      setUsers(prev => prev.map(u => u.id === beforeState.userId ? { ...u, isActive: beforeState.isActive } : u));
+    }
+    if (beforeState.requestId && beforeState.status) {
+      setCartableRequests(prev => prev.map(r => r.id === beforeState.requestId ? { ...r, status: beforeState.status } : r));
+    }
+    if (beforeState.rulingId && beforeState.status) {
+      setRulings(prev => prev.map(r => r.id === beforeState.rulingId ? { ...r, status: beforeState.status } : r));
+    }
+
+    setAuditLogs(prev => prev.map(a => a.id === auditLogId ? {
+      ...a,
+      isRolledBack: true,
+      rolledBackBy: currentUser?.fullName || 'مدیر سیستم',
+      rolledBackAt: new Date().toLocaleString('fa-IR'),
+    } : a));
+
+    const rollbackLog: AuditLog = {
+      id: `aud_rb_${Date.now()}`,
+      timestamp: new Date().toLocaleString('fa-IR'),
+      eventType: 'AUDIT_ACTION_ROLLED_BACK',
+      actorId: currentUser?.id || 'sys_admin',
+      actorName: currentUser?.fullName || 'مدیر سیستم',
+      actorRole: currentUser?.role || 'admin',
+      ip: '192.168.1.105',
+      details: `بازگردانی ۱۰۰٪ اقدام ثبت‌شده در بلوک #${auditLogId}. تغییرات قبلی لغو و وضعیت اولیه به دقت بازیابی گردید.`,
+      severity: 'warning',
+      isRollbackable: false,
+    };
+    setAuditLogs(prev => [rollbackLog, ...prev]);
+
+    return { success: true, message: 'بازگردانی ۱۰۰٪ اقدام با موفقیت انجام شد و وضعیت قبلی به دقت بازیابی گردید.' };
+  }, [auditLogs, currentUser]);
+
+  const runBackgroundJob = useCallback(async (jobName: string) => {
+    return new Promise<{ success: boolean; message: string }>(resolve => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: `پردازش پس‌زمینه «${jobName}» با موفقیت اجرا گردید.`,
+        });
+      }, 600);
+    });
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -1717,18 +1868,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         productProposals,
         auditLogs,
         securityConfig,
+        auditIntegrity,
+        metrics,
+        isRealtimeConnected,
+        verifyAuditChain,
+        refreshMetrics,
         theme,
         toggleTheme,
         designTheme,
         setDesignTheme,
         toggleDesignTheme,
         serverSyncStatus,
-        auditIntegrity,
-        metrics,
-        isRealtimeConnected,
-        verifyAuditChain,
-        refreshMetrics,
 
+        // Auth & Session methods
         login,
         logout,
         globalLogout,
@@ -1737,6 +1889,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unlockAccount,
         toggleUserActiveStatus,
 
+        // Cartable methods
         createCartableRequest,
         replyCartableRequest,
         updateCartableStatus,
@@ -1830,6 +1983,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verifyPin,
         sendPinOtpSms,
         verifyPinOtpAndSetPin,
+
+        // Command Operations Center (OPS)
+        errorLogs,
+        securityAlerts,
+        blockedIps,
+        opsMaintenance,
+        resolveErrorLog,
+        clearResolvedErrorLogs,
+        reviewSecurityAlert,
+        toggleUserSpecialMonitoring,
+        sendEmergencySmsAlert,
+        blockIpAddress,
+        unblockIpAddress,
+        toggleGlobalMaintenance,
+        toggleModuleMaintenance,
+        rollbackAuditAction,
+        runBackgroundJob,
       }}
     >
       {children}

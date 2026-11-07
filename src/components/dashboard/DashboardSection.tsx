@@ -305,15 +305,15 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           />
         )}
 
-        {/* ۱۱. کارت مدیریت (نام اصلاح‌شده از فرماندهی و مدیریت به مدیریت) */}
+        {/* ۱۱. کارت مدیریت سایت و پایش امنیت */}
         {showAdminCard && (
           <ModernDashboardCard
-            title="مدیریت"
+            title="مدیریت سایت و پایش امنیت"
             accent="amber"
             icon={<ShieldCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-            subValue="پایش سلامت سرور، زنجیره غیرقابل‌دستکاری SHA-256 و عیب‌یابی آنی سامانه"
-            trendContext={`${toPersianNumbers(auditLogs.length)} رکورد در زنجیره وقایع`}
-            badgeText="مدیریت سیستم"
+            subValue="اتاق فرماندهی سامانه (۱۲ ابزار OPS)، پایش سلامت سرور و زنجیره وقایع SHA-256"
+            trendContext="مرکز پایش ۱۲‌گانه و امنیت سیستم"
+            badgeText="اتاق فرماندهی و امنیت"
             onClick={() => onNavigate('admin')}
           />
         )}

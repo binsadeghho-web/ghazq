@@ -303,13 +303,63 @@ export interface AuditLog {
     | 'USER_DELETED'
     | 'PASSWORD_CHANGED'
     | 'REFRESH_TOKEN_REUSED'
-    | 'REFRESH_TOKEN_REVOKED';
+    | 'REFRESH_TOKEN_REVOKED'
+    | 'AUDIT_ACTION_ROLLED_BACK'
+    | 'MAINTENANCE_MODE_TOGGLED'
+    | 'IP_BLOCKED'
+    | 'IP_UNBLOCKED';
   actorId: string;
   actorName: string;
   actorRole: UserRole;
   ip: string;
   details: string;
   severity: 'info' | 'warning' | 'critical';
+  beforeState?: Record<string, any>;
+  afterState?: Record<string, any>;
+  isRollbackable?: boolean;
+  isRolledBack?: boolean;
+  rolledBackBy?: string;
+  rolledBackAt?: string;
+}
+
+export interface ErrorLogItem {
+  id: string;
+  level: 'warning' | 'error' | 'critical';
+  message: string;
+  stack?: string;
+  source?: string;
+  requestId?: string;
+  userId?: string;
+  userName?: string;
+  isResolved: boolean;
+  createdAt: string;
+}
+
+export interface SecurityAlertItem {
+  id: string;
+  type: 'AFTER_HOURS_ACTIVITY' | 'UNUSUAL_VOLUME' | 'FAILED_LOGIN_BURST' | 'SUSPICIOUS_IP' | 'DATA_MUTATION';
+  userId?: string;
+  userName?: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  details: Record<string, any>;
+  status: 'unreviewed' | 'reviewed' | 'dismissed';
+  isSpecialMonitoring?: boolean;
+  createdAt: string;
+}
+
+export interface BlockedIpItem {
+  ip: string;
+  reason: string;
+  blockedBy: string;
+  blockedUntil?: string;
+  createdAt: string;
+}
+
+export interface OpsMaintenanceConfig {
+  globalMaintenance: boolean;
+  moduleMaintenance: Record<string, boolean>;
+  message: string;
+  estimatedReturnTime?: string;
 }
 
 export type CartableCategory = 'career' | 'administrative' | 'educational';
