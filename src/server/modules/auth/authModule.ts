@@ -3,7 +3,15 @@ import bcrypt from 'bcryptjs';
 import { generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { auditChain } from '../../platform/auditChain';
-import { registerSessionToken, revokeSessionToken, getCurrentUser } from '../../platform/sessionAuth';
+import { registerSessionToken, revokeSessionToken, getCurrentUser, updateSessionsMustChangePassword } from '../../platform/sessionAuth';
+import {
+  issueAccessToken,
+  issueRefreshToken,
+  findRefreshTokenByHash,
+  revokeRefreshToken,
+  revokeTokenFamily,
+  revokeAllUserRefreshTokens,
+} from '../../platform/jwtService';
 import { User, UserRole, UserSession } from '../../../types';
 import { normalizeDigits } from '../../platform/persianNormalizer';
 import { userRepository } from '../user/userRepository';
@@ -16,6 +24,12 @@ interface RateLimitBucket {
 export const rateLimitIpUser = new Map<string, RateLimitBucket>(); // max 5 in 15 mins
 export const rateLimitUser = new Map<string, RateLimitBucket>();   // max 10 in 15 mins
 export const rateLimitIp = new Map<string, RateLimitBucket>();     // max 20 in 1 min
+
+export function resetAuthRateLimits() {
+  rateLimitIpUser.clear();
+  rateLimitUser.clear();
+  rateLimitIp.clear();
+}
 
 export function checkThreeTierRateLimit(ip: string, username: string): void {
   const now = Date.now();
@@ -70,7 +84,7 @@ export class AuthService {
     rawPassword: string,
     clientIp: string,
     userAgent: string
-  ): Promise<{ user: User; session: UserSession; mustChangePassword: boolean; retryAfter?: number }> {
+  ): Promise<{ user: User; session: UserSession; mustChangePassword: boolean; accessToken?: string; refreshToken?: string; retryAfter?: number }> {
     const identifier = normalizeDigits(rawIdentifier).trim();
     const password = normalizeDigits(rawPassword);
 
@@ -202,22 +216,18 @@ export class AuthService {
       sessions: existingSessions,
     } as any, user.version);
 
+    // Issue 15-minute Access Token (JWT) & 7-day Refresh Token
+    const accessToken = issueAccessToken(updatedUser, newSession.id, 15 * 60);
+    const refreshTokenObj = await issueRefreshToken(updatedUser.id, undefined, undefined);
+
     // Register session token in server memory store
     registerSessionToken(newSession.id, updatedUser, newSession.id);
-
-    auditChain.appendEntry({
-      eventType: 'LOGIN_SUCCESS',
-      actorId: user.id,
-      actorName: user.fullName,
-      actorRole: user.role,
-      ip: clientIp,
-      details: 'ورود موفق به سامانه با احراز هویت دیتابیس.',
-      severity: 'info',
-    });
 
     return {
       user: updatedUser,
       session: newSession,
+      accessToken,
+      refreshToken: refreshTokenObj.rawToken,
       mustChangePassword: Boolean(user.mustChangePassword),
     };
   }
@@ -257,6 +267,9 @@ export class AuthService {
       tokenVersionIncrement: true,
     }, user.version);
 
+    // Update active session tokens in memory so protected routes become immediately accessible
+    updateSessionsMustChangePassword(user.id, false);
+
     auditChain.appendEntry({
       eventType: 'PASSWORD_CHANGED',
       actorId: user.id,
@@ -275,6 +288,8 @@ export class AuthService {
     if (!user) throw AppError.notFound('کاربر');
 
     (user.sessions || []).forEach(s => revokeSessionToken(s.id));
+    await revokeAllUserRefreshTokens(userId);
+
     const updatedUser = await userRepository.updateUserOptimistic(userId, {
       tokenVersionIncrement: true,
     }, user.version);
@@ -311,17 +326,107 @@ export function createAuthRouter(): Router {
       if (result.retryAfter) {
         res.setHeader('Retry-After', String(result.retryAfter));
       }
+
+      // Set Refresh Token in HttpOnly cookie
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth',
+        maxAge: 7 * 24 * 3600 * 1000,
+      });
+
       res.json({
         success: true,
         user: result.user,
         session: result.session,
-        token: result.session.id,
+        token: result.accessToken,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
         mustChangePassword: result.mustChangePassword,
       });
     } catch (err: any) {
       if (err?.retryAfter) {
         res.setHeader('Retry-After', String(err.retryAfter));
       }
+      next(err);
+    }
+  });
+
+  router.post('/refresh', async (req: Request, res: Response, next) => {
+    try {
+      let rawRefreshToken = req.cookies?.refreshToken;
+      if (!rawRefreshToken && req.headers['x-refresh-token']) {
+        rawRefreshToken = (req.headers['x-refresh-token'] as string).trim();
+      }
+      if (!rawRefreshToken && req.body?.refreshToken) {
+        rawRefreshToken = String(req.body.refreshToken).trim();
+      }
+
+      if (!rawRefreshToken) {
+        throw AppError.unauthorized('توکن بازیابی (Refresh Token) ارائه نشده است.');
+      }
+
+      const record = await findRefreshTokenByHash(rawRefreshToken);
+      if (!record) {
+        throw AppError.unauthorized('توکن بازیابی یافت نشد یا معتبر نیست.');
+      }
+
+      // Check Expiration
+      if (new Date() > new Date(record.expiresAt)) {
+        throw AppError.unauthorized('توکن بازیابی منقضی شده است. لطفاً مجدداً وارد شوید.');
+      }
+
+      // REUSE & REVOCATION DETECTION
+      if (record.isRevoked) {
+        if (record.revocationReason === 'GLOBAL_LOGOUT' || record.revocationReason === 'LOGOUT') {
+          throw AppError.unauthorized(
+            'نشست کاری شما به‌دلیل خروج از حساب باطل گردیده است. لطفاً مجدداً وارد شوید.',
+            'REFRESH_TOKEN_REVOKED'
+          );
+        }
+
+        // Potential token theft: rotated token reused! Trigger Family Revocation & Audit Alert
+        await revokeTokenFamily(record.familyId, record.userId);
+        await userRepository.updateUserOptimistic(record.userId, { tokenVersionIncrement: true });
+        throw AppError.unauthorized(
+          'هشدار امنیتی: استفاده مجدد غیرمجاز از توکن رفرش منقضی‌شده کشف شد. کلیه نشست‌های فعال این خانواده باطل گردیدند.',
+          'REFRESH_TOKEN_REUSED'
+        );
+      }
+
+      // Revoke current used refresh token (Rotation)
+      await revokeRefreshToken(record.tokenHash);
+
+      // Verify user status in DB
+      const user = await userRepository.findById(record.userId);
+      if (!user || !user.isActive || user.isLocked) {
+        throw AppError.unauthorized('حساب کاربری شما معتبر نیست یا معلق گردیده است.');
+      }
+
+      // Issue NEW Refresh Token in same family
+      const newRT = await issueRefreshToken(user.id, record.familyId, record.id);
+
+      // Issue NEW Access Token (15 mins)
+      const newAT = issueAccessToken(user, record.familyId, 15 * 60);
+
+      // Set cookie
+      res.cookie('refreshToken', newRT.rawToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth',
+        maxAge: 7 * 24 * 3600 * 1000,
+      });
+
+      res.json({
+        success: true,
+        accessToken: newAT,
+        token: newAT,
+        refreshToken: newRT.rawToken,
+        user,
+      });
+    } catch (err) {
       next(err);
     }
   });

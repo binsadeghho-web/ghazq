@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { User, UserRole } from '../../types';
 import { AppError } from './errors';
 import { userRepository } from '../modules/user/userRepository';
+import { verifyAccessToken } from './jwtService';
 
 export interface AuthenticatedUser {
   id: string;
@@ -9,6 +10,7 @@ export interface AuthenticatedUser {
   fullName: string;
   role: UserRole;
   sessionId: string;
+  mustChangePassword?: boolean;
 }
 
 // In-memory active session token map for fast O(1) resolution
@@ -21,6 +23,7 @@ activeSessionTokens.set('sess_default_admin', {
   fullName: 'صادق (مدیر ارشد سامانه)',
   role: 'admin',
   sessionId: 'sess_default_admin',
+  mustChangePassword: false,
 });
 activeSessionTokens.set('sess_ali_alumni', {
   id: 'usr_ali_alumni',
@@ -28,6 +31,7 @@ activeSessionTokens.set('sess_ali_alumni', {
   fullName: 'علی (دانش‌آموخته نخبه)',
   role: 'alumni',
   sessionId: 'sess_ali_alumni',
+  mustChangePassword: true,
 });
 
 /**
@@ -40,7 +44,22 @@ export function registerSessionToken(token: string, user: User, sessionId: strin
     fullName: user.fullName,
     role: user.role,
     sessionId,
+    mustChangePassword: Boolean(user.mustChangePassword),
   });
+}
+
+/**
+ * Updates mustChangePassword status across all active sessions for a user ID
+ */
+export function updateSessionsMustChangePassword(userId: string, mustChange: boolean): void {
+  for (const [token, user] of activeSessionTokens.entries()) {
+    if (user.id === userId) {
+      activeSessionTokens.set(token, {
+        ...user,
+        mustChangePassword: mustChange,
+      });
+    }
+  }
 }
 
 /**
@@ -51,7 +70,7 @@ export function revokeSessionToken(token: string): void {
 }
 
 /**
- * Strictly resolves user identity from verified server session/token.
+ * Strictly resolves user identity from verified server session/token or JWT Access Token.
  * NEVER trusts client-supplied headers (x-user-id, x-user-role).
  */
 export async function sessionAuthMiddleware(req: Request, _res: Response, next: NextFunction): Promise<void> {
@@ -67,13 +86,74 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
     token = authHeader.substring(7).trim();
   } else if (req.headers['x-session-token']) {
     token = (req.headers['x-session-token'] as string).trim();
+  } else if (req.headers['x-access-token']) {
+    token = (req.headers['x-access-token'] as string).trim();
   }
 
   if (token) {
-    // 1. Check in-memory fast token cache
+    // 1. If JWT format (Access Token)
+    if (token.startsWith('ey')) {
+      try {
+        const claims = verifyAccessToken(token);
+        const dbUser = await userRepository.findById(claims.sub);
+
+        if (!dbUser || !dbUser.isActive || dbUser.isLocked || Number(dbUser.tokenVersion || 1) !== claims.tv) {
+          return next(AppError.unauthorized('نشست شما نامعتبر است یا باطل گردیده است. لطفاً مجدداً وارد شوید.', 'SESSION_INVALIDATED'));
+        }
+
+        const authUser: AuthenticatedUser = {
+          id: dbUser.id,
+          nationalId: dbUser.nationalId,
+          fullName: dbUser.fullName,
+          role: dbUser.role,
+          sessionId: claims.sid,
+          mustChangePassword: Boolean(dbUser.mustChangePassword),
+        };
+
+        (req as any).user = authUser;
+
+        if (authUser.mustChangePassword) {
+          const reqPath = (req.baseUrl + req.path).toLowerCase();
+          const isExempt = reqPath.includes('/auth/change-password') ||
+                           reqPath.includes('/auth/logout') ||
+                           reqPath.includes('/auth/global-logout') ||
+                           reqPath.includes('/auth/login') ||
+                           reqPath.includes('/auth/refresh') ||
+                           reqPath.includes('/auth/sessions');
+          if (!isExempt) {
+            return next(AppError.forbidden('شما باید ابتدا رمز عبور اولیه خود را تغییر دهید.', 'MUST_CHANGE_PASSWORD_REQUIRED'));
+          }
+        }
+
+        return next();
+      } catch (err: any) {
+        return next(err);
+      }
+    }
+
+    // 2. Check in-memory fast session token cache (Legacy fallback)
     const cached = activeSessionTokens.get(token);
     if (cached) {
+      const dbUser = await userRepository.findById(cached.id);
+      if (!dbUser || !dbUser.isActive || dbUser.isLocked) {
+        revokeSessionToken(token);
+        return next(AppError.unauthorized('حساب کاربری شما غیرفعال یا معلق گردیده است.'));
+      }
+
       (req as any).user = cached;
+
+      if (cached.mustChangePassword) {
+        const reqPath = (req.baseUrl + req.path).toLowerCase();
+        const isExempt = reqPath.includes('/auth/change-password') ||
+                         reqPath.includes('/auth/logout') ||
+                         reqPath.includes('/auth/login') ||
+                         reqPath.includes('/auth/refresh') ||
+                         reqPath.includes('/auth/sessions');
+        if (!isExempt) {
+          return next(AppError.forbidden('شما باید ابتدا رمز عبور اولیه خود را تغییر دهید.', 'MUST_CHANGE_PASSWORD_REQUIRED'));
+        }
+      }
+
       return next();
     }
 
@@ -84,6 +164,7 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
         fullName: 'صادق (مدیر ارشد سامانه)',
         role: 'admin',
         sessionId: token,
+        mustChangePassword: false,
       };
       activeSessionTokens.set(token, defAdmin);
       (req as any).user = defAdmin;

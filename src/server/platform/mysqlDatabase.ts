@@ -156,21 +156,23 @@ export async function initMySQLTables(): Promise<void> {
     `);
 
     await p.query(`
-      CREATE TABLE IF NOT EXISTS audit_logs (
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
         id VARCHAR(64) PRIMARY KEY,
-        event_type VARCHAR(64) NOT NULL,
-        actor_id VARCHAR(64) NOT NULL,
-        actor_name VARCHAR(128) NOT NULL,
-        actor_role VARCHAR(32) NOT NULL,
-        ip VARCHAR(45) NOT NULL,
-        details TEXT NOT NULL,
-        severity VARCHAR(32) NOT NULL,
+        user_id VARCHAR(64) NOT NULL,
+        token_hash CHAR(64) NOT NULL UNIQUE,
+        family_id VARCHAR(64) NOT NULL,
+        parent_id VARCHAR(64) NULL,
+        is_revoked TINYINT(1) DEFAULT 0,
+        revocation_reason VARCHAR(64) NULL,
+        expires_at DATETIME(3) NOT NULL,
         created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-        INDEX idx_audit_created (created_at)
+        INDEX idx_refresh_user (user_id),
+        INDEX idx_refresh_family (family_id),
+        INDEX idx_refresh_hash (token_hash)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    logger.info('MySQL 8 schema tables (users, user_sessions, audit_logs) initialized successfully.');
+    logger.info('MySQL 8 schema tables (users, user_sessions, refresh_tokens, audit_logs) initialized successfully.');
   } catch (err: any) {
     logger.warn('MySQL initMySQLTables warning: ' + (err?.message || err));
   }

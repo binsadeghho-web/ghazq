@@ -32,6 +32,8 @@ function generateClientUUID(): string {
 
 class ApiClient {
   private sessionToken: string = 'demo-session';
+  private refreshTokenVal: string | null = null;
+  private isRefreshing: boolean = false;
 
   public setAuthContext(_userId: string, _role: string, _name: string, sessionToken?: string): void {
     if (sessionToken) {
@@ -39,8 +41,48 @@ class ApiClient {
     }
   }
 
-  public setSessionToken(token: string): void {
+  public setSessionToken(token: string, refreshToken?: string): void {
     this.sessionToken = token;
+    if (refreshToken) {
+      this.refreshTokenVal = refreshToken;
+      try { localStorage.setItem('feqh_refresh_token', refreshToken); } catch {}
+    }
+    try { localStorage.setItem('feqh_access_token', token); } catch {}
+  }
+
+  public async refreshToken(): Promise<{ accessToken: string; refreshToken: string }> {
+    let tokenToUse = this.refreshTokenVal;
+    if (!tokenToUse && typeof window !== 'undefined') {
+      tokenToUse = localStorage.getItem('feqh_refresh_token');
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (tokenToUse) {
+      headers['X-Refresh-Token'] = tokenToUse;
+    }
+
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ refreshToken: tokenToUse }),
+    });
+
+    if (!response.ok) {
+      const problem = await response.json().catch(() => ({ title: 'انقضای نشست' }));
+      throw new ApiError({
+        type: 'auth_refresh_failed',
+        title: 'انقضای نشست کاربر',
+        status: 401,
+        detail: problem.detail || 'امکان تمدید نشست وجود ندارد. لطفاً مجدداً وارد شوید.',
+        code: 'REFRESH_FAILED',
+      });
+    }
+
+    const data = await response.json();
+    if (data.accessToken) {
+      this.setSessionToken(data.accessToken, data.refreshToken);
+    }
+    return data;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -56,10 +98,39 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(endpoint, {
+      let response = await fetch(endpoint, {
         ...options,
         headers,
       });
+
+      // Item 4: Silent Refresh Interceptor on HTTP 401 Access Token Expiry
+      if (
+        response.status === 401 &&
+        !this.isRefreshing &&
+        !endpoint.includes('/auth/login') &&
+        !endpoint.includes('/auth/refresh')
+      ) {
+        try {
+          this.isRefreshing = true;
+          const refreshRes = await this.refreshToken();
+          this.isRefreshing = false;
+
+          if (refreshRes && refreshRes.accessToken) {
+            headers.set('Authorization', `Bearer ${refreshRes.accessToken}`);
+            response = await fetch(endpoint, {
+              ...options,
+              headers,
+            });
+          }
+        } catch (refreshErr) {
+          this.isRefreshing = false;
+          // Silent refresh failed: Clear local session & redirect to login
+          if (typeof window !== 'undefined' && !window.location.hash.includes('login')) {
+            window.location.href = '/#login';
+          }
+          throw refreshErr;
+        }
+      }
 
       if (!response.ok) {
         let problem: ProblemDetailsError;

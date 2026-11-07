@@ -301,7 +301,9 @@ export interface AuditLog {
     | 'USER_CREATED'
     | 'USER_UPDATED'
     | 'USER_DELETED'
-    | 'PASSWORD_CHANGED';
+    | 'PASSWORD_CHANGED'
+    | 'REFRESH_TOKEN_REUSED'
+    | 'REFRESH_TOKEN_REVOKED';
   actorId: string;
   actorName: string;
   actorRole: UserRole;

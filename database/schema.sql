@@ -158,6 +158,24 @@ CREATE TABLE IF NOT EXISTS `user_sessions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
+-- ۵.۲. جدول توکن‌های رفرش (Refresh Tokens - Rotation & Reuse Detection)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `refresh_tokens` (
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `user_id` BINARY(16) NOT NULL,
+  `token_hash` CHAR(64) NOT NULL UNIQUE,
+  `family_id` VARCHAR(64) NOT NULL,
+  `parent_id` VARCHAR(64) NULL,
+  `is_revoked` BOOLEAN NOT NULL DEFAULT FALSE,
+  `revocation_reason` VARCHAR(64) NULL,
+  `expires_at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX `idx_refresh_user` (`user_id`),
+  INDEX `idx_refresh_family` (`family_id`),
+  INDEX `idx_refresh_hash` (`token_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
 -- ۶. جدول کارتابل درخواست‌های اداری و شغلی (Cartable Requests)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `cartable_requests` (
