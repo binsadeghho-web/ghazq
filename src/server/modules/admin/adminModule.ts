@@ -207,6 +207,56 @@ export class AdminService {
     return updatedUser;
   }
 
+  async deleteUser(authCtx: AuthContext, targetUserId: string): Promise<{ success: boolean; message: string }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin']);
+    if (authCtx.userId === targetUserId) {
+      throw AppError.badRequest('نمی‌توانید حساب کاربری فعال خود را حذف نمایید.');
+    }
+    await userRepository.deleteUser(targetUserId);
+    auditChain.appendEntry({
+      eventType: 'USER_DELETED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `حساب کاربری [${targetUserId}] توسط مدیر ارشد حذف گردید.`,
+      severity: 'critical',
+    });
+    return { success: true, message: 'کاربر با موفقیت حذف شد.' };
+  }
+
+  async updateUserCredentials(authCtx: AuthContext, targetUserId: string, username?: string, passwordRaw?: string): Promise<User> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    const target = await userRepository.findById(targetUserId);
+    if (!target) throw AppError.notFound('کاربر');
+
+    const updateFields: any = {
+      tokenVersionIncrement: true,
+      mustChangePassword: false,
+    };
+
+    if (username && username.trim()) {
+      updateFields.username = username.trim();
+    }
+    if (passwordRaw && passwordRaw.trim()) {
+      updateFields.passwordHash = bcrypt.hashSync(normalizeDigits(passwordRaw.trim()), 10);
+    }
+
+    const updatedUser = await userRepository.updateUserOptimistic(targetUserId, updateFields, target.version);
+
+    auditChain.appendEntry({
+      eventType: 'ROLE_CHANGED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `ویرایش مستقیم نام کاربری و رمز عبور کاربر [${updatedUser.fullName}] توسط مدیر سیستم.`,
+      severity: 'warning',
+    });
+
+    return updatedUser;
+  }
+
   async getAuditLogs(authCtx: AuthContext) {
     AuthorizationPolicy.requireRole(authCtx, ['admin']);
     return auditChain.getEntries();
@@ -384,6 +434,29 @@ export function createAdminRouter(): Router {
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const user = await service.unlockUser(authCtx, req.params.id);
       res.json(user);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/users/:id', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const result = await service.deleteUser(authCtx, req.params.id);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/users/:id/credentials', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const { username, password } = req.body || {};
+      const updated = await service.updateUserCredentials(authCtx, req.params.id, username, password);
+      res.json(updated);
     } catch (err) {
       next(err);
     }

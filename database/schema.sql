@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
   `id` BINARY(16) NOT NULL PRIMARY KEY,
-  `national_id` VARCHAR(10) NOT NULL UNIQUE,
+  `national_id` VARCHAR(32) NULL UNIQUE,
   `username` VARCHAR(64) NULL UNIQUE,
   `password_hash` VARCHAR(255) NULL,
   `full_name` VARCHAR(255) NOT NULL,
@@ -499,10 +499,10 @@ SET foreign_key_checks = 1;
 -- درج کاربران اولیه
 INSERT IGNORE INTO `users` (
   `id`, `national_id`, `username`, `full_name`, `phone`, `role`, `role_title`, 
-  `organization`, `graduation_year`, `avatar_text`, `is_active`, `is_locked`, `version`
+  `organization`, `graduation_year`, `avatar_text`, `is_active`, `is_locked`, `must_change_password`, `version`
 ) VALUES 
-('usr_sadegh_admin', 'SADEGH', 'SADEGH', 'صادق (مدیر ارشد سامانه)', '09121111111', 'admin', 'مدیر ارشد سامانه', 'مرکز مدیریت و دانش‌آموختگان فقه و قضا', '۱۳۸۸', 'صا', 1, 0, 1),
-('usr_ali_alumni', 'ALI', 'ALI', 'علی (دانش‌آموخته نخبه)', '09122222222', 'alumni', 'دانش‌آموخته نخبه', 'دادگستری کل استان تهران', '۱۳۹۵', 'عل', 1, 0, 1);
+('usr_sadegh_admin', 'SADEGH', 'SADEGH', 'صادق (مدیر ارشد سامانه)', '09121111111', 'admin', 'مدیر ارشد سامانه', 'مرکز مدیریت و دانش‌آموختگان فقه و قضا', '۱۳۸۸', 'صا', 1, 0, 1, 1),
+('usr_ali_alumni', 'ALI', 'ALI', 'علی (دانش‌آموخته نخبه)', '09122222222', 'alumni', 'دانش‌آموخته نخبه', 'دادگستری کل استان تهران', '۱۳۹۵', 'عل', 1, 0, 1, 1);
 
 -- درج تنظیمات اولیه قالب تم ۲ (شامل ویترین‌ها و چیدمان شخصی‌سازی شده)
 INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`) 

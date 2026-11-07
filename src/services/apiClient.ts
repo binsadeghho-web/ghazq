@@ -369,6 +369,19 @@ class ApiClient {
     return this.request<any>('/api/admin/security-config');
   }
 
+  async deleteUser(userId: string) {
+    return this.request<{ success: boolean; message: string }>(`/api/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateUserCredentials(userId: string, username: string, password: string) {
+    return this.request<any>(`/api/admin/users/${userId}/credentials`, {
+      method: 'PUT',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
   async updateSecurityConfig(updates: any) {
     return this.request<any>('/api/admin/security-config', {
       method: 'PATCH',

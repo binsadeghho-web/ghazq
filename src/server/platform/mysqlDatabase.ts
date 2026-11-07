@@ -105,16 +105,80 @@ export async function selectWithTimeout<T = any>(
   return rows as T[];
 }
 
+export async function initMySQLTables(): Promise<void> {
+  const p = getPool();
+  try {
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(64) PRIMARY KEY,
+        national_id VARCHAR(32) NULL UNIQUE,
+        username VARCHAR(64) UNIQUE,
+        password_hash VARCHAR(255),
+        full_name VARCHAR(128) NOT NULL,
+        phone VARCHAR(32) NOT NULL,
+        role VARCHAR(32) NOT NULL DEFAULT 'alumni',
+        role_title VARCHAR(128) NOT NULL,
+        organization VARCHAR(128) NOT NULL DEFAULT 'قوه قضائیه',
+        graduation_year VARCHAR(32) NOT NULL DEFAULT '۱۴۰۲',
+        avatar_text VARCHAR(16),
+        is_active TINYINT(1) DEFAULT 1,
+        is_locked TINYINT(1) DEFAULT 0,
+        failed_attempts INT DEFAULT 0,
+        locked_until DATETIME NULL,
+        token_version INT DEFAULT 1,
+        must_change_password TINYINT(1) DEFAULT 0,
+        has_account TINYINT(1) DEFAULT 1,
+        version INT DEFAULT 1,
+        sessions JSON NULL,
+        section_permissions JSON NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_users_national_id (national_id),
+        INDEX idx_users_username (username),
+        INDEX idx_users_role (role)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(64) NOT NULL,
+        family_id VARCHAR(64) NOT NULL,
+        device_name VARCHAR(100),
+        ip_address VARCHAR(45) NOT NULL,
+        user_agent TEXT,
+        last_active_at DATETIME(3) NOT NULL,
+        is_revoked TINYINT(1) DEFAULT 0,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_sessions_user (user_id),
+        INDEX idx_sessions_family (family_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id VARCHAR(64) PRIMARY KEY,
+        event_type VARCHAR(64) NOT NULL,
+        actor_id VARCHAR(64) NOT NULL,
+        actor_name VARCHAR(128) NOT NULL,
+        actor_role VARCHAR(32) NOT NULL,
+        ip VARCHAR(45) NOT NULL,
+        details TEXT NOT NULL,
+        severity VARCHAR(32) NOT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_audit_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    logger.info('MySQL 8 schema tables (users, user_sessions, audit_logs) initialized successfully.');
+  } catch (err: any) {
+    logger.warn('MySQL initMySQLTables warning: ' + (err?.message || err));
+  }
+}
+
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
     await selectWithTimeout('SELECT 1 as alive', [], 2000);
-    // Verify that the core users table is initialized
-    const tables = await selectWithTimeout<{ [key: string]: string }>("SHOW TABLES LIKE 'users'", [], 2000);
-    if (!tables || tables.length === 0) {
-      logger.warn('MySQL is reachable, but `users` table does not exist. Using persistent fallback engine.');
-      isConnected = false;
-      return false;
-    }
     isConnected = true;
     return true;
   } catch (err: any) {

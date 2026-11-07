@@ -266,6 +266,11 @@ export function createMasterRouter(): Router {
         return;
       }
 
+      // Item 2: User events are strictly restricted to Admin/Supervisor/Staff (Information Leak Prevention)
+      if (msg.topic.startsWith('user.') && userRole !== 'admin' && userRole !== 'supervisor' && userRole !== 'staff') {
+        return;
+      }
+
       // Authorization filtering: private items only go to owners or admins
       const isPrivateTopic = msg.topic.startsWith('cartable.') || msg.topic.startsWith('private_msg.');
       if (isPrivateTopic && userRole !== 'admin' && userRole !== 'supervisor') {

@@ -236,7 +236,7 @@ export class UserRepository {
           ]
         );
       } catch (err: any) {
-        logger.warn(`MySQL createUser warning: ${err.message}. Saved to in-memory store.`);
+        logger.warn(`MySQL createUser warning: ${err.message}. Saved to persistent disk store.`);
       }
     }
 
@@ -260,7 +260,7 @@ export class UserRepository {
     },
     expectedVersion?: number
   ): Promise<User> {
-    // 1. Always update in-memory
+    // 1. Always update in-memory and persist to disk
     const idx = db.users.findIndex(u => u.id === id);
     if (idx !== -1) {
       const current = db.users[idx];
@@ -377,6 +377,22 @@ export class UserRepository {
         );
       } catch (err: any) {
         logger.warn(`MySQL resetFailedAttempts notice: ${err.message}`);
+      }
+    }
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    const idx = db.users.findIndex(u => u.id === id);
+    if (idx !== -1) {
+      db.users.splice(idx, 1);
+    }
+
+    if (isDatabaseConnected()) {
+      try {
+        const pool = getPool();
+        await pool.query(`DELETE FROM users WHERE id = ?`, [id]);
+      } catch (err: any) {
+        logger.warn(`MySQL deleteUser notice: ${err.message}`);
       }
     }
   }

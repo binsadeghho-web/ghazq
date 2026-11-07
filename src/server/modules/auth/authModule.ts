@@ -7,6 +7,7 @@ import { registerSessionToken, revokeSessionToken, getCurrentUser } from '../../
 import { User, UserRole, UserSession } from '../../../types';
 import { normalizeDigits } from '../../platform/persianNormalizer';
 import { userRepository } from '../user/userRepository';
+import { generateTotpSecret, verifyTotpOrBackupCode } from './totpService';
 
 interface RateLimitBucket {
   count: number;
@@ -158,8 +159,31 @@ export class AuthService {
       throw AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
     }
 
-    // 6. Login successful: reset failed attempts & issue session
+    // 6. Login successful: reset failed attempts & issue session with Concurrent Limit (LRU Eviction)
     await userRepository.resetFailedAttempts(user.id);
+
+    // Max sessions limit per role: Alumni/Staff: 2, Supervisor: 3, Admin: 2 (Section 3.b of Blueprint)
+    const maxAllowedSessions = user.role === 'supervisor' ? 3 : 2;
+    let existingSessions: UserSession[] = Array.isArray(user.sessions) ? [...user.sessions] : [];
+
+    // If max limit exceeded, evict the oldest session (LRU Invalidation)
+    if (existingSessions.length >= maxAllowedSessions) {
+      // Sort ascending by lastActiveAt to find oldest
+      existingSessions.sort((a, b) => new Date(a.lastActiveAt).getTime() - new Date(b.lastActiveAt).getTime());
+      const evicted = existingSessions.shift();
+      if (evicted) {
+        revokeSessionToken(evicted.id);
+        auditChain.appendEntry({
+          eventType: 'SESSION_REVOKED',
+          actorId: user.id,
+          actorName: user.fullName,
+          actorRole: user.role,
+          ip: clientIp,
+          details: `نشست قدیمی [${evicted.deviceName}] به علت تکمیل سقف هم‌زمان (${maxAllowedSessions} نشست) اخراج گردید.`,
+          severity: 'info',
+        });
+      }
+    }
 
     const newSession: UserSession = {
       id: generateUUIDv7(),
@@ -171,8 +195,15 @@ export class AuthService {
       familyId: generateUUIDv7(),
     };
 
+    existingSessions.push(newSession);
+
+    // Update user sessions in store
+    const updatedUser = await userRepository.updateUserOptimistic(user.id, {
+      sessions: existingSessions,
+    } as any, user.version);
+
     // Register session token in server memory store
-    registerSessionToken(newSession.id, user, newSession.id);
+    registerSessionToken(newSession.id, updatedUser, newSession.id);
 
     auditChain.appendEntry({
       eventType: 'LOGIN_SUCCESS',
@@ -185,7 +216,7 @@ export class AuthService {
     });
 
     return {
-      user,
+      user: updatedUser,
       session: newSession,
       mustChangePassword: Boolean(user.mustChangePassword),
     };
@@ -326,6 +357,64 @@ export function createAuthRouter(): Router {
       const u = getCurrentUser(req);
       const user = await service.globalLogout(u.id);
       res.json({ success: true, user });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/sessions', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const user = await userRepository.findById(u.id);
+      res.json({ success: true, sessions: user?.sessions || [] });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/sessions/:sessionId', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const targetSessionId = req.params.sessionId;
+      revokeSessionToken(targetSessionId);
+      const user = await userRepository.findById(u.id);
+      if (user) {
+        const filtered = (user.sessions || []).filter(s => s.id !== targetSessionId);
+        await userRepository.updateUserOptimistic(u.id, { sessions: filtered } as any, user.version);
+      }
+      res.json({ success: true, message: 'نشست مورد نظر با موفقیت لغو شد.' });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  const FEATURE_2FA_ENABLED = process.env.FEATURE_2FA_ENABLED === 'true';
+
+  router.post('/setup-2fa', async (req: Request, res: Response, next) => {
+    try {
+      if (!FEATURE_2FA_ENABLED) {
+        throw AppError.forbidden('قابلیت احراز هویت دو مرحله‌ای (۲FA) طبق تنظیمات سیستم غیرفعال است.');
+      }
+      const u = getCurrentUser(req);
+      const setup = generateTotpSecret(u.nationalId || u.fullName);
+      res.json({ success: true, ...setup });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/verify-2fa', async (req: Request, res: Response, next) => {
+    try {
+      if (!FEATURE_2FA_ENABLED) {
+        throw AppError.forbidden('قابلیت احراز هویت دو مرحله‌ای (۲FA) طبق تنظیمات سیستم غیرفعال است.');
+      }
+      const { code, secret } = req.body || {};
+      if (!code) throw AppError.badRequest('کد تایید ۶ رقمی یا کد پشتیبان الزامی است.');
+      const result = verifyTotpOrBackupCode(code, secret);
+      if (!result.valid) {
+        throw AppError.unauthorized('کد تایید ۲ مرحله‌ای نامعتبر است.');
+      }
+      res.json({ success: true, message: 'اعتبارسنجی دو مرحله‌ای با موفقیت انجام شد.' });
     } catch (err) {
       next(err);
     }

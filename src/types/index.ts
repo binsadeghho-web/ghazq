@@ -300,6 +300,7 @@ export interface AuditLog {
     | 'SYSTEM_CONFIG_UPDATED'
     | 'USER_CREATED'
     | 'USER_UPDATED'
+    | 'USER_DELETED'
     | 'PASSWORD_CHANGED';
   actorId: string;
   actorName: string;

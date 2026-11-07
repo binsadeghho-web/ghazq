@@ -495,15 +495,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (fetchedWelfare.status === 'fulfilled') setWelfareRequests(fetchedWelfare.value);
       if (fetchedConsumables.status === 'fulfilled') setConsumables(fetchedConsumables.value);
       if (fetchedSynergy.status === 'fulfilled') setSynergyPosts(fetchedSynergy.value);
-      if (fetchedSecurity.status === 'fulfilled') setSecurityConfig(fetchedSecurity.value);
+      if (fetchedSecurity.status === 'fulfilled' && fetchedSecurity.value) {
+        setSecurityConfig(fetchedSecurity.value as any);
+      }
       if (fetchedDashboardConfig.status === 'fulfilled' && fetchedDashboardConfig.value?.crextio) {
+        const configVal = fetchedDashboardConfig.value;
         setCrextioConfig(prev => {
-          const serverVer = fetchedDashboardConfig.value.version || 1;
+          const serverVer = configVal.version || 1;
           const localVer = (prev as any)._baseVersion || 1;
           if (serverVer >= localVer) {
             const nextConfig = {
               ...prev,
-              ...fetchedDashboardConfig.value.crextio,
+              ...configVal.crextio,
               _baseVersion: serverVer,
             };
             if (typeof window !== 'undefined') {
@@ -532,7 +535,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearInterval(syncInterval);
   }, [refreshFromServer]);
 
-  // Real-time SSE synchronization listener (Section 8)
+  // Real-time SSE synchronization listener (Section 8 & Item 2)
   useEffect(() => {
     const unsubscribe = api.subscribeToEvents(event => {
       // Refresh relevant data on background event notification
@@ -564,14 +567,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }).catch(() => {});
       } else if (event.type === 'admin.security_config_updated') {
-        api.getSecurityConfig().then(setSecurityConfig).catch(() => {});
+        api.getSecurityConfig().then(cfg => { if (cfg) setSecurityConfig(cfg as any); }).catch(() => {});
       } else if (event.type.startsWith('user.')) {
-        api.getUsers().then(setUsers).catch(() => {});
+        // Item 2: Fetch full user list ONLY for Admin/Supervisor roles in user management UI
+        if (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') {
+          api.getUsers().then(setUsers).catch(() => {});
+        }
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser?.role]);
 
   // Auth methods
   const login = async (nationalId: string, password: string) => {
@@ -804,7 +810,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       alert('نمی‌توانید حساب کاربری فعال خود را حذف نمایید.');
       return;
     }
-    setUsers(prev => prev.filter(u => u.id !== userId));
+    try {
+      await api.deleteUser(userId);
+      setUsers(prev => {
+        const next = prev.filter(u => u.id !== userId);
+        try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    } catch (err: any) {
+      alert(`خطا در حذف کاربر: ${err?.message || err}`);
+    }
   };
 
   const resetUserPassword = async (userId: string, customPassword?: string): Promise<string> => {
@@ -929,17 +944,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUserCredentials = async (userId: string, username: string, password: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const updated = {
-        ...u,
-        username: username.trim(),
-        password: password.trim(),
-        hasAccount: true,
-      };
-      if (currentUser?.id === userId) setCurrentUser(updated);
-      return updated;
-    }));
+    try {
+      const updatedUser = await api.updateUserCredentials(userId, username, password);
+      setUsers(prev => {
+        const next = prev.map(u => (u.id === userId ? { ...u, ...updatedUser } : u));
+        try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
+        return next;
+      });
+      if (currentUser?.id === userId) {
+        setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : null);
+      }
+    } catch {
+      setUsers(prev => {
+        const next = prev.map(u => {
+          if (u.id !== userId) return u;
+          const updated = {
+            ...u,
+            username: username.trim(),
+            password: password.trim(),
+            hasAccount: true,
+          };
+          if (currentUser?.id === userId) setCurrentUser(updated);
+          return updated;
+        });
+        try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
 
     const targetUser = users.find(u => u.id === userId);
     const newLog: AuditLog = {
