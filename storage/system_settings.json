@@ -1,0 +1,14 @@
+{
+  "crextio_dashboard_config": {
+    "key": "crextio_dashboard_config",
+    "value": {
+      "heroTitle": "پرتال جامع دانش‌آموختگان قضایی (شخصی‌سازی شده توسط ادمین)",
+      "heroSubtitle": "دسترسی متمرکز و چنددستگاهی به کارتابل و آراء",
+      "showRulingsShowcase": true,
+      "rulingsShowcaseTitle": "دادنامه‌های برگزیده کشوری"
+    },
+    "version": 3,
+    "lastModifiedBy": "صادق (مدیر ارشد سامانه)",
+    "updatedAt": "2026-11-07T13:17:01.496Z"
+  }
+}

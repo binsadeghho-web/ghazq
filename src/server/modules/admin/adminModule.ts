@@ -116,21 +116,34 @@ export class AdminService {
   ): Promise<User> {
     AuthorizationPolicy.requireRole(authCtx, ['admin']);
 
-    if (baseVersion === undefined || baseVersion === null || isNaN(Number(baseVersion))) {
-      throw AppError.badRequest('پارامتر base_version برای کنترل هم‌زمانی الزامی است.');
+    const targetUser = await userRepository.findById(targetUserId);
+    if (!targetUser) {
+      throw AppError.notFound('کاربر');
     }
+
+    const resolvedVersion = (baseVersion !== undefined && baseVersion !== null && !isNaN(Number(baseVersion)))
+      ? Number(baseVersion)
+      : (targetUser.version || 1);
 
     const updateFields: any = {};
     if (updates.fullName !== undefined) updateFields.fullName = updates.fullName.trim();
     if (updates.phone !== undefined) updateFields.phone = normalizeDigits(updates.phone).trim();
+    if ((updates as any).nationalId !== undefined) updateFields.nationalId = normalizeDigits((updates as any).nationalId).trim();
+    if ((updates as any).username !== undefined) updateFields.username = (updates as any).username.trim();
     if (updates.role !== undefined) updateFields.role = updates.role;
     if (updates.roleTitle !== undefined) updateFields.roleTitle = updates.roleTitle.trim();
+    if ((updates as any).siteTitle !== undefined) updateFields.siteTitle = (updates as any).siteTitle.trim();
+    if ((updates as any).profilePictureUrl !== undefined) updateFields.profilePictureUrl = (updates as any).profilePictureUrl;
     if (updates.organization !== undefined) updateFields.organization = updates.organization.trim();
     if (updates.graduationYear !== undefined) updateFields.graduationYear = normalizeDigits(updates.graduationYear).trim();
+    if ((updates as any).judicialGrade !== undefined) updateFields.judicialGrade = Number((updates as any).judicialGrade) || 0;
+    if ((updates as any).courtBranch !== undefined) updateFields.courtBranch = (updates as any).courtBranch.trim();
+    if ((updates as any).province !== undefined) updateFields.province = (updates as any).province.trim();
     if (updates.isActive !== undefined) updateFields.isActive = Boolean(updates.isActive);
     if (updates.mustChangePassword !== undefined) updateFields.mustChangePassword = Boolean(updates.mustChangePassword);
 
     if (updates.password && updates.password.trim()) {
+      updateFields.passwordRaw = updates.password.trim();
       updateFields.passwordHash = bcrypt.hashSync(normalizeDigits(updates.password), 10);
       updateFields.tokenVersionIncrement = true;
     }
@@ -138,7 +151,7 @@ export class AdminService {
     const updatedUser = await userRepository.updateUserOptimistic(
       targetUserId,
       updateFields,
-      Number(baseVersion)
+      resolvedVersion
     );
 
     outbox.enqueue('user.updated', {

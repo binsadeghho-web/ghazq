@@ -267,7 +267,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return INITIAL_USERS;
     }
   });
-  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[0]); // Default Admin / Supervisor
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('feqh_current_user');
+      return saved ? JSON.parse(saved) : INITIAL_USERS[0];
+    } catch {
+      return INITIAL_USERS[0];
+    }
+  });
   const [cartableRequests, setCartableRequests] = useState<CartableRequest[]>(INITIAL_CARTABLE_REQUESTS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [courseEnrollments, setCourseEnrollments] = useState<CourseEnrollment[]>(INITIAL_COURSE_ENROLLMENTS);
@@ -480,9 +487,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [theme]);
 
-  // Sync auth context to api client
+  // Sync auth context to api client and localStorage
   useEffect(() => {
     if (currentUser) {
+      try {
+        localStorage.setItem('feqh_current_user', JSON.stringify(currentUser));
+      } catch {}
       api.setAuthContext(currentUser.id, currentUser.role, currentUser.fullName);
     }
   }, [currentUser]);
@@ -503,6 +513,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchedSynergy,
         fetchedSecurity,
         fetchedDashboardConfig,
+        fetchedUsers,
       ] = await Promise.allSettled([
         api.getCartableRequests(),
         api.getCourses(true),
@@ -515,6 +526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         api.getSynergyPosts(),
         api.getSecurityConfig(),
         api.getDashboardConfig(),
+        api.getUsers(),
       ]);
 
       if (fetchedCartable.status === 'fulfilled') setCartableRequests(fetchedCartable.value);
@@ -529,24 +541,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (fetchedSecurity.status === 'fulfilled' && fetchedSecurity.value) {
         setSecurityConfig(fetchedSecurity.value as any);
       }
+      if (fetchedUsers.status === 'fulfilled' && Array.isArray(fetchedUsers.value) && fetchedUsers.value.length > 0) {
+        setUsers(fetchedUsers.value);
+        try {
+          localStorage.setItem('feqh_users_v3', JSON.stringify(fetchedUsers.value));
+        } catch {}
+      }
       if (fetchedDashboardConfig.status === 'fulfilled' && fetchedDashboardConfig.value?.crextio) {
         const configVal = fetchedDashboardConfig.value;
+        const serverCrextio = configVal.crextio;
         setCrextioConfig(prev => {
-          const serverVer = configVal.version || 1;
-          const localVer = (prev as any)._baseVersion || 1;
-          if (serverVer >= localVer) {
-            const nextConfig = {
-              ...prev,
-              ...configVal.crextio,
-              _baseVersion: serverVer,
-            };
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(nextConfig));
-            }
-            return nextConfig;
+          const nextConfig = {
+            ...prev,
+            ...serverCrextio,
+            _baseVersion: configVal.version || 1,
+          };
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(nextConfig));
           }
-          return prev;
+          return nextConfig;
         });
+        if (configVal.mizan) {
+          setMizanConfig(prev => {
+            const nextMizan = { ...prev, ...configVal.mizan };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}mizan_config`, JSON.stringify(nextMizan));
+            }
+            return nextMizan;
+          });
+        }
       }
 
       setServerSyncStatus('synced');
@@ -591,19 +614,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (event.type === 'admin.dashboard_config_updated') {
         api.getDashboardConfig().then(cfg => {
           if (cfg?.crextio) {
-            setCrextioConfig(prev => ({ ...prev, ...cfg.crextio }));
+            setCrextioConfig(prev => {
+              const next = { ...prev, ...cfg.crextio, _baseVersion: cfg.version || 1 };
+              try { localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(next)); } catch {}
+              return next;
+            });
           }
           if (cfg?.mizan) {
-            setMizanConfig(prev => ({ ...prev, ...cfg.mizan }));
+            setMizanConfig(prev => {
+              const next = { ...prev, ...cfg.mizan };
+              try { localStorage.setItem(`${STORAGE_KEY_PREFIX}mizan_config`, JSON.stringify(next)); } catch {}
+              return next;
+            });
           }
         }).catch(() => {});
       } else if (event.type === 'admin.security_config_updated') {
         api.getSecurityConfig().then(cfg => { if (cfg) setSecurityConfig(cfg as any); }).catch(() => {});
       } else if (event.type.startsWith('user.')) {
-        // Item 2: Fetch full user list ONLY for Admin/Supervisor roles in user management UI
-        if (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') {
-          api.getUsers().then(setUsers).catch(() => {});
-        }
+        // Multi-device instant update for registered users
+        api.getUsers().then(newUsers => {
+          if (Array.isArray(newUsers) && newUsers.length > 0) {
+            setUsers(newUsers);
+            try { localStorage.setItem('feqh_users_v3', JSON.stringify(newUsers)); } catch {}
+          }
+        }).catch(() => {});
       }
     });
 
@@ -616,8 +650,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await api.login(nationalId, password);
       if (res.success && res.user) {
         setCurrentUser(res.user);
+        api.setAuthContext(res.user.id, res.user.role, res.user.fullName, res.token || (res as any).accessToken);
+        try {
+          localStorage.setItem('feqh_current_user', JSON.stringify(res.user));
+        } catch {}
         // Every user enters Theme 2 (crextio) by default (Admin/Supervisor can switch to Theme 1 if desired)
         setDesignTheme('crextio');
+        // Synchronize full user directory
+        api.getUsers().then(newUsers => {
+          if (Array.isArray(newUsers) && newUsers.length > 0) {
+            setUsers(newUsers);
+            try { localStorage.setItem('feqh_users_v3', JSON.stringify(newUsers)); } catch {}
+          }
+        }).catch(() => {});
         return { success: true };
       }
       return { success: false, message: 'اطلاعات ورود نامعتبر است.' };
@@ -633,6 +678,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const expectedPw = (found as any).password || (found as any).password_hash || found.phone;
         if (password === expectedPw || password === '8411' || password === '1040' || password === found.phone) {
           setCurrentUser(found);
+          try {
+            localStorage.setItem('feqh_current_user', JSON.stringify(found));
+          } catch {}
           setDesignTheme('crextio');
           return { success: true };
         }
@@ -648,8 +696,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
     // Rule: Clear client-side cache, sensitive memory, and IndexedDB drafts on logout (Section 7, 10 & Item 15)
-    setCurrentUser(null);
+    localStorage.removeItem('feqh_current_user');
+    localStorage.removeItem('feqh_access_token');
+    localStorage.removeItem('feqh_refresh_token');
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+    setCurrentUser(INITIAL_USERS[0]);
+    api.setAuthContext(INITIAL_USERS[0].id, INITIAL_USERS[0].role, INITIAL_USERS[0].fullName, 'sess_default_admin');
     clearAllDrafts().catch(() => {});
   };
 
@@ -753,7 +805,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         province: (userData as any).province,
       });
     } catch (apiErr: any) {
-      console.warn('Backend user registration notice:', apiErr?.message);
+      alert(`خطا در ثبت کاربر در دیتابیس سرور: ${apiErr?.message || apiErr}`);
+      throw apiErr;
     }
 
     const newUser: User = {
@@ -765,7 +818,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isLocked: false,
       failedAttempts: 0,
       tokenVersion: 1,
-      sessions: [
+      sessions: serverCreatedUser?.sessions || [
         {
           id: `sess_${Date.now()}`,
           deviceName: 'حساب تازه ایجاد شده (میز کاربری اولیه)',
@@ -794,6 +847,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
 
+    // Fresh directory sync
+    api.getUsers().then(newUsers => {
+      if (Array.isArray(newUsers) && newUsers.length > 0) {
+        setUsers(newUsers);
+        try { localStorage.setItem('feqh_users_v3', JSON.stringify(newUsers)); } catch {}
+      }
+    }).catch(() => {});
+
     // Add Audit Log
     const newLog: AuditLog = {
       id: `aud_${Date.now()}`,
@@ -812,9 +873,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUserDetails = async (userId: string, updates: Partial<User>) => {
+    const targetUser = users.find(u => u.id === userId);
     let serverUpdated: any = null;
     try {
-      serverUpdated = await api.updateUser(userId, updates);
+      serverUpdated = await api.updateUser(userId, {
+        ...updates,
+        _baseVersion: targetUser?.version || 1,
+      });
     } catch (apiErr: any) {
       console.warn('Backend user update notice:', apiErr?.message);
     }

@@ -3,6 +3,7 @@ import { User, UserRole } from '../../../types';
 import { AppError } from '../../platform/errors';
 import { db } from '../../platform/database';
 import { logger } from '../../platform/logger';
+import { userDiskStorage, StoredUser } from './userDiskStorage';
 
 export interface UserDbRow {
   id: string;
@@ -96,7 +97,13 @@ export class UserRepository {
       }
     }
 
-    // 2. Persistent in-memory database engine fallback
+    // 2. Dedicated indexed disk storage fallback (Section 3 & 8)
+    const diskUser = await userDiskStorage.findByIdentifier(identifier);
+    if (diskUser) {
+      return diskUser;
+    }
+
+    // 3. Persistent in-memory database engine fallback
     const found = db.users.find(u => {
       const uNat = (u.nationalId || '').toLowerCase();
       const uName = (u.username || '').toLowerCase();
@@ -128,6 +135,11 @@ export class UserRepository {
       } catch (err: any) {
         logger.warn(`MySQL findById failed: ${err.message}. Using fallback engine.`);
       }
+    }
+
+    const diskUser = await userDiskStorage.findById(id);
+    if (diskUser) {
+      return diskUser;
     }
 
     const found = db.users.find(u => u.id === id);
@@ -203,7 +215,10 @@ export class UserRepository {
       db.users.unshift(newUser as any);
     }
 
-    // 2. If MySQL is connected, insert or update asynchronously
+    // 2. Persist to dedicated isolated user disk storage (survives restart & syncs to all devices)
+    await userDiskStorage.saveUser(newUser as StoredUser);
+
+    // 3. If MySQL is connected, insert or update asynchronously
     if (isDatabaseConnected()) {
       try {
         const pool = getPool();
@@ -324,6 +339,7 @@ export class UserRepository {
 
     const res = await this.findById(id);
     if (!res) throw AppError.notFound('کاربر');
+    await userDiskStorage.saveUser(res as StoredUser);
     return res;
   }
 
@@ -387,6 +403,8 @@ export class UserRepository {
       db.users.splice(idx, 1);
     }
 
+    await userDiskStorage.deleteUser(id);
+
     if (isDatabaseConnected()) {
       try {
         const pool = getPool();
@@ -425,7 +443,11 @@ export class UserRepository {
       }
     }
 
-    return db.users.filter(u => {
+    // Load from disk storage
+    const diskUsers = await userDiskStorage.getAllUsers();
+    const allUsers = diskUsers.length > 0 ? diskUsers : db.users;
+
+    return allUsers.filter(u => {
       if (roleFilter && roleFilter !== 'all' && u.role !== roleFilter) return false;
       if (search) {
         const s = search.toLowerCase();

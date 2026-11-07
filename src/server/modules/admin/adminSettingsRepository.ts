@@ -23,16 +23,16 @@ export class AdminSettingsRepository {
   }
 
   private async ensureLoadedFromDisk(): Promise<void> {
-    if (this.hasLoadedDisk) return;
-    this.hasLoadedDisk = true;
+    if (this.hasLoadedDisk && this.memoryCache.size > 0) return;
     try {
-      if (storageConfig.isMounted) {
+      if (fs.existsSync(this.diskFilePath)) {
         const raw = await fs.promises.readFile(this.diskFilePath, 'utf-8');
         const data = JSON.parse(raw);
         if (data && typeof data === 'object') {
           for (const [k, v] of Object.entries(data)) {
             this.memoryCache.set(k, v as SystemSettingRecord<any>);
           }
+          this.hasLoadedDisk = true;
           logger.info(`Loaded ${this.memoryCache.size} system settings from persistent disk.`);
         }
       }
@@ -42,13 +42,16 @@ export class AdminSettingsRepository {
   }
 
   private async saveToDisk(): Promise<void> {
-    if (!storageConfig.isMounted) return;
     try {
+      const dir = path.dirname(this.diskFilePath);
+      await fs.promises.mkdir(dir, { recursive: true, mode: 0o755 });
       const obj: Record<string, any> = {};
       for (const [k, v] of this.memoryCache.entries()) {
         obj[k] = v;
       }
-      await fs.promises.writeFile(this.diskFilePath, JSON.stringify(obj, null, 2), 'utf-8');
+      const tmpPath = `${this.diskFilePath}.tmp_${Date.now()}`;
+      await fs.promises.writeFile(tmpPath, JSON.stringify(obj, null, 2), 'utf-8');
+      await fs.promises.rename(tmpPath, this.diskFilePath);
     } catch (err: any) {
       logger.warn(`Failed to save system settings to disk: ${err?.message || err}`);
     }
@@ -104,6 +107,7 @@ export class AdminSettingsRepository {
     baseVersion: number,
     lastModifiedBy: string
   ): Promise<{ success: boolean; conflict: boolean; newVersion: number }> {
+    await this.ensureLoadedFromDisk();
     const existing = this.memoryCache.get(key);
     const newVersion = (baseVersion || existing?.version || 1) + 1;
     const now = new Date().toISOString();
@@ -118,7 +122,7 @@ export class AdminSettingsRepository {
 
     // Update memory and disk immediately
     this.memoryCache.set(key, record);
-    this.saveToDisk();
+    await this.saveToDisk();
 
     if (!isDatabaseConnected()) {
       return { success: true, conflict: false, newVersion };
@@ -149,6 +153,7 @@ export class AdminSettingsRepository {
    * Upsert system setting
    */
   async saveSetting<T>(key: string, value: T, description?: string): Promise<boolean> {
+    await this.ensureLoadedFromDisk();
     const existing = this.memoryCache.get(key);
     const newVersion = (existing?.version || 0) + 1;
     const now = new Date().toISOString();
@@ -162,7 +167,7 @@ export class AdminSettingsRepository {
     };
 
     this.memoryCache.set(key, record);
-    this.saveToDisk();
+    await this.saveToDisk();
 
     if (!isDatabaseConnected()) return true;
 
