@@ -25,6 +25,7 @@ import { SynergyWallSection } from './components/synergy/SynergyWallSection';
 import { AdminControlCenter } from './components/admin/AdminControlCenter';
 import { AlumniDirectorySection } from './components/alumni/AlumniDirectorySection';
 import { UserManagementModule } from './components/admin/UserManagementModule';
+import { FinanceSection } from './components/finance/FinanceSection';
 
 import { CrextioSubViews } from './components/crextio/CrextioSubViews';
 import { Sparkles, ArrowRight } from 'lucide-react';
@@ -42,7 +43,8 @@ const tabTitles: Record<NavTabId, string> = {
   synergy: 'دیوار هم‌افزایی شغلی و دیوار همدلی',
   alumni: 'بانک جامع اطلاعات و شناسنامه دانش‌آموختگان',
   users: 'مدیریت کاربران (حساب‌های کاربری) و سطوح دسترسی',
-  admin: 'مدیریت',
+  finance: 'امور مالی، حسابداری و مدیریت درآمدها',
+  admin: 'مدیریت سایت و پایش امنیت',
 };
 
 const MainLayout: React.FC = () => {
@@ -155,6 +157,7 @@ const MainLayout: React.FC = () => {
                   {activeTab === 'synergy' && <CrextioSubViews activeNav="Synergy" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'alumni' && <AlumniDirectorySection onNavigate={setActiveTab} />}
                   {activeTab === 'users' && <UserManagementModule />}
+                  {activeTab === 'finance' && <FinanceSection />}
                   {activeTab === 'admin' && <AdminControlCenter />}
                 </div>
               )}

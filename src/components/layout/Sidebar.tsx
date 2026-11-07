@@ -12,7 +12,8 @@ import {
   Gift,
   Users2,
   ShieldCheck,
-  ChevronLeft
+  ChevronLeft,
+  Wallet
 } from 'lucide-react';
 
 export type NavTabId =
@@ -28,6 +29,7 @@ export type NavTabId =
   | 'synergy'
   | 'alumni'
   | 'users'
+  | 'finance'
   | 'admin';
 
 interface SidebarProps {
@@ -159,6 +161,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       count: openSynergyCount,
     },
     ...(currentUser?.role === 'admin' || currentUser?.role === 'supervisor' ? [
+      {
+        id: 'finance' as NavTabId,
+        label: 'امور مالی و حسابداری',
+        subtext: 'مدیریت درآمدها، تسویه‌حساب‌ها و آمار جامع مالی',
+        icon: Wallet,
+        accentColor: 'text-emerald-500 dark:text-emerald-400',
+        glowColor: 'rgba(16, 185, 129, 0.2)',
+        activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
+      },
       {
         id: 'alumni' as NavTabId,
         label: 'دانش‌آموختگان',
@@ -361,10 +372,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-black text-slate-900 dark:text-white">
-                        مدیریت
+                        مدیریت سایت و پایش امنیت
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400">
-                        Admin
+                        Admin & Security
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -428,7 +439,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center gap-3">
                 <ShieldCheck className="w-5 h-5 text-amber-600" />
-                <span className="text-xs font-bold">مدیریت</span>
+                <span className="text-xs font-bold">مدیریت سایت و پایش امنیت</span>
               </div>
             </button>
           )}

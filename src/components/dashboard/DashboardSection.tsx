@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
-  Layers
+  Layers,
+  Wallet
 } from 'lucide-react';
 
 interface DashboardSectionProps {
@@ -265,7 +266,20 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           onClick={() => onNavigate('synergy')}
         />
 
-        {/* ۹. کارت ویژه دانش‌آموختگان (فقط برای ادمین و مسئولین) */}
+        {/* ۹.۵. کارت امور مالی و حسابداری (جدید) */}
+        {showAdminCard && (
+          <ModernDashboardCard
+            title="امور مالی و حسابداری"
+            accent="emerald"
+            icon={<Wallet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />}
+            subValue="مدیریت جامع درآمدها، تحلیل آماری، فیش‌های واریزی، دفترکل و تسویه‌حساب مشاوران"
+            trendContext="درآمد کل، گزارشات و تسویه‌حساب‌ها"
+            badgeText="امور مالی کلان"
+            onClick={() => onNavigate('finance')}
+          />
+        )}
+
+        {/* ۱۰. کارت ویژه دانش‌آموختگان (فقط برای ادمین و مسئولین) */}
         {showAdminCard && (
           <ModernDashboardCard
             title="دانش‌آموختگان"

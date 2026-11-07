@@ -8,6 +8,7 @@ import { UserManagementModule } from '../admin/UserManagementModule';
 import { ThemeCustomizerModal } from '../admin/ThemeCustomizerModal';
 import { AlumniDirectorySection } from '../alumni/AlumniDirectorySection';
 import { AdminControlCenter } from '../admin/AdminControlCenter';
+import { FinanceSection } from '../finance/FinanceSection';
 import { GlobalMouseHalo } from '../common/GlobalMouseHalo';
 import {
   Bell,
@@ -31,7 +32,8 @@ import {
   UserPlus,
   Users,
   Palette,
-  Compass
+  Compass,
+  Wallet
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { UserRole } from '../../types';
@@ -57,6 +59,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     if (n === 'people') return 'cartable';
     if (n === 'specializedcounseling') return 'specialized_counseling';
     if (n === 'counselinggeneral') return 'counseling';
+    if (n === 'finance') return 'finance';
     return (n as NavTabId) || 'dashboard';
   };
 
@@ -74,6 +77,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
       case 'synergy': return 'Synergy';
       case 'alumni': return 'Alumni';
       case 'users': return 'Users';
+      case 'finance': return 'Finance';
       case 'admin': return 'Admin';
       default: return 'Dashboard';
     }
@@ -92,9 +96,10 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'Rulings', label: 'تالار آراء', icon: Laptop },
     { id: 'Synergy', label: 'هم‌افزایی', icon: HeartHandshake },
     ...(isAdminOrSupervisor ? [
+      { id: 'Finance', label: 'امور مالی و حسابداری', icon: Wallet },
       { id: 'Alumni', label: 'دانش‌آموختگان', icon: GraduationCap },
-      { id: 'Users', label: 'مدیریت کاربران {حساب‌های کاربری}', icon: Users },
-      { id: 'Admin', label: 'مدیریت', icon: ShieldCheck }
+      { id: 'Users', label: 'مدیریت کاربران (حساب‌ها)', icon: Users },
+      { id: 'Admin', label: 'مدیریت سایت و پایش امنیت', icon: ShieldCheck }
     ] : []),
     { id: 'Setting', label: 'تنظیمات', icon: Settings },
   ];
@@ -408,6 +413,8 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         <main className={`${canvasBgClass} rounded-[40px] p-6 sm:p-8 lg:p-10 shadow-2xl border text-stone-900 min-h-[700px] transition-colors duration-500`}>
           {activeNav === 'Dashboard' ? (
             <CrextioDashboard onNavigateTab={setActiveNav} />
+          ) : activeNav === 'Finance' ? (
+            <FinanceSection />
           ) : activeNav === 'Alumni' ? (
             <AlumniDirectorySection onNavigate={setActiveNav} />
           ) : activeNav === 'Users' ? (

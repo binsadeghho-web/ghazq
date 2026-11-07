@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ModernMetricCard } from '../common/ModernMetricCard';
 import { UserManagementModule } from './UserManagementModule';
-import { AnalyticsReportsModule } from './AnalyticsReportsModule';
-import { FinancialAuditLedgerModule } from './FinancialAuditLedgerModule';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
-import { ConsultantManagementModule } from './ConsultantManagementModule';
 import {
   ShieldAlert,
   Users,
@@ -48,7 +45,7 @@ export const AdminControlCenter: React.FC = () => {
     refreshMetrics,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'reports' | 'ledger' | 'consultants' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('reports');
+  const [activeTab, setActiveTab] = useState<'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('diagnostics');
   const [logFilter, setLogFilter] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
   const [searchUser, setSearchUser] = useState('');
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
@@ -106,7 +103,7 @@ export const AdminControlCenter: React.FC = () => {
           <div className="flex items-center gap-2 mb-1.5">
             <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             <h1 className="text-xl font-black text-slate-900 dark:text-white">
-              مدیریت سامانه فقه و قضا
+              مدیریت سایت و پایش امنیت
             </h1>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
@@ -189,36 +186,6 @@ export const AdminControlCenter: React.FC = () => {
       {/* Segmented Tab Navigation */}
       <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 transition-colors text-xs overflow-x-auto">
         <button
-          onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
-            activeTab === 'reports'
-              ? 'bg-slate-900 dark:bg-slate-800 text-white font-bold shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          گزارش‌گیری و تحلیل مالی
-        </button>
-        <button
-          onClick={() => setActiveTab('ledger')}
-          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
-            activeTab === 'ledger'
-              ? 'bg-slate-900 dark:bg-slate-800 text-white font-bold shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          حسابداری و مدیریت تراکنش‌ها
-        </button>
-        <button
-          onClick={() => setActiveTab('consultants')}
-          className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
-            activeTab === 'consultants'
-              ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          مدیریت مشاوران و تعرفه حق‌المشاوره
-        </button>
-        <button
           onClick={() => setActiveTab('diagnostics')}
           className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-colors ${
             activeTab === 'diagnostics'
@@ -269,21 +236,6 @@ export const AdminControlCenter: React.FC = () => {
           زنجیره وقایع و صحت هش ({auditLogs.length})
         </button>
       </div>
-
-      {/* Tab 0: Analytics & Graphical Reports */}
-      {activeTab === 'reports' && (
-        <AnalyticsReportsModule />
-      )}
-
-      {/* Tab 0.5: Financial Audit Ledger */}
-      {activeTab === 'ledger' && (
-        <FinancialAuditLedgerModule />
-      )}
-
-      {/* Tab 0.7: Dedicated Consultants & Fee Rates Management Module */}
-      {activeTab === 'consultants' && (
-        <ConsultantManagementModule />
-      )}
 
       {/* Tab 1: Diagnostics & Quick Fixes */}
       {activeTab === 'diagnostics' && (
