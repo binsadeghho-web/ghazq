@@ -130,6 +130,10 @@ class UserDiskStorageEngine {
 
   async saveUser(user: StoredUser): Promise<void> {
     await this.ensureInitialized();
+    const existing = this.cache.get(user.id);
+    if (existing) {
+      this.deindexUser(existing);
+    }
     this.indexUser(user);
     await this.flushToDisk();
   }
