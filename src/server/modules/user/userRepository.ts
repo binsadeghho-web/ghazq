@@ -262,84 +262,110 @@ export class UserRepository {
     id: string,
     updates: {
       fullName?: string;
+      nationalId?: string;
+      username?: string;
       phone?: string;
       role?: UserRole;
       roleTitle?: string;
+      siteTitle?: string;
+      profilePictureUrl?: string;
       organization?: string;
       graduationYear?: string;
+      avatarText?: string;
+      judicialGrade?: number;
+      courtBranch?: string;
+      province?: string;
       isActive?: boolean;
       isLocked?: boolean;
+      passwordRaw?: string;
       passwordHash?: string;
       mustChangePassword?: boolean;
       tokenVersionIncrement?: boolean;
     },
-    expectedVersion?: number
+    _expectedVersion?: number
   ): Promise<User> {
-    // 1. Always update in-memory and persist to disk
+    // 1. Update user in dedicated persistent disk storage
+    const diskUpdates: any = { ...updates };
+    if (updates.passwordRaw) {
+      diskUpdates.password = updates.passwordRaw;
+    }
+    if (updates.passwordHash) {
+      diskUpdates.password_hash = updates.passwordHash;
+    }
+    if (updates.fullName && !updates.avatarText) {
+      const parts = updates.fullName.trim().split(' ');
+      diskUpdates.avatarText = parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}` : parts[0].slice(0, 2);
+    }
+    const updatedOnDisk = await userDiskStorage.updateUser(id, diskUpdates);
+
+    // 2. Update in-memory DB array
     const idx = db.users.findIndex(u => u.id === id);
     if (idx !== -1) {
       const current = db.users[idx];
-      const updated = {
+      const updated: any = {
         ...current,
         ...updates,
         version: (current.version || 1) + 1,
       };
-      if (updates.passwordHash) (updated as any).password_hash = updates.passwordHash;
+      if (diskUpdates.avatarText) updated.avatarText = diskUpdates.avatarText;
+      if (updates.passwordRaw) updated.password = updates.passwordRaw;
+      if (updates.passwordHash) updated.password_hash = updates.passwordHash;
       if (updates.tokenVersionIncrement) updated.tokenVersion = (updated.tokenVersion || 1) + 1;
       db.users[idx] = updated;
+    } else if (updatedOnDisk) {
+      db.users.push(updatedOnDisk as any);
     }
 
-    // 2. Update MySQL if connected
+    // 3. Update MySQL if connected
     if (isDatabaseConnected()) {
       try {
-        const current = await this.findById(id);
-        if (current) {
-          const fields: string[] = [];
-          const params: any[] = [];
+        const fields: string[] = [];
+        const params: any[] = [];
 
-          if (updates.fullName !== undefined) { fields.push('full_name = ?'); params.push(updates.fullName); }
-          if (updates.phone !== undefined) { fields.push('phone = ?'); params.push(updates.phone); }
-          if (updates.role !== undefined) { fields.push('role = ?'); params.push(updates.role); }
-          if (updates.roleTitle !== undefined) { fields.push('role_title = ?'); params.push(updates.roleTitle); }
-          if (updates.organization !== undefined) { fields.push('organization = ?'); params.push(updates.organization); }
-          if (updates.graduationYear !== undefined) { fields.push('graduation_year = ?'); params.push(updates.graduationYear); }
-          if (updates.isActive !== undefined) { fields.push('is_active = ?'); params.push(updates.isActive ? 1 : 0); }
-          if (updates.isLocked !== undefined) {
-            fields.push('is_locked = ?');
-            params.push(updates.isLocked ? 1 : 0);
-            if (!updates.isLocked) {
-              fields.push('failed_attempts = 0', 'locked_until = NULL');
-            }
+        if (updates.fullName !== undefined) { fields.push('full_name = ?'); params.push(updates.fullName); }
+        if (updates.nationalId !== undefined) { fields.push('national_id = ?'); params.push(updates.nationalId); }
+        if (updates.username !== undefined) { fields.push('username = ?'); params.push(updates.username); }
+        if (updates.phone !== undefined) { fields.push('phone = ?'); params.push(updates.phone); }
+        if (updates.role !== undefined) { fields.push('role = ?'); params.push(updates.role); }
+        if (updates.roleTitle !== undefined) { fields.push('role_title = ?'); params.push(updates.roleTitle); }
+        if (updates.organization !== undefined) { fields.push('organization = ?'); params.push(updates.organization); }
+        if (updates.graduationYear !== undefined) { fields.push('graduation_year = ?'); params.push(updates.graduationYear); }
+        if (diskUpdates.avatarText !== undefined) { fields.push('avatar_text = ?'); params.push(diskUpdates.avatarText); }
+        if (updates.isActive !== undefined) { fields.push('is_active = ?'); params.push(updates.isActive ? 1 : 0); }
+        if (updates.isLocked !== undefined) {
+          fields.push('is_locked = ?');
+          params.push(updates.isLocked ? 1 : 0);
+          if (!updates.isLocked) {
+            fields.push('failed_attempts = 0', 'locked_until = NULL');
           }
-          if (updates.passwordHash !== undefined) {
-            fields.push('password_hash = ?');
-            params.push(updates.passwordHash);
-          }
-          if (updates.mustChangePassword !== undefined) {
-            fields.push('must_change_password = ?');
-            params.push(updates.mustChangePassword ? 1 : 0);
-          }
-          if (updates.tokenVersionIncrement) {
-            fields.push('token_version = token_version + 1');
-          }
+        }
+        if (updates.passwordHash !== undefined) {
+          fields.push('password_hash = ?');
+          params.push(updates.passwordHash);
+        }
+        if (updates.mustChangePassword !== undefined) {
+          fields.push('must_change_password = ?');
+          params.push(updates.mustChangePassword ? 1 : 0);
+        }
+        if (updates.tokenVersionIncrement) {
+          fields.push('token_version = token_version + 1');
+        }
 
-          fields.push('version = version + 1');
+        fields.push('version = version + 1');
 
-          if (fields.length > 1) {
-            params.push(id);
-            const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
-            const pool = getPool();
-            await pool.query(sql, params);
-          }
+        if (fields.length > 1) {
+          params.push(id);
+          const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+          const pool = getPool();
+          await pool.query(sql, params);
         }
       } catch (err: any) {
         logger.warn(`MySQL updateUserOptimistic warning: ${err.message}`);
       }
     }
 
-    const res = await this.findById(id);
+    const res = (await this.findById(id)) || updatedOnDisk;
     if (!res) throw AppError.notFound('کاربر');
-    await userDiskStorage.saveUser(res as StoredUser);
     return res;
   }
 

@@ -144,7 +144,7 @@ export class AdminService {
 
     if (updates.password && updates.password.trim()) {
       updateFields.passwordRaw = updates.password.trim();
-      updateFields.passwordHash = bcrypt.hashSync(normalizeDigits(updates.password), 10);
+      updateFields.passwordHash = bcrypt.hashSync(updates.password.trim(), 10);
       updateFields.tokenVersionIncrement = true;
     }
 
@@ -252,10 +252,16 @@ export class AdminService {
       updateFields.username = username.trim();
     }
     if (passwordRaw && passwordRaw.trim()) {
-      updateFields.passwordHash = bcrypt.hashSync(normalizeDigits(passwordRaw.trim()), 10);
+      updateFields.passwordRaw = passwordRaw.trim();
+      updateFields.passwordHash = bcrypt.hashSync(passwordRaw.trim(), 10);
     }
 
     const updatedUser = await userRepository.updateUserOptimistic(targetUserId, updateFields, target.version);
+
+    outbox.enqueue('user.updated', {
+      userId: updatedUser.id,
+      version: updatedUser.version,
+    });
 
     auditChain.appendEntry({
       eventType: 'ROLE_CHANGED',

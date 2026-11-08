@@ -149,23 +149,45 @@
   {
     "id": "01a1b623-b336-7748-9ed2-1d560fe5e557",
     "nationalId": "0077889900",
-    "username": "0077889900",
-    "password": "password123",
-    "fullName": "دکتر محمد کریمی",
+    "username": "m_karimi",
+    "password": "SecurePassword@99",
+    "fullName": "استاد محمد کریمی مقدم",
     "phone": "09123456789",
     "role": "alumni",
     "roleTitle": "قاضی دادگاه تجدیدنظر",
     "organization": "دادگستری استان تهران",
     "graduationYear": "۱۴۰۰",
-    "avatarText": "دک",
+    "avatarText": "ام",
     "isActive": true,
     "isLocked": false,
     "failedAttempts": 0,
     "tokenVersion": 1,
     "mustChangePassword": false,
     "hasAccount": true,
-    "sessions": [],
-    "version": 1,
-    "password_hash": "$2b$10$zV1h6gUiGX1f6cpBjARhx.HmMyz/mCKSExuqmeCOsJWfkAUSp0WkC"
+    "sessions": [
+      {
+        "id": "01a1bbd6-3da4-7241-83ee-5dd649a1d10e",
+        "deviceName": "رایانه رومیزی (Web Browser)",
+        "ipAddress": "127.0.0.1",
+        "userAgent": "curl/7.88.1",
+        "lastActiveAt": "2026-11-08T15:45:42.309Z",
+        "isCurrent": true,
+        "familyId": "01a1bbd6-3da5-7d97-96b6-05d0189dd3c4"
+      },
+      {
+        "id": "01a1bbd6-6ee1-76ce-ade8-fe5107cb5095",
+        "deviceName": "رایانه رومیزی (Web Browser)",
+        "ipAddress": "127.0.0.1",
+        "userAgent": "curl/7.88.1",
+        "lastActiveAt": "2026-11-08T15:45:54.913Z",
+        "isCurrent": true,
+        "familyId": "01a1bbd6-6ee1-7266-a91b-1a390e5603a5"
+      }
+    ],
+    "version": 6,
+    "password_hash": "$2b$10$076Bll7FKoIlEFZ8prFS5OAv8ss.4N3PyL7MW7zRGaaJTv4lSwn1e",
+    "passwordRaw": "SecurePassword@99",
+    "passwordHash": "$2b$10$076Bll7FKoIlEFZ8prFS5OAv8ss.4N3PyL7MW7zRGaaJTv4lSwn1e",
+    "tokenVersionIncrement": true
   }
 ]

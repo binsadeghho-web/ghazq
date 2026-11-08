@@ -881,7 +881,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         _baseVersion: targetUser?.version || 1,
       });
     } catch (apiErr: any) {
-      console.warn('Backend user update notice:', apiErr?.message);
+      console.error('Backend user update error:', apiErr);
+      throw apiErr;
     }
 
     setUsers(prev => {
@@ -899,6 +900,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...(serverUpdated || {}),
           avatarText: newAvatarText || u.avatarText,
         };
+        if ((updates as any).password) {
+          updated.password = (updates as any).password;
+        }
+        if ((updates as any).username) {
+          updated.username = (updates as any).username;
+        }
         if (currentUser?.id === userId) {
           setCurrentUser(updated);
         }
@@ -907,6 +914,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
       return next;
     });
+
+    // Synchronize latest directory in background
+    api.getUsers().then(newUsers => {
+      if (Array.isArray(newUsers) && newUsers.length > 0) {
+        setUsers(newUsers);
+        try { localStorage.setItem('feqh_users_v3', JSON.stringify(newUsers)); } catch {}
+      }
+    }).catch(() => {});
 
     // Add Audit Log
     const newLog: AuditLog = {

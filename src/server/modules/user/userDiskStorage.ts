@@ -138,6 +138,27 @@ class UserDiskStorageEngine {
     await this.flushToDisk();
   }
 
+  async updateUser(id: string, updates: Partial<StoredUser>): Promise<StoredUser | undefined> {
+    await this.ensureInitialized();
+    const existing = this.cache.get(id);
+    if (!existing) return undefined;
+
+    this.deindexUser(existing);
+
+    const updated: StoredUser = {
+      ...existing,
+      ...updates,
+      version: (existing.version || 1) + 1,
+    };
+
+    if ((updates as any).password) updated.password = (updates as any).password;
+    if ((updates as any).password_hash) updated.password_hash = (updates as any).password_hash;
+
+    this.indexUser(updated);
+    await this.flushToDisk();
+    return updated;
+  }
+
   async deleteUser(id: string): Promise<void> {
     await this.ensureInitialized();
     const existing = this.cache.get(id);

@@ -137,11 +137,12 @@ export const UserManagementModule: React.FC = () => {
   };
 
   const handleSaveEditUser = async (userId: string, updates: Partial<User>) => {
-    await updateUserDetails(userId, updates);
-    if (updates.username || (updates as any).password) {
-      await updateUserCredentials(userId, updates.username || '', (updates as any).password || '');
+    try {
+      await updateUserDetails(userId, updates);
+      setEditingUser(null);
+    } catch (err: any) {
+      alert(`خطا در ذخیره مشخصات کاربر: ${err?.message || err}`);
     }
-    setEditingUser(null);
   };
 
   // Handle PIN verification
