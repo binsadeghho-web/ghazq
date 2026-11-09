@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ModernMetricCard } from '../common/ModernMetricCard';
 import { UserManagementModule } from './UserManagementModule';
-import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import { CommandCenterSection } from './CommandCenterSection';
+
+const ThemeCustomizerModal = lazy(() => import('./ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal })));
 import {
   ShieldAlert,
   Users,
@@ -606,10 +607,12 @@ export const AdminControlCenter: React.FC = () => {
       )}
 
       {/* Theme 2 Customizer Modal */}
-      <ThemeCustomizerModal
-        isOpen={isThemeCustomizerOpen}
-        onClose={() => setIsThemeCustomizerOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <ThemeCustomizerModal
+          isOpen={isThemeCustomizerOpen}
+          onClose={() => setIsThemeCustomizerOpen(false)}
+        />
+      </Suspense>
     </div>
   );
 };

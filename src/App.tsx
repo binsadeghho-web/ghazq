@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/layout/Navbar';
@@ -7,39 +7,20 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { LoginModal } from './components/auth/LoginModal';
 import { ModernLoginPage } from './components/auth/ModernLoginPage';
 import { DashboardSection } from './components/dashboard/DashboardSection';
-import { ProductsSection } from './components/products/ProductsSection';
 import { CounselingSection } from './components/counseling/CounselingSection';
 import { UserManagementModule } from './components/admin/UserManagementModule';
 import { FinanceSection } from './components/finance/FinanceSection';
 import { CrextioSubViews } from './components/crextio/CrextioSubViews';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { ModuleFallback } from './components/common/ModuleFallback';
 
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
-const AdminControlCenter = React.lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
-const AnalyticsReportsModule = React.lazy(() => import('./components/admin/AnalyticsReportsModule').then(m => ({ default: m.AnalyticsReportsModule })));
-const FinancialAuditLedgerModule = React.lazy(() => import('./components/admin/FinancialAuditLedgerModule').then(m => ({ default: m.FinancialAuditLedgerModule })));
-const ThemeCustomizerModal = React.lazy(() => import('./components/admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal })));
-const SessionManagerModal = React.lazy(() => import('./components/auth/SessionManagerModal').then(m => ({ default: m.SessionManagerModal })));
-const CrextioLayout = React.lazy(() => import('./components/crextio/CrextioLayout').then(m => ({ default: m.CrextioLayout })));
-const MizanLayout = React.lazy(() => import('./components/mizan/MizanLayout').then(m => ({ default: m.MizanLayout })));
-const CartableSection = React.lazy(() => import('./components/cartable/CartableSection').then(m => ({ default: m.CartableSection })));
-const CoursesSection = React.lazy(() => import('./components/courses/CoursesSection').then(m => ({ default: m.CoursesSection })));
-const JudicialRulingsSection = React.lazy(() => import('./components/rulings/JudicialRulingsSection').then(m => ({ default: m.JudicialRulingsSection })));
-const ResearchMentorshipSection = React.lazy(() => import('./components/research/ResearchMentorshipSection').then(m => ({ default: m.ResearchMentorshipSection })));
-const WelfareSection = React.lazy(() => import('./components/welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
-const AlumniDirectorySection = React.lazy(() => import('./components/alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
-const SynergyWallSection = React.lazy(() => import('./components/synergy/SynergyWallSection').then(m => ({ default: m.SynergyWallSection })));
-const SpecializedCareerCounselingSection = React.lazy(() => import('./components/counseling/SpecializedCareerCounselingSection').then(m => ({ default: m.SpecializedCareerCounselingSection })));
-
-// Themed Shimmer Loading Fallback Component (Preserves Navbar/Sidebar Responsiveness)
-const ModuleFallback: React.FC = () => (
-  <div className="w-full min-h-[350px] flex flex-col items-center justify-center p-8 text-center animate-pulse">
-    <div className="w-10 h-10 rounded-full border-3 border-emerald-500/30 border-t-emerald-600 dark:border-emerald-400/30 dark:border-t-emerald-400 animate-spin mb-4" />
-    <div className="h-4 w-44 bg-stone-200 dark:bg-[#2A423B] rounded-full mb-2" />
-    <div className="h-3 w-28 bg-stone-100 dark:bg-[#20332D] rounded-full" />
-    <span className="sr-only">در حال بارگذاری ماژول...</span>
-  </div>
-);
+const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
+const CrextioLayout = lazy(() => import('./components/crextio/CrextioLayout').then(m => ({ default: m.CrextioLayout })));
+const MizanLayout = lazy(() => import('./components/mizan/MizanLayout').then(m => ({ default: m.MizanLayout })));
+const WelfareSection = lazy(() => import('./components/welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
+const AlumniDirectorySection = lazy(() => import('./components/alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
+const SpecializedCareerCounselingSection = lazy(() => import('./components/counseling/SpecializedCareerCounselingSection').then(m => ({ default: m.SpecializedCareerCounselingSection })));
 
 const tabTitles: Record<NavTabId, string> = {
   dashboard: 'داشبورد جامع و درگاه‌های دسترسی',
@@ -161,15 +142,31 @@ const MainLayout: React.FC = () => {
                   {activeTab === 'courses' && <CrextioSubViews activeNav="Courses" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'products' && <CrextioSubViews activeNav="Products" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'counseling' && <CounselingSection initialTab="request" />}
-                  {activeTab === 'specialized_counseling' && <SpecializedCareerCounselingSection />}
+                  {activeTab === 'specialized_counseling' && (
+                    <Suspense fallback={<ModuleFallback />}>
+                      <SpecializedCareerCounselingSection />
+                    </Suspense>
+                  )}
                   {activeTab === 'research' && <CrextioSubViews activeNav="Research" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
                   {activeTab === 'rulings' && <CrextioSubViews activeNav="Rulings" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
-                  {activeTab === 'welfare' && <WelfareSection />}
+                  {activeTab === 'welfare' && (
+                    <Suspense fallback={<ModuleFallback />}>
+                      <WelfareSection />
+                    </Suspense>
+                  )}
                   {activeTab === 'synergy' && <CrextioSubViews activeNav="Synergy" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
-                  {activeTab === 'alumni' && <AlumniDirectorySection onNavigate={setActiveTab} />}
+                  {activeTab === 'alumni' && (
+                    <Suspense fallback={<ModuleFallback />}>
+                      <AlumniDirectorySection onNavigate={setActiveTab} />
+                    </Suspense>
+                  )}
                   {activeTab === 'users' && <UserManagementModule />}
                   {activeTab === 'finance' && <FinanceSection />}
-                  {activeTab === 'admin' && <AdminControlCenter />}
+                  {activeTab === 'admin' && (
+                    <Suspense fallback={<ModuleFallback />}>
+                      <AdminControlCenter />
+                    </Suspense>
+                  )}
                 </div>
               )}
             </motion.div>

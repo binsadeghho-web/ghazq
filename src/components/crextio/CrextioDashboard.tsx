@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
@@ -43,9 +43,10 @@ import { MultimediaAndCoursesShowcase } from './MultimediaAndCoursesShowcase';
 import { CrextioHeroStatsCustomizerModal } from './CrextioHeroStatsCustomizerModal';
 import { CrextioRulingsShowcase } from './CrextioRulingsShowcase';
 import { ResearchPromoShowcase } from './ResearchPromoShowcase';
-import { ThemeCustomizerModal } from '../admin/ThemeCustomizerModal';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { DEFAULT_HERO_STATS } from '../../data/mockData';
+
+const ThemeCustomizerModal = lazy(() => import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal })));
 
 interface CrextioDashboardProps {
   onNavigateTab?: (tab: string) => void;
@@ -485,10 +486,12 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
       })()}
 
       {/* ADMIN LIVE CUSTOMIZER MODAL */}
-      <ThemeCustomizerModal
-        isOpen={isCustomizerOpen}
-        onClose={() => setIsCustomizerOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <ThemeCustomizerModal
+          isOpen={isCustomizerOpen}
+          onClose={() => setIsCustomizerOpen(false)}
+        />
+      </Suspense>
 
       {/* ADMIN HERO STATS CUSTOMIZER MODAL */}
       <CrextioHeroStatsCustomizerModal

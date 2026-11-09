@@ -1,15 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, lazy, Suspense } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { CrextioDashboard } from './CrextioDashboard';
 import { CrextioSubViews } from './CrextioSubViews';
 import { CrextioServicesMegaMenu } from './CrextioServicesMegaMenu';
 import { UserManagementModule } from '../admin/UserManagementModule';
-import { ThemeCustomizerModal } from '../admin/ThemeCustomizerModal';
-import { AlumniDirectorySection } from '../alumni/AlumniDirectorySection';
-import { AdminControlCenter } from '../admin/AdminControlCenter';
 import { FinanceSection } from '../finance/FinanceSection';
 import { GlobalMouseHalo } from '../common/GlobalMouseHalo';
+import { ModuleFallback } from '../common/ModuleFallback';
+
+const AdminControlCenter = lazy(() => import('../admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
+const ThemeCustomizerModal = lazy(() => import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal })));
+const AlumniDirectorySection = lazy(() => import('../alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
 import {
   Bell,
   User as UserIcon,
@@ -416,11 +418,15 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           ) : activeNav === 'Finance' ? (
             <FinanceSection />
           ) : activeNav === 'Alumni' ? (
-            <AlumniDirectorySection onNavigate={setActiveNav} />
+            <Suspense fallback={<ModuleFallback />}>
+              <AlumniDirectorySection onNavigate={setActiveNav} />
+            </Suspense>
           ) : activeNav === 'Users' ? (
             <UserManagementModule />
           ) : activeNav === 'Admin' ? (
-            <AdminControlCenter />
+            <Suspense fallback={<ModuleFallback />}>
+              <AdminControlCenter />
+            </Suspense>
           ) : (
             <CrextioSubViews activeNav={activeNav} onNavigate={setActiveNav} />
           )}
@@ -433,10 +439,12 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
       </div>
 
       {/* THEME CUSTOMIZER MODAL */}
-      <ThemeCustomizerModal
-        isOpen={isCustomizerOpen}
-        onClose={() => setIsCustomizerOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <ThemeCustomizerModal
+          isOpen={isCustomizerOpen}
+          onClose={() => setIsCustomizerOpen(false)}
+        />
+      </Suspense>
     </div>
   );
 };

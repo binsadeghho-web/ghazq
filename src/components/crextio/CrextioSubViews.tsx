@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
@@ -32,16 +32,18 @@ import {
   Compass,
   Home
 } from 'lucide-react';
+import { ModuleFallback } from '../common/ModuleFallback';
 
-import { CartableSection } from '../cartable/CartableSection';
-import { CoursesSection } from '../courses/CoursesSection';
-import { ProductsSection } from '../products/ProductsSection';
+const CartableSection = lazy(() => import('../cartable/CartableSection').then(m => ({ default: m.CartableSection })));
+const CoursesSection = lazy(() => import('../courses/CoursesSection').then(m => ({ default: m.CoursesSection })));
+const SpecializedCareerCounselingSection = lazy(() => import('../counseling/SpecializedCareerCounselingSection').then(m => ({ default: m.SpecializedCareerCounselingSection })));
+const WelfareSection = lazy(() => import('../welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
+const SynergyWallSection = lazy(() => import('../synergy/SynergyWallSection').then(m => ({ default: m.SynergyWallSection })));
+const JudicialRulingsSection = lazy(() => import('../rulings/JudicialRulingsSection').then(m => ({ default: m.JudicialRulingsSection })));
+const ResearchMentorshipSection = lazy(() => import('../research/ResearchMentorshipSection').then(m => ({ default: m.ResearchMentorshipSection })));
+const ProductsSection = lazy(() => import('../products/ProductsSection').then(m => ({ default: m.ProductsSection })));
+
 import { CounselingSection } from '../counseling/CounselingSection';
-import { SpecializedCareerCounselingSection } from '../counseling/SpecializedCareerCounselingSection';
-import { WelfareSection } from '../welfare/WelfareSection';
-import { SynergyWallSection } from '../synergy/SynergyWallSection';
-import { JudicialRulingsSection } from '../rulings/JudicialRulingsSection';
-import { ResearchMentorshipSection } from '../research/ResearchMentorshipSection';
 
 interface CrextioSubViewsProps {
   activeNav: string;
@@ -87,21 +89,33 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
      1. PEOPLE / CARTABLE (کارتابل اداری و استعلامات)
      ======================================================================== */
   if (activeNav === 'People' || activeNav === 'Cartable') {
-    return <CartableSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <CartableSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
      2. COURSES GALLERY (گالری دوره‌های آموزشی)
      ======================================================================== */
   if (activeNav === 'Hiring' || activeNav === 'Courses') {
-    return <CoursesSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <CoursesSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
      3. PUBLICATIONS SHOWCASE (ویترین انتشارات و کتب)
      ======================================================================== */
   if (activeNav === 'Devices' || activeNav === 'Products') {
-    return <ProductsSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <ProductsSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
@@ -111,35 +125,55 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
     return <CounselingSection initialTab="request" />;
   }
   if (activeNav === 'SpecializedCounseling' || activeNav === 'CounselingSpecial' || activeNav === 'counseling_specialized') {
-    return <SpecializedCareerCounselingSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <SpecializedCareerCounselingSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
      5. WELFARE & LOANS (خدمات رفاهی و تسهیلات)
      ======================================================================== */
   if (activeNav === 'Salary' || activeNav === 'Welfare') {
-    return <WelfareSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <WelfareSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
      6. SYNERGY & EXPERIENCES WALL (دیوار هم‌افزایی و تجارب اعضا)
      ======================================================================== */
   if (activeNav === 'Calendar' || activeNav === 'Synergy') {
-    return <SynergyWallSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <SynergyWallSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
      7. COURT RULINGS HALL (تالار آراء قضایی)
      ======================================================================== */
   if (activeNav === 'Reviews' || activeNav === 'Rulings') {
-    return <JudicialRulingsSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <JudicialRulingsSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================
      8. RESEARCH MENTORSHIP & THESES (راهبری پایان‌نامه‌ها)
      ======================================================================== */
   if (activeNav === 'Research' || activeNav === 'ResearchMentorship') {
-    return <ResearchMentorshipSection />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <ResearchMentorshipSection />
+      </Suspense>
+    );
   }
 
   /* ========================================================================

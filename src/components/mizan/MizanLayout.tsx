@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
@@ -9,19 +9,20 @@ import { MizanDashboard } from './MizanDashboard';
 import { MizanCommandPalette } from './MizanCommandPalette';
 import { MizanStudioModal } from './MizanStudioModal';
 
-// Subview components
-import { CartableSection } from '../cartable/CartableSection';
-import { CoursesSection } from '../courses/CoursesSection';
-import { ProductsSection } from '../products/ProductsSection';
 import { CounselingSection } from '../counseling/CounselingSection';
-import { SpecializedCareerCounselingSection } from '../counseling/SpecializedCareerCounselingSection';
-import { ResearchMentorshipSection } from '../research/ResearchMentorshipSection';
-import { JudicialRulingsSection } from '../rulings/JudicialRulingsSection';
-import { WelfareSection } from '../welfare/WelfareSection';
-import { SynergyWallSection } from '../synergy/SynergyWallSection';
-import { AlumniDirectorySection } from '../alumni/AlumniDirectorySection';
 import { UserManagementModule } from '../admin/UserManagementModule';
-import { AdminControlCenter } from '../admin/AdminControlCenter';
+import { ModuleFallback } from '../common/ModuleFallback';
+
+const CartableSection = lazy(() => import('../cartable/CartableSection').then(m => ({ default: m.CartableSection })));
+const AdminControlCenter = lazy(() => import('../admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
+const CoursesSection = lazy(() => import('../courses/CoursesSection').then(m => ({ default: m.CoursesSection })));
+const ProductsSection = lazy(() => import('../products/ProductsSection').then(m => ({ default: m.ProductsSection })));
+const SpecializedCareerCounselingSection = lazy(() => import('../counseling/SpecializedCareerCounselingSection').then(m => ({ default: m.SpecializedCareerCounselingSection })));
+const ResearchMentorshipSection = lazy(() => import('../research/ResearchMentorshipSection').then(m => ({ default: m.ResearchMentorshipSection })));
+const JudicialRulingsSection = lazy(() => import('../rulings/JudicialRulingsSection').then(m => ({ default: m.JudicialRulingsSection })));
+const WelfareSection = lazy(() => import('../welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
+const SynergyWallSection = lazy(() => import('../synergy/SynergyWallSection').then(m => ({ default: m.SynergyWallSection })));
+const AlumniDirectorySection = lazy(() => import('../alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
 
 import {
   Scale,
@@ -479,18 +480,58 @@ export const MizanLayout: React.FC = () => {
 
               {/* رندر بخش انتخاب‌شده با رعایت کامل هماهنگی داده و استایل */}
               <div className="bg-transparent">
-                {activeTab === 'cartable' && <CartableSection />}
-                {activeTab === 'courses' && <CoursesSection />}
-                {activeTab === 'products' && <ProductsSection />}
-                {activeTab === 'counseling_specialized' && <SpecializedCareerCounselingSection />}
+                {activeTab === 'cartable' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <CartableSection />
+                  </Suspense>
+                )}
+                {activeTab === 'courses' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <CoursesSection />
+                  </Suspense>
+                )}
+                {activeTab === 'products' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <ProductsSection />
+                  </Suspense>
+                )}
+                {activeTab === 'counseling_specialized' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <SpecializedCareerCounselingSection />
+                  </Suspense>
+                )}
                 {activeTab === 'counseling' && <CounselingSection />}
-                {activeTab === 'research' && <ResearchMentorshipSection />}
-                {activeTab === 'rulings' && <JudicialRulingsSection />}
-                {activeTab === 'welfare' && <WelfareSection />}
-                {activeTab === 'synergy' && <SynergyWallSection />}
-                {activeTab === 'alumni' && <AlumniDirectorySection />}
+                {activeTab === 'research' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <ResearchMentorshipSection />
+                  </Suspense>
+                )}
+                {activeTab === 'rulings' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <JudicialRulingsSection />
+                  </Suspense>
+                )}
+                {activeTab === 'welfare' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <WelfareSection />
+                  </Suspense>
+                )}
+                {activeTab === 'synergy' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <SynergyWallSection />
+                  </Suspense>
+                )}
+                {activeTab === 'alumni' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <AlumniDirectorySection />
+                  </Suspense>
+                )}
                 {activeTab === 'users' && <UserManagementModule />}
-                {activeTab === 'admin' && <AdminControlCenter />}
+                {activeTab === 'admin' && (
+                  <Suspense fallback={<ModuleFallback />}>
+                    <AdminControlCenter />
+                  </Suspense>
+                )}
               </div>
             </div>
           )}

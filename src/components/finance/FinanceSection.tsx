@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
-import { AnalyticsReportsModule } from '../admin/AnalyticsReportsModule';
-import { FinancialAuditLedgerModule } from '../admin/FinancialAuditLedgerModule';
 import { ConsultantManagementModule } from '../admin/ConsultantManagementModule';
+import { ModuleFallback } from '../common/ModuleFallback';
+
+const AnalyticsReportsModule = lazy(() => import('../admin/AnalyticsReportsModule').then(m => ({ default: m.AnalyticsReportsModule })));
+const FinancialAuditLedgerModule = lazy(() => import('../admin/FinancialAuditLedgerModule').then(m => ({ default: m.FinancialAuditLedgerModule })));
 import {
   DollarSign,
   TrendingUp,
@@ -264,11 +266,15 @@ export const FinanceSection: React.FC = () => {
 
       {/* Main Content Areas according to Sub-Tab */}
       {activeFinanceTab === 'analytics' && (
-        <AnalyticsReportsModule />
+        <Suspense fallback={<ModuleFallback />}>
+          <AnalyticsReportsModule />
+        </Suspense>
       )}
 
       {activeFinanceTab === 'ledger' && (
-        <FinancialAuditLedgerModule />
+        <Suspense fallback={<ModuleFallback />}>
+          <FinancialAuditLedgerModule />
+        </Suspense>
       )}
 
       {activeFinanceTab === 'consultants' && (
