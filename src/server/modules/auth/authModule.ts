@@ -16,6 +16,7 @@ import { User, UserRole, UserSession } from '../../../types';
 import { normalizeDigits } from '../../platform/persianNormalizer';
 import { userRepository } from '../user/userRepository';
 import { generateTotpSecret, verifyTotpOrBackupCode } from './totpService';
+import { sanitizeUserForApi } from '../admin/adminModule';
 
 interface RateLimitBucket {
   count: number;
@@ -338,7 +339,7 @@ export function createAuthRouter(): Router {
 
       res.json({
         success: true,
-        user: result.user,
+        user: sanitizeUserForApi(result.user),
         session: result.session,
         token: result.accessToken,
         accessToken: result.accessToken,

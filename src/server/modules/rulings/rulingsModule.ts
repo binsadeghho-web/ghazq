@@ -22,6 +22,37 @@ rulingsRouter.get('/', (_req: Request, res: Response) => {
   res.json(db.rulings);
 });
 
+rulingsRouter.get('/:id', (req: Request, res: Response) => {
+  const item = db.rulings.find(r => r.id === req.params.id);
+  if (!item) throw AppError.notFound('دادنامه');
+  res.json(item);
+});
+
+rulingsRouter.put('/:id', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  const { title, courtBranch, judgeName, summary, fullRulingText, _baseVersion, expectedVersion } = req.body;
+
+  let updatedRuling: any;
+
+  await db.withTx(async tx => {
+    const ruling = tx.rulings.find(r => r.id === req.params.id);
+    if (!ruling) throw AppError.notFound('دادنامه');
+
+    const targetVersion = typeof expectedVersion === 'number' ? expectedVersion : typeof _baseVersion === 'number' ? _baseVersion : ruling.version;
+
+    updatedRuling = tx.updateVersioned(tx.rulings, ruling.id, targetVersion, current => ({
+      ...current,
+      title: title !== undefined ? title.trim() : current.title,
+      courtBranch: courtBranch !== undefined ? courtBranch.trim() : current.courtBranch,
+      judgeName: judgeName !== undefined ? judgeName.trim() : current.judgeName,
+      summary: summary !== undefined ? summary.trim() : current.summary,
+      fullRulingText: fullRulingText !== undefined ? fullRulingText.trim() : current.fullRulingText,
+    }));
+  });
+
+  res.json(updatedRuling);
+});
+
 rulingsRouter.post('/', idempotencyMiddleware, async (req: Request, res: Response) => {
   const currentUser = getAuthenticatedUser(req);
   const { title, courtBranch, judgeName, rulingDate, caseType, caseTypeTitle, summary, legalPrinciples, fullRulingText } = req.body;

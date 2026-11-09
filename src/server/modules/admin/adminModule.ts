@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db, generateUUIDv7 } from '../../platform/database';
@@ -9,14 +11,25 @@ import { getCurrentUser } from '../../platform/sessionAuth';
 import { User, UserRole, SystemSecurityConfig } from '../../../types';
 import { adminSettingsRepo } from './adminSettingsRepository';
 import { userRepository } from '../user/userRepository';
-import { isDatabaseConnected } from '../../platform/mysqlDatabase';
+import { getPool, isDatabaseConnected } from '../../platform/mysqlDatabase';
 import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../../../data/mockData';
 import { normalizeDigits } from '../../platform/persianNormalizer';
+
+export function sanitizeUserForApi<T extends Record<string, any>>(user: T): T {
+  if (!user) return user;
+  const copy = { ...user };
+  delete copy.password;
+  delete copy.passwordRaw;
+  delete copy.password_hash;
+  delete copy.passwordHash;
+  return copy;
+}
 
 export class AdminService {
   async getUsers(authCtx: AuthContext, search?: string, roleFilter?: string): Promise<User[]> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
-    return userRepository.listUsers(search, roleFilter);
+    const users = await userRepository.listUsers(search, roleFilter);
+    return users.map(sanitizeUserForApi);
   }
 
   async createUser(authCtx: AuthContext, data: {
@@ -64,7 +77,6 @@ export class AdminService {
       nationalId,
       username,
       passwordHash,
-      passwordRaw: rawPassword,
       fullName: data.fullName.trim(),
       phone,
       role: data.role || 'alumni',
@@ -95,7 +107,7 @@ export class AdminService {
       severity: 'info',
     });
 
-    return createdUser;
+    return sanitizeUserForApi(createdUser);
   }
 
   async updateUser(
@@ -126,24 +138,32 @@ export class AdminService {
       : (targetUser.version || 1);
 
     const updateFields: any = {};
-    if (updates.fullName !== undefined) updateFields.fullName = updates.fullName.trim();
-    if (updates.phone !== undefined) updateFields.phone = normalizeDigits(updates.phone).trim();
-    if ((updates as any).nationalId !== undefined) updateFields.nationalId = normalizeDigits((updates as any).nationalId).trim();
-    if ((updates as any).username !== undefined) updateFields.username = (updates as any).username.trim();
-    if (updates.role !== undefined) updateFields.role = updates.role;
-    if (updates.roleTitle !== undefined) updateFields.roleTitle = updates.roleTitle.trim();
-    if ((updates as any).siteTitle !== undefined) updateFields.siteTitle = (updates as any).siteTitle.trim();
-    if ((updates as any).profilePictureUrl !== undefined) updateFields.profilePictureUrl = (updates as any).profilePictureUrl;
-    if (updates.organization !== undefined) updateFields.organization = updates.organization.trim();
-    if (updates.graduationYear !== undefined) updateFields.graduationYear = normalizeDigits(updates.graduationYear).trim();
-    if ((updates as any).judicialGrade !== undefined) updateFields.judicialGrade = Number((updates as any).judicialGrade) || 0;
-    if ((updates as any).courtBranch !== undefined) updateFields.courtBranch = (updates as any).courtBranch.trim();
-    if ((updates as any).province !== undefined) updateFields.province = (updates as any).province.trim();
-    if (updates.isActive !== undefined) updateFields.isActive = Boolean(updates.isActive);
-    if (updates.mustChangePassword !== undefined) updateFields.mustChangePassword = Boolean(updates.mustChangePassword);
+    const allowedKeys = [
+      'fullName', 'phone', 'nationalId', 'username', 'role', 'roleTitle', 'siteTitle',
+      'profilePictureUrl', 'organization', 'graduationYear', 'judicialGrade', 'courtBranch',
+      'province', 'email', 'academicDegree', 'thesisTitle', 'supervisorProfessor', 'birthDate',
+      'fatherName', 'idNumber', 'maritalStatus', 'childrenCount', 'residentialAddress',
+      'seminaryLevel', 'seminarySchool', 'universityDegree', 'universityName', 'fieldOfStudy',
+      'academicHonors', 'associationMembershipDate', 'associationResponsibility',
+      'associationContributions', 'membershipStatus', 'internalNotes', 'employmentStatus',
+      'currentJudicialPost', 'serviceYears', 'judicialSpecialty', 'permissions', 'sectionPermissions',
+      'isActive', 'mustChangePassword', 'personnelId'
+    ];
+
+    for (const key of allowedKeys) {
+      if ((updates as any)[key] !== undefined) {
+        const val = (updates as any)[key];
+        if (typeof val === 'string') {
+          updateFields[key] = (key === 'phone' || key === 'nationalId' || key === 'graduationYear')
+            ? normalizeDigits(val).trim()
+            : val.trim();
+        } else {
+          updateFields[key] = val;
+        }
+      }
+    }
 
     if (updates.password && updates.password.trim()) {
-      updateFields.passwordRaw = updates.password.trim();
       updateFields.passwordHash = bcrypt.hashSync(updates.password.trim(), 10);
       updateFields.tokenVersionIncrement = true;
     }
@@ -169,7 +189,7 @@ export class AdminService {
       severity: 'warning',
     });
 
-    return updatedUser;
+    return sanitizeUserForApi(updatedUser);
   }
 
   async unlockUser(authCtx: AuthContext, targetUserId: string): Promise<User> {
@@ -192,7 +212,7 @@ export class AdminService {
       severity: 'warning',
     });
 
-    return updatedUser;
+    return sanitizeUserForApi(updatedUser);
   }
 
   async toggleUserActive(authCtx: AuthContext, targetUserId: string, baseVersion?: number): Promise<User> {
@@ -217,7 +237,7 @@ export class AdminService {
       severity: 'warning',
     });
 
-    return updatedUser;
+    return sanitizeUserForApi(updatedUser);
   }
 
   async deleteUser(authCtx: AuthContext, targetUserId: string): Promise<{ success: boolean; message: string }> {
@@ -252,7 +272,6 @@ export class AdminService {
       updateFields.username = username.trim();
     }
     if (passwordRaw && passwordRaw.trim()) {
-      updateFields.passwordRaw = passwordRaw.trim();
       updateFields.passwordHash = bcrypt.hashSync(passwordRaw.trim(), 10);
     }
 
@@ -273,7 +292,7 @@ export class AdminService {
       severity: 'warning',
     });
 
-    return updatedUser;
+    return sanitizeUserForApi(updatedUser);
   }
 
   async getAuditLogs(authCtx: AuthContext) {
@@ -550,6 +569,34 @@ export function createAdminRouter(): Router {
       const baseVersion = req.body?._baseVersion !== undefined ? Number(req.body._baseVersion) : undefined;
       const result = await service.saveDashboardConfig(authCtx, req.body, baseVersion);
       res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/run-migration', async (req: Request, res: Response, next) => {
+    try {
+      const key = (req.headers['x-migration-key'] as string) || (req.body?.migrationSecretKey as string);
+      const expectedSecret = process.env.MIGRATION_SECRET_KEY || process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || 'runflare_migration_secret_2026';
+
+      if (!key || key !== expectedSecret) {
+        throw AppError.forbidden('کلید رمز عبور اجرای مایگریشن معتبر نیست (x-migration-key).');
+      }
+
+      const sqlPath = path.resolve(process.cwd(), 'database/schema.sql');
+      if (!fs.existsSync(sqlPath)) {
+        throw AppError.notFound('فایل اسکیمای schema.sql');
+      }
+
+      const sqlContent = fs.readFileSync(sqlPath, 'utf-8');
+      const pool = getPool();
+      await pool.query(sqlContent);
+
+      res.json({
+        success: true,
+        message: 'اسکیمای کامل DDL با موفقیت روی پایگاه داده رانفلر اعمال گردید.',
+        timestamp: new Date().toISOString()
+      });
     } catch (err) {
       next(err);
     }

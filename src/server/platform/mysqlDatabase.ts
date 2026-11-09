@@ -13,12 +13,12 @@ import { AppError } from './errors';
  */
 
 export const dbConfig = {
-  host: process.env.DB_HOST || process.env.MYSQL_HOST || 'ghzadatabase-xmm-service',
+  host: process.env.DB_HOST || process.env.MYSQL_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT || process.env.MYSQL_PORT) || 3306,
   user: process.env.DB_USER || process.env.MYSQL_USER || 'root',
-  password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || 'yeNn1HZfLMrkUa52lwHm',
+  password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '',
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE || 'ghzadatafgd_db',
-  connectionLimit: 10,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
   waitForConnections: true,
   queueLimit: 100,
   connectTimeout: 5000,
@@ -28,6 +28,18 @@ export const dbConfig = {
   charset: 'utf8mb4',
   decimalNumbers: false, // Read DECIMAL as string to prevent float bugs
 };
+
+export function validateDatabaseEnv(): void {
+  const missing: string[] = [];
+  if (!process.env.DB_HOST && !process.env.MYSQL_HOST) missing.push('DB_HOST (یا MYSQL_HOST)');
+  if (!process.env.DB_USER && !process.env.MYSQL_USER) missing.push('DB_USER (یا MYSQL_USER)');
+  if (!process.env.DB_PASSWORD && !process.env.MYSQL_PASSWORD) missing.push('DB_PASSWORD (یا MYSQL_PASSWORD)');
+  if (!process.env.DB_NAME && !process.env.MYSQL_DATABASE) missing.push('DB_NAME (یا MYSQL_DATABASE)');
+
+  if (missing.length > 0) {
+    logger.warn(`⚠️ هشدار متغیرهای محیطی دیتابیس: متغیرهای [${missing.join(', ')}] ست نشده‌اند. لطفاً متغیرهای اتصال به MySQL را در پنل رانفلر تنظیم فرمایید.`);
+  }
+}
 
 let pool: Pool | null = null;
 let isConnected = false;
@@ -45,6 +57,12 @@ export function getPool(): Pool {
 
 export function isDatabaseConnected(): boolean {
   return isConnected;
+}
+
+export function ensureDatabaseConnection(): void {
+  if (!isConnected) {
+    throw AppError.serviceUnavailable('امکان برقراری اتصال با سرور پایگاه داده MySQL وجود ندارد.');
+  }
 }
 
 /**
@@ -118,6 +136,38 @@ export async function initMySQLTables(): Promise<void> {
         phone VARCHAR(32) NOT NULL,
         role VARCHAR(32) NOT NULL DEFAULT 'alumni',
         role_title VARCHAR(128) NOT NULL,
+        site_title VARCHAR(128) NULL,
+        profile_picture_url VARCHAR(512) NULL,
+        personnel_id VARCHAR(32) NULL,
+        judicial_grade INT DEFAULT 0,
+        court_branch VARCHAR(128) NULL,
+        province VARCHAR(64) NULL,
+        email VARCHAR(128) NULL,
+        academic_degree VARCHAR(128) NULL,
+        thesis_title VARCHAR(255) NULL,
+        supervisor_professor VARCHAR(128) NULL,
+        birth_date VARCHAR(32) NULL,
+        father_name VARCHAR(64) NULL,
+        id_number VARCHAR(32) NULL,
+        marital_status VARCHAR(32) NULL,
+        children_count INT DEFAULT 0,
+        residential_address VARCHAR(255) NULL,
+        seminary_level VARCHAR(128) NULL,
+        seminary_school VARCHAR(128) NULL,
+        university_degree VARCHAR(128) NULL,
+        university_name VARCHAR(128) NULL,
+        field_of_study VARCHAR(128) NULL,
+        academic_honors VARCHAR(255) NULL,
+        association_membership_date VARCHAR(32) NULL,
+        association_responsibility VARCHAR(128) NULL,
+        association_contributions JSON NULL,
+        membership_status VARCHAR(32) NULL,
+        internal_notes TEXT NULL,
+        employment_status VARCHAR(64) NULL,
+        current_judicial_post VARCHAR(128) NULL,
+        service_years INT DEFAULT 0,
+        judicial_specialty VARCHAR(128) NULL,
+        permissions JSON NULL,
         organization VARCHAR(128) NOT NULL DEFAULT 'قوه قضائیه',
         graduation_year VARCHAR(32) NOT NULL DEFAULT '۱۴۰۲',
         avatar_text VARCHAR(16),
@@ -138,6 +188,53 @@ export async function initMySQLTables(): Promise<void> {
         INDEX idx_users_role (role)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Migration helper: dynamically ensure missing columns exist on table users
+    const alterCols = [
+      `ADD COLUMN personnel_id VARCHAR(32) NULL`,
+      `ADD COLUMN site_title VARCHAR(128) NULL`,
+      `ADD COLUMN profile_picture_url VARCHAR(512) NULL`,
+      `ADD COLUMN judicial_grade INT DEFAULT 0`,
+      `ADD COLUMN court_branch VARCHAR(128) NULL`,
+      `ADD COLUMN province VARCHAR(64) NULL`,
+      `ADD COLUMN email VARCHAR(128) NULL`,
+      `ADD COLUMN academic_degree VARCHAR(128) NULL`,
+      `ADD COLUMN thesis_title VARCHAR(255) NULL`,
+      `ADD COLUMN supervisor_professor VARCHAR(128) NULL`,
+      `ADD COLUMN birth_date VARCHAR(32) NULL`,
+      `ADD COLUMN father_name VARCHAR(64) NULL`,
+      `ADD COLUMN id_number VARCHAR(32) NULL`,
+      `ADD COLUMN marital_status VARCHAR(32) NULL`,
+      `ADD COLUMN children_count INT DEFAULT 0`,
+      `ADD COLUMN residential_address VARCHAR(255) NULL`,
+      `ADD COLUMN seminary_level VARCHAR(128) NULL`,
+      `ADD COLUMN seminary_school VARCHAR(128) NULL`,
+      `ADD COLUMN university_degree VARCHAR(128) NULL`,
+      `ADD COLUMN university_name VARCHAR(128) NULL`,
+      `ADD COLUMN field_of_study VARCHAR(128) NULL`,
+      `ADD COLUMN academic_honors VARCHAR(255) NULL`,
+      `ADD COLUMN association_membership_date VARCHAR(32) NULL`,
+      `ADD COLUMN association_responsibility VARCHAR(128) NULL`,
+      `ADD COLUMN association_contributions JSON NULL`,
+      `ADD COLUMN membership_status VARCHAR(32) NULL`,
+      `ADD COLUMN internal_notes TEXT NULL`,
+      `ADD COLUMN employment_status VARCHAR(64) NULL`,
+      `ADD COLUMN current_judicial_post VARCHAR(128) NULL`,
+      `ADD COLUMN service_years INT DEFAULT 0`,
+      `ADD COLUMN judicial_specialty VARCHAR(128) NULL`,
+      `ADD COLUMN permissions JSON NULL`,
+    ];
+
+    for (const colClause of alterCols) {
+      try {
+        await p.query(`ALTER TABLE users ${colClause};`);
+      } catch (err: any) {
+        // Ignore ER_DUP_FIELDNAME (1060) if column already exists
+        if (err.errno !== 1060 && !err.message?.includes('Duplicate column')) {
+          logger.warn(`MySQL column migration note: ${err.message}`);
+        }
+      }
+    }
 
     await p.query(`
       CREATE TABLE IF NOT EXISTS user_sessions (

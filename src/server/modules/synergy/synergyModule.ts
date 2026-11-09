@@ -20,6 +20,37 @@ synergyRouter.get('/', (_req: Request, res: Response) => {
   res.json(sanitized);
 });
 
+synergyRouter.get('/:id', (req: Request, res: Response) => {
+  const item = db.synergyPosts.find(p => p.id === req.params.id);
+  if (!item) throw AppError.notFound('پست هم‌افزایی');
+  const { authorId: _strip, ...publicFields } = item as any;
+  res.json(publicFields);
+});
+
+synergyRouter.put('/:id', async (req: Request, res: Response) => {
+  const { title, content, provinceOrCity, categoryTitle, expectedVersion, _baseVersion } = req.body;
+
+  let updatedRecord: any;
+
+  await db.withTx(async tx => {
+    const existing = tx.synergyPosts.find(p => p.id === req.params.id);
+    if (!existing) throw AppError.notFound('پست هم‌افزایی');
+
+    const targetVersion = typeof expectedVersion === 'number' ? expectedVersion : typeof _baseVersion === 'number' ? _baseVersion : existing.version;
+
+    updatedRecord = tx.updateVersioned(tx.synergyPosts, existing.id, targetVersion, current => ({
+      ...current,
+      title: title !== undefined ? title.trim() : current.title,
+      content: content !== undefined ? content.trim() : current.content,
+      provinceOrCity: provinceOrCity !== undefined ? provinceOrCity.trim() : current.provinceOrCity,
+      categoryTitle: categoryTitle !== undefined ? categoryTitle.trim() : current.categoryTitle,
+    }));
+  });
+
+  const { authorId: _strip, ...publicFields } = updatedRecord as any;
+  res.json(publicFields);
+});
+
 // 2. Get "My Posts" - queried strictly through WallOwnershipRepository without joining public tables
 synergyRouter.get('/my-posts', async (req: Request, res: Response) => {
   const currentUser = getCurrentUser(req);

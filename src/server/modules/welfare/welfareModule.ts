@@ -26,6 +26,36 @@ welfareRouter.get('/requests', (req: Request, res: Response) => {
   res.json(requests);
 });
 
+welfareRouter.get('/requests/:id', (req: Request, res: Response) => {
+  const item = db.welfareRequests.find(r => r.id === req.params.id);
+  if (!item) throw AppError.notFound('درخواست تسهیلات');
+  res.json(item);
+});
+
+welfareRouter.put('/requests/:id', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  const { title, requestedValue, description, typeTitle, expectedVersion, _baseVersion } = req.body;
+
+  let updatedRecord: any;
+
+  await db.withTx(async tx => {
+    const existing = tx.welfareRequests.find(r => r.id === req.params.id);
+    if (!existing) throw AppError.notFound('درخواست تسهیلات');
+
+    const targetVersion = typeof expectedVersion === 'number' ? expectedVersion : typeof _baseVersion === 'number' ? _baseVersion : existing.version;
+
+    updatedRecord = tx.updateVersioned(tx.welfareRequests, existing.id, targetVersion, current => ({
+      ...current,
+      title: title !== undefined ? title.trim() : current.title,
+      requestedValue: requestedValue !== undefined ? requestedValue.trim() : current.requestedValue,
+      description: description !== undefined ? description.trim() : current.description,
+      typeTitle: typeTitle !== undefined ? typeTitle.trim() : current.typeTitle,
+    }));
+  });
+
+  res.json(updatedRecord);
+});
+
 welfareRouter.get('/consumables', (_req: Request, res: Response) => {
   res.json(db.consumables);
 });

@@ -76,6 +76,10 @@ export class AppError extends Error {
     });
   }
 
+  static serviceUnavailable(detail = 'امکان برقراری اتصال با سرور پایگاه داده وجود ندارد. لطفاً متغیرهای محیطی یا وضعیت دیتابیس MySQL را بررسی فرمایید.', code = 'DATABASE_CONNECTION_ERROR'): AppError {
+    return new AppError({ status: 503, code, title: 'خطای اتصال به پایگاه داده', detail });
+  }
+
   static internal(detail = 'خطای غیرمنتظره در سرور رخ داده است.', code = 'INTERNAL_SERVER_ERROR'): AppError {
     return new AppError({ status: 500, code, title: 'خطای داخلی سرور', detail });
   }

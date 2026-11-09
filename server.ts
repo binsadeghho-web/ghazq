@@ -15,7 +15,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db, generateUUIDv7 } from './src/server/platform/database';
-import { checkDatabaseConnection, isDatabaseConnected } from './src/server/platform/mysqlDatabase';
+import { checkDatabaseConnection, isDatabaseConnected, validateDatabaseEnv } from './src/server/platform/mysqlDatabase';
 import { logger } from './src/server/platform/logger';
 import { idempotencyMiddleware } from './src/server/platform/idempotency';
 import { rateLimitMiddleware } from './src/server/platform/rateLimiter';
@@ -31,6 +31,8 @@ async function bootstrap() {
   const app = express();
   const port = process.env.PORT || 3000;
   const isDev = process.env.NODE_ENV !== 'production';
+
+  validateDatabaseEnv();
 
   // Item 1: Database DDL is executed ONLY via standalone 'npm run db:init', NOT on server startup.
   // Server only probes readiness for graceful health checks.

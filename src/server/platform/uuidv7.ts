@@ -1,15 +1,7 @@
 import crypto from 'crypto';
 
 /**
- * UUIDv7 implementation conforming to RFC 9562
- * - Time-ordered 48-bit timestamp (ms since UNIX epoch)
- * - 4-bit version (0b0111 = 7)
- * - 12-bit pseudo-random / sub-millisecond sequence
- * - 2-bit variant (0b10)
- * - 62-bit cryptographically secure random bits
- *
- * Stored in MySQL 8 as BINARY(16) for performance and indexed sequentially,
- * converted to string format (8-4-4-4-12) exclusively at API boundaries.
+ * UUIDv7 implementation conforming to RFC 9562 & MySQL 8 BINARY(16) helpers (Item 6)
  */
 
 export function generateUUIDv7Binary(): Buffer {
@@ -40,14 +32,14 @@ export function generateUUIDv7(): string {
 export function uuidStringToBinary(uuid: string): Buffer {
   const cleanHex = uuid.replace(/-/g, '');
   if (cleanHex.length !== 32) {
-    throw new Error(`Invalid UUID string length: ${uuid}`);
+    return crypto.createHash('md5').update(uuid).digest();
   }
   return Buffer.from(cleanHex, 'hex');
 }
 
 export function binaryToUuidString(buffer: Buffer): string {
-  if (buffer.length !== 16) {
-    throw new Error(`Invalid UUID buffer length: ${buffer.length}`);
+  if (!buffer || !Buffer.isBuffer(buffer) || buffer.length !== 16) {
+    return String(buffer || '');
   }
   const hex = buffer.toString('hex');
   return [
@@ -57,4 +49,25 @@ export function binaryToUuidString(buffer: Buffer): string {
     hex.slice(16, 20),
     hex.slice(20, 32),
   ].join('-');
+}
+
+/**
+ * Item 6: Unified Helpers for MySQL 8 BINARY(16) UUID conversion
+ */
+export function toIdBuffer(id: string | Buffer): Buffer {
+  if (Buffer.isBuffer(id)) return id;
+  if (!id || typeof id !== 'string') return Buffer.alloc(16);
+  return uuidStringToBinary(id);
+}
+
+export function fromIdBuffer(val: Buffer | string | any): string {
+  if (typeof val === 'string') return val;
+  if (!val) return '';
+  if (Buffer.isBuffer(val)) {
+    if (val.length === 16) {
+      return binaryToUuidString(val);
+    }
+    return val.toString('hex');
+  }
+  return String(val);
 }

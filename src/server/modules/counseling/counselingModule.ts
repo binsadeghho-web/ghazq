@@ -3,7 +3,7 @@ import { db, generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
-import { AuthContext } from '../../platform/authorization';
+import { AuthContext, AuthorizationPolicy } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { Consultant, CounselingRequest, CounselingCategory } from '../../../types';
 
@@ -18,6 +18,48 @@ export class CounselingService {
       return list.filter(r => r.applicantId === authCtx.userId);
     }
     return list;
+  }
+
+  async getRequestById(authCtx: AuthContext, id: string): Promise<(CounselingRequest & { version: number }) | undefined> {
+    const item = db.counselingRequests.find(r => r.id === id);
+    if (item && authCtx.role === 'alumni') {
+      AuthorizationPolicy.assertOwnership(authCtx, item.applicantId, 'درخواست مشاوره');
+    }
+    return item;
+  }
+
+  async updateRequest(
+    authCtx: AuthContext,
+    id: string,
+    updates: {
+      categoryTitle?: string;
+      description?: string;
+      meetingMode?: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی';
+      preferredConsultantName?: string;
+    },
+    expectedVersion = 1
+  ): Promise<CounselingRequest & { version: number }> {
+    const existing = db.counselingRequests.find(r => r.id === id);
+    if (!existing) throw AppError.notFound(`درخواست مشاوره با شناسه ${id}`);
+
+    if (authCtx.role === 'alumni') {
+      AuthorizationPolicy.assertOwnership(authCtx, existing.applicantId, 'درخواست مشاوره');
+    }
+
+    const updated = db.updateWithOptimisticLock(
+      db.counselingRequests,
+      id,
+      expectedVersion,
+      current => ({
+        ...current,
+        categoryTitle: updates.categoryTitle !== undefined ? updates.categoryTitle.trim() : current.categoryTitle,
+        description: updates.description !== undefined ? updates.description.trim() : current.description,
+        meetingMode: updates.meetingMode !== undefined ? updates.meetingMode : current.meetingMode,
+        preferredConsultantName: updates.preferredConsultantName !== undefined ? updates.preferredConsultantName.trim() : current.preferredConsultantName,
+      })
+    );
+
+    return updated;
   }
 
   async book(
@@ -95,12 +137,36 @@ export function createCounselingRouter(): Router {
     }
   });
 
+  router.get('/requests/:id', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const item = await service.getRequestById(authCtx, req.params.id);
+      if (!item) throw AppError.notFound('درخواست مشاوره');
+      res.json(item);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post('/requests', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const item = await service.book(authCtx, req.body);
       res.status(201).json(item);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/requests/:id', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const expectedVersion = Number(req.body.expectedVersion || req.body._baseVersion || 1);
+      const item = await service.updateRequest(authCtx, req.params.id, req.body, expectedVersion);
+      res.json(item);
     } catch (err) {
       next(err);
     }

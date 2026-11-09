@@ -246,6 +246,39 @@ export class CartableService {
 
     return updated;
   }
+
+  async updateRequestFields(
+    authCtx: AuthContext,
+    requestId: string,
+    updates: {
+      title?: string;
+      description?: string;
+      priority?: RequestPriority;
+      categoryTitle?: string;
+    },
+    expectedVersion = 1
+  ): Promise<CartableRequest & { version: number }> {
+    const request = await this.repo.findById(requestId);
+    if (!request) throw AppError.notFound('درخواست کارتابل');
+
+    AuthorizationPolicy.assertOwnership(authCtx, request.applicantId, 'درخواست کارتابل');
+
+    const updated = db.updateWithOptimisticLock(
+      db.cartableRequests,
+      requestId,
+      expectedVersion,
+      current => ({
+        ...current,
+        title: updates.title !== undefined ? updates.title.trim() : current.title,
+        description: updates.description !== undefined ? updates.description.trim() : current.description,
+        priority: updates.priority !== undefined ? updates.priority : current.priority,
+        categoryTitle: updates.categoryTitle !== undefined ? updates.categoryTitle.trim() : current.categoryTitle,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+
+    return updated;
+  }
 }
 
 import { getCurrentUser } from '../../platform/sessionAuth';
@@ -316,6 +349,18 @@ export function createCartableRouter(): Router {
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const expectedVersion = Number(req.body.expectedVersion || 1);
       const item = await service.updateStatus(authCtx, req.params.id, req.body.status, expectedVersion);
+      res.json(item);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/:id', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const expectedVersion = Number(req.body.expectedVersion || 1);
+      const item = await service.updateRequestFields(authCtx, req.params.id, req.body, expectedVersion);
       res.json(item);
     } catch (err) {
       next(err);

@@ -4,13 +4,12 @@ import { AppError } from '../../platform/errors';
 import { idempotencyMiddleware } from '../../platform/idempotency';
 import { AuthorizationPolicy } from '../../platform/authorization';
 import { User, ResearchMentorship } from '../../../types';
+import { getCurrentUser } from '../../platform/sessionAuth';
 
 export const researchRouter = Router();
 export function createResearchRouter(): Router {
   return researchRouter;
 }
-
-import { getCurrentUser } from '../../platform/sessionAuth';
 
 function getAuthenticatedUser(req: Request): User {
   const u = getCurrentUser(req);
@@ -28,6 +27,15 @@ researchRouter.get('/', (req: Request, res: Response) => {
   }
 
   res.json(mentorships);
+});
+
+researchRouter.get('/:id', (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  const existing = db.researchMentorships.find(m => m.id === req.params.id);
+  if (!existing) throw AppError.notFound('طرح پژوهشی');
+
+  AuthorizationPolicy.assertCanAccessResource(currentUser, { applicantId: existing.applicantId }, 'طرح پژوهشی');
+  res.json(existing);
 });
 
 researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Response) => {
@@ -84,6 +92,32 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
   });
 
   res.status(201).json(newMentorship);
+});
+
+researchRouter.put('/:id', async (req: Request, res: Response) => {
+  const currentUser = getAuthenticatedUser(req);
+  const { thesisTitle, field, assignedSupervisor, stageTitle, expectedVersion, _baseVersion } = req.body;
+
+  let updatedRecord: any;
+
+  await db.withTx(async tx => {
+    const existing = tx.researchMentorships.find(m => m.id === req.params.id);
+    if (!existing) throw AppError.notFound('طرح پژوهشی');
+
+    AuthorizationPolicy.assertCanAccessResource(currentUser, { applicantId: existing.applicantId }, 'طرح پژوهشی');
+
+    const targetVersion = typeof expectedVersion === 'number' ? expectedVersion : typeof _baseVersion === 'number' ? _baseVersion : existing.version;
+
+    updatedRecord = tx.updateVersioned(tx.researchMentorships, existing.id, targetVersion, current => ({
+      ...current,
+      thesisTitle: thesisTitle !== undefined ? thesisTitle.trim() : current.thesisTitle,
+      field: field !== undefined ? field.trim() : current.field,
+      assignedSupervisor: assignedSupervisor !== undefined ? assignedSupervisor.trim() : current.assignedSupervisor,
+      stageTitle: stageTitle !== undefined ? stageTitle.trim() : current.stageTitle,
+    }));
+  });
+
+  res.json(updatedRecord);
 });
 
 researchRouter.patch('/:id/progress', async (req: Request, res: Response) => {

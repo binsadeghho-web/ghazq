@@ -10,7 +10,7 @@ import { outbox } from '../../platform/outbox';
 import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { storageConfig } from '../../platform/storage';
-import { isDatabaseConnected, getPool } from '../../platform/mysqlDatabase';
+import { isDatabaseConnected, getPool, selectWithTimeout } from '../../platform/mysqlDatabase';
 import { ErrorLogItem, SecurityAlertItem, BlockedIpItem, OpsMaintenanceConfig } from '../../../types';
 import { metricsStore } from '../../routes';
 
@@ -182,8 +182,8 @@ export function recordRuntimeError(level: 'error' | 'critical' | 'warning', sour
 export function createOpsRouter(): Router {
   const router = Router();
 
-  // 1. System Health & OS Metrics (Real CPU, RAM, Uptime, MySQL Pool)
-  router.get('/health', (req: Request, res: Response) => {
+  // 1. System Health & OS Metrics (Real SELECT VERSION(), DATABASE(), CURRENT_USER(), NOW(3) from MySQL)
+  router.get('/health', async (_req: Request, res: Response) => {
     const memory = process.memoryUsage();
     const cpus = os.cpus();
     const loadAvg = os.loadavg();
@@ -192,44 +192,72 @@ export function createOpsRouter(): Router {
     const days = Math.floor(uptimeSec / (3600 * 24));
     const hours = Math.floor((uptimeSec % (3600 * 24)) / 3600);
     const minutes = Math.floor((uptimeSec % 3600) / 60);
-
     const uptimeFormatted = `${days > 0 ? `${days} روز و ` : ''}${hours} ساعت و ${minutes} دقیقه`;
 
-    res.json({
-      success: true,
-      cpu: {
-        cores: cpus.length,
-        model: cpus[0]?.model || 'Cloud vCPU',
-        loadAvg1m: Number(loadAvg[0].toFixed(2)),
-        loadAvg5m: Number(loadAvg[1].toFixed(2)),
-        usagePercent: Math.min(Math.round((loadAvg[0] / Math.max(cpus.length, 1)) * 100), 100),
-      },
-      memory: {
-        rssMb: Math.round(memory.rss / (1024 * 1024)),
-        heapUsedMb: Math.round(memory.heapUsed / (1024 * 1024)),
-        heapTotalMb: Math.round(memory.heapTotal / (1024 * 1024)),
-        osFreeMb: Math.round(os.freemem() / (1024 * 1024)),
-        osTotalMb: Math.round(os.totalmem() / (1024 * 1024)),
-      },
-      uptime: {
-        seconds: uptimeSec,
-        formatted: uptimeFormatted,
-      },
-      database: {
-        connected: isDatabaseConnected(),
-        type: 'MySQL 8 (InnoDB)',
-        activePoolConnections: 3,
-        maxConnections: 10,
-      },
-      metrics: {
-        totalRequests: metricsStore.totalRequests,
-        successRate: metricsStore.totalRequests > 0
-          ? ((metricsStore.successfulRequests / metricsStore.totalRequests) * 100)
-          : 100,
-        p50Latency: metricsStore.latencies.length > 0 ? metricsStore.latencies[Math.floor(metricsStore.latencies.length * 0.5)] : 8,
-        p95Latency: metricsStore.latencies.length > 0 ? metricsStore.latencies[Math.floor(metricsStore.latencies.length * 0.95)] : 24,
-      }
-    });
+    try {
+      const rows = await selectWithTimeout<any>(
+        'SELECT VERSION() as version, DATABASE() as database_name, CURRENT_USER() as db_user, NOW(3) as db_time',
+        [],
+        3000
+      );
+      const dbInfo = rows[0] || {};
+
+      return res.json({
+        status: 'UP',
+        success: true,
+        database: {
+          connected: true,
+          version: dbInfo.version,
+          databaseName: dbInfo.database_name,
+          dbUser: dbInfo.db_user,
+          serverTime: dbInfo.db_time,
+          engine: 'MySQL 8 (InnoDB)',
+        },
+        cpu: {
+          cores: cpus.length,
+          model: cpus[0]?.model || 'Cloud vCPU',
+          loadAvg1m: Number(loadAvg[0].toFixed(2)),
+          loadAvg5m: Number(loadAvg[1].toFixed(2)),
+          usagePercent: Math.min(Math.round((loadAvg[0] / Math.max(cpus.length, 1)) * 100), 100),
+        },
+        memory: {
+          rssMb: Math.round(memory.rss / (1024 * 1024)),
+          heapUsedMb: Math.round(memory.heapUsed / (1024 * 1024)),
+          heapTotalMb: Math.round(memory.heapTotal / (1024 * 1024)),
+          osFreeMb: Math.round(os.freemem() / (1024 * 1024)),
+          osTotalMb: Math.round(os.totalmem() / (1024 * 1024)),
+        },
+        uptime: {
+          seconds: uptimeSec,
+          formatted: uptimeFormatted,
+        },
+      });
+    } catch (err: any) {
+      return res.status(503).json({
+        status: 'DOWN',
+        type: 'https://api.alumni-judiciary.ir/errors/database-connection-failed',
+        title: 'خطای اتصال به پایگاه داده',
+        status_code: 503,
+        detail: `امکان اتصال به دیتابیس MySQL وجود ندارد: ${err?.message || err}`,
+        code: err?.code || err?.errno || 'DATABASE_CONNECTION_ERROR',
+        database: {
+          connected: false,
+          error: err?.message || String(err),
+          errorCode: err?.code || err?.errno,
+        },
+        cpu: {
+          cores: cpus.length,
+          model: cpus[0]?.model || 'Cloud vCPU',
+        },
+        memory: {
+          rssMb: Math.round(memory.rss / (1024 * 1024)),
+        },
+        uptime: {
+          seconds: uptimeSec,
+          formatted: uptimeFormatted,
+        },
+      });
+    }
   });
 
   // 2. Active Sessions & Token Revocation
