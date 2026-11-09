@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Sliders,
   Palette,
-  Terminal
+  Terminal,
+  Eye
 } from 'lucide-react';
 
 export const AdminControlCenter: React.FC = () => {
@@ -46,6 +47,7 @@ export const AdminControlCenter: React.FC = () => {
     resetAllDataToDefault,
     verifyAuditChain,
     refreshMetrics,
+    switchUserRole,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'ops' | 'diagnostics' | 'observability' | 'users' | 'security' | 'audit'>('ops');
@@ -119,6 +121,15 @@ export const AdminControlCenter: React.FC = () => {
             <Radio className={`w-3.5 h-3.5 ${isRealtimeConnected ? 'text-emerald-500 animate-pulse' : 'text-slate-400'}`} />
             <span>رویدادهای SSE: {isRealtimeConnected ? 'برخط' : 'فعال'}</span>
           </div>
+
+          <button
+            onClick={() => switchUserRole('alumni')}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+            title="مشاهده دقیق سامانه از دیدگاه دانش‌آموخته و پنهان‌سازی ابزارهای مدیریتی"
+          >
+            <Eye className="w-4 h-4 text-indigo-200" />
+            <span>مشاهده سامانه از دید دانش‌آموخته</span>
+          </button>
 
           <button
             onClick={() => setIsThemeCustomizerOpen(true)}

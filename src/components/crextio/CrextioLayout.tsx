@@ -445,6 +445,20 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           onClose={() => setIsCustomizerOpen(false)}
         />
       </Suspense>
+
+      {/* Floating Alumni Simulation Mode Bar */}
+      {currentUser?.role === 'alumni' && (
+        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2.5 bg-slate-950/95 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl border border-indigo-500/40 shadow-2xl">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-bold text-slate-200">نمای شبیه‌سازی دانش‌آموخته (ابزارهای ادمین پنهان شدند)</span>
+          <button
+            onClick={() => switchUserRole('admin')}
+            className="mr-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            بازگشت به پنل مدیریت
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,36 +1,36 @@
-# نقشه راه ریفکتور معماری و عملکرد سامانه تخصصی فقه و قضا
+# Implementation Plan: System Architecture Refactoring & Alumni Simulation
 
-## اهداف و اصول راهبردی
-- بهینه‌سازی دقیق برای کاربران با اینترنت کم‌سرعت و محدودیت پهنای باند
-- شکستن فایل‌های متراکم (Monolithic) به اجزای اتمیک و هماهنگ، بدون تغییر در منطق تجاری، استایل‌ها، و تایپ‌ها
-- جداسازی ماژول‌ها و اعمال Code Splitting با بارگذاری تنبل (Lazy Loading) و فال‌بک بومی
-- استفاده از الگوی Facade در لایه State Management جهت پیشگیری از Re-render سراسری و ایجاد پایداری با `useMemo`
-- حفظ سازگاری ۱۰۰٪ با دیپلوی‌های ابری بدون نیاز به هارد رفرش کاربران (Zero Breaking Changes)
+## Phase 4: AppContext Facade Pattern (Completed)
+- **Status**: Completed & Verified.
+- Created 9 specialized domain contexts in `src/context/`:
+  1. `ThemeContext.tsx`
+  2. `SecurityAndOpsContext.tsx`
+  3. `AuthContext.tsx`
+  4. `CartableContext.tsx`
+  5. `CoursesContext.tsx`
+  6. `ProductsContext.tsx`
+  7. `CounselingContext.tsx`
+  8. `WelfareContext.tsx`
+  9. `ResearchAndRulingsContext.tsx`
+- Refactored `src/context/AppContext.tsx` into a clean Facade Provider with nested domain providers and `useMemo` stabilization.
+- Verified across 60 consumer components with 0 errors.
 
----
+## Phase 5: Theme Customizer Decomposition (Completed)
+- **Status**: Completed & Verified.
+- Refactored `src/components/admin/ThemeCustomizerModal.tsx` (2,862 lines) into 9 modular subcomponents under `src/components/admin/theme_customizer_subcomponents/`:
+  1. `CustomizerTabBar.tsx`: 15-tab navigation bar.
+  2. `CustomizerModulesTab.tsx`: Section re-ordering and module toggles.
+  3. `CustomizerRulingsTab.tsx`: Rulings showcase and custom list management.
+  4. `CustomizerResearchTab.tsx`: Research promo showcase and 4-card grant config.
+  5. `CustomizerShowcaseTabs.tsx`: Courses, counseling, welfare, books, and multimedia showcase editors.
+  6. `CustomizerHeroStatsTab.tsx`: Hero banner and 4-stat VIP counters editor.
+  7. `CustomizerFontsTab.tsx`: Section-by-section font size scaler.
+  8. `CustomizerBentoCardsTab.tsx`: 9 Bento Grid cards ordering, size, and content editor.
+  9. `CustomizerStylingModesTab.tsx`: Canvas theme palettes, course/publication layout modes, and titles.
+- Rewrote `ThemeCustomizerModal.tsx` into a clean 260-line orchestrator.
+- **Verification**: `npx -p typescript tsc --noEmit` passed with 0 errors; `npx vite build` compiled in 1.89s with clean code-split chunk `ThemeCustomizerModal-DyKlukGh.js`.
 
-## وضعیت فازها
-
-| فاز | موضوع | وضعیت | دستاورد / نتیجه |
-| :--- | :--- | :---: | :--- |
-| **فاز ۱** | حذف وابستگی‌های CDN و فونت محلی | ✅ انجام شد | لغو کلیه فونت‌های خارجی و نصب کامل `@fontsource/vazirmatn` |
-| **فاز ۲** | بارگذاری تنبل ۱۷ کامپوننت سنگین | ✅ انجام شد | کاهش باندل اصلی از ۱,۵۶۶ کیلوبایت به ۸۶۳.۴۹ کیلوبایت |
-| **فاز ۲.۱** | پایش فونت Plus Jakarta Sans | ✅ انجام شد | بررسی صفر مورد ارجاع؛ بدون نیاز به پکیج اضافی |
-| **فاز ۳.۱** | تجزیه کامپوننت غول‌پیکر CoursesSection | ✅ انجام شد | خردسازی ۳,۲۴۶ خط به ارکستریتور ۳۱۹ خطی + ۱۲ زیرکامپوننت اتمیک |
-| **فاز ۳.۲** | تجزیه کامپوننت ProductsSection | ✅ انجام شد | خردسازی ۱,۴۶۵ خط به ارکستریتور ۱۹۸ خطی + ۸ زیرکامپوننت + کد اسپلیتینگ جدید؛ باندل اصلی: **۷۸۹.۴۶ کیلوبایت** |
-| **فاز ۴.۰** | ممیزی و شناسایی AppContext.tsx | ✅ انجام شد | استخراج ۶۰ فایل مصرف‌کننده، ۹ حوزه عملکردی و اثبات عدم استفاده از useMemo در نسخه قبلی |
-| **فاز ۴.۱** | تفکیک AppContext به کانتکست‌های مستقل با Facade | ✅ انجام شد | ساخت ۹ کانتکست اتمیک، پایدارسازی با `useMemo`، بدون هیچ شکستگی در ۶۰ فایل مصرف‌کننده |
-
----
-
-### کانتکست‌های تخصصی تفکیک‌شده در فاز ۴:
-1. `src/context/ThemeContext.tsx`: مدیریت تم روشن/تاریک و تنظیمات شخصی‌سازی پوسته‌های Crextio و Mizan
-2. `src/context/SecurityAndOpsContext.tsx`: زنجیره ممیزی (Audit Chain)، پایش امنیت، پین امنیتی، هشدارهای OPS و لاگ خطاها
-3. `src/context/AuthContext.tsx`: احراز هویت، نشست‌ها، پرونده و دسترسی کاربران
-4. `src/context/CartableContext.tsx`: کارتابل مکاتبات و تیکت‌های اداری
-5. `src/context/CoursesContext.tsx`: دوره‌های آموزشی، ثبت‌نام و مدیریت LMS
-6. `src/context/ProductsContext.tsx`: فروشگاه آثار، کتب، سفارشات و فیش‌های بانکی
-7. `src/context/CounselingContext.tsx`: کلینیک مشاوره عمومی و شغلی قضاوت
-8. `src/context/WelfareContext.tsx`: تسهیلات رفاهی، اقامتگاه‌ها، تعاونی و وام
-9. `src/context/ResearchAndRulingsContext.tsx`: پایان‌نامه‌ها، دادنامه‌های قضایی و دیوار هم‌افزایی
-10. `src/context/AppContext.tsx`: ارکستریتور Facade یکپارچه با تجمیع هوک‌ها و پایداری کامل ارجاعات
+## Admin Alumni View Simulation Feature (Completed)
+- **Status**: Completed & Verified.
+- Added button in `AdminControlCenter.tsx` header: "مشاهده سامانه از دید دانش‌آموختگان".
+- Added floating return bar in `CrextioLayout.tsx` and `MizanLayout.tsx` when simulated as alumni: "بازگشت به پنل مدیریت".
