@@ -19,11 +19,12 @@ export const dbConfig = {
   password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '',
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE || 'ghzadatafgd_db',
   connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
+  maxIdle: Number(process.env.DB_MAX_IDLE) || 10,
   waitForConnections: true,
-  queueLimit: 100,
-  connectTimeout: 5000,
+  queueLimit: 50, // Fast fail on abnormal burst to prevent runaway memory
+  connectTimeout: 3000,
   enableKeepAlive: true,
-  idleTimeout: 60000,
+  idleTimeout: 30000,
   timezone: 'Z',
   charset: 'utf8mb4',
   decimalNumbers: false, // Read DECIMAL as string to prevent float bugs

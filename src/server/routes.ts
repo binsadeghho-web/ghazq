@@ -209,10 +209,52 @@ export function createMasterRouter(): Router {
   const userSseConnections = new Map<string, Set<Response>>();
   const MAX_SSE_PER_USER = 3;
 
+  // Single-use 30-second SSE ticket store (Data Architecture Section 8.1)
+  const sseTicketStore = new Map<string, { user: any; expiresAt: number }>();
+
+  // Single-use 30-second Ticket Issuance Endpoint for SSE (Section 8.1)
+  router.post('/events/ticket', (req: Request, res: Response) => {
+    const currentUser = (req as any).user;
+    if (!currentUser || !currentUser.id) {
+      return res.status(401).json({
+        type: 'unauthorized',
+        title: 'عدم احراز هویت',
+        status: 401,
+        detail: 'دریافت بلیت اتصال بلادرنگ نیازمند نشست معتبر است.',
+        code: 'UNAUTHENTICATED'
+      });
+    }
+
+    const ticket = generateUUIDv7();
+    const expiresAt = Date.now() + 30000; // 30 seconds TTL
+    sseTicketStore.set(ticket, { user: currentUser, expiresAt });
+
+    // Evict expired tickets
+    const now = Date.now();
+    for (const [key, val] of sseTicketStore.entries()) {
+      if (val.expiresAt < now) sseTicketStore.delete(key);
+    }
+
+    res.status(200).json({
+      ticket,
+      expiresInSeconds: 30,
+      expiresAt: new Date(expiresAt).toISOString(),
+    });
+  });
+
   // Real-time Server-Sent Events (SSE) (Section 8 & Item 2, 8)
   router.get('/events', (req: Request, res: Response) => {
-    // 1. Authenticate strictly via server-verified session (No token in URL parameters, no client identity headers)
-    const currentUser = (req as any).user;
+    // 1. Authenticate strictly: via Authorization Bearer header OR single-use 30-second ticket (No permanent token in URL)
+    let currentUser = (req as any).user;
+
+    const ticketParam = req.query.ticket as string | undefined;
+    if (!currentUser && ticketParam) {
+      const ticketRecord = sseTicketStore.get(ticketParam);
+      if (ticketRecord && ticketRecord.expiresAt > Date.now()) {
+        currentUser = ticketRecord.user;
+        sseTicketStore.delete(ticketParam); // Single-use consumption
+      }
+    }
 
     if (!currentUser || !currentUser.id) {
       return res.status(401).json({

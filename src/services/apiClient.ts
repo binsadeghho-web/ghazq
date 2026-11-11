@@ -106,6 +106,18 @@ class ApiClient {
       headers.set('Authorization', `Bearer ${this.sessionToken}`);
     }
 
+    const isGet = !options.method || options.method.toUpperCase() === 'GET';
+
+    // Zero-Stale Cache Enforcement: Prevent browser/WebKit heuristic disk caching on GET requests
+    if (isGet) {
+      if (!headers.has('Cache-Control')) {
+        headers.set('Cache-Control', 'no-cache');
+      }
+      if (!headers.has('Pragma')) {
+        headers.set('Pragma', 'no-cache');
+      }
+    }
+
     // Attach Idempotency-Key for write operations (Section 6.1)
     if ((options.method === 'POST' || options.method === 'PATCH') && !headers.has('Idempotency-Key')) {
       headers.set('Idempotency-Key', generateClientUUID());
@@ -124,6 +136,7 @@ class ApiClient {
 
     try {
       let response = await fetch(endpoint, {
+        ...(isGet ? { cache: 'no-store' as RequestCache } : {}),
         ...options,
         headers,
       });
@@ -664,79 +677,108 @@ class ApiClient {
 
   /**
    * Subscribe to real-time Server-Sent Events (SSE) (Section 8)
-   * with automatic exponential backoff reconnection.
+   * conformed strictly to Data Layer Architecture v3.0:
+   * Uses fetch-based streaming with 'Authorization: Bearer <token>' header
+   * (since native browser EventSource cannot send Authorization headers),
+   * preventing token leakage in URL query parameters and access logs.
+   * Includes automatic exponential backoff with jitter and silent token refresh.
    */
   public subscribeToEvents(onEvent: (event: { type: string; data: any }) => void): () => void {
-    let eventSource: EventSource | null = null;
+    let abortController: AbortController | null = null;
     let isClosed = false;
     let retryDelay = 1000;
+    let retryTimer: any = null;
 
-    const connect = () => {
+    const connect = async () => {
       if (isClosed) return;
+      abortController = new AbortController();
 
       try {
-        eventSource = new EventSource('/api/events');
-
-        eventSource.onopen = () => {
-          retryDelay = 1000; // Reset backoff upon successful connection
+        const headers: Record<string, string> = {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
         };
-
-        eventSource.onmessage = e => {
-          try {
-            const data = JSON.parse(e.data);
-            onEvent({ type: 'message', data });
-          } catch {
-            // ignore non-json messages like heartbeats
-          }
-        };
-
-        // Listen for domain-specific events
-        const domainEvents = [
-          'cartable.request_created',
-          'cartable.message_added',
-          'cartable.status_changed',
-          'courses.enrolled',
-          'courses.created',
-          'courses.updated',
-          'products.purchased',
-          'counseling.requested',
-          'research.project_submitted',
-          'rulings.critique_added',
-          'rulings.approved',
-          'welfare.requested',
-          'welfare.order_placed',
-          'synergy.post_created',
-          'synergy.response_added',
-          'admin.dashboard_config_updated',
-          'admin.theme_updated',
-          'admin.security_config_updated',
-          'user.created',
-          'user.updated',
-        ];
-
-        for (const evt of domainEvents) {
-          eventSource.addEventListener(evt, (e: any) => {
-            try {
-              const data = JSON.parse(e.data);
-              onEvent({ type: evt, data });
-            } catch {
-              // ignore parse errors
-            }
-          });
+        if (this.sessionToken) {
+          headers['Authorization'] = `Bearer ${this.sessionToken}`;
         }
 
-        eventSource.onerror = () => {
-          eventSource?.close();
-          if (!isClosed) {
-            // Exponential backoff with jitter (Section 8.6)
-            const jitter = Math.random() * 500;
-            setTimeout(connect, retryDelay + jitter);
-            retryDelay = Math.min(retryDelay * 2, 30000);
+        const response = await fetch('/api/events', {
+          headers,
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          // If 401 Unauthorized and refresh token available, attempt silent refresh
+          if (response.status === 401 && this.refreshTokenVal) {
+            try {
+              await this.refreshToken();
+              if (!isClosed) {
+                setTimeout(connect, 500);
+                return;
+              }
+            } catch {
+              // Refresh failed, halt retry until manual login
+              return;
+            }
           }
-        };
-      } catch {
-        // Fallback retry
-        setTimeout(connect, 5000);
+          throw new Error(`SSE connection failed with HTTP status ${response.status}`);
+        }
+
+        retryDelay = 1000; // Reset backoff upon successful connection
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('Response body stream is not available');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!isClosed) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let currentEvent = 'message';
+          let currentData = '';
+          let currentId = '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed === '') {
+              // End of an event message block; dispatch if payload exists
+              if (currentData) {
+                try {
+                  const parsed = JSON.parse(currentData);
+                  onEvent({ type: currentEvent, data: parsed });
+                } catch {
+                  onEvent({ type: currentEvent, data: currentData });
+                }
+              }
+              currentEvent = 'message';
+              currentData = '';
+              currentId = '';
+            } else if (trimmed.startsWith(':')) {
+              // Heartbeat comment (: heartbeat ...), keep-alive ignored without noise
+            } else if (trimmed.startsWith('event:')) {
+              currentEvent = trimmed.slice(6).trim();
+            } else if (trimmed.startsWith('data:')) {
+              const dataVal = trimmed.slice(5).trim();
+              currentData = currentData ? currentData + '\n' + dataVal : dataVal;
+            } else if (trimmed.startsWith('id:')) {
+              currentId = trimmed.slice(3).trim();
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name === 'AbortError' || isClosed) return;
+        // Exponential backoff with jitter (Section 8.6 & 9)
+        const jitter = Math.random() * 500;
+        retryTimer = setTimeout(connect, retryDelay + jitter);
+        retryDelay = Math.min(retryDelay * 2, 30000);
       }
     };
 
@@ -744,7 +786,10 @@ class ApiClient {
 
     return () => {
       isClosed = true;
-      eventSource?.close();
+      if (retryTimer) clearTimeout(retryTimer);
+      if (abortController) {
+        try { abortController.abort(); } catch {}
+      }
     };
   }
 }

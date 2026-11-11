@@ -46,7 +46,7 @@ async function bootstrap() {
   // Item 9 & 11: Persian / Arabic character & digit normalization (skipping sensitive keys)
   app.use(persianNormalizerMiddleware);
 
-  // Cache-Busting headers for SPA entrypoints & APIs to ensure immediate updates without hard refresh
+  // Cache-Busting headers for SPA entrypoints & APIs to ensure immediate updates without hard refresh (Section 7 & Zero-Stale Cache)
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (
       req.path === '/' ||
@@ -54,9 +54,10 @@ async function bootstrap() {
       req.path.endsWith('.html') ||
       req.path.startsWith('/api')
     ) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+      res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate, max-age=0');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store'); // Defeats Edge CDN & Cloudflare proxy caching
     }
     next();
   });

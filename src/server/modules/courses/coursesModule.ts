@@ -486,13 +486,28 @@ export class CoursesService {
       severity: 'info',
     });
 
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+    const finalCourse = mapCourseRow(updatedRows[0]);
+
     outbox.enqueue('courses.updated', {
       courseId,
       title,
+      version: finalCourse.version,
+      updates: {
+        title,
+        instructor,
+        hours,
+        capacity,
+        price,
+        startDate,
+        status,
+        version: finalCourse.version,
+      },
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
     });
 
-    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
-    return mapCourseRow(updatedRows[0]);
+    return finalCourse;
   }
 
   async softDeleteCourse(
