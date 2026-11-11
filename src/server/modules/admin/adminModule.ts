@@ -405,6 +405,11 @@ export class AdminService {
       lastModifiedBy: authCtx.fullName,
       config,
     });
+    outbox.enqueue('admin.theme_updated', {
+      version: newVersion,
+      lastModifiedBy: authCtx.fullName,
+      config,
+    });
 
     auditChain.appendEntry({
       eventType: 'SYSTEM_CONFIG_UPDATED',

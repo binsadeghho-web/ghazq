@@ -282,14 +282,28 @@ export function createMasterRouter(): Router {
         }
       }
 
-      // CRITICAL (Item 2): Emit ONLY short invalidation signal (type, resourceId), NEVER the payload content
-      const signal = {
+      // Delta-Payload Construction for Real-Time Direct State Patching
+      const resourceId = payload.id || payload.requestId || payload.courseId || payload.productId || payload.userId || payload.orderId || null;
+      const version = payload.version || payload.newVersion || 1;
+      const actor = (payload.actorId || payload.actor)
+        ? { id: payload.actorId || payload.actor?.id, name: payload.actorName || payload.actor?.name }
+        : undefined;
+
+      const updates = payload.updates || payload.config || payload;
+
+      const deltaPayload = {
+        id: msg.id,
         type: msg.topic,
-        resourceId: payload.id || payload.requestId || payload.courseId || null,
-        timestamp: Date.now()
+        data: {
+          resourceId,
+          version,
+          updates,
+          actor,
+        },
+        timestamp: Date.now(),
       };
 
-      res.write(`id: ${msg.id}\nevent: ${msg.topic}\ndata: ${JSON.stringify(signal)}\n\n`);
+      res.write(`id: ${msg.id}\nevent: ${msg.topic}\ndata: ${JSON.stringify(deltaPayload)}\n\n`);
     });
 
     // Heartbeat every 15 seconds (Section 8.5)

@@ -38,7 +38,25 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
     refreshProducts();
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type.startsWith('products.')) {
-        refreshProducts();
+        const delta = event.data?.data;
+        const resourceId = delta?.resourceId;
+        const updates = delta?.updates;
+        const version = delta?.version;
+
+        if (resourceId && updates && typeof updates === 'object') {
+          setProducts(prev => {
+            const exists = prev.some(p => p.id === resourceId);
+            if (exists) {
+              return prev.map(p => p.id === resourceId ? { ...p, ...updates, version: version || ((p as any).version || 1) + 1 } : p);
+            }
+            if (updates.title) {
+              return [updates as Product, ...prev];
+            }
+            return prev;
+          });
+        } else {
+          refreshProducts();
+        }
       }
     });
     return () => unsubscribe();

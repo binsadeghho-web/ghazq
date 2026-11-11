@@ -74,7 +74,32 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode }> = ({ child
     refreshWelfare();
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type.startsWith('welfare.')) {
-        refreshWelfare();
+        const delta = event.data?.data;
+        const resourceId = delta?.resourceId;
+        const updates = delta?.updates;
+        const version = delta?.version;
+
+        if (resourceId && updates && typeof updates === 'object') {
+          setWelfareRequests(prev => {
+            const exists = prev.some(w => w.id === resourceId);
+            if (exists) {
+              return prev.map(w => w.id === resourceId ? { ...w, ...updates, version: version || ((w as any).version || 1) + 1 } : w);
+            }
+            if (updates.title) {
+              return [updates as WelfareRequest, ...prev];
+            }
+            return prev;
+          });
+          setConsumableOrders(prev => {
+            const exists = prev.some(o => o.id === resourceId);
+            if (exists) {
+              return prev.map(o => o.id === resourceId ? { ...o, ...updates, version: version || ((o as any).version || 1) + 1 } : o);
+            }
+            return prev;
+          });
+        } else {
+          refreshWelfare();
+        }
       }
     });
     return () => unsubscribe();

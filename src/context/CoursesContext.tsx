@@ -48,7 +48,25 @@ export const CoursesProvider: React.FC<CoursesProviderProps> = ({
     refreshCourses();
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type.startsWith('courses.')) {
-        refreshCourses();
+        const delta = event.data?.data;
+        const resourceId = delta?.resourceId;
+        const updates = delta?.updates;
+        const version = delta?.version;
+
+        if (resourceId && updates && typeof updates === 'object') {
+          setCourses(prev => {
+            const exists = prev.some(c => c.id === resourceId);
+            if (exists) {
+              return prev.map(c => c.id === resourceId ? { ...c, ...updates, version: version || ((c as any).version || 1) + 1 } : c);
+            }
+            if (updates.title) {
+              return [updates as Course, ...prev];
+            }
+            return prev;
+          });
+        } else {
+          refreshCourses();
+        }
       }
     });
     return () => unsubscribe();

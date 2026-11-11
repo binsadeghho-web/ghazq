@@ -55,7 +55,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setMizanConfig(prev => ({ ...prev, ...res.mizan }));
       }
     }).catch(() => {});
-    return () => { isMounted = false; };
+
+    const unsubscribe = api.subscribeToEvents(event => {
+      if (event.type === 'admin.theme_updated' || event.type === 'admin.dashboard_config_updated') {
+        const payload = event.data?.data?.updates || event.data?.data || event.data;
+        const config = payload?.config || payload;
+        if (config) {
+          if (config.crextio || config.mizan) {
+            if (config.crextio) setCrextioConfig(prev => ({ ...prev, ...config.crextio, _baseVersion: event.data?.data?.version || (prev as any)._baseVersion }));
+            if (config.mizan) setMizanConfig(prev => ({ ...prev, ...config.mizan }));
+          } else if (typeof config === 'object') {
+            setCrextioConfig(prev => ({ ...prev, ...config, _baseVersion: event.data?.data?.version || (prev as any)._baseVersion }));
+          }
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const updateCrextioConfig = useCallback((updates: Partial<CrextioDashboardConfig>) => {

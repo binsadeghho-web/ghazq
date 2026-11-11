@@ -708,6 +708,7 @@ class ApiClient {
           'synergy.post_created',
           'synergy.response_added',
           'admin.dashboard_config_updated',
+          'admin.theme_updated',
           'admin.security_config_updated',
           'user.created',
           'user.updated',

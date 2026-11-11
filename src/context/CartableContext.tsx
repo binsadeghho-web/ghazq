@@ -33,7 +33,25 @@ export const CartableProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshCartable();
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type.startsWith('cartable.')) {
-        refreshCartable();
+        const delta = event.data?.data;
+        const resourceId = delta?.resourceId;
+        const updates = delta?.updates;
+        const version = delta?.version;
+
+        if (resourceId && updates && typeof updates === 'object') {
+          setCartableRequests(prev => {
+            const exists = prev.some(r => r.id === resourceId);
+            if (exists) {
+              return prev.map(r => r.id === resourceId ? { ...r, ...updates, version: version || ((r as any).version || 1) + 1 } : r);
+            }
+            if (updates.title) {
+              return [updates as CartableRequest, ...prev];
+            }
+            return prev;
+          });
+        } else {
+          refreshCartable();
+        }
       }
     });
     return () => unsubscribe();

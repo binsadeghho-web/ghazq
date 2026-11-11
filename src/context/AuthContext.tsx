@@ -88,7 +88,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     refreshUsers();
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type.startsWith('user.')) {
-        refreshUsers();
+        const delta = event.data?.data;
+        const resourceId = delta?.resourceId;
+        const updates = delta?.updates;
+        const version = delta?.version;
+
+        if (resourceId && updates && typeof updates === 'object') {
+          setUsers(prev => {
+            const exists = prev.some(u => u.id === resourceId);
+            if (exists) {
+              return prev.map(u => u.id === resourceId ? { ...u, ...updates, version: version || ((u as any).version || 1) + 1 } : u);
+            }
+            if (updates.fullName || updates.nationalId) {
+              return [updates as User, ...prev];
+            }
+            return prev;
+          });
+        } else {
+          refreshUsers();
+        }
       }
     });
     return () => unsubscribe();
