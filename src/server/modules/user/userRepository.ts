@@ -1,4 +1,4 @@
-import { getPool, selectWithTimeout, isDatabaseConnected, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
+import { getPool, selectWithTimeout, isDatabaseConnected, ensureDatabaseConnection, withTx } from '../../platform/mysqlDatabase';
 import { User, UserRole } from '../../../types';
 import { AppError } from '../../platform/errors';
 import { db } from '../../platform/database';
@@ -57,6 +57,7 @@ export interface UserDbRow {
   must_change_password: number;
   has_account: number;
   version: number;
+  deleted_at?: string | Date | null;
   sessions?: string | object | null;
   section_permissions?: string | object | null;
   created_at: string | Date;
@@ -151,6 +152,8 @@ export function mapRowToUser(row: UserDbRow): User & { password_hash?: string; v
     mustChangePassword: Boolean(row.must_change_password),
     hasAccount: Boolean(row.has_account),
     version: Number(row.version || 1),
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
+    status: row.deleted_at ? 'archived' : (row.is_locked ? 'locked' : (row.is_active ? 'active' : 'suspended')),
     sessions,
     sectionPermissions,
     password_hash: row.password_hash || undefined,
@@ -163,73 +166,51 @@ export function mapRowToUser(row: UserDbRow): User & { password_hash?: string; v
 }
 
 export class UserRepository {
-  async findByNationalIdOrUsername(identifier: string): Promise<(User & { password_hash?: string; version: number }) | undefined> {
+  async findByNationalIdOrUsername(identifier: string, includeArchived = false): Promise<(User & { password_hash?: string; version: number }) | undefined> {
     const rawId = (identifier || '').trim();
     const lowerId = rawId.toLowerCase();
 
-    if (isDatabaseConnected()) {
-      try {
-        const rows = await selectWithTimeout<UserDbRow>(
-          `SELECT * FROM users WHERE national_id = ? OR username = ? OR LOWER(national_id) = ? OR LOWER(username) = ? LIMIT 1`,
-          [rawId, rawId, lowerId, lowerId],
-          3000
-        );
+    ensureDatabaseConnection();
+    try {
+      const sql = includeArchived
+        ? `SELECT * FROM users WHERE (national_id = ? OR username = ? OR LOWER(national_id) = ? OR LOWER(username) = ?) LIMIT 1`
+        : `SELECT * FROM users WHERE (national_id = ? OR username = ? OR LOWER(national_id) = ? OR LOWER(username) = ?) AND deleted_at IS NULL LIMIT 1`;
+      const rows = await selectWithTimeout<UserDbRow>(
+        sql,
+        [rawId, rawId, lowerId, lowerId],
+        3000
+      );
 
-        if (rows && rows.length > 0) {
-          return mapRowToUser(rows[0]);
-        }
-      } catch (err: any) {
-        logger.warn(`MySQL findByNationalIdOrUsername failed: ${err.message}. Using in-memory fallback.`);
+      if (rows && rows.length > 0) {
+        return mapRowToUser(rows[0]);
       }
+      return undefined;
+    } catch (err: any) {
+      logger.error(`MySQL findByNationalIdOrUsername error: ${err.message}`);
+      throw AppError.serviceUnavailable('پایگاه داده در دسترس نیست یا با خطا مواجه شد.');
     }
-
-    const found = db.users.find(u => {
-      const uNat = (u.nationalId || '').toLowerCase();
-      const uName = (u.username || '').toLowerCase();
-      return uNat === lowerId || uName === lowerId || u.nationalId === rawId || u.username === rawId;
-    });
-
-    if (!found) return undefined;
-
-    const pwHash = (found as any).password_hash || (found as any).password;
-    const mapped = {
-      ...found,
-      password_hash: pwHash,
-      version: (found as any).version || 1,
-    };
-    delete (mapped as any).password;
-    delete (mapped as any).passwordRaw;
-    return mapped as any;
   }
 
-  async findById(id: string): Promise<(User & { password_hash?: string; version: number }) | undefined> {
-    if (isDatabaseConnected()) {
-      try {
-        const rows = await selectWithTimeout<UserDbRow>(
-          `SELECT * FROM users WHERE id = ? LIMIT 1`,
-          [id],
-          3000
-        );
+  async findById(id: string, includeArchived = false): Promise<(User & { password_hash?: string; version: number }) | undefined> {
+    ensureDatabaseConnection();
+    try {
+      const sql = includeArchived
+        ? `SELECT * FROM users WHERE id = ? LIMIT 1`
+        : `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1`;
+      const rows = await selectWithTimeout<UserDbRow>(
+        sql,
+        [id],
+        3000
+      );
 
-        if (rows && rows.length > 0) {
-          return mapRowToUser(rows[0]);
-        }
-      } catch (err: any) {
-        logger.warn(`MySQL findById failed: ${err.message}. Using in-memory fallback.`);
+      if (rows && rows.length > 0) {
+        return mapRowToUser(rows[0]);
       }
+      return undefined;
+    } catch (err: any) {
+      logger.error(`MySQL findById error: ${err.message}`);
+      throw AppError.serviceUnavailable('پایگاه داده در دسترس نیست یا با خطا مواجه شد.');
     }
-
-    const found = db.users.find(u => u.id === id);
-    if (!found) return undefined;
-    const pwHash = (found as any).password_hash || (found as any).password;
-    const mapped = {
-      ...found,
-      password_hash: pwHash,
-      version: (found as any).version || 1,
-    };
-    delete (mapped as any).password;
-    delete (mapped as any).passwordRaw;
-    return mapped as any;
   }
 
   async createUser(user: {
@@ -339,155 +320,167 @@ export class UserRepository {
       version: 1,
     };
 
-    (newUser as any).password_hash = user.passwordHash;
-    delete (newUser as any).password;
-    delete (newUser as any).passwordRaw;
+    ensureDatabaseConnection();
+    const pool = getPool();
 
-    const existingIdx = db.users.findIndex(u => u.id === user.id || u.nationalId === user.nationalId || (u.username && u.username === username));
-    if (existingIdx !== -1) {
-      db.users[existingIdx] = newUser as any;
-    } else {
-      db.users.unshift(newUser as any);
+    try {
+      await pool.query(
+        `INSERT INTO users (
+          id, national_id, username, password_hash, full_name, phone, role, role_title,
+          site_title, profile_picture_url, personnel_id, judicial_grade, court_branch, province,
+          email, academic_degree, thesis_title, supervisor_professor, birth_date, father_name,
+          id_number, marital_status, children_count, residential_address, seminary_level,
+          seminary_school, university_degree, university_name, field_of_study, academic_honors,
+          association_membership_date, association_responsibility, association_contributions,
+          membership_status, internal_notes, employment_status, current_judicial_post,
+          service_years, judicial_specialty, permissions, organization, graduation_year,
+          avatar_text, is_active, is_locked, failed_attempts, token_version, must_change_password,
+          has_account, version, sessions, section_permissions
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, 1, 1, '[]', ?)
+        ON DUPLICATE KEY UPDATE
+          password_hash = VALUES(password_hash),
+          full_name = VALUES(full_name),
+          phone = VALUES(phone),
+          role = VALUES(role),
+          role_title = VALUES(role_title),
+          site_title = VALUES(site_title),
+          profile_picture_url = VALUES(profile_picture_url),
+          personnel_id = VALUES(personnel_id),
+          judicial_grade = VALUES(judicial_grade),
+          court_branch = VALUES(court_branch),
+          province = VALUES(province),
+          email = VALUES(email),
+          academic_degree = VALUES(academic_degree),
+          thesis_title = VALUES(thesis_title),
+          supervisor_professor = VALUES(supervisor_professor),
+          birth_date = VALUES(birth_date),
+          father_name = VALUES(father_name),
+          id_number = VALUES(id_number),
+          marital_status = VALUES(marital_status),
+          children_count = VALUES(children_count),
+          residential_address = VALUES(residential_address),
+          seminary_level = VALUES(seminary_level),
+          seminary_school = VALUES(seminary_school),
+          university_degree = VALUES(university_degree),
+          university_name = VALUES(university_name),
+          field_of_study = VALUES(field_of_study),
+          academic_honors = VALUES(academic_honors),
+          association_membership_date = VALUES(association_membership_date),
+          association_responsibility = VALUES(association_responsibility),
+          association_contributions = VALUES(association_contributions),
+          membership_status = VALUES(membership_status),
+          internal_notes = VALUES(internal_notes),
+          employment_status = VALUES(employment_status),
+          current_judicial_post = VALUES(current_judicial_post),
+          service_years = VALUES(service_years),
+          judicial_specialty = VALUES(judicial_specialty),
+          permissions = VALUES(permissions),
+          organization = VALUES(organization),
+          graduation_year = VALUES(graduation_year),
+          avatar_text = VALUES(avatar_text),
+          is_active = VALUES(is_active)`,
+        [
+          user.id,
+          user.nationalId,
+          username,
+          user.passwordHash,
+          user.fullName,
+          user.phone,
+          user.role,
+          user.roleTitle,
+          user.siteTitle || null,
+          user.profilePictureUrl || null,
+          user.personnelId || null,
+          Number(user.judicialGrade) || 0,
+          user.courtBranch || null,
+          user.province || null,
+          user.email || null,
+          user.academicDegree || null,
+          user.thesisTitle || null,
+          user.supervisorProfessor || null,
+          user.birthDate || null,
+          user.fatherName || null,
+          user.idNumber || null,
+          user.maritalStatus || null,
+          Number(user.childrenCount) || 0,
+          user.residentialAddress || null,
+          user.seminaryLevel || null,
+          user.seminarySchool || null,
+          user.universityDegree || null,
+          user.universityName || null,
+          user.fieldOfStudy || null,
+          user.academicHonors || null,
+          user.associationMembershipDate || null,
+          user.associationResponsibility || null,
+          user.associationContributions ? JSON.stringify(user.associationContributions) : null,
+          user.membershipStatus || null,
+          user.internalNotes || null,
+          user.employmentStatus || null,
+          user.currentJudicialPost || null,
+          Number(user.serviceYears) || 0,
+          user.judicialSpecialty || null,
+          user.permissions ? JSON.stringify(user.permissions) : null,
+          user.organization,
+          user.graduationYear,
+          avatarText,
+          isActive ? 1 : 0,
+          mustChangePassword ? 1 : 0,
+          user.sectionPermissions ? JSON.stringify(user.sectionPermissions) : null,
+        ]
+      );
+    } catch (err: any) {
+      logger.error(`MySQL createUser error: ${err.message}`);
+      throw AppError.serviceUnavailable('ثبت کاربر در پایگاه داده با خطا مواجه شد.');
     }
 
-    if (isDatabaseConnected()) {
-      try {
-        const pool = getPool();
-        await pool.query(
-          `INSERT INTO users (
-            id, national_id, username, password_hash, full_name, phone, role, role_title,
-            site_title, profile_picture_url, personnel_id, judicial_grade, court_branch, province,
-            email, academic_degree, thesis_title, supervisor_professor, birth_date, father_name,
-            id_number, marital_status, children_count, residential_address, seminary_level,
-            seminary_school, university_degree, university_name, field_of_study, academic_honors,
-            association_membership_date, association_responsibility, association_contributions,
-            membership_status, internal_notes, employment_status, current_judicial_post,
-            service_years, judicial_specialty, permissions, organization, graduation_year,
-            avatar_text, is_active, is_locked, failed_attempts, token_version, must_change_password,
-            has_account, version, sessions, section_permissions
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, 1, 1, ?, ?)
-          ON DUPLICATE KEY UPDATE
-            password_hash = VALUES(password_hash),
-            full_name = VALUES(full_name),
-            phone = VALUES(phone),
-            role = VALUES(role),
-            role_title = VALUES(role_title),
-            site_title = VALUES(site_title),
-            profile_picture_url = VALUES(profile_picture_url),
-            personnel_id = VALUES(personnel_id),
-            judicial_grade = VALUES(judicial_grade),
-            court_branch = VALUES(court_branch),
-            province = VALUES(province),
-            email = VALUES(email),
-            academic_degree = VALUES(academic_degree),
-            thesis_title = VALUES(thesis_title),
-            supervisor_professor = VALUES(supervisor_professor),
-            birth_date = VALUES(birth_date),
-            father_name = VALUES(father_name),
-            id_number = VALUES(id_number),
-            marital_status = VALUES(marital_status),
-            children_count = VALUES(children_count),
-            residential_address = VALUES(residential_address),
-            seminary_level = VALUES(seminary_level),
-            seminary_school = VALUES(seminary_school),
-            university_degree = VALUES(university_degree),
-            university_name = VALUES(university_name),
-            field_of_study = VALUES(field_of_study),
-            academic_honors = VALUES(academic_honors),
-            association_membership_date = VALUES(association_membership_date),
-            association_responsibility = VALUES(association_responsibility),
-            association_contributions = VALUES(association_contributions),
-            membership_status = VALUES(membership_status),
-            internal_notes = VALUES(internal_notes),
-            employment_status = VALUES(employment_status),
-            current_judicial_post = VALUES(current_judicial_post),
-            service_years = VALUES(service_years),
-            judicial_specialty = VALUES(judicial_specialty),
-            permissions = VALUES(permissions),
-            organization = VALUES(organization),
-            graduation_year = VALUES(graduation_year),
-            avatar_text = VALUES(avatar_text),
-            is_active = VALUES(is_active)`,
-          [
-            user.id,
-            user.nationalId,
-            username,
-            user.passwordHash,
-            user.fullName,
-            user.phone,
-            user.role,
-            user.roleTitle,
-            user.siteTitle || null,
-            user.profilePictureUrl || null,
-            user.personnelId || null,
-            Number(user.judicialGrade) || 0,
-            user.courtBranch || null,
-            user.province || null,
-            user.email || null,
-            user.academicDegree || null,
-            user.thesisTitle || null,
-            user.supervisorProfessor || null,
-            user.birthDate || null,
-            user.fatherName || null,
-            user.idNumber || null,
-            user.maritalStatus || null,
-            Number(user.childrenCount) || 0,
-            user.residentialAddress || null,
-            user.seminaryLevel || null,
-            user.seminarySchool || null,
-            user.universityDegree || null,
-            user.universityName || null,
-            user.fieldOfStudy || null,
-            user.academicHonors || null,
-            user.associationMembershipDate || null,
-            user.associationResponsibility || null,
-            user.associationContributions ? JSON.stringify(user.associationContributions) : null,
-            user.membershipStatus || null,
-            user.internalNotes || null,
-            user.employmentStatus || null,
-            user.currentJudicialPost || null,
-            Number(user.serviceYears) || 0,
-            user.judicialSpecialty || null,
-            user.permissions ? JSON.stringify(user.permissions) : null,
-            user.organization,
-            user.graduationYear,
-            avatarText,
-            isActive ? 1 : 0,
-            mustChangePassword ? 1 : 0,
-            null,
-            user.sectionPermissions ? JSON.stringify(user.sectionPermissions) : null,
-          ]
-        );
-      } catch (err: any) {
-        logger.warn(`MySQL createUser warning: ${err.message}`);
-      }
+    const created = await this.findById(user.id);
+    if (!created) {
+      throw AppError.internal('خطا در بازخوانی حساب کاربر ایجاد شده');
     }
-
-    return newUser;
+    return created;
   }
 
   async updateUserOptimistic(
     id: string,
     updates: Record<string, any>,
-    _expectedVersion?: number
+    expectedVersion?: number
   ): Promise<User> {
-    const idx = db.users.findIndex(u => u.id === id);
-    if (idx !== -1) {
-      const current = db.users[idx];
-      const updated: any = {
-        ...current,
-        ...updates,
-        version: (current.version || 1) + 1,
-      };
-      if (updates.passwordHash) updated.password_hash = updates.passwordHash;
-      if (updates.tokenVersionIncrement) updated.tokenVersion = (updated.tokenVersion || 1) + 1;
-      delete updated.password;
-      delete updated.passwordRaw;
-      db.users[idx] = updated;
+    ensureDatabaseConnection();
+
+    // 1. Dynamic Uniqueness check ONLY for fields explicitly supplied in updates
+    const checkConds: string[] = [];
+    const checkParams: any[] = [];
+
+    if (updates.nationalId !== undefined && updates.nationalId !== null && String(updates.nationalId).trim() !== '') {
+      checkConds.push('national_id = ?');
+      checkParams.push(String(updates.nationalId).trim());
+    }
+    if (updates.username !== undefined && updates.username !== null && String(updates.username).trim() !== '') {
+      checkConds.push('username = ?');
+      checkParams.push(String(updates.username).trim());
     }
 
-    if (isDatabaseConnected()) {
-      try {
+    if (checkConds.length > 0) {
+      const pool = getPool();
+      const sql = `SELECT id FROM users WHERE (${checkConds.join(' OR ')}) AND id != ? AND deleted_at IS NULL LIMIT 1`;
+      checkParams.push(id);
+
+      const [existing]: any = await pool.query(sql, checkParams);
+      if (existing && existing.length > 0) {
+        throw AppError.conflict('کد ملی یا نام کاربری وارد شده متعلق به کاربر دیگری است.');
+      }
+    }
+
+    // 2. Security impact flag (role change, account block/lock, password change, token version increment)
+    const isSecurityImpacted =
+      updates.role !== undefined ||
+      updates.isActive === false ||
+      updates.isLocked === true ||
+      updates.passwordHash !== undefined ||
+      Boolean(updates.tokenVersionIncrement);
+
+    try {
+      await withTx(async (conn) => {
         const fields: string[] = [];
         const params: any[] = [];
 
@@ -571,22 +564,39 @@ export class UserRepository {
           fields.push('must_change_password = ?');
           params.push(updates.mustChangePassword ? 1 : 0);
         }
-        if (updates.tokenVersionIncrement) {
+
+        if (isSecurityImpacted) {
           fields.push('token_version = token_version + 1');
         }
 
         fields.push('version = version + 1');
 
-        if (fields.length > 1) {
+        if (fields.length > 0) {
+          let sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`;
           params.push(id);
-          const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
-          logger.info(`[SQL UPDATE users] SQL: ${sql} | Params: ${JSON.stringify(params)}`);
-          const pool = getPool();
-          await pool.query(sql, params);
+
+          if (expectedVersion !== undefined && expectedVersion !== null && !isNaN(Number(expectedVersion))) {
+            sql += ` AND version = ?`;
+            params.push(Number(expectedVersion));
+          }
+
+          logger.info(`[SQL UPDATE users OCC] SQL: ${sql} | Params: ${JSON.stringify(params)}`);
+          const [res]: any = await conn.query(sql, params);
+          if (res && res.affectedRows === 0) {
+            throw AppError.conflict('اطلاعات کاربر توسط کاربر یا مدیر دیگری هم‌زمان تغییر یافته است. لطفاً صفحه را بازخوانی فرمایید.');
+          }
         }
-      } catch (err: any) {
-        logger.warn(`MySQL updateUserOptimistic warning: ${err.message}`);
-      }
+
+        if (isSecurityImpacted) {
+          // Instant revocation of all user sessions & refresh tokens
+          await conn.query(`UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ?`, [id]);
+          await conn.query(`UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'SECURITY_CHANGE' WHERE user_id = ?`, [id]);
+        }
+      });
+    } catch (err: any) {
+      logger.error(`MySQL updateUserOptimistic error: ${err.message}`);
+      if (err instanceof AppError) throw err;
+      throw AppError.serviceUnavailable('ویرایش اطلاعات کاربر در پایگاه داده با خطا مواجه شد.');
     }
 
     const res = await this.findById(id);
@@ -597,116 +607,108 @@ export class UserRepository {
   }
 
   async incrementFailedAttempts(id: string): Promise<{ isNowLocked: boolean; remainingAttempts: number }> {
-    const u = db.users.find(usr => usr.id === id);
-    if (u) {
-      u.failedAttempts = (u.failedAttempts || 0) + 1;
-      if (u.failedAttempts >= 10) {
-        u.isLocked = true;
-      }
+    ensureDatabaseConnection();
+    try {
+      const pool = getPool();
+      await pool.query(
+        `UPDATE users 
+         SET failed_attempts = failed_attempts + 1,
+             is_locked = IF(failed_attempts + 1 >= 10, TRUE, is_locked),
+             locked_until = IF(failed_attempts + 1 >= 10, DATE_ADD(NOW(), INTERVAL 30 MINUTE), locked_until)
+         WHERE id = ? AND deleted_at IS NULL`,
+        [id]
+      );
+      const updated = await this.findById(id);
+      const attempts = updated ? updated.failedAttempts || 0 : 0;
+      const isLocked = updated ? Boolean(updated.isLocked) : false;
+      return { isNowLocked: isLocked, remainingAttempts: Math.max(0, 10 - attempts) };
+    } catch (err: any) {
+      logger.error(`MySQL incrementFailedAttempts error: ${err.message}`);
+      throw AppError.serviceUnavailable('بررسی نرخ تلاش‌های ورود با خطا مواجه شد.');
     }
-
-    if (isDatabaseConnected()) {
-      try {
-        const pool = getPool();
-        await pool.query(
-          `UPDATE users 
-           SET failed_attempts = failed_attempts + 1,
-               is_locked = IF(failed_attempts + 1 >= 10, TRUE, is_locked),
-               locked_until = IF(failed_attempts + 1 >= 10, DATE_ADD(NOW(), INTERVAL 30 MINUTE), locked_until)
-           WHERE id = ?`,
-          [id]
-        );
-      } catch (err: any) {
-        logger.warn(`MySQL incrementFailedAttempts notice: ${err.message}`);
-      }
-    }
-
-    const user = await this.findById(id);
-    if (!user) return { isNowLocked: false, remainingAttempts: 9 };
-    return {
-      isNowLocked: user.isLocked,
-      remainingAttempts: Math.max(0, 10 - user.failedAttempts),
-    };
   }
 
   async resetFailedAttempts(id: string): Promise<void> {
-    const u = db.users.find(usr => usr.id === id);
-    if (u) {
-      u.failedAttempts = 0;
-      u.isLocked = false;
-      u.lockExpiresAt = undefined;
-    }
-
-    if (isDatabaseConnected()) {
-      try {
-        const pool = getPool();
-        await pool.query(
-          `UPDATE users SET failed_attempts = 0, is_locked = FALSE, locked_until = NULL WHERE id = ?`,
-          [id]
-        );
-      } catch (err: any) {
-        logger.warn(`MySQL resetFailedAttempts notice: ${err.message}`);
-      }
+    ensureDatabaseConnection();
+    try {
+      const pool = getPool();
+      await pool.query(
+        `UPDATE users SET failed_attempts = 0, is_locked = FALSE, locked_until = NULL WHERE id = ? AND deleted_at IS NULL`,
+        [id]
+      );
+    } catch (err: any) {
+      logger.error(`MySQL resetFailedAttempts error: ${err.message}`);
+      throw AppError.serviceUnavailable('بازنشانی تلاش‌های ناموفق با خطا مواجه شد.');
     }
   }
 
   async deleteUser(id: string): Promise<void> {
-    const idx = db.users.findIndex(u => u.id === id);
-    if (idx !== -1) {
-      db.users.splice(idx, 1);
-    }
+    ensureDatabaseConnection();
+    try {
+      await withTx(async (conn) => {
+        // 1. Soft Delete user
+        const [res]: any = await conn.query(
+          `UPDATE users 
+           SET deleted_at = NOW(3), 
+               status = 'archived',
+               is_active = FALSE, 
+               token_version = token_version + 1,
+               version = version + 1
+           WHERE id = ? AND deleted_at IS NULL`,
+          [id]
+        );
+        if (!res || res.affectedRows === 0) {
+          throw AppError.notFound('کاربر مورد نظر یا یافت نشد یا قبلاً حذف نرم شده است.');
+        }
 
-    if (isDatabaseConnected()) {
-      try {
-        const pool = getPool();
-        await pool.query(`DELETE FROM users WHERE id = ?`, [id]);
-      } catch (err: any) {
-        logger.warn(`MySQL deleteUser notice: ${err.message}`);
-      }
+        // 2. Revoke all active sessions
+        await conn.query(
+          `UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ?`,
+          [id]
+        );
+
+        // 3. Revoke all refresh tokens
+        await conn.query(
+          `UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'USER_DELETED' WHERE user_id = ?`,
+          [id]
+        );
+      });
+    } catch (err: any) {
+      logger.error(`MySQL deleteUser (Soft Delete) error: ${err.message}`);
+      if (err instanceof AppError) throw err;
+      throw AppError.serviceUnavailable('حذف نرم کاربر با خطا مواجه شد.');
     }
   }
 
-  async listUsers(search?: string, roleFilter?: string): Promise<User[]> {
-    if (isDatabaseConnected()) {
-      try {
-        let sql = `SELECT * FROM users WHERE 1=1`;
-        const params: any[] = [];
+  async listUsers(search?: string, roleFilter?: string, includeArchived = false): Promise<User[]> {
+    ensureDatabaseConnection();
+    try {
+      let sql = `SELECT * FROM users WHERE 1=1`;
+      const params: any[] = [];
 
-        if (roleFilter && roleFilter !== 'all') {
-          sql += ` AND role = ?`;
-          params.push(roleFilter);
-        }
-
-        if (search && search.trim()) {
-          const term = `%${search.trim()}%`;
-          sql += ` AND (full_name LIKE ? OR national_id LIKE ? OR username LIKE ? OR phone LIKE ? OR organization LIKE ?)`;
-          params.push(term, term, term, term, term);
-        }
-
-        sql += ` ORDER BY created_at DESC LIMIT 200`;
-
-        const rows = await selectWithTimeout<UserDbRow>(sql, params, 3000);
-        if (rows && rows.length > 0) {
-          return rows.map(r => mapRowToUser(r));
-        }
-      } catch (err: any) {
-        logger.warn(`MySQL listUsers failed: ${err.message}. Using in-memory fallback.`);
+      if (!includeArchived) {
+        sql += ` AND deleted_at IS NULL`;
       }
+
+      if (roleFilter && roleFilter !== 'all') {
+        sql += ` AND role = ?`;
+        params.push(roleFilter);
+      }
+
+      if (search && search.trim()) {
+        const term = `%${search.trim()}%`;
+        sql += ` AND (full_name LIKE ? OR national_id LIKE ? OR username LIKE ? OR phone LIKE ? OR organization LIKE ?)`;
+        params.push(term, term, term, term, term);
+      }
+
+      sql += ` ORDER BY created_at DESC LIMIT 200`;
+
+      const rows = await selectWithTimeout<UserDbRow>(sql, params, 3000);
+      return (rows || []).map(r => mapRowToUser(r));
+    } catch (err: any) {
+      logger.error(`MySQL listUsers error: ${err.message}`);
+      throw AppError.serviceUnavailable('پایگاه داده در دسترس نیست یا با خطا مواجه شد.');
     }
-
-    return db.users.filter(u => {
-      if (roleFilter && roleFilter !== 'all' && u.role !== roleFilter) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        return u.fullName.toLowerCase().includes(s) || u.nationalId.includes(s) || (u.username && u.username.toLowerCase().includes(s));
-      }
-      return true;
-    }).map(u => {
-      const copy = { ...u };
-      delete (copy as any).password;
-      delete (copy as any).passwordRaw;
-      return copy;
-    });
   }
 }
 

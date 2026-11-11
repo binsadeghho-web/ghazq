@@ -1,10 +1,44 @@
 import { Router, Request, Response } from 'express';
-import { db, generateUUIDv7 } from '../../platform/database';
+import { getPool, selectWithTimeout, withTx, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
 import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { CartableRequest, CartableMessage, RequestStatus, CartableCategory, RequestPriority } from '../../../types';
+import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
+
+function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number } {
+  return {
+    id: fromIdBuffer(row.id),
+    trackingNumber: row.tracking_number,
+    category: row.category,
+    categoryTitle: row.category_title,
+    title: row.title,
+    description: row.description,
+    applicantId: fromIdBuffer(row.applicant_id),
+    applicantName: row.applicant_name,
+    applicantRoleTitle: row.applicant_role_title,
+    priority: row.priority,
+    status: row.status,
+    hasUnreadSupervisor: Boolean(row.has_unread_supervisor),
+    hasUnreadApplicant: Boolean(row.has_unread_applicant),
+    version: Number(row.version || 1),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+    messages,
+  };
+}
+
+function mapCartableMessageRow(row: any): CartableMessage {
+  return {
+    id: fromIdBuffer(row.id),
+    senderId: fromIdBuffer(row.sender_id),
+    senderName: row.sender_name,
+    senderRole: row.sender_role,
+    text: row.text,
+    timestamp: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
 
 export interface ICartableRepository {
   findAll(filter?: { applicantId?: string; status?: string }): Promise<Array<CartableRequest & { version: number }>>;
@@ -14,22 +48,96 @@ export interface ICartableRepository {
 
 export class CartableRepository implements ICartableRepository {
   async findAll(filter?: { applicantId?: string; status?: string }): Promise<Array<CartableRequest & { version: number }>> {
-    let items = db.cartableRequests;
+    ensureDatabaseConnection();
+    const p = getPool();
+    let sql = `SELECT * FROM cartable_requests WHERE 1=1`;
+    const params: any[] = [];
+
     if (filter?.applicantId) {
-      items = items.filter(i => i.applicantId === filter.applicantId);
+      sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
+      params.push(toIdBuffer(filter.applicantId), filter.applicantId);
     }
     if (filter?.status) {
-      items = items.filter(i => i.status === filter.status);
+      sql += ` AND status = ?`;
+      params.push(filter.status);
     }
-    return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    sql += ` ORDER BY created_at DESC LIMIT 200`;
+
+    const rows = await selectWithTimeout<any>(sql, params, 4000);
+    if (!rows || rows.length === 0) return [];
+
+    const results: Array<CartableRequest & { version: number }> = [];
+    for (const row of rows) {
+      const reqIdBuf = toIdBuffer(row.id);
+      const reqIdStr = fromIdBuffer(row.id);
+      const [msgRows] = await p.query<any[]>(
+        `SELECT * FROM cartable_messages WHERE request_id = ? OR request_id = ? ORDER BY created_at ASC`,
+        [reqIdBuf, reqIdStr]
+      );
+      const messages = (msgRows || []).map(mapCartableMessageRow);
+      results.push(mapCartableRequestRow(row, messages));
+    }
+    return results;
   }
 
   async findById(id: string): Promise<(CartableRequest & { version: number }) | undefined> {
-    return db.cartableRequests.find(i => i.id === id);
+    ensureDatabaseConnection();
+    const p = getPool();
+    const idBuf = toIdBuffer(id);
+    const rows = await selectWithTimeout<any>(
+      `SELECT * FROM cartable_requests WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, id],
+      3000
+    );
+    if (!rows || rows.length === 0) return undefined;
+
+    const row = rows[0];
+    const [msgRows] = await p.query<any[]>(
+      `SELECT * FROM cartable_messages WHERE request_id = ? OR request_id = ? ORDER BY created_at ASC`,
+      [toIdBuffer(row.id), fromIdBuffer(row.id)]
+    );
+    const messages = (msgRows || []).map(mapCartableMessageRow);
+    return mapCartableRequestRow(row, messages);
   }
 
   async create(request: CartableRequest & { version: number }): Promise<CartableRequest & { version: number }> {
-    db.cartableRequests.unshift(request);
+    ensureDatabaseConnection();
+    const p = getPool();
+    const idBuf = toIdBuffer(request.id);
+    const applicantBuf = toIdBuffer(request.applicantId);
+
+    await p.query(
+      `INSERT INTO cartable_requests (
+        id, tracking_number, category, category_title, title, description,
+        applicant_id, applicant_name, applicant_role_title, priority, status,
+        has_unread_supervisor, has_unread_applicant, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        idBuf,
+        request.trackingNumber,
+        request.category,
+        request.categoryTitle,
+        request.title,
+        request.description,
+        applicantBuf,
+        request.applicantName,
+        request.applicantRoleTitle,
+        request.priority,
+        request.status,
+        request.hasUnreadSupervisor ? 1 : 0,
+        request.hasUnreadApplicant ? 1 : 0,
+        request.version,
+      ]
+    );
+
+    for (const msg of request.messages) {
+      await p.query(
+        `INSERT INTO cartable_messages (id, request_id, sender_id, sender_name, sender_role, text)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [toIdBuffer(msg.id), idBuf, toIdBuffer(msg.senderId), msg.senderName, msg.senderRole, msg.text]
+      );
+    }
+
     return request;
   }
 }
@@ -38,19 +146,15 @@ export class CartableService {
   constructor(private repo: ICartableRepository) {}
 
   async getRequests(authCtx: AuthContext): Promise<Array<CartableRequest & { version: number }>> {
-    // If alumni, only return their own requests (BOLA protection)
     if (authCtx.role === 'alumni') {
       return this.repo.findAll({ applicantId: authCtx.userId });
     }
-    // Supervisors and admins see all
     return this.repo.findAll();
   }
 
   async getRequestById(authCtx: AuthContext, id: string): Promise<CartableRequest & { version: number }> {
     const item = await this.repo.findById(id);
     if (!item) throw AppError.notFound(`درخواست کارتابل با شناسه ${id}`);
-
-    // BOLA check
     AuthorizationPolicy.assertOwnership(authCtx, item.applicantId, 'درخواست کارتابل');
     return item;
   }
@@ -70,63 +174,59 @@ export class CartableService {
       throw AppError.badRequest('عنوان و شرح درخواست الزامی است.');
     }
 
-    return db.withTx(async tx => {
-      const id = generateUUIDv7();
-      const trackingNumber = `TRK-${Date.now().toString().slice(-6)}`;
-      const now = new Date().toISOString();
+    const id = generateUUIDv7();
+    const trackingNumber = `TRK-${Date.now().toString().slice(-6)}`;
+    const now = new Date().toISOString();
 
-      const initialMessage: CartableMessage = {
-        id: generateUUIDv7(),
-        senderId: authCtx.userId,
-        senderName: authCtx.fullName,
-        senderRole: authCtx.role,
-        text: dto.initialMessageText || dto.description,
-        timestamp: now,
-      };
+    const initialMessage: CartableMessage = {
+      id: generateUUIDv7(),
+      senderId: authCtx.userId,
+      senderName: authCtx.fullName,
+      senderRole: authCtx.role,
+      text: dto.initialMessageText || dto.description,
+      timestamp: now,
+    };
 
-      const newRequest: CartableRequest & { version: number } = {
-        id,
-        trackingNumber,
-        applicantId: authCtx.userId,
-        applicantName: authCtx.fullName,
-        applicantRoleTitle: authCtx.role === 'alumni' ? 'دانش‌آموخته' : authCtx.role === 'supervisor' ? 'مسئول آموزش' : 'مدیر سامانه',
-        category: dto.category,
-        categoryTitle: dto.categoryTitle,
-        title: dto.title,
-        description: dto.description,
-        priority: dto.priority,
-        status: 'pending',
-        createdAt: now,
-        updatedAt: now,
-        messages: [initialMessage],
-        hasUnreadSupervisor: true,
-        hasUnreadApplicant: false,
-        version: 1,
-      };
+    const newRequest: CartableRequest & { version: number } = {
+      id,
+      trackingNumber,
+      applicantId: authCtx.userId,
+      applicantName: authCtx.fullName,
+      applicantRoleTitle: authCtx.role === 'alumni' ? 'دانش‌آموخته' : authCtx.role === 'supervisor' ? 'مسئول آموزش' : 'مدیر سامانه',
+      category: dto.category,
+      categoryTitle: dto.categoryTitle,
+      title: dto.title,
+      description: dto.description,
+      priority: dto.priority,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      messages: [initialMessage],
+      hasUnreadSupervisor: true,
+      hasUnreadApplicant: false,
+      version: 1,
+    };
 
-      tx.cartableRequests.unshift(newRequest);
+    await this.repo.create(newRequest);
 
-      // Transactional Outbox (Section 6.2)
-      tx.emitOutbox('cartable.request_created', {
-        requestId: id,
-        applicantId: authCtx.userId,
-        title: dto.title,
-        trackingNumber,
-      });
-
-      // Audit Trail (Section 10)
-      tx.emitAudit({
-        eventType: 'CARTABLE_STATUS_CHANGE',
-        actorId: authCtx.userId,
-        actorName: authCtx.fullName,
-        actorRole: authCtx.role,
-        ip: '127.0.0.1',
-        details: `درخواست کارتابل جدید [${dto.title}] با شماره پیگیری ${trackingNumber} ثبت گردید.`,
-        severity: 'info',
-      });
-
-      return newRequest;
+    outbox.enqueue('cartable.request_created', {
+      requestId: id,
+      applicantId: authCtx.userId,
+      title: dto.title,
+      trackingNumber,
     });
+
+    auditChain.appendEntry({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `درخواست کارتابل جدید [${dto.title}] با شماره پیگیری ${trackingNumber} ثبت گردید.`,
+      severity: 'info',
+    });
+
+    return newRequest;
   }
 
   async addReply(
@@ -159,28 +259,41 @@ export class CartableService {
     const isAlumni = authCtx.role === 'alumni';
     const nextStatus: RequestStatus = isAlumni ? 'pending' : 'in_progress';
 
-    // Atomic update with version increment
-    const updated = db.updateWithOptimisticLock(
-      db.cartableRequests,
-      requestId,
-      request.version,
-      current => ({
-        messages: [...current.messages, newMessage],
-        status: (current.status === 'completed' ? 'in_progress' : nextStatus) as RequestStatus,
-        hasUnreadSupervisor: isAlumni ? true : false,
-        hasUnreadApplicant: isAlumni ? false : true,
-        updatedAt: new Date().toISOString(),
-      })
-    );
+    return await withTx(async (conn) => {
+      const idBuf = toIdBuffer(requestId);
+      const msgIdBuf = toIdBuffer(newMessage.id);
+      const senderBuf = toIdBuffer(newMessage.senderId);
 
-    outbox.enqueue('cartable.message_added', {
-      requestId,
-      senderId: authCtx.userId,
-      senderRole: authCtx.role,
-      text: text.slice(0, 50),
+      await conn.query(
+        `INSERT INTO cartable_messages (id, request_id, sender_id, sender_name, sender_role, text)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [msgIdBuf, idBuf, senderBuf, newMessage.senderName, newMessage.senderRole, newMessage.text]
+      );
+
+      const [res] = await conn.query<any>(
+        `UPDATE cartable_requests
+         SET status = ?, has_unread_supervisor = ?, has_unread_applicant = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+         WHERE id = ? OR id = ?`,
+        [
+          request.status === 'completed' ? 'in_progress' : nextStatus,
+          isAlumni ? 1 : 0,
+          isAlumni ? 0 : 1,
+          idBuf,
+          requestId,
+        ]
+      );
+
+      outbox.enqueue('cartable.message_added', {
+        requestId,
+        senderId: authCtx.userId,
+        senderRole: authCtx.role,
+        text: text.slice(0, 50),
+      });
+
+      const updated = await this.repo.findById(requestId);
+      if (!updated) throw AppError.internal('خطا در بارگذاری مجدد درخواست');
+      return updated;
     });
-
-    return updated;
   }
 
   async updateStatus(
@@ -189,23 +302,24 @@ export class CartableService {
     status: RequestStatus,
     expectedVersion: number
   ): Promise<CartableRequest & { version: number }> {
-    // Only supervisors and admins can change status
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
 
     const request = await this.repo.findById(requestId);
     if (!request) throw AppError.notFound('درخواست کارتابل');
 
-    const updated = db.updateWithOptimisticLock(
-      db.cartableRequests,
-      requestId,
-      expectedVersion,
-      () => ({
-        status,
-        hasUnreadApplicant: true,
-        hasUnreadSupervisor: false,
-        updatedAt: new Date().toISOString(),
-      })
+    const idBuf = toIdBuffer(requestId);
+    const p = getPool();
+
+    const [res] = await p.query<any>(
+      `UPDATE cartable_requests
+       SET status = ?, has_unread_applicant = 1, has_unread_supervisor = 0, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [status, idBuf, requestId, expectedVersion]
     );
+
+    if (res.affectedRows === 0) {
+      throw AppError.conflict('تغییر هم‌زمان شناسایی شد. لطفاً صفحه را تازه‌سازی نموده و مجدداً تلاش کنید.');
+    }
 
     auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
@@ -223,6 +337,8 @@ export class CartableService {
       actorId: authCtx.userId,
     });
 
+    const updated = await this.repo.findById(requestId);
+    if (!updated) throw AppError.internal('خطا در دریافت وضعیت جدید درخواست');
     return updated;
   }
 
@@ -234,16 +350,17 @@ export class CartableService {
     if (!request) throw AppError.notFound('درخواست کارتابل');
 
     const isStaff = authCtx.role === 'admin' || authCtx.role === 'supervisor';
-    const updated = db.updateWithOptimisticLock(
-      db.cartableRequests,
-      requestId,
-      request.version,
-      current => ({
-        hasUnreadSupervisor: isStaff ? false : current.hasUnreadSupervisor,
-        hasUnreadApplicant: !isStaff ? false : current.hasUnreadApplicant,
-      })
-    );
+    const p = getPool();
+    const idBuf = toIdBuffer(requestId);
 
+    if (isStaff) {
+      await p.query(`UPDATE cartable_requests SET has_unread_supervisor = 0 WHERE id = ? OR id = ?`, [idBuf, requestId]);
+    } else {
+      await p.query(`UPDATE cartable_requests SET has_unread_applicant = 0 WHERE id = ? OR id = ?`, [idBuf, requestId]);
+    }
+
+    const updated = await this.repo.findById(requestId);
+    if (!updated) throw AppError.internal('خطا در تغییر علامت خوانده شده');
     return updated;
   }
 
@@ -263,20 +380,27 @@ export class CartableService {
 
     AuthorizationPolicy.assertOwnership(authCtx, request.applicantId, 'درخواست کارتابل');
 
-    const updated = db.updateWithOptimisticLock(
-      db.cartableRequests,
-      requestId,
-      expectedVersion,
-      current => ({
-        ...current,
-        title: updates.title !== undefined ? updates.title.trim() : current.title,
-        description: updates.description !== undefined ? updates.description.trim() : current.description,
-        priority: updates.priority !== undefined ? updates.priority : current.priority,
-        categoryTitle: updates.categoryTitle !== undefined ? updates.categoryTitle.trim() : current.categoryTitle,
-        updatedAt: new Date().toISOString(),
-      })
+    const p = getPool();
+    const idBuf = toIdBuffer(requestId);
+
+    const newTitle = updates.title !== undefined ? updates.title.trim() : request.title;
+    const newDesc = updates.description !== undefined ? updates.description.trim() : request.description;
+    const newPriority = updates.priority !== undefined ? updates.priority : request.priority;
+    const newCatTitle = updates.categoryTitle !== undefined ? updates.categoryTitle.trim() : request.categoryTitle;
+
+    const [res] = await p.query<any>(
+      `UPDATE cartable_requests
+       SET title = ?, description = ?, priority = ?, category_title = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [newTitle, newDesc, newPriority, newCatTitle, idBuf, requestId, expectedVersion]
     );
 
+    if (res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات درخواست توسط کاربر دیگری تغییر یافته است.');
+    }
+
+    const updated = await this.repo.findById(requestId);
+    if (!updated) throw AppError.internal('خطا در به‌روزرسانی اطلاعات درخواست');
     return updated;
   }
 }

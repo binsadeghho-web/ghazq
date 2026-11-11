@@ -181,11 +181,13 @@ export async function initMySQLTables(): Promise<void> {
         version INT DEFAULT 1,
         sessions JSON NULL,
         section_permissions JSON NULL,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
         created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
         INDEX idx_users_national_id (national_id),
         INDEX idx_users_username (username),
-        INDEX idx_users_role (role)
+        INDEX idx_users_role (role),
+        INDEX idx_users_active_del (deleted_at, is_active, role)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
@@ -223,6 +225,7 @@ export async function initMySQLTables(): Promise<void> {
       `ADD COLUMN service_years INT DEFAULT 0`,
       `ADD COLUMN judicial_specialty VARCHAR(128) NULL`,
       `ADD COLUMN permissions JSON NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
     ];
 
     for (const colClause of alterCols) {
@@ -235,6 +238,10 @@ export async function initMySQLTables(): Promise<void> {
         }
       }
     }
+
+    try {
+      await p.query(`CREATE INDEX idx_users_active_del ON users (deleted_at, is_active, role);`);
+    } catch {}
 
     await p.query(`
       CREATE TABLE IF NOT EXISTS user_sessions (
@@ -269,7 +276,68 @@ export async function initMySQLTables(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    logger.info('MySQL 8 schema tables (users, user_sessions, refresh_tokens, audit_logs) initialized successfully.');
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS research_mentorships (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        applicant_id BINARY(16) NOT NULL,
+        applicant_name VARCHAR(255) NOT NULL,
+        thesis_title VARCHAR(255) NOT NULL,
+        field VARCHAR(128) NOT NULL,
+        supervisor_professor VARCHAR(128) NOT NULL,
+        advisor_professor VARCHAR(128) NULL,
+        grant_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+        status VARCHAR(32) NOT NULL DEFAULT 'در حال بررسی',
+        proposal_file_url VARCHAR(512) NULL,
+        defense_date VARCHAR(32) NULL,
+        description TEXT NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_research_applicant (applicant_id),
+        INDEX idx_research_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS consumable_orders (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        user_id BINARY(16) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(32) NOT NULL,
+        items JSON NOT NULL,
+        total_price DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+        delivery_address TEXT NOT NULL,
+        status VARCHAR(32) NOT NULL DEFAULT 'ثبت شده',
+        payment_status VARCHAR(32) NOT NULL DEFAULT 'در انتظار پرداخت',
+        tracking_code VARCHAR(64) NOT NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_consumable_user (user_id),
+        INDEX idx_consumable_tracking (tracking_code)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS product_proposals (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        applicant_id BINARY(16) NOT NULL,
+        applicant_name VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        author_or_translator VARCHAR(128) NOT NULL,
+        description TEXT NULL,
+        proposed_format VARCHAR(64) NOT NULL DEFAULT 'چاپی',
+        sample_file_url VARCHAR(512) NULL,
+        status VARCHAR(32) NOT NULL DEFAULT 'در حال بررسی',
+        admin_note TEXT NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_product_props_applicant (applicant_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    logger.info('MySQL 8 schema tables (users, sessions, refresh_tokens, research_mentorships, consumable_orders, product_proposals) initialized successfully.');
   } catch (err: any) {
     logger.warn('MySQL initMySQLTables warning: ' + (err?.message || err));
   }

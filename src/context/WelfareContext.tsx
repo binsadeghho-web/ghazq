@@ -52,47 +52,12 @@ const WelfareContext = createContext<WelfareContextType | undefined>(undefined);
 
 export const WelfareProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [welfareRequests, setWelfareRequests] = useState<WelfareRequest[]>(INITIAL_WELFARE_REQUESTS);
-  const [consumables, setConsumables] = useState<ConsumableItem[]>(() => {
-    try {
-      const s = localStorage.getItem('cooperative_consumables');
-      return s ? JSON.parse(s) : INITIAL_CONSUMABLES;
-    } catch {
-      return INITIAL_CONSUMABLES;
-    }
-  });
-  const [consumableOrders, setConsumableOrders] = useState<ConsumableOrder[]>(() => {
-    try {
-      const s = localStorage.getItem('consumable_orders');
-      return s ? JSON.parse(s) : INITIAL_EXTENDED_ORDERS;
-    } catch {
-      return INITIAL_EXTENDED_ORDERS;
-    }
-  });
+  const [consumables, setConsumables] = useState<ConsumableItem[]>(INITIAL_CONSUMABLES);
+  const [consumableOrders, setConsumableOrders] = useState<ConsumableOrder[]>(INITIAL_EXTENDED_ORDERS);
   const [productProposals, setProductProposals] = useState<MemberProductProposal[]>(INITIAL_PRODUCT_PROPOSALS);
-  const [welfareSectionsConfig, setWelfareSectionsConfig] = useState<WelfareSectionConfig[]>(() => {
-    try {
-      const s = localStorage.getItem('welfare_sections_config');
-      return s ? JSON.parse(s) : DEFAULT_WELFARE_SECTIONS;
-    } catch {
-      return DEFAULT_WELFARE_SECTIONS;
-    }
-  });
-  const [loanTermsAndRules, setLoanTermsAndRules] = useState<WelfareLoanTermsAndRules>(() => {
-    try {
-      const s = localStorage.getItem('welfare_loan_rules');
-      return s ? JSON.parse(s) : DEFAULT_LOAN_TERMS_AND_RULES;
-    } catch {
-      return DEFAULT_LOAN_TERMS_AND_RULES;
-    }
-  });
-  const [cooperativeSectionInfo, setCooperativeSectionInfo] = useState<CooperativeSectionInfo>(() => {
-    try {
-      const s = localStorage.getItem('welfare_cooperative_info');
-      return s ? JSON.parse(s) : DEFAULT_COOPERATIVE_INFO;
-    } catch {
-      return DEFAULT_COOPERATIVE_INFO;
-    }
-  });
+  const [welfareSectionsConfig, setWelfareSectionsConfig] = useState<WelfareSectionConfig[]>(DEFAULT_WELFARE_SECTIONS);
+  const [loanTermsAndRules, setLoanTermsAndRules] = useState<WelfareLoanTermsAndRules>(DEFAULT_LOAN_TERMS_AND_RULES);
+  const [cooperativeSectionInfo, setCooperativeSectionInfo] = useState<CooperativeSectionInfo>(DEFAULT_COOPERATIVE_INFO);
 
   const refreshWelfare = useCallback(async () => {
     try {
@@ -119,9 +84,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const created = await api.createWelfareRequest(data);
       setWelfareRequests(prev => [created, ...prev]);
-      alert('درخواست تسهیلات شما با موفقیت ثبت و در صف بررسی صندوق قرار گرفت.');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      console.error(err);
     }
   }, []);
 
@@ -136,9 +100,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const created = await api.placeConsumableOrder(items, deliveryAddress);
       setConsumableOrders(prev => [created, ...prev]);
-      alert('سفارش اقلام معیشتی با موفقیت ثبت گردید.');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      console.error(err);
     }
   }, []);
 
@@ -153,19 +116,11 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const updateConsumableStock = useCallback((itemId: string, newStock: number) => {
-    setConsumables(prev => {
-      const next = prev.map(c => (c.id === itemId ? { ...c, stock: newStock } : c));
-      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setConsumables(prev => prev.map(c => (c.id === itemId ? { ...c, stock: newStock } : c)));
   }, []);
 
   const updateConsumableItem = useCallback((id: string, updates: Partial<ConsumableItem>) => {
-    setConsumables(prev => {
-      const next = prev.map(c => (c.id === id ? { ...c, ...updates } : c));
-      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setConsumables(prev => prev.map(c => (c.id === id ? { ...c, ...updates } : c)));
   }, []);
 
   const addConsumableItem = useCallback((itemData: Omit<ConsumableItem, 'id'>) => {
@@ -173,48 +128,27 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...itemData,
       id: `cnsm_${Date.now()}`,
     };
-    setConsumables(prev => {
-      const next = [newItem, ...prev];
-      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setConsumables(prev => [newItem, ...prev]);
   }, []);
 
   const deleteConsumableItem = useCallback((id: string) => {
-    setConsumables(prev => {
-      const next = prev.filter(c => c.id !== id);
-      try { localStorage.setItem('cooperative_consumables', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setConsumables(prev => prev.filter(c => c.id !== id));
   }, []);
 
   const updateConsumableOrderStatus = useCallback((orderId: string, status: ConsumableOrder['status'], notes?: string) => {
-    setConsumableOrders(prev => {
-      const next = prev.map(o => (o.id === orderId ? { ...o, status, notes: notes !== undefined ? notes : (o as any).notes } : o));
-      try { localStorage.setItem('consumable_orders', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setConsumableOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status, notes: notes !== undefined ? notes : (o as any).notes } : o)));
   }, []);
 
   const updateWelfareSectionsConfig = useCallback((configs: WelfareSectionConfig[]) => {
     setWelfareSectionsConfig(configs);
-    try { localStorage.setItem('welfare_sections_config', JSON.stringify(configs)); } catch (e) {}
   }, []);
 
   const updateLoanTermsAndRules = useCallback((updates: Partial<WelfareLoanTermsAndRules>) => {
-    setLoanTermsAndRules(prev => {
-      const next = { ...prev, ...updates };
-      try { localStorage.setItem('welfare_loan_rules', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setLoanTermsAndRules(prev => ({ ...prev, ...updates }));
   }, []);
 
   const updateCooperativeSectionInfo = useCallback((updates: Partial<CooperativeSectionInfo>) => {
-    setCooperativeSectionInfo(prev => {
-      const next = { ...prev, ...updates };
-      try { localStorage.setItem('welfare_cooperative_info', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setCooperativeSectionInfo(prev => ({ ...prev, ...updates }));
   }, []);
 
   const value = useMemo<WelfareContextType>(() => ({

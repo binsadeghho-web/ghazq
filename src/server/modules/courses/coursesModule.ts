@@ -1,32 +1,115 @@
 import { Router, Request, Response } from 'express';
-import { db, generateUUIDv7 } from '../../platform/database';
+import { getPool, selectWithTimeout, withTx, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { AppError } from '../../platform/errors';
 import { AuthContext, AuthorizationPolicy } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { Course, CourseEnrollment } from '../../../types';
+import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
+import { auditChain } from '../../platform/auditChain';
+import { outbox } from '../../platform/outbox';
+
+function mapCourseRow(row: any): Course & { version: number } {
+  let topics: string[] = [];
+  try {
+    if (typeof row.topics === 'string') topics = JSON.parse(row.topics);
+    else if (Array.isArray(row.topics)) topics = row.topics;
+  } catch {}
+
+  let archiveResources: any[] = [];
+  try {
+    if (typeof row.archive_resources === 'string') archiveResources = JSON.parse(row.archive_resources);
+    else if (Array.isArray(row.archive_resources)) archiveResources = row.archive_resources;
+  } catch {}
+
+  return {
+    id: fromIdBuffer(row.id),
+    title: row.title,
+    instructor: row.instructor,
+    level: 'پیشرفته',
+    hours: Number(row.duration_hours || 0),
+    capacity: Number(row.capacity || 0),
+    enrolledCount: Number(row.enrolled_count || 0),
+    schedule: 'پنج‌شنبه‌ها ساعت ۱۶:۰۰',
+    price: Number(row.price || 0),
+    startDate: row.start_date,
+    holdingFormat: 'hybrid',
+    meetingLink: 'https://feqh.ac.ir/live',
+    hasInstallments: true,
+    hasCertificate: true,
+    description: row.title,
+    status: row.status,
+    topics: topics.length > 0 ? topics : ['مباحث نظری و فقهی', 'تحلیل رویه قضایی'],
+    coverImage: row.cover_image_url || undefined,
+    allowedPaymentMethod: row.allowed_payment_method || 'both',
+    archiveAccess: row.archive_access || 'enrolled_only',
+    archiveResources,
+    isDeleted: Boolean(row.is_deleted),
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
+    deletedBy: row.deleted_by || undefined,
+    version: Number(row.version || 1),
+  };
+}
+
+function mapEnrollmentRow(row: any): CourseEnrollment & { version: number } {
+  return {
+    id: fromIdBuffer(row.id),
+    courseId: fromIdBuffer(row.course_id),
+    courseTitle: row.course_title,
+    userId: fromIdBuffer(row.user_id),
+    userName: row.user_name,
+    userNationalId: row.user_national_id,
+    userPhone: row.user_phone,
+    userRoleTitle: row.user_role_title,
+    enrolledAt: row.enrolled_at ? new Date(row.enrolled_at).toISOString() : new Date().toISOString(),
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    amountPaid: Number(row.amount_paid || 0),
+    trackingCode: row.tracking_code,
+    receiptBankName: row.receipt_bank_name || undefined,
+    receiptDate: row.receipt_date || undefined,
+    receiptFileUrl: row.receipt_file_url || undefined,
+    adminNote: row.admin_note || undefined,
+    reviewedBy: row.reviewed_by || undefined,
+    reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
+    version: Number(row.version || 1),
+  };
+}
 
 export class CoursesService {
   async getAll(authCtx?: AuthContext, includeDeleted = false): Promise<Array<Course & { version: number }>> {
+    ensureDatabaseConnection();
+    const p = getPool();
     const userId = authCtx?.userId;
     const isStaff = authCtx?.role === 'admin' || authCtx?.role === 'supervisor';
 
-    const source = db.courses.filter(course => {
-      if (course.isDeleted) {
-        return isStaff && includeDeleted;
-      }
-      return true;
-    });
+    let sql = `SELECT * FROM courses WHERE 1=1`;
+    if (!includeDeleted || !isStaff) {
+      sql += ` AND is_deleted = 0`;
+    }
+    sql += ` ORDER BY created_at DESC`;
 
-    return source.map(course => {
-      // Find current user's enrollment if logged in
-      const userEnrollment = userId ? db.courseEnrollments.find(e => e.courseId === course.id && e.userId === userId) : undefined;
+    const rows = await selectWithTimeout<any>(sql, [], 4000);
+    const courses = (rows || []).map(mapCourseRow);
+
+    if (courses.length === 0) return [];
+
+    let userEnrollmentsMap: Map<string, CourseEnrollment> = new Map();
+    if (userId) {
+      const uBuf = toIdBuffer(userId);
+      const [eRows] = await p.query<any[]>(
+        `SELECT * FROM course_enrollments WHERE user_id = ? OR user_id = ?`,
+        [uBuf, userId]
+      );
+      (eRows || []).map(mapEnrollmentRow).forEach(e => {
+        userEnrollmentsMap.set(e.courseId, e);
+      });
+    }
+
+    return courses.map(course => {
+      const userEnrollment = userEnrollmentsMap.get(course.id);
       const isEnrolled = Boolean(userEnrollment);
       const enrollmentStatus = userEnrollment?.paymentStatus;
 
-      // Determine archive access:
-      // 1. If admin opened to everyone ('all')
-      // 2. If staff (admin / supervisor)
-      // 3. If user has confirmed registration
       let hasArchiveAccess = false;
       if (course.archiveAccess === 'all') {
         hasArchiveAccess = true;
@@ -46,18 +129,24 @@ export class CoursesService {
   }
 
   async getEnrollments(authCtx: AuthContext, courseId?: string): Promise<Array<CourseEnrollment & { version: number }>> {
-    let items = db.courseEnrollments;
-    
-    // Non-staff can only see their own enrollments (BOLA protection)
+    ensureDatabaseConnection();
+    let sql = `SELECT * FROM course_enrollments WHERE 1=1`;
+    const params: any[] = [];
+
     if (authCtx.role === 'alumni') {
-      items = items.filter(e => e.userId === authCtx.userId);
+      sql += ` AND (user_id = ? OR user_id = ?)`;
+      params.push(toIdBuffer(authCtx.userId), authCtx.userId);
     }
 
     if (courseId) {
-      items = items.filter(e => e.courseId === courseId);
+      sql += ` AND (course_id = ? OR course_id = ?)`;
+      params.push(toIdBuffer(courseId), courseId);
     }
 
-    return [...items].sort((a, b) => new Date(b.enrolledAt).getTime() - new Date(a.enrolledAt).getTime());
+    sql += ` ORDER BY enrolled_at DESC`;
+
+    const rows = await selectWithTimeout<any>(sql, params, 4000);
+    return (rows || []).map(mapEnrollmentRow);
   }
 
   async enroll(
@@ -72,26 +161,42 @@ export class CoursesService {
       amountPaid?: number;
     }
   ): Promise<{ course: Course; enrollment: CourseEnrollment }> {
-    const course = db.courses.find(c => c.id === courseId);
-    if (!course) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    ensureDatabaseConnection();
+    const p = getPool();
+    const cBuf = toIdBuffer(courseId);
+    const uBuf = toIdBuffer(authCtx.userId);
 
-    // Check capacity
+    const coursesRows = await selectWithTimeout<any>(
+      `SELECT * FROM courses WHERE (id = ? OR id = ?) AND is_deleted = 0 LIMIT 1`,
+      [cBuf, courseId],
+      3000
+    );
+    if (!coursesRows || coursesRows.length === 0) {
+      throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    }
+    const course = mapCourseRow(coursesRows[0]);
+
     if (course.enrolledCount >= course.capacity) {
       throw AppError.unprocessable('ظرفیت ثبت‌نام در این دوره تکمیل گردیده است.');
     }
 
-    // Check existing enrollment
-    const existing = db.courseEnrollments.find(e => e.courseId === courseId && e.userId === authCtx.userId);
-    if (existing && existing.paymentStatus !== 'rejected') {
+    const [existingRows] = await p.query<any[]>(
+      `SELECT * FROM course_enrollments WHERE (course_id = ? OR course_id = ?) AND (user_id = ? OR user_id = ?) AND payment_status != 'rejected'`,
+      [cBuf, courseId, uBuf, authCtx.userId]
+    );
+
+    if (existingRows && existingRows.length > 0) {
       throw AppError.conflict('شما قبلاً در این دوره ثبت‌نام کرده‌اید.');
     }
 
     const now = new Date().toISOString();
     const trackingCode = dto.trackingCode || (dto.paymentMethod === 'online_gateway' ? `SHP-${Date.now().toString().slice(-7)}` : `TRX-${Date.now().toString().slice(-7)}`);
     const paymentStatus: CourseEnrollment['paymentStatus'] = dto.paymentMethod === 'online_gateway' ? 'confirmed' : 'pending_review';
+    const enrollmentId = generateUUIDv7();
+    const eBuf = toIdBuffer(enrollmentId);
 
     const enrollment: CourseEnrollment & { version: number } = {
-      id: generateUUIDv7(),
+      id: enrollmentId,
       courseId: course.id,
       courseTitle: course.title,
       userId: authCtx.userId,
@@ -110,39 +215,39 @@ export class CoursesService {
       version: 1,
     };
 
-    return db.withTx(async tx => {
-      // Add enrollment
-      tx.courseEnrollments.unshift(enrollment);
+    return await withTx(async (conn) => {
+      await conn.query(
+        `INSERT INTO course_enrollments (
+          id, course_id, course_title, user_id, user_name, user_national_id, user_phone, user_role_title,
+          payment_method, payment_status, amount_paid, tracking_code, receipt_bank_name, receipt_date, receipt_file_url, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        [
+          eBuf,
+          cBuf,
+          course.title,
+          uBuf,
+          authCtx.fullName,
+          enrollment.userNationalId,
+          enrollment.userPhone,
+          enrollment.userRoleTitle,
+          dto.paymentMethod,
+          paymentStatus,
+          enrollment.amountPaid,
+          trackingCode,
+          enrollment.receiptBankName,
+          enrollment.receiptDate,
+          enrollment.receiptFileUrl || null,
+        ]
+      );
 
-      // If instant confirmed via gateway, increment enrolledCount
-      let updatedCourse = course;
       if (paymentStatus === 'confirmed') {
-        updatedCourse = tx.updateVersioned(
-          tx.courses,
-          courseId,
-          course.version,
-          curr => ({
-            enrolledCount: curr.enrolledCount + 1,
-            isEnrolled: true,
-            enrollmentStatus: 'confirmed',
-            hasArchiveAccess: true,
-          })
-        );
-      } else {
-        // Mark as pending review on client view
-        updatedCourse = tx.updateVersioned(
-          tx.courses,
-          courseId,
-          course.version,
-          () => ({
-            isEnrolled: true,
-            enrollmentStatus: 'pending_review',
-          })
+        await conn.query(
+          `UPDATE courses SET enrolled_count = enrolled_count + 1, version = version + 1 WHERE id = ? OR id = ?`,
+          [cBuf, courseId]
         );
       }
 
-      // Audit Log
-      tx.emitAudit({
+      auditChain.appendEntry({
         eventType: 'LOGIN_SUCCESS',
         actorId: authCtx.userId,
         actorName: authCtx.fullName,
@@ -152,14 +257,19 @@ export class CoursesService {
         severity: 'info',
       });
 
-      // Outbox Event
-      tx.emitOutbox('courses.enrolled', {
+      outbox.enqueue('courses.enrolled', {
         courseId,
         userId: authCtx.userId,
         title: course.title,
         paymentStatus,
         trackingCode,
       });
+
+      const updatedCourses = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+      const updatedCourse = mapCourseRow(updatedCourses[0]);
+      (updatedCourse as any).isEnrolled = true;
+      (updatedCourse as any).enrollmentStatus = paymentStatus;
+      (updatedCourse as any).hasArchiveAccess = paymentStatus === 'confirmed';
 
       return { course: updatedCourse, enrollment };
     });
@@ -172,69 +282,58 @@ export class CoursesService {
     adminNote?: string
   ): Promise<CourseEnrollment & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
 
-    const enrollment = db.courseEnrollments.find(e => e.id === enrollmentId);
-    if (!enrollment) throw AppError.notFound(`ثبت‌نام با شناسه ${enrollmentId}`);
+    const eBuf = toIdBuffer(enrollmentId);
+    const p = getPool();
 
-    const course = db.courses.find(c => c.id === enrollment.courseId);
-    if (!course) throw AppError.notFound(`دوره مرتبط با ثبت‌نام`);
+    const eRows = await selectWithTimeout<any>(
+      `SELECT * FROM course_enrollments WHERE id = ? OR id = ? LIMIT 1`,
+      [eBuf, enrollmentId],
+      3000
+    );
+    if (!eRows || eRows.length === 0) {
+      throw AppError.notFound(`ثبت‌نام با شناسه ${enrollmentId}`);
+    }
+    const enrollment = mapEnrollmentRow(eRows[0]);
+    const cBuf = toIdBuffer(enrollment.courseId);
 
-    return db.withTx<CourseEnrollment & { version: number }>(async tx => {
+    return await withTx(async (conn) => {
       const prevStatus = enrollment.paymentStatus;
-      const expectedVer = (enrollment as any).version ?? 1;
+      const note = adminNote || (status === 'confirmed' ? 'مستندات واریز تایید و ثبت‌نام قطعی شد.' : 'رسید واریزی مورد تایید قرار نگرفت.');
 
-      const updatedEnrollment = tx.updateVersioned<CourseEnrollment & { version: number }>(
-        tx.courseEnrollments,
-        enrollmentId,
-        expectedVer,
-        () => ({
-          paymentStatus: status,
-          adminNote: adminNote || (status === 'confirmed' ? 'مستندات واریز تایید و ثبت‌نام قطعی شد.' : 'رسید واریزی مورد تایید قرار نگرفت.'),
-          reviewedBy: authCtx.fullName,
-          reviewedAt: new Date().toISOString(),
-        })
+      await conn.query(
+        `UPDATE course_enrollments
+         SET payment_status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP(3), version = version + 1
+         WHERE id = ? OR id = ?`,
+        [status, note, authCtx.fullName, eBuf, enrollmentId]
       );
 
-      // Adjust course enrolled count
       if (status === 'confirmed' && prevStatus !== 'confirmed') {
-        tx.updateVersioned(
-          tx.courses,
-          course.id,
-          (course as any).version ?? 1,
-          curr => ({
-            enrolledCount: curr.enrolledCount + 1,
-          })
-        );
+        await conn.query(`UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ? OR id = ?`, [cBuf, enrollment.courseId]);
       } else if (status === 'rejected' && prevStatus === 'confirmed') {
-        tx.updateVersioned(
-          tx.courses,
-          course.id,
-          (course as any).version ?? 1,
-          curr => ({
-            enrolledCount: Math.max(0, curr.enrolledCount - 1),
-          })
-        );
+        await conn.query(`UPDATE courses SET enrolled_count = GREATEST(0, enrolled_count - 1) WHERE id = ? OR id = ?`, [cBuf, enrollment.courseId]);
       }
 
-      // Audit Log
-      tx.emitAudit({
+      auditChain.appendEntry({
         eventType: 'CARTABLE_STATUS_CHANGE',
         actorId: authCtx.userId,
         actorName: authCtx.fullName,
         actorRole: authCtx.role,
         ip: '127.0.0.1',
-        details: `تغییر وضعیت ثبت‌نام متقاضی [${enrollment.userName}] در دوره [${course.title}] به '${status}'.`,
+        details: `تغییر وضعیت ثبت‌نام متقاضی [${enrollment.userName}] در دوره [${enrollment.courseTitle}] به '${status}'.`,
         severity: 'info',
       });
 
-      tx.emitOutbox('courses.enrollment_reviewed', {
+      outbox.enqueue('courses.enrollment_reviewed', {
         enrollmentId,
-        courseId: course.id,
+        courseId: enrollment.courseId,
         userId: enrollment.userId,
         status,
       });
 
-      return updatedEnrollment;
+      const updatedRows = await selectWithTimeout<any>(`SELECT * FROM course_enrollments WHERE id = ? OR id = ? LIMIT 1`, [eBuf, enrollmentId]);
+      return mapEnrollmentRow(updatedRows[0]);
     });
   }
 
@@ -243,40 +342,54 @@ export class CoursesService {
     data: Omit<Course, 'id' | 'enrolledCount' | 'isEnrolled' | 'version'>
   ): Promise<Course & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
 
-    return db.withTx(async tx => {
-      const newCourse: Course & { version: number } = {
-        ...data,
-        id: `crs_${Date.now()}`,
-        enrolledCount: 0,
-        version: 1,
-        allowedPaymentMethod: data.allowedPaymentMethod || 'both',
-        isDeleted: false,
-        status: data.status || 'enrolling',
-        archiveAccess: data.archiveAccess || 'enrolled_only',
-        archiveResources: data.archiveResources || [],
-        topics: data.topics && data.topics.length > 0 ? data.topics : ['مباحث نظری و فقهی', 'تحلیل رویه قضایی و آراء وحدت رویه'],
-      };
+    const newId = generateUUIDv7();
+    const idBuf = toIdBuffer(newId);
+    const p = getPool();
 
-      tx.courses.unshift(newCourse);
+    const topics = data.topics && data.topics.length > 0 ? data.topics : ['مباحث نظری و فقهی', 'تحلیل رویه قضایی'];
+    const archiveResources = data.archiveResources || [];
 
-      tx.emitAudit({
-        eventType: 'RULING_APPROVED',
-        actorId: authCtx.userId,
-        actorName: authCtx.fullName,
-        actorRole: authCtx.role,
-        ip: '127.0.0.1',
-        details: `دوره تخصصی جدید [${newCourse.title}] توسط مسئول آموزش تعریف و منتشر گردید.`,
-        severity: 'info',
-      });
+    await p.query(
+      `INSERT INTO courses (
+        id, title, instructor, duration_hours, capacity, enrolled_count, price, start_date, status,
+        topics, cover_image_url, allowed_payment_method, archive_access, archive_resources, is_deleted, version
+      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+      [
+        idBuf,
+        data.title,
+        data.instructor,
+        data.hours || 0,
+        data.capacity || 0,
+        data.price || 0,
+        data.startDate,
+        data.status || 'enrolling',
+        JSON.stringify(topics),
+        data.coverImage || null,
+        data.allowedPaymentMethod || 'both',
+        data.archiveAccess || 'enrolled_only',
+        JSON.stringify(archiveResources),
+      ]
+    );
 
-      tx.emitOutbox('courses.created', {
-        courseId: newCourse.id,
-        title: newCourse.title,
-      });
-
-      return newCourse;
+    auditChain.appendEntry({
+      eventType: 'RULING_APPROVED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `دوره تخصصی جدید [${data.title}] توسط مسئول آموزش تعریف و منتشر گردید.`,
+      severity: 'info',
     });
+
+    outbox.enqueue('courses.created', {
+      courseId: newId,
+      title: data.title,
+    });
+
+    const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? LIMIT 1`, [idBuf]);
+    return mapCourseRow(rows[0]);
   }
 
   async updateCourse(
@@ -285,38 +398,70 @@ export class CoursesService {
     updates: Partial<Course>
   ): Promise<Course & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
 
-    const course = db.courses.find(c => c.id === courseId);
-    if (!course) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    const cBuf = toIdBuffer(courseId);
+    const p = getPool();
 
-    return db.withTx(async tx => {
-      const updated = tx.updateVersioned(
-        tx.courses,
+    const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+    if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+
+    const existing = mapCourseRow(rows[0]);
+
+    const title = updates.title !== undefined ? updates.title : existing.title;
+    const instructor = updates.instructor !== undefined ? updates.instructor : existing.instructor;
+    const hours = updates.hours !== undefined ? updates.hours : existing.hours;
+    const capacity = updates.capacity !== undefined ? updates.capacity : existing.capacity;
+    const price = updates.price !== undefined ? updates.price : existing.price;
+    const startDate = updates.startDate !== undefined ? updates.startDate : existing.startDate;
+    const status = updates.status !== undefined ? updates.status : existing.status;
+    const topics = updates.topics !== undefined ? updates.topics : existing.topics;
+    const coverImage = updates.coverImage !== undefined ? updates.coverImage : existing.coverImage;
+    const allowedPaymentMethod = updates.allowedPaymentMethod !== undefined ? updates.allowedPaymentMethod : existing.allowedPaymentMethod;
+    const archiveAccess = updates.archiveAccess !== undefined ? updates.archiveAccess : existing.archiveAccess;
+    const archiveResources = updates.archiveResources !== undefined ? updates.archiveResources : existing.archiveResources;
+
+    await p.query(
+      `UPDATE courses
+       SET title = ?, instructor = ?, duration_hours = ?, capacity = ?, price = ?, start_date = ?, status = ?,
+           topics = ?, cover_image_url = ?, allowed_payment_method = ?, archive_access = ?, archive_resources = ?,
+           version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE id = ? OR id = ?`,
+      [
+        title,
+        instructor,
+        hours,
+        capacity,
+        price,
+        startDate,
+        status,
+        JSON.stringify(topics),
+        coverImage || null,
+        allowedPaymentMethod,
+        archiveAccess,
+        JSON.stringify(archiveResources),
+        cBuf,
         courseId,
-        course.version,
-        curr => ({
-          ...curr,
-          ...updates,
-        })
-      );
+      ]
+    );
 
-      tx.emitAudit({
-        eventType: 'ROLE_CHANGED',
-        actorId: authCtx.userId,
-        actorName: authCtx.fullName,
-        actorRole: authCtx.role,
-        ip: '127.0.0.1',
-        details: `تنظیمات و اطلاعات دوره [${course.title}] توسط مسئول آموزش بروزرسانی شد.`,
-        severity: 'info',
-      });
-
-      tx.emitOutbox('courses.updated', {
-        courseId,
-        title: course.title,
-      });
-
-      return updated;
+    auditChain.appendEntry({
+      eventType: 'ROLE_CHANGED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `تنظیمات و اطلاعات دوره [${title}] توسط مسئول آموزش بروزرسانی شد.`,
+      severity: 'info',
     });
+
+    outbox.enqueue('courses.updated', {
+      courseId,
+      title,
+    });
+
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+    return mapCourseRow(updatedRows[0]);
   }
 
   async softDeleteCourse(
@@ -325,49 +470,47 @@ export class CoursesService {
     pin: string
   ): Promise<{ success: boolean; message: string }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
 
     if (!pin || pin.trim().length < 4) {
       throw AppError.forbidden('ورود کد امنیتی / پین پیامکی ۶ رقمی الزامی است.');
     }
 
-    const course = db.courses.find(c => c.id === courseId);
-    if (!course) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    const cBuf = toIdBuffer(courseId);
+    const p = getPool();
 
-    return db.withTx(async tx => {
-      // Soft delete: sets isDeleted = true, preserves all enrollments & financial records (no cascade)
-      tx.updateVersioned(
-        tx.courses,
-        courseId,
-        course.version,
-        curr => ({
-          ...curr,
-          isDeleted: true,
-          deletedAt: new Date().toISOString(),
-          deletedBy: authCtx.fullName,
-        })
-      );
+    const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+    if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
 
-      tx.emitAudit({
-        eventType: 'ROLE_CHANGED',
-        actorId: authCtx.userId,
-        actorName: authCtx.fullName,
-        actorRole: authCtx.role,
-        ip: '127.0.0.1',
-        details: `حذف منطقی امن (Soft Delete) دوره [${course.title}] با تایید هویت دوعاملی پیامکی/پین کد امنیتی توسط ${authCtx.fullName}. کلیه داده‌های مالی و اعضای ثبت‌نامی در سامانه حفظ شدند.`,
-        severity: 'warning',
-      });
+    const course = mapCourseRow(rows[0]);
 
-      tx.emitOutbox('courses.deleted', {
-        courseId,
-        title: course.title,
-        deletedBy: authCtx.fullName,
-      });
+    await p.query(
+      `UPDATE courses
+       SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP(3), deleted_by = ?, version = version + 1
+       WHERE id = ? OR id = ?`,
+      [authCtx.fullName, cBuf, courseId]
+    );
 
-      return {
-        success: true,
-        message: `دوره [${course.title}] با تایید پین پیامکی با موفقیت حذف منطقی گردید و به بخش بایگانی امن انتقال یافت.`,
-      };
+    auditChain.appendEntry({
+      eventType: 'ROLE_CHANGED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `حذف منطقی امن (Soft Delete) دوره [${course.title}] با تایید هویت دوعاملی پیامکی/پین کد امنیتی توسط ${authCtx.fullName}. کلیه داده‌های مالی و اعضای ثبت‌نامی در سامانه حفظ شدند.`,
+      severity: 'warning',
     });
+
+    outbox.enqueue('courses.deleted', {
+      courseId,
+      title: course.title,
+      deletedBy: authCtx.fullName,
+    });
+
+    return {
+      success: true,
+      message: `دوره [${course.title}] با تایید پین پیامکی با موفقیت حذف منطقی گردید و به بخش بایگانی امن انتقال یافت.`,
+    };
   }
 
   async restoreCourse(
@@ -375,43 +518,42 @@ export class CoursesService {
     courseId: string
   ): Promise<{ success: boolean; message: string }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
 
-    const course = db.courses.find(c => c.id === courseId);
-    if (!course) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    const cBuf = toIdBuffer(courseId);
+    const p = getPool();
 
-    return db.withTx(async tx => {
-      tx.updateVersioned(
-        tx.courses,
-        courseId,
-        course.version,
-        curr => ({
-          ...curr,
-          isDeleted: false,
-          deletedAt: undefined,
-          deletedBy: undefined,
-        })
-      );
+    const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+    if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
 
-      tx.emitAudit({
-        eventType: 'ROLE_CHANGED',
-        actorId: authCtx.userId,
-        actorName: authCtx.fullName,
-        actorRole: authCtx.role,
-        ip: '127.0.0.1',
-        details: `بازیابی دوره [${course.title}] از بایگانی امن توسط ${authCtx.fullName}.`,
-        severity: 'info',
-      });
+    const course = mapCourseRow(rows[0]);
 
-      tx.emitOutbox('courses.restored', {
-        courseId,
-        title: course.title,
-      });
+    await p.query(
+      `UPDATE courses
+       SET is_deleted = 0, deleted_at = NULL, deleted_by = NULL, version = version + 1
+       WHERE id = ? OR id = ?`,
+      [cBuf, courseId]
+    );
 
-      return {
-        success: true,
-        message: `دوره [${course.title}] با موفقیت از بایگانی بازیابی شد و به فهرست دوره‌های فعال افزوده گردید.`,
-      };
+    auditChain.appendEntry({
+      eventType: 'ROLE_CHANGED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `بازیابی دوره [${course.title}] از بایگانی امن توسط ${authCtx.fullName}.`,
+      severity: 'info',
     });
+
+    outbox.enqueue('courses.restored', {
+      courseId,
+      title: course.title,
+    });
+
+    return {
+      success: true,
+      message: `دوره [${course.title}] با موفقیت از بایگانی بازیابی شد و به فهرست دوره‌های فعال افزوده گردید.`,
+    };
   }
 
   async sendCourseSms(
@@ -420,19 +562,22 @@ export class CoursesService {
     dto: { recipientPhone: string | 'all'; message: string; recipientName?: string }
   ): Promise<{ success: boolean; count: number; message: string }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
 
-    const course = db.courses.find(c => c.id === courseId);
-    if (!course) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    const cBuf = toIdBuffer(courseId);
+    const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
+    if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
+    const course = mapCourseRow(rows[0]);
 
     if (!dto.message || !dto.message.trim()) {
       throw AppError.unprocessable('متن پیامک ارسالی نمی‌تواند خالی باشد.');
     }
 
-    const courseEnrollments = db.courseEnrollments.filter(e => e.courseId === courseId);
+    const enrollments = await this.getEnrollments(authCtx, courseId);
     let targetPhones: string[] = [];
 
     if (dto.recipientPhone === 'all') {
-      targetPhones = Array.from(new Set(courseEnrollments.map(e => e.userPhone).filter(Boolean)));
+      targetPhones = Array.from(new Set(enrollments.map(e => e.userPhone).filter(Boolean)));
       if (targetPhones.length === 0) {
         targetPhones = ['09127778899', '09124445566'];
       }
@@ -440,23 +585,21 @@ export class CoursesService {
       targetPhones = [dto.recipientPhone];
     }
 
-    return db.withTx(async tx => {
-      tx.emitAudit({
-        eventType: 'LOGIN_SUCCESS',
-        actorId: authCtx.userId,
-        actorName: authCtx.fullName,
-        actorRole: authCtx.role,
-        ip: '127.0.0.1',
-        details: `ارسال پیامک اطلاع‌رسانی دوره [${course.title}] به ${targetPhones.length} نفر از شرکت‌کنندگان (${dto.recipientPhone === 'all' ? 'ارسال گروهی' : (dto.recipientName || dto.recipientPhone)}).`,
-        severity: 'info',
-      });
-
-      return {
-        success: true,
-        count: targetPhones.length,
-        message: `پیامک با موفقیت به ${targetPhones.length} شماره همراه تحویل داده شد.`,
-      };
+    auditChain.appendEntry({
+      eventType: 'LOGIN_SUCCESS',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `ارسال پیامک اطلاع‌رسانی دوره [${course.title}] به ${targetPhones.length} نفر از شرکت‌کنندگان (${dto.recipientPhone === 'all' ? 'ارسال گروهی' : (dto.recipientName || dto.recipientPhone)}).`,
+      severity: 'info',
     });
+
+    return {
+      success: true,
+      count: targetPhones.length,
+      message: `پیامک با موفقیت به ${targetPhones.length} شماره همراه تحویل داده شد.`,
+    };
   }
 }
 

@@ -132,8 +132,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `section_permissions` JSON NULL,
   `sessions` JSON NULL,
   `version` INT NOT NULL DEFAULT 1,
+  `deleted_at` DATETIME(3) NULL DEFAULT NULL,
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_users_active_del` (`deleted_at`, `is_active`, `role`),
   INDEX `idx_role_status` (`role`, `is_active`),
   INDEX `idx_province` (`province`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -508,6 +510,73 @@ CREATE TABLE IF NOT EXISTS `private_messages` (
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ----------------------------------------------------------------------------
+-- ۲۲. جدول حمایت از پروپوزال‌ها و رساله‌های پژوهشی (Research Mentorships)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `research_mentorships` (
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `applicant_id` BINARY(16) NOT NULL,
+  `applicant_name` VARCHAR(255) NOT NULL,
+  `thesis_title` VARCHAR(255) NOT NULL,
+  `field` VARCHAR(128) NOT NULL,
+  `supervisor_professor` VARCHAR(128) NOT NULL,
+  `advisor_professor` VARCHAR(128) NULL,
+  `grant_amount` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'در حال بررسی',
+  `proposal_file_url` VARCHAR(512) NULL,
+  `defense_date` VARCHAR(32) NULL,
+  `description` TEXT NULL,
+  `version` INT NOT NULL DEFAULT 1,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_research_applicant` (`applicant_id`),
+  INDEX `idx_research_status` (`status`),
+  CONSTRAINT `fk_research_applicant` FOREIGN KEY (`applicant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- ۲۳. جدول سفارشات اقلام مصرفی تعاونی (Consumable Orders)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `consumable_orders` (
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `user_id` BINARY(16) NOT NULL,
+  `user_name` VARCHAR(255) NOT NULL,
+  `user_phone` VARCHAR(32) NOT NULL,
+  `items` JSON NOT NULL,
+  `total_price` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+  `delivery_address` TEXT NOT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'ثبت شده',
+  `payment_status` VARCHAR(32) NOT NULL DEFAULT 'در انتظار پرداخت',
+  `tracking_code` VARCHAR(64) NOT NULL,
+  `version` INT NOT NULL DEFAULT 1,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_consumable_user` (`user_id`),
+  INDEX `idx_consumable_tracking` (`tracking_code`),
+  CONSTRAINT `fk_consumable_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- ۲۴. جدول پیشنهاد اثر/کتاب نخبگان (Product Proposals)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `product_proposals` (
+  `id` BINARY(16) NOT NULL PRIMARY KEY,
+  `applicant_id` BINARY(16) NOT NULL,
+  `applicant_name` VARCHAR(255) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `author_or_translator` VARCHAR(128) NOT NULL,
+  `description` TEXT NULL,
+  `proposed_format` VARCHAR(64) NOT NULL DEFAULT 'چاپی',
+  `sample_file_url` VARCHAR(512) NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'در حال بررسی',
+  `admin_note` TEXT NULL,
+  `version` INT NOT NULL DEFAULT 1,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_product_props_applicant` (`applicant_id`),
+  CONSTRAINT `fk_product_props_applicant` FOREIGN KEY (`applicant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET foreign_key_checks = 1;
 
 -- ============================================================================
@@ -565,6 +634,18 @@ VALUES (
   'تنظیمات پیش‌فرض چیدمان، متن‌ها و ترتیبات ویترین‌های داشبورد تم دوم'
 ) ON DUPLICATE KEY UPDATE `updated_at` = CURRENT_TIMESTAMP(3);
 
+INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`) 
+VALUES (
+  'mizan_dashboard_config',
+  '{
+    "showHeroBanner": true,
+    "showCourseShowcase": true,
+    "showCartableSnippet": true,
+    "showQuickActions": true
+  }',
+  'تنظیمات پیش‌فرض داشبورد تم میزان'
+) ON DUPLICATE KEY UPDATE `updated_at` = CURRENT_TIMESTAMP(3);
+
 -- درج تنظیمات امنیتی
 INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`)
 VALUES (
@@ -578,3 +659,44 @@ VALUES (
   }',
   'تنظیمات امنیتی و نرخ محدودیت ورود و نشست‌ها'
 ) ON DUPLICATE KEY UPDATE `updated_at` = CURRENT_TIMESTAMP(3);
+
+INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`)
+VALUES (
+  'welfare_sections_config',
+  '[
+    {"id": "loans", "title": "وام‌ها و تسهیلات قرض‌الحسنه", "description": "تسهیلات کم‌بهره و وام‌های ضروری اعضا", "icon": "Landmark", "enabled": true, "badge": "تسهیلات ویژه"},
+    {"id": "cooperative", "title": "تعاونی مصرف اعضا", "description": "خرید اقساطی و بن‌کارت اقلام اساسی", "icon": "ShoppingBag", "enabled": true, "badge": "تخفیف ویژه"},
+    {"id": "tourism", "title": "خدمات رفاهی، اقامتی و زیارتی", "description": "رزرو اقامتگاه‌ها و تورهای زیارتی و تفریحی", "icon": "Palmtree", "enabled": true, "badge": "سفرهای استانی"}
+  ]',
+  'تنظیمات بخش‌های امور رفاهی اعضا'
+) ON DUPLICATE KEY UPDATE `updated_at` = CURRENT_TIMESTAMP(3);
+
+INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`)
+VALUES (
+  'loan_terms_rules',
+  '{
+    "maxLoanAmount": 150000000,
+    "maxInstallments": 36,
+    "interestRatePercent": 4,
+    "guarantorRequired": true,
+    "rulesList": [
+      "پرداخت اقساط به صورت کسر از حقوق یا چک صیادی الزامی است.",
+      "متقاضی نباید چک برگشتی یا بدهی معوق در سامانه داشته باشد.",
+      "ضامن باید از اعضای رسمی یا قضات دانش‌آموخته باشد."
+    ]
+  }',
+  'قوانین و شرایط دریافت وام و تسهیلات رفاهی'
+) ON DUPLICATE KEY UPDATE `updated_at` = CURRENT_TIMESTAMP(3);
+
+INSERT INTO `system_settings` (`setting_key`, `setting_value`, `description`)
+VALUES (
+  'cooperative_info',
+  '{
+    "activeNotice": "توزیع بن‌کارت‌های اعتباری دوره جدید از اول ماه جاری آغاز می‌شود.",
+    "storeLocation": "قم، خیابان معلم، مجتمع قضایی، طبقه همکف، تعاونی اعضا",
+    "contactPhone": "۰۲۵-۳۷۷۴۰۰۰۰",
+    "workingHours": "شنبه تا چهارشنبه از ساعت ۸:۰۰ الی ۱۴:۰۰"
+  }',
+  'اطلاعیه و مشخصات تعاونی مصرف اعضا'
+) ON DUPLICATE KEY UPDATE `updated_at` = CURRENT_TIMESTAMP(3);
+

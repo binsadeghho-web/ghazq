@@ -1,108 +1,233 @@
 import { Router, Request, Response } from 'express';
-import { db, generateUUIDv7 } from '../../platform/database';
+import { getPool, selectWithTimeout, withTx, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { AppError } from '../../platform/errors';
 import { idempotencyMiddleware } from '../../platform/idempotency';
-import { User, WelfareRequest, ConsumableOrder, MemberProductProposal } from '../../../types';
+import { User, WelfareRequest, ConsumableOrder, MemberProductProposal, ConsumableItem } from '../../../types';
+import { getCurrentUser } from '../../platform/sessionAuth';
+import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
+import { adminSettingsRepo } from '../admin/adminSettingsRepository';
+import { auditChain } from '../../platform/auditChain';
+import { outbox } from '../../platform/outbox';
 
 export const welfareRouter = Router();
 export function createWelfareRouter(): Router {
   return welfareRouter;
 }
 
-import { getCurrentUser } from '../../platform/sessionAuth';
-
-function getAuthenticatedUser(req: Request): User {
-  const u = getCurrentUser(req);
-  const found = db.getState().users.find(user => user.id === u.id);
-  return found || (u as any);
+function mapWelfareRequestRow(row: any): WelfareRequest & { version: number } {
+  return {
+    id: fromIdBuffer(row.id),
+    type: row.type || 'loan',
+    typeTitle: row.type_title || 'وام قرض‌الحسنه',
+    applicantId: fromIdBuffer(row.applicant_id),
+    applicantName: row.applicant_name,
+    title: row.title,
+    requestedValue: row.requested_value,
+    description: row.description || '',
+    rulesAcknowledged: Boolean(row.rules_acknowledged),
+    status: row.status,
+    version: Number(row.version || 1),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
 }
 
-welfareRouter.get('/requests', (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  let requests = db.welfareRequests;
-  if (currentUser.role === 'alumni') {
-    requests = requests.filter(r => r.applicantId === currentUser.id);
-  }
-  res.json(requests);
-});
-
-welfareRouter.get('/requests/:id', (req: Request, res: Response) => {
-  const item = db.welfareRequests.find(r => r.id === req.params.id);
-  if (!item) throw AppError.notFound('درخواست تسهیلات');
-  res.json(item);
-});
-
-welfareRouter.put('/requests/:id', async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  const { title, requestedValue, description, typeTitle, expectedVersion, _baseVersion } = req.body;
-
-  let updatedRecord: any;
-
-  await db.withTx(async tx => {
-    const existing = tx.welfareRequests.find(r => r.id === req.params.id);
-    if (!existing) throw AppError.notFound('درخواست تسهیلات');
-
-    const targetVersion = typeof expectedVersion === 'number' ? expectedVersion : typeof _baseVersion === 'number' ? _baseVersion : existing.version;
-
-    updatedRecord = tx.updateVersioned(tx.welfareRequests, existing.id, targetVersion, current => ({
-      ...current,
-      title: title !== undefined ? title.trim() : current.title,
-      requestedValue: requestedValue !== undefined ? requestedValue.trim() : current.requestedValue,
-      description: description !== undefined ? description.trim() : current.description,
-      typeTitle: typeTitle !== undefined ? typeTitle.trim() : current.typeTitle,
-    }));
-  });
-
-  res.json(updatedRecord);
-});
-
-welfareRouter.get('/consumables', (_req: Request, res: Response) => {
-  res.json(db.consumables);
-});
-
-welfareRouter.get('/orders', (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  let orders = db.consumableOrders;
-  if (currentUser.role === 'alumni') {
-    orders = orders.filter(o => o.applicantId === currentUser.id);
-  }
-  res.json(orders);
-});
-
-welfareRouter.get('/proposals', (_req: Request, res: Response) => {
-  res.json(db.productProposals);
-});
-
-welfareRouter.post('/requests', idempotencyMiddleware, async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  const { type, typeTitle, title, requestedValue, description } = req.body;
-
-  if (!title || !requestedValue) {
-    throw AppError.badRequest('عنوان تسهیلات و مقدار درخواستی الزامی است.');
-  }
-
-  const id = generateUUIDv7();
-  const now = new Date().toISOString();
-
-  const newRequest: WelfareRequest & { version: number } = {
-    id,
-    type: type || 'loan',
-    typeTitle: typeTitle || 'وام قرض‌الحسنه',
-    applicantId: currentUser.id,
-    applicantName: currentUser.fullName,
-    title,
-    requestedValue,
-    description: description || '',
-    rulesAcknowledged: true,
-    status: 'pending',
-    version: 1,
-    createdAt: now,
+function mapConsumableRow(row: any): ConsumableItem & { version: number } {
+  const price = Number(row.price || 0);
+  return {
+    id: fromIdBuffer(row.id),
+    title: row.title,
+    category: row.category || 'عمومی',
+    cooperativePrice: price,
+    marketPrice: Math.round(price * 1.2),
+    unit: 'عدد',
+    stock: Number(row.stock || 0),
+    imageUrl: row.image_url || undefined,
+    description: row.description || '',
+    version: Number(row.version || 1),
   };
+}
 
-  await db.withTx(async tx => {
-    tx.welfareRequests.unshift(newRequest);
+function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number } {
+  let items = [];
+  try {
+    if (typeof row.items === 'string') items = JSON.parse(row.items);
+    else if (Array.isArray(row.items)) items = row.items;
+  } catch {}
 
-    tx.emitAudit({
+  return {
+    id: fromIdBuffer(row.id),
+    applicantId: fromIdBuffer(row.user_id),
+    applicantName: row.user_name,
+    items,
+    totalAmount: Math.round(Number(row.total_price || 0)),
+    deliveryAddress: row.delivery_address,
+    status: row.status === 'ثبت شده' ? 'registered' : row.status === 'تحویل داده شد' ? 'delivered' : 'prepared',
+    notes: row.payment_status || undefined,
+    version: Number(row.version || 1),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+function mapProductProposalRow(row: any): MemberProductProposal & { version: number } {
+  return {
+    id: fromIdBuffer(row.id),
+    proposerId: fromIdBuffer(row.applicant_id),
+    proposerName: row.applicant_name,
+    productName: row.title,
+    offeredPrice: 0,
+    marketPrice: 0,
+    supplierDetails: row.author_or_translator || '',
+    description: row.description || '',
+    status: row.status === 'در حال بررسی' ? 'under_evaluation' : row.status === 'تایید شده' ? 'approved_for_procurement' : 'rejected',
+    version: Number(row.version || 1),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+welfareRouter.get('/requests', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    let sql = `SELECT * FROM welfare_requests WHERE 1=1`;
+    const params: any[] = [];
+
+    if (currentUser.role === 'alumni') {
+      sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
+      params.push(toIdBuffer(currentUser.id), currentUser.id);
+    }
+    sql += ` ORDER BY created_at DESC`;
+
+    const rows = await selectWithTimeout<any>(sql, params, 4000);
+    res.json((rows || []).map(mapWelfareRequestRow));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.get('/requests/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const idBuf = toIdBuffer(req.params.id);
+    const rows = await selectWithTimeout<any>(
+      `SELECT * FROM welfare_requests WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id],
+      3000
+    );
+    if (!rows || rows.length === 0) throw AppError.notFound('درخواست تسهیلات');
+    res.json(mapWelfareRequestRow(rows[0]));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const { title, requestedValue, description, typeTitle, expectedVersion } = req.body;
+    const idBuf = toIdBuffer(req.params.id);
+    const p = getPool();
+
+    const existingRows = await selectWithTimeout<any>(
+      `SELECT * FROM welfare_requests WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id],
+      3000
+    );
+    if (!existingRows || existingRows.length === 0) throw AppError.notFound('درخواست تسهیلات');
+    const existing = mapWelfareRequestRow(existingRows[0]);
+
+    const newTitle = title !== undefined ? title.trim() : existing.title;
+    const newReqVal = requestedValue !== undefined ? requestedValue.trim() : existing.requestedValue;
+    const newDesc = description !== undefined ? description.trim() : existing.description;
+    const newTypeTitle = typeTitle !== undefined ? typeTitle.trim() : existing.typeTitle;
+
+    const [result] = await p.query<any>(
+      `UPDATE welfare_requests
+       SET title = ?, requested_value = ?, description = ?, type_title = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE id = ? OR id = ?`,
+      [newTitle, newReqVal, newDesc, newTypeTitle, idBuf, req.params.id]
+    );
+
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM welfare_requests WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    res.json(mapWelfareRequestRow(updatedRows[0]));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.get('/consumables', async (_req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const rows = await selectWithTimeout<any>(`SELECT * FROM consumables ORDER BY created_at DESC`, [], 3000);
+    res.json((rows || []).map(mapConsumableRow));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.get('/orders', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    let sql = `SELECT * FROM consumable_orders WHERE 1=1`;
+    const params: any[] = [];
+
+    if (currentUser.role === 'alumni') {
+      sql += ` AND (user_id = ? OR user_id = ?)`;
+      params.push(toIdBuffer(currentUser.id), currentUser.id);
+    }
+    sql += ` ORDER BY created_at DESC`;
+
+    const rows = await selectWithTimeout<any>(sql, params, 4000);
+    res.json((rows || []).map(mapConsumableOrderRow));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.get('/proposals', async (_req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const rows = await selectWithTimeout<any>(`SELECT * FROM product_proposals ORDER BY created_at DESC`, [], 3000);
+    res.json((rows || []).map(mapProductProposalRow));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.post('/requests', idempotencyMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const { type, typeTitle, title, requestedValue, description } = req.body;
+
+    if (!title || !requestedValue) {
+      throw AppError.badRequest('عنوان تسهیلات و مقدار درخواستی الزامی است.');
+    }
+
+    const id = generateUUIDv7();
+    const idBuf = toIdBuffer(id);
+    const uBuf = toIdBuffer(currentUser.id);
+    const p = getPool();
+    const now = new Date().toISOString();
+
+    await p.query(
+      `INSERT INTO welfare_requests (
+        id, type, type_title, applicant_id, applicant_name, title, requested_value, description, rules_acknowledged, status, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending', 1)`,
+      [
+        idBuf,
+        type || 'loan',
+        typeTitle || 'وام قرض‌الحسنه',
+        uBuf,
+        currentUser.fullName,
+        title,
+        requestedValue,
+        description || '',
+      ]
+    );
+
+    auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
       actorId: currentUser.id,
       actorName: currentUser.fullName,
@@ -112,91 +237,133 @@ welfareRouter.post('/requests', idempotencyMiddleware, async (req: Request, res:
       severity: 'info',
     });
 
-    tx.emitOutbox('welfare.requested', {
+    outbox.enqueue('welfare.requested', {
       requestId: id,
       applicantId: currentUser.id,
-      type: newRequest.type,
+      type: type || 'loan',
     });
-  });
 
-  res.status(201).json(newRequest);
+    const newRequest: WelfareRequest & { version: number } = {
+      id,
+      type: type || 'loan',
+      typeTitle: typeTitle || 'وام قرض‌الحسنه',
+      applicantId: currentUser.id,
+      applicantName: currentUser.fullName,
+      title,
+      requestedValue,
+      description: description || '',
+      rulesAcknowledged: true,
+      status: 'pending',
+      version: 1,
+      createdAt: now,
+    };
+
+    res.status(201).json(newRequest);
+  } catch (err) {
+    next(err);
+  }
 });
 
-welfareRouter.post('/orders', idempotencyMiddleware, async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  const { items, totalAmount, deliveryAddress } = req.body;
+welfareRouter.post('/orders', idempotencyMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const { items, totalAmount, deliveryAddress } = req.body;
 
-  if (!items || !items.length || !deliveryAddress) {
-    throw AppError.badRequest('سبد اقلام و نشانی تحویل الزامی است.');
-  }
+    if (!items || !items.length || !deliveryAddress) {
+      throw AppError.badRequest('سبد اقلام و نشانی تحویل الزامی است.');
+    }
 
-  const id = generateUUIDv7();
-  const now = new Date().toISOString();
+    const id = generateUUIDv7();
+    const idBuf = toIdBuffer(id);
+    const uBuf = toIdBuffer(currentUser.id);
+    const trackingCode = `ORD-${Date.now().toString().slice(-7)}`;
+    const p = getPool();
+    const now = new Date().toISOString();
 
-  const newOrder: ConsumableOrder & { version: number } = {
-    id,
-    applicantId: currentUser.id,
-    applicantName: currentUser.fullName,
-    items,
-    totalAmount: Math.round(Number(totalAmount) || 0),
-    deliveryAddress,
-    status: 'registered',
-    version: 1,
-    createdAt: now,
-  };
+    const price = Math.round(Number(totalAmount) || 0);
 
-  await db.withTx(async tx => {
-    tx.consumableOrders.unshift(newOrder);
+    await p.query(
+      `INSERT INTO consumable_orders (
+        id, user_id, user_name, user_phone, items, total_price, delivery_address, status, payment_status, tracking_code, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ثبت شده', 'در انتظار پرداخت', ?, 1)`,
+      [
+        idBuf,
+        uBuf,
+        currentUser.fullName,
+        (currentUser as any).phone || '09120000000',
+        JSON.stringify(items),
+        price,
+        deliveryAddress,
+        trackingCode,
+      ]
+    );
 
-    tx.emitAudit({
+    auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
       actorId: currentUser.id,
       actorName: currentUser.fullName,
       actorRole: currentUser.role,
       ip: req.ip || '127.0.0.1',
-      details: `ثبت سفارش تعاونی مصرف به مبلغ ${newOrder.totalAmount} تومان`,
+      details: `ثبت سفارش تعاونی مصرف به مبلغ ${price} تومان`,
       severity: 'info',
     });
 
-    tx.emitOutbox('welfare.order_placed', {
+    outbox.enqueue('welfare.order_placed', {
       orderId: id,
       userId: currentUser.id,
-      totalAmount: newOrder.totalAmount,
+      totalAmount: price,
     });
-  });
 
-  res.status(201).json(newOrder);
+    const newOrder: ConsumableOrder & { version: number } = {
+      id,
+      applicantId: currentUser.id,
+      applicantName: currentUser.fullName,
+      items,
+      totalAmount: price,
+      deliveryAddress,
+      status: 'registered',
+      version: 1,
+      createdAt: now,
+    };
+
+    res.status(201).json(newOrder);
+  } catch (err) {
+    next(err);
+  }
 });
 
-welfareRouter.post('/proposals', idempotencyMiddleware, async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  const { productName, offeredPrice, marketPrice, supplierDetails, description } = req.body;
+welfareRouter.post('/proposals', idempotencyMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const { productName, offeredPrice, marketPrice, supplierDetails, description } = req.body;
 
-  if (!productName || !offeredPrice) {
-    throw AppError.badRequest('نام محصول و قیمت پیشنهادی الزامی است.');
-  }
+    if (!productName) {
+      throw AppError.badRequest('نام محصول الزامی است.');
+    }
 
-  const id = generateUUIDv7();
-  const now = new Date().toISOString();
+    const id = generateUUIDv7();
+    const idBuf = toIdBuffer(id);
+    const uBuf = toIdBuffer(currentUser.id);
+    const p = getPool();
+    const now = new Date().toISOString();
 
-  const newProposal: MemberProductProposal & { version: number } = {
-    id,
-    proposerId: currentUser.id,
-    proposerName: currentUser.fullName,
-    productName,
-    offeredPrice: Math.round(Number(offeredPrice) || 0),
-    marketPrice: Math.round(Number(marketPrice) || 0),
-    supplierDetails: supplierDetails || '',
-    description: description || '',
-    status: 'under_evaluation',
-    version: 1,
-    createdAt: now,
-  };
+    await p.query(
+      `INSERT INTO product_proposals (
+        id, applicant_id, applicant_name, title, author_or_translator, description, status, version
+      ) VALUES (?, ?, ?, ?, ?, ?, 'در حال بررسی', 1)`,
+      [
+        idBuf,
+        uBuf,
+        currentUser.fullName,
+        productName,
+        supplierDetails || 'پیشنهاد اعضا',
+        description || '',
+      ]
+    );
 
-  await db.withTx(async tx => {
-    tx.productProposals.unshift(newProposal);
-
-    tx.emitAudit({
+    auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
       actorId: currentUser.id,
       actorName: currentUser.fullName,
@@ -206,176 +373,262 @@ welfareRouter.post('/proposals', idempotencyMiddleware, async (req: Request, res
       severity: 'info',
     });
 
-    tx.emitOutbox('welfare.proposal_submitted', {
+    outbox.enqueue('welfare.proposal_submitted', {
       proposalId: id,
       proposerId: currentUser.id,
     });
-  });
 
-  res.status(201).json(newProposal);
-});
-
-welfareRouter.post('/consumables', async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('فقط ادمین می‌تواند کالای جدید تعریف کند.');
-  }
-  const id = generateUUIDv7();
-  const newItem = {
-    ...req.body,
-    id,
-    version: 1,
-  };
-  await db.withTx(async tx => {
-    tx.consumables.unshift(newItem);
-    tx.emitAudit({
-      eventType: 'CARTABLE_STATUS_CHANGE',
-      actorId: currentUser.id,
-      actorName: currentUser.fullName,
-      actorRole: currentUser.role,
-      ip: req.ip || '127.0.0.1',
-      details: `افزودن کالای تعاونی: ${newItem.title}`,
-      severity: 'info',
-    });
-  });
-  res.status(201).json(newItem);
-});
-
-welfareRouter.put('/consumables/:id', async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را ویرایش کند.');
-  }
-  const { id } = req.params;
-  let updatedItem: any = null;
-  await db.withTx(async tx => {
-    const idx = tx.consumables.findIndex(c => c.id === id);
-    if (idx === -1) throw AppError.notFound('کالای مورد نظر یافت نشد.');
-    tx.consumables[idx] = {
-      ...tx.consumables[idx],
-      ...req.body,
+    const newProposal: MemberProductProposal & { version: number } = {
       id,
-      version: (tx.consumables[idx].version || 1) + 1,
+      proposerId: currentUser.id,
+      proposerName: currentUser.fullName,
+      productName,
+      offeredPrice: Math.round(Number(offeredPrice) || 0),
+      marketPrice: Math.round(Number(marketPrice) || 0),
+      supplierDetails: supplierDetails || '',
+      description: description || '',
+      status: 'under_evaluation',
+      version: 1,
+      createdAt: now,
     };
-    updatedItem = tx.consumables[idx];
-    tx.emitAudit({
-      eventType: 'CARTABLE_STATUS_CHANGE',
-      actorId: currentUser.id,
-      actorName: currentUser.fullName,
-      actorRole: currentUser.role,
-      ip: req.ip || '127.0.0.1',
-      details: `ویرایش کالای تعاونی: ${updatedItem.title}`,
-      severity: 'info',
-    });
-  });
-  res.json(updatedItem);
+
+    res.status(201).json(newProposal);
+  } catch (err) {
+    next(err);
+  }
 });
 
-welfareRouter.delete('/consumables/:id', async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را حذف کند.');
-  }
-  const { id } = req.params;
-  await db.withTx(async tx => {
-    const idx = tx.consumables.findIndex(c => c.id === id);
-    if (idx !== -1) {
-      const removed = tx.consumables.splice(idx, 1)[0];
-      tx.emitAudit({
-        eventType: 'CARTABLE_STATUS_CHANGE',
-        actorId: currentUser.id,
-        actorName: currentUser.fullName,
-        actorRole: currentUser.role,
-        ip: req.ip || '127.0.0.1',
-        details: `حذف کالای تعاونی: ${removed.title}`,
-        severity: 'info',
-      });
+welfareRouter.post('/consumables', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('فقط ادمین می‌تواند کالای جدید تعریف کند.');
     }
-  });
-  res.json({ success: true });
-});
 
-welfareRouter.patch('/orders/:id/status', async (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('فقط ادمین می‌تواند وضعیت سفارش را تغییر دهد.');
-  }
-  const { id } = req.params;
-  const { status, notes } = req.body;
-  let updatedOrder: any = null;
-  await db.withTx(async tx => {
-    const idx = tx.consumableOrders.findIndex(o => o.id === id);
-    if (idx === -1) throw AppError.notFound('سفارش یافت نشد.');
-    tx.consumableOrders[idx] = {
-      ...tx.consumableOrders[idx],
-      status: status || tx.consumableOrders[idx].status,
-      notes: notes !== undefined ? notes : (tx.consumableOrders[idx] as any).notes,
-      version: (tx.consumableOrders[idx].version || 1) + 1,
-    };
-    updatedOrder = tx.consumableOrders[idx];
-    tx.emitAudit({
+    const id = generateUUIDv7();
+    const idBuf = toIdBuffer(id);
+    const p = getPool();
+
+    await p.query(
+      `INSERT INTO consumables (id, title, price, stock, category, image_url, description, version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+      [
+        idBuf,
+        req.body.title,
+        Number(req.body.price || 0),
+        Number(req.body.stock || 0),
+        req.body.category || 'عمومی',
+        req.body.imageUrl || null,
+        req.body.description || null,
+      ]
+    );
+
+    auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
       actorId: currentUser.id,
       actorName: currentUser.fullName,
       actorRole: currentUser.role,
       ip: req.ip || '127.0.0.1',
-      details: `تغییر وضعیت سفارش تعاونی ${id} به ${status}`,
+      details: `افزودن کالای تعاونی: ${req.body.title}`,
       severity: 'info',
     });
-  });
-  res.json(updatedOrder);
+
+    const newItem = { ...req.body, id, version: 1 };
+    res.status(201).json(newItem);
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.put('/consumables/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را ویرایش کند.');
+    }
+
+    const idBuf = toIdBuffer(req.params.id);
+    const p = getPool();
+
+    await p.query(
+      `UPDATE consumables
+       SET title = ?, price = ?, stock = ?, category = ?, image_url = ?, description = ?, version = version + 1
+       WHERE id = ? OR id = ?`,
+      [
+        req.body.title,
+        Number(req.body.price || 0),
+        Number(req.body.stock || 0),
+        req.body.category,
+        req.body.imageUrl || null,
+        req.body.description || null,
+        idBuf,
+        req.params.id,
+      ]
+    );
+
+    auditChain.appendEntry({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `ویرایش کالای تعاونی: ${req.body.title}`,
+      severity: 'info',
+    });
+
+    const rows = await selectWithTimeout<any>(`SELECT * FROM consumables WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    res.json(mapConsumableRow(rows[0]));
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.delete('/consumables/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را حذف کند.');
+    }
+
+    const idBuf = toIdBuffer(req.params.id);
+    const p = getPool();
+
+    await p.query(`DELETE FROM consumables WHERE id = ? OR id = ?`, [idBuf, req.params.id]);
+
+    auditChain.appendEntry({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `حذف کالای تعاونی: ${req.params.id}`,
+      severity: 'info',
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+welfareRouter.patch('/orders/:id/status', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('فقط ادمین می‌تواند وضعیت سفارش را تغییر دهد.');
+    }
+
+    const idBuf = toIdBuffer(req.params.id);
+    const { status, notes } = req.body;
+    const p = getPool();
+
+    const dbStatus = status === 'registered' ? 'ثبت شده' : status === 'delivered' ? 'تحویل داده شد' : 'در حال پردازش';
+
+    await p.query(
+      `UPDATE consumable_orders
+       SET status = ?, payment_status = ?, version = version + 1
+       WHERE id = ? OR id = ?`,
+      [dbStatus, notes || 'به‌روزرسانی شده', idBuf, req.params.id]
+    );
+
+    auditChain.appendEntry({
+      eventType: 'CARTABLE_STATUS_CHANGE',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `تغییر وضعیت سفارش تعاونی ${req.params.id} به ${status}`,
+      severity: 'info',
+    });
+
+    const rows = await selectWithTimeout<any>(`SELECT * FROM consumable_orders WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    res.json(mapConsumableOrderRow(rows[0]));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET & PUT welfare sections configuration
-welfareRouter.get('/sections-config', (_req: Request, res: Response) => {
-  res.json(db.welfareSectionsConfig);
+welfareRouter.get('/sections-config', async (_req: Request, res: Response, next) => {
+  try {
+    const rec = await adminSettingsRepo.getRecord<any>('welfare_sections_config');
+    res.json(rec?.value || []);
+  } catch (err) {
+    next(err);
+  }
 });
 
-welfareRouter.put('/sections-config', (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('تنها مدیر می‌تواند دسته‌بندی‌ها و بخش‌های رفاهیات را ویرایش کند.');
+welfareRouter.put('/sections-config', async (req: Request, res: Response, next) => {
+  try {
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('تنها مدیر می‌تواند دسته‌بندی‌ها و بخش‌های رفاهیات را ویرایش کند.');
+    }
+    const configs = req.body;
+    if (!Array.isArray(configs)) {
+      throw AppError.badRequest('پیکربندی بخش‌ها باید به صورت آرایه باشد.');
+    }
+    await adminSettingsRepo.saveSetting('welfare_sections_config', configs, 'تنظیمات بخش‌های امور رفاهی');
+    res.json({ success: true, data: configs });
+  } catch (err) {
+    next(err);
   }
-  const configs = req.body;
-  if (!Array.isArray(configs)) {
-    throw AppError.badRequest('پیکربندی بخش‌ها باید به صورت آرایه باشد.');
-  }
-  db.welfareSectionsConfig = configs;
-  res.json({ success: true, data: db.welfareSectionsConfig });
 });
 
 // GET & PUT loan fund terms & rules
-welfareRouter.get('/loan-rules', (_req: Request, res: Response) => {
-  res.json(db.loanTermsAndRules);
+welfareRouter.get('/loan-rules', async (_req: Request, res: Response, next) => {
+  try {
+    const rec = await adminSettingsRepo.getRecord<any>('loan_terms_rules');
+    res.json(rec?.value || {});
+  } catch (err) {
+    next(err);
+  }
 });
 
-welfareRouter.put('/loan-rules', (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('تنها مدیر سامانه مجاز به ویرایش اساسنامه و شرایط تسهیلات است.');
+welfareRouter.put('/loan-rules', async (req: Request, res: Response, next) => {
+  try {
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('تنها مدیر سامانه مجاز به ویرایش اساسنامه و شرایط تسهیلات است.');
+    }
+    const rules = req.body;
+    if (!rules) {
+      throw AppError.badRequest('اطلاعات ضوابط و اساسنامه نامعتبر است.');
+    }
+    await adminSettingsRepo.saveSetting('loan_terms_rules', rules, 'قوانین و شرایط وام');
+    res.json({ success: true, data: rules });
+  } catch (err) {
+    next(err);
   }
-  const rules = req.body;
-  if (!rules || !rules.fundName) {
-    throw AppError.badRequest('اطلاعات ضوابط و اساسنامه نامعتبر است.');
-  }
-  db.loanTermsAndRules = rules;
-  res.json({ success: true, data: db.loanTermsAndRules });
 });
 
 // GET & PUT cooperative section info
-welfareRouter.get('/cooperative-info', (_req: Request, res: Response) => {
-  res.json(db.cooperativeSectionInfo);
+welfareRouter.get('/cooperative-info', async (_req: Request, res: Response, next) => {
+  try {
+    const rec = await adminSettingsRepo.getRecord<any>('cooperative_info');
+    res.json(rec?.value || {});
+  } catch (err) {
+    next(err);
+  }
 });
 
-welfareRouter.put('/cooperative-info', (req: Request, res: Response) => {
-  const currentUser = getAuthenticatedUser(req);
-  if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
-    throw AppError.forbidden('تنها مدیر سامانه مجاز به تغییر اطلاعات ویترین تعاونی است.');
+welfareRouter.put('/cooperative-info', async (req: Request, res: Response, next) => {
+  try {
+    const currentUser = getCurrentUser(req);
+    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+      throw AppError.forbidden('تنها مدیر سامانه مجاز به تغییر اطلاعات ویترین تعاونی است.');
+    }
+    const info = req.body;
+    if (!info) {
+      throw AppError.badRequest('اطلاعات تعاونی ناقص است.');
+    }
+    await adminSettingsRepo.saveSetting('cooperative_info', info, 'اطلاعات ویترین تعاونی');
+    res.json({ success: true, data: info });
+  } catch (err) {
+    next(err);
   }
-  const info = req.body;
-  if (!info || !info.title) {
-    throw AppError.badRequest('اطلاعات تعاونی ناقص است.');
-  }
-  db.cooperativeSectionInfo = info;
-  res.json({ success: true, data: db.cooperativeSectionInfo });
 });

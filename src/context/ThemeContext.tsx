@@ -41,26 +41,27 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
-  const [crextioConfig, setCrextioConfig] = useState<CrextioDashboardConfig>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}crextio_config`);
-      if (saved) {
-        try {
-          return { ...DEFAULT_CREXTIO_CONFIG, ...JSON.parse(saved) };
-        } catch {}
+  const [crextioConfig, setCrextioConfig] = useState<CrextioDashboardConfig>(DEFAULT_CREXTIO_CONFIG);
+  const [mizanConfig, setMizanConfig] = useState<MizanDashboardConfig>(DEFAULT_MIZAN_CONFIG);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getThemeConfig().then(res => {
+      if (!isMounted || !res) return;
+      if (res.crextio) {
+        setCrextioConfig(prev => ({ ...prev, ...res.crextio, _baseVersion: res.version || 1 }));
       }
-    }
-    return DEFAULT_CREXTIO_CONFIG;
-  });
+      if (res.mizan) {
+        setMizanConfig(prev => ({ ...prev, ...res.mizan }));
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
   const updateCrextioConfig = useCallback((updates: Partial<CrextioDashboardConfig>) => {
     setCrextioConfig(prev => {
       const next = { ...prev, ...updates };
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}crextio_config`, JSON.stringify(next));
-      }
-      // Persist to backend / MySQL 8 database
-      api.saveDashboardConfig({
+      api.saveThemeConfig({
         ...next,
         _baseVersion: (prev as any)._baseVersion || 1,
       }).then(res => {
@@ -74,63 +75,29 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const resetCrextioConfig = useCallback(() => {
     setCrextioConfig(DEFAULT_CREXTIO_CONFIG);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}crextio_config`);
-    }
+    api.saveThemeConfig(DEFAULT_CREXTIO_CONFIG).catch(() => {});
   }, []);
-
-  const [mizanConfig, setMizanConfig] = useState<MizanDashboardConfig>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}mizan_config`);
-      if (saved) {
-        try {
-          return { ...DEFAULT_MIZAN_CONFIG, ...JSON.parse(saved) };
-        } catch {}
-      }
-    }
-    return DEFAULT_MIZAN_CONFIG;
-  });
 
   const updateMizanConfig = useCallback((updates: Partial<MizanDashboardConfig>) => {
     setMizanConfig(prev => {
       const next = { ...prev, ...updates };
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}mizan_config`, JSON.stringify(next));
-      }
+      api.saveThemeConfig(next).catch(() => {});
       return next;
     });
   }, []);
 
   const resetMizanConfig = useCallback(() => {
     setMizanConfig(DEFAULT_MIZAN_CONFIG);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}mizan_config`);
-    }
   }, []);
 
-  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}design_theme`);
-      if (saved === 'portal' || saved === 'crextio') return saved;
-    }
-    return 'crextio';
-  });
+  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio'>('crextio');
 
   const setDesignTheme = useCallback((newTheme: 'portal' | 'crextio') => {
     setDesignThemeState(newTheme);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}design_theme`, newTheme);
-    }
   }, []);
 
   const toggleDesignTheme = useCallback(() => {
-    setDesignThemeState(prev => {
-      const next = prev === 'crextio' ? 'portal' : 'crextio';
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}design_theme`, next);
-      }
-      return next;
-    });
+    setDesignThemeState(prev => (prev === 'crextio' ? 'portal' : 'crextio'));
   }, []);
 
   useEffect(() => {

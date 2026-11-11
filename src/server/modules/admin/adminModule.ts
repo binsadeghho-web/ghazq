@@ -574,6 +574,27 @@ export function createAdminRouter(): Router {
     }
   });
 
+  router.get('/theme-config', async (_req: Request, res: Response, next) => {
+    try {
+      const config = await service.getDashboardConfig();
+      res.json(config);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/theme-config', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const baseVersion = req.body?._baseVersion !== undefined ? Number(req.body._baseVersion) : undefined;
+      const result = await service.saveDashboardConfig(authCtx, req.body, baseVersion);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post('/run-migration', async (req: Request, res: Response, next) => {
     try {
       const key = (req.headers['x-migration-key'] as string) || (req.body?.migrationSecretKey as string);

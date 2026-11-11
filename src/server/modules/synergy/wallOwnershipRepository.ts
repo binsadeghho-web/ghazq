@@ -1,5 +1,7 @@
-import { getPool, isDatabaseConnected } from '../../platform/mysqlDatabase';
+import { getPool, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { logger } from '../../platform/logger';
+import { AppError } from '../../platform/errors';
+import { toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 
 /**
  * Item 7: Dedicated WallOwnershipRepository
@@ -10,28 +12,21 @@ import { logger } from '../../platform/logger';
  * NEVER joined with public content tables outside this repository.
  */
 
-// In-memory fallback tracking for dev/test when MySQL is disconnected
-const inMemoryOwnership = new Map<string, string>(); // postId -> userId
-
 export class WallOwnershipRepository {
   /**
-   * Records ownership link between post_id and user_id
+   * Records ownership link between post_id and user_id in MySQL
    */
   async recordOwnership(postId: string, userId: string): Promise<void> {
-    inMemoryOwnership.set(postId, userId);
-
-    if (isDatabaseConnected()) {
-      try {
-        const p = getPool();
-        // BINARY(16) UUID conversion
-        await p.query(
-          `INSERT IGNORE INTO wall_ownership (post_id, user_id) 
-           VALUES (UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')))`,
-          [postId, userId]
-        );
-      } catch (err: any) {
-        logger.warn(`Failed to insert wall_ownership to MySQL: ${err.message}`);
-      }
+    ensureDatabaseConnection();
+    try {
+      const p = getPool();
+      await p.query(
+        `INSERT IGNORE INTO wall_ownership (post_id, user_id) VALUES (?, ?)`,
+        [toIdBuffer(postId), toIdBuffer(userId)]
+      );
+    } catch (err: any) {
+      logger.error(`Failed to insert wall_ownership to MySQL: ${err.message}`);
+      throw AppError.serviceUnavailable('امکان ثبت مالکیت پست در پایگاه داده وجود ندارد.');
     }
   }
 
@@ -39,63 +34,39 @@ export class WallOwnershipRepository {
    * Finds post IDs owned by a specific user (for "My Posts")
    */
   async findPostIdsByUserId(userId: string): Promise<string[]> {
-    if (isDatabaseConnected()) {
-      try {
-        const p = getPool();
-        const [rows] = await p.query<any[]>(
-          `SELECT LOWER(CONCAT(
-            SUBSTR(HEX(post_id), 1, 8), '-',
-            SUBSTR(HEX(post_id), 9, 4), '-',
-            SUBSTR(HEX(post_id), 13, 4), '-',
-            SUBSTR(HEX(post_id), 17, 4), '-',
-            SUBSTR(HEX(post_id), 21, 12)
-          )) AS post_id
-          FROM wall_ownership 
-          WHERE user_id = UNHEX(REPLACE(?, '-', ''))
-          ORDER BY created_at DESC`,
-          [userId]
-        );
-        return rows.map(r => r.post_id);
-      } catch (err: any) {
-        logger.warn(`Failed to query wall_ownership from MySQL: ${err.message}`);
-      }
+    ensureDatabaseConnection();
+    try {
+      const p = getPool();
+      const uBuf = toIdBuffer(userId);
+      const [rows] = await p.query<any[]>(
+        `SELECT post_id FROM wall_ownership WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC`,
+        [uBuf, userId]
+      );
+      return (rows || []).map(r => fromIdBuffer(r.post_id));
+    } catch (err: any) {
+      logger.error(`Failed to query wall_ownership from MySQL: ${err.message}`);
+      throw AppError.serviceUnavailable('امکان خواندن شناسه پست‌های کاربر وجود ندارد.');
     }
-
-    // In-memory lookup
-    const postIds: string[] = [];
-    for (const [pId, uId] of inMemoryOwnership.entries()) {
-      if (uId === userId) postIds.push(pId);
-    }
-    return postIds;
   }
 
   /**
    * Finds the owner of a post strictly for admin security auditing
    */
   async findOwnerByPostId(postId: string): Promise<string | null> {
-    if (isDatabaseConnected()) {
-      try {
-        const p = getPool();
-        const [rows] = await p.query<any[]>(
-          `SELECT LOWER(CONCAT(
-            SUBSTR(HEX(user_id), 1, 8), '-',
-            SUBSTR(HEX(user_id), 9, 4), '-',
-            SUBSTR(HEX(user_id), 13, 4), '-',
-            SUBSTR(HEX(user_id), 17, 4), '-',
-            SUBSTR(HEX(user_id), 21, 12)
-          )) AS user_id
-          FROM wall_ownership 
-          WHERE post_id = UNHEX(REPLACE(?, '-', ''))
-          LIMIT 1`,
-          [postId]
-        );
-        if (rows.length > 0) return rows[0].user_id;
-      } catch (err: any) {
-        logger.warn(`Failed to query owner from wall_ownership: ${err.message}`);
-      }
+    ensureDatabaseConnection();
+    try {
+      const p = getPool();
+      const pBuf = toIdBuffer(postId);
+      const [rows] = await p.query<any[]>(
+        `SELECT user_id FROM wall_ownership WHERE post_id = ? OR post_id = ? LIMIT 1`,
+        [pBuf, postId]
+      );
+      if (rows && rows.length > 0) return fromIdBuffer(rows[0].user_id);
+      return null;
+    } catch (err: any) {
+      logger.error(`Failed to query owner from wall_ownership: ${err.message}`);
+      throw AppError.serviceUnavailable('امکان استعلام مالک پست وجود ندارد.');
     }
-
-    return inMemoryOwnership.get(postId) || null;
   }
 }
 

@@ -1,161 +1,290 @@
 import { Router, Request, Response } from 'express';
-import { db, generateUUIDv7 } from '../../platform/database';
+import { getPool, selectWithTimeout, ensureDatabaseConnection, withTx } from '../../platform/mysqlDatabase';
 import { AppError } from '../../platform/errors';
 import { idempotencyMiddleware } from '../../platform/idempotency';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { wallOwnershipRepo } from './wallOwnershipRepository';
 import { SynergyPost } from '../../../types';
+import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
+import { auditChain } from '../../platform/auditChain';
+import { outbox } from '../../platform/outbox';
 
 export const synergyRouter = Router();
 export function createSynergyRouter(): Router {
   return synergyRouter;
 }
 
-// 1. Get public synergy wall posts (never returns authorId or personal identity)
-synergyRouter.get('/', (_req: Request, res: Response) => {
-  const sanitized = db.synergyPosts.map(p => {
-    const { authorId: _strip, ...publicFields } = p as any;
-    return publicFields;
-  });
-  res.json(sanitized);
+function mapSynergyPostRow(row: any, responses: any[] = []): SynergyPost & { version: number } {
+  return {
+    id: fromIdBuffer(row.id),
+    authorPseudonym: row.author_pseudonym,
+    isAnonymous: Boolean(row.is_anonymous),
+    title: row.title,
+    content: row.content,
+    provinceOrCity: row.province_or_city,
+    category: row.category,
+    categoryTitle: row.category_title,
+    isEmpathy: Boolean(row.is_empathy),
+    urgency: row.urgency,
+    status: row.status,
+    responses,
+    version: Number(row.version || 1),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+function mapSynergyResponseRow(row: any) {
+  return {
+    id: fromIdBuffer(row.id),
+    responderPseudonym: row.responder_pseudonym,
+    message: row.message,
+    isPrivate: Boolean(row.is_private),
+    contactShared: row.contact_shared || undefined,
+    timestamp: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+// 1. Get public synergy wall posts
+synergyRouter.get('/', async (_req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const p = getPool();
+    const rows = await selectWithTimeout<any>(`SELECT * FROM synergy_posts ORDER BY created_at DESC`, [], 4000);
+    const posts: Array<SynergyPost & { version: number }> = [];
+
+    for (const row of rows || []) {
+      const pIdBuf = toIdBuffer(row.id);
+      const [respRows] = await p.query<any[]>(
+        `SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ? ORDER BY created_at ASC`,
+        [pIdBuf, fromIdBuffer(row.id)]
+      );
+      posts.push(mapSynergyPostRow(row, (respRows || []).map(mapSynergyResponseRow)));
+    }
+    res.json(posts);
+  } catch (err) {
+    next(err);
+  }
 });
 
-synergyRouter.get('/:id', (req: Request, res: Response) => {
-  const item = db.synergyPosts.find(p => p.id === req.params.id);
-  if (!item) throw AppError.notFound('پست هم‌افزایی');
-  const { authorId: _strip, ...publicFields } = item as any;
-  res.json(publicFields);
+synergyRouter.get('/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const p = getPool();
+    const idBuf = toIdBuffer(req.params.id);
+    const rows = await selectWithTimeout<any>(
+      `SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id],
+      3000
+    );
+    if (!rows || rows.length === 0) throw AppError.notFound('پست هم‌افزایی');
+
+    const [respRows] = await p.query<any[]>(
+      `SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ? ORDER BY created_at ASC`,
+      [idBuf, req.params.id]
+    );
+    res.json(mapSynergyPostRow(rows[0], (respRows || []).map(mapSynergyResponseRow)));
+  } catch (err) {
+    next(err);
+  }
 });
 
-synergyRouter.put('/:id', async (req: Request, res: Response) => {
-  const { title, content, provinceOrCity, categoryTitle, expectedVersion, _baseVersion } = req.body;
+synergyRouter.put('/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const { title, content, provinceOrCity, categoryTitle } = req.body;
+    const idBuf = toIdBuffer(req.params.id);
+    const p = getPool();
 
-  let updatedRecord: any;
+    const existingRows = await selectWithTimeout<any>(
+      `SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id],
+      3000
+    );
+    if (!existingRows || existingRows.length === 0) throw AppError.notFound('پست هم‌افزایی');
+    const existing = mapSynergyPostRow(existingRows[0]);
 
-  await db.withTx(async tx => {
-    const existing = tx.synergyPosts.find(p => p.id === req.params.id);
-    if (!existing) throw AppError.notFound('پست هم‌افزایی');
+    const newTitle = title !== undefined ? title.trim() : existing.title;
+    const newContent = content !== undefined ? content.trim() : existing.content;
+    const newProv = provinceOrCity !== undefined ? provinceOrCity.trim() : existing.provinceOrCity;
+    const newCatTitle = categoryTitle !== undefined ? categoryTitle.trim() : existing.categoryTitle;
 
-    const targetVersion = typeof expectedVersion === 'number' ? expectedVersion : typeof _baseVersion === 'number' ? _baseVersion : existing.version;
+    await p.query(
+      `UPDATE synergy_posts
+       SET title = ?, content = ?, province_or_city = ?, category_title = ?, version = version + 1
+       WHERE id = ? OR id = ?`,
+      [newTitle, newContent, newProv, newCatTitle, idBuf, req.params.id]
+    );
 
-    updatedRecord = tx.updateVersioned(tx.synergyPosts, existing.id, targetVersion, current => ({
-      ...current,
-      title: title !== undefined ? title.trim() : current.title,
-      content: content !== undefined ? content.trim() : current.content,
-      provinceOrCity: provinceOrCity !== undefined ? provinceOrCity.trim() : current.provinceOrCity,
-      categoryTitle: categoryTitle !== undefined ? categoryTitle.trim() : current.categoryTitle,
-    }));
-  });
-
-  const { authorId: _strip, ...publicFields } = updatedRecord as any;
-  res.json(publicFields);
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    const [respRows] = await p.query<any[]>(`SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ?`, [idBuf, req.params.id]);
+    res.json(mapSynergyPostRow(updatedRows[0], (respRows || []).map(mapSynergyResponseRow)));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // 2. Get "My Posts" - queried strictly through WallOwnershipRepository without joining public tables
-synergyRouter.get('/my-posts', async (req: Request, res: Response) => {
-  const currentUser = getCurrentUser(req);
-  const myPostIds = await wallOwnershipRepo.findPostIdsByUserId(currentUser.id);
-  const myPosts = db.synergyPosts.filter(p => myPostIds.includes(p.id));
-  res.json(myPosts);
+synergyRouter.get('/my-posts', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const myPostIds = await wallOwnershipRepo.findPostIdsByUserId(currentUser.id);
+    if (myPostIds.length === 0) {
+      return res.json([]);
+    }
+
+    const p = getPool();
+    const results: Array<SynergyPost & { version: number }> = [];
+
+    for (const pId of myPostIds) {
+      const pIdBuf = toIdBuffer(pId);
+      const rows = await selectWithTimeout<any>(
+        `SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`,
+        [pIdBuf, pId],
+        3000
+      );
+      if (rows && rows.length > 0) {
+        const [respRows] = await p.query<any[]>(
+          `SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ? ORDER BY created_at ASC`,
+          [pIdBuf, pId]
+        );
+        results.push(mapSynergyPostRow(rows[0], (respRows || []).map(mapSynergyResponseRow)));
+      }
+    }
+
+    res.json(results);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // 3. Create Synergy Post (Records ownership in isolated wall_ownership table)
-synergyRouter.post('/', idempotencyMiddleware, async (req: Request, res: Response) => {
-  const currentUser = getCurrentUser(req);
-  const { title, content, provinceOrCity, category, categoryTitle, isEmpathy, urgency, isAnonymous } = req.body;
+synergyRouter.post('/', idempotencyMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const { title, content, provinceOrCity, category, categoryTitle, isEmpathy, urgency, isAnonymous } = req.body;
 
-  if (!title || !content) {
-    throw AppError.badRequest('عنوان و شرح درخواست هم‌افزایی الزامی است.');
+    if (!title || !content) {
+      throw AppError.badRequest('عنوان و شرح درخواست هم‌افزایی الزامی است.');
+    }
+
+    const id = generateUUIDv7();
+    const idBuf = toIdBuffer(id);
+    const randCode = Math.floor(100 + Math.random() * 899);
+    const pseudonym = isAnonymous ? `همکار قضایی (کد پیگیری: ${randCode})` : currentUser.fullName;
+    const now = new Date().toISOString();
+
+    await withTx(async (conn) => {
+      await conn.query(
+        `INSERT INTO synergy_posts (
+          id, author_pseudonym, is_anonymous, title, content, province_or_city, category, category_title, is_empathy, urgency, status, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 1)`,
+        [
+          idBuf,
+          pseudonym,
+          isAnonymous ? 1 : 0,
+          title,
+          content,
+          provinceOrCity || 'سراسری',
+          category || 'administrative_help',
+          categoryTitle || 'همکاری و استعلام اداری-قضایی',
+          isEmpathy ? 1 : 0,
+          urgency || 'عادی',
+        ]
+      );
+
+      // Record ownership in isolated repository (Item 7)
+      await wallOwnershipRepo.recordOwnership(id, currentUser.id);
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: isAnonymous ? pseudonym : currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `انتشار در دیوار هم‌افزایی/همدلی (${isAnonymous ? 'ناشناس' : 'علنی'}): ${title}`,
+        severity: 'info',
+      });
+
+      outbox.enqueue('synergy.posted', {
+        postId: id,
+        isEmpathy: Boolean(isEmpathy),
+        provinceOrCity: provinceOrCity || 'سراسری',
+      });
+    });
+
+    const newPost: SynergyPost & { version: number } = {
+      id,
+      authorPseudonym: pseudonym,
+      isAnonymous: Boolean(isAnonymous),
+      title,
+      content,
+      provinceOrCity: provinceOrCity || 'سراسری',
+      category: category || 'administrative_help',
+      categoryTitle: categoryTitle || 'همکاری و استعلام اداری-قضایی',
+      isEmpathy: Boolean(isEmpathy),
+      urgency: urgency || 'عادی',
+      status: 'open',
+      responses: [],
+      version: 1,
+      createdAt: now,
+    };
+
+    res.status(201).json(newPost);
+  } catch (err) {
+    next(err);
   }
-
-  const id = generateUUIDv7();
-  const randCode = Math.floor(100 + Math.random() * 899);
-  const pseudonym = isAnonymous ? `همکار قضایی (کد پیگیری: ${randCode})` : currentUser.fullName;
-  const now = new Date().toISOString();
-
-  // Public post object: authorId is omitted
-  const newPost: SynergyPost & { version: number } = {
-    id,
-    authorPseudonym: pseudonym,
-    isAnonymous: Boolean(isAnonymous),
-    title,
-    content,
-    provinceOrCity: provinceOrCity || 'سراسری',
-    category: category || 'administrative_help',
-    categoryTitle: categoryTitle || 'همکاری و استعلام اداری-قضایی',
-    isEmpathy: Boolean(isEmpathy),
-    urgency: urgency || 'عادی',
-    status: 'open',
-    responses: [],
-    version: 1,
-    createdAt: now,
-  };
-
-  await db.withTx(async tx => {
-    tx.synergyPosts.unshift(newPost);
-
-    // Record ownership in isolated repository (Item 7)
-    await wallOwnershipRepo.recordOwnership(id, currentUser.id);
-
-    tx.emitAudit({
-      eventType: 'CARTABLE_STATUS_CHANGE',
-      actorId: currentUser.id,
-      actorName: isAnonymous ? pseudonym : currentUser.fullName,
-      actorRole: currentUser.role,
-      ip: req.ip || '127.0.0.1',
-      details: `انتشار در دیوار هم‌افزایی/همدلی (${isAnonymous ? 'ناشناس' : 'علنی'}): ${title}`,
-      severity: 'info',
-    });
-
-    tx.emitOutbox('synergy.posted', {
-      postId: id,
-      isEmpathy: newPost.isEmpathy,
-      provinceOrCity: newPost.provinceOrCity,
-    });
-  });
-
-  res.status(201).json(newPost);
 });
 
 // 4. Respond to Post (Anonymized responses with pseudonym)
-synergyRouter.post('/:id/respond', async (req: Request, res: Response) => {
-  const currentUser = getCurrentUser(req);
-  const { message, isPrivate, contactShared } = req.body;
+synergyRouter.post('/:id/respond', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const { message, isPrivate, contactShared } = req.body;
 
-  if (!message || !message.trim()) {
-    throw AppError.badRequest('متن پیام الزامی است.');
-  }
+    if (!message || !message.trim()) {
+      throw AppError.badRequest('متن پیام الزامی است.');
+    }
 
-  const responseId = generateUUIDv7();
-  const timestamp = new Date().toISOString();
-  let updatedPost: any;
-
-  await db.withTx(async tx => {
-    const post = tx.synergyPosts.find(p => p.id === req.params.id);
-    if (!post) throw AppError.notFound('درخواست هم‌افزایی');
-
+    const idBuf = toIdBuffer(req.params.id);
+    const responseId = generateUUIDv7();
+    const respIdBuf = toIdBuffer(responseId);
+    const responseToken = generateUUIDv7().replace(/-/g, '');
     const randCode = Math.floor(100 + Math.random() * 899);
     const responderPseudonym = `همکار پاسخگو (${randCode})`;
 
-    const responseItem = {
-      id: responseId,
-      responderPseudonym,
-      message: message.trim(),
-      isPrivate: Boolean(isPrivate),
-      contactShared: contactShared || undefined,
-      timestamp,
-    };
+    await withTx(async (conn) => {
+      const [postRows] = await conn.query<any[]>(
+        `SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`,
+        [idBuf, req.params.id]
+      );
+      if (!postRows || postRows.length === 0) throw AppError.notFound('درخواست هم‌افزایی');
 
-    post.responses.push(responseItem);
-    post.version = (post.version || 1) + 1;
+      await conn.query(
+        `INSERT INTO synergy_responses (id, post_id, response_token, responder_pseudonym, message, is_private, contact_shared)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [respIdBuf, idBuf, responseToken, responderPseudonym, message.trim(), isPrivate ? 1 : 0, contactShared || null]
+      );
 
-    tx.emitOutbox('synergy.responded', {
-      postId: post.id,
-      responseId,
+      await conn.query(
+        `UPDATE synergy_posts SET version = version + 1 WHERE id = ? OR id = ?`,
+        [idBuf, req.params.id]
+      );
+
+      outbox.enqueue('synergy.responded', {
+        postId: req.params.id,
+        responseId,
+      });
     });
 
-    updatedPost = post;
-  });
+    const p = getPool();
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    const [respRows] = await p.query<any[]>(`SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ? ORDER BY created_at ASC`, [idBuf, req.params.id]);
 
-  res.json({ success: true, post: updatedPost });
+    res.json({ success: true, post: mapSynergyPostRow(updatedRows[0], (respRows || []).map(mapSynergyResponseRow)) });
+  } catch (err) {
+    next(err);
+  }
 });

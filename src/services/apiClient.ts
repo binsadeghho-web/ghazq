@@ -501,6 +501,17 @@ class ApiClient {
     });
   }
 
+  async getThemeConfig() {
+    return this.request<{ crextio: any; mizan: any; source: string; isConnectedToMysql: boolean; version?: number }>('/api/admin/theme-config');
+  }
+
+  async saveThemeConfig(config: any) {
+    return this.request<{ success: boolean; persistedToMysql: boolean; version?: number }>('/api/admin/theme-config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  }
+
   async uploadProfilePicture(base64Data: string, filename?: string) {
     return this.request<{ success: boolean; url: string; filename: string; message: string }>('/api/upload/profile-picture', {
       method: 'POST',

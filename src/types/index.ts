@@ -68,6 +68,8 @@ export interface User {
   sessions: UserSession[];
   hasAccount?: boolean; // نشان‌دهنده وجود یا عدم وجود حساب کاربری فعال
   version?: number;
+  deletedAt?: string; // تاریخ و زمان حذف نرم کاربر
+  status?: 'active' | 'locked' | 'suspended' | 'archived'; // وضعیت کاربر (شامل بایگانی/حذف نرم)
   
   // دسترسی‌های ریز و ماتریسی بخش‌های نرم‌افزار
   sectionPermissions?: UserSectionPermissions;
