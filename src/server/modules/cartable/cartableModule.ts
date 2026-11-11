@@ -6,6 +6,7 @@ import { auditChain } from '../../platform/auditChain';
 import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { CartableRequest, CartableMessage, RequestStatus, CartableCategory, RequestPriority } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number } {
   return {
@@ -304,6 +305,14 @@ export class CartableService {
   ): Promise<CartableRequest & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
 
+    if (expectedVersion === undefined || expectedVersion === null || isNaN(Number(expectedVersion))) {
+      throw AppError.badRequest(
+        'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) جهت تغییر وضعیت کارتابل الزامی است.',
+        'VERSION_REQUIRED'
+      );
+    }
+    const expVer = Number(expectedVersion);
+
     const request = await this.repo.findById(requestId);
     if (!request) throw AppError.notFound('درخواست کارتابل');
 
@@ -314,7 +323,7 @@ export class CartableService {
       `UPDATE cartable_requests
        SET status = ?, has_unread_applicant = 1, has_unread_supervisor = 0, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
        WHERE (id = ? OR id = ?) AND version = ?`,
-      [status, idBuf, requestId, expectedVersion]
+      [status, idBuf, requestId, expVer]
     );
 
     if (res.affectedRows === 0) {
@@ -373,8 +382,16 @@ export class CartableService {
       priority?: RequestPriority;
       categoryTitle?: string;
     },
-    expectedVersion = 1
+    expectedVersion: number
   ): Promise<CartableRequest & { version: number }> {
+    if (expectedVersion === undefined || expectedVersion === null || isNaN(Number(expectedVersion))) {
+      throw AppError.badRequest(
+        'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) جهت ویرایش اطلاعات درخواست کارتابل الزامی است.',
+        'VERSION_REQUIRED'
+      );
+    }
+    const expVer = Number(expectedVersion);
+
     const request = await this.repo.findById(requestId);
     if (!request) throw AppError.notFound('درخواست کارتابل');
 
@@ -392,7 +409,7 @@ export class CartableService {
       `UPDATE cartable_requests
        SET title = ?, description = ?, priority = ?, category_title = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
        WHERE (id = ? OR id = ?) AND version = ?`,
-      [newTitle, newDesc, newPriority, newCatTitle, idBuf, requestId, expectedVersion]
+      [newTitle, newDesc, newPriority, newCatTitle, idBuf, requestId, expVer]
     );
 
     if (res.affectedRows === 0) {
@@ -471,7 +488,7 @@ export function createCartableRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
-      const expectedVersion = Number(req.body.expectedVersion || 1);
+      const expectedVersion = extractExpectedVersion(req, true);
       const item = await service.updateStatus(authCtx, req.params.id, req.body.status, expectedVersion);
       res.json(item);
     } catch (err) {
@@ -483,7 +500,7 @@ export function createCartableRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
-      const expectedVersion = Number(req.body.expectedVersion || 1);
+      const expectedVersion = extractExpectedVersion(req, true);
       const item = await service.updateRequestFields(authCtx, req.params.id, req.body, expectedVersion);
       res.json(item);
     } catch (err) {

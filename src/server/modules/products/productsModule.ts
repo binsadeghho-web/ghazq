@@ -7,6 +7,7 @@ import { Product } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 function mapProductRow(row: any, isOwned = false): Product & { version: number } {
   return {
@@ -161,19 +162,22 @@ export class ProductsService {
     const desc = updates.description !== undefined ? updates.description.trim() : existing.description;
     const year = updates.publishedYear !== undefined ? updates.publishedYear.trim() : existing.publishedYear;
 
-    const expVer = (updates as any).expectedVersion ?? (updates as any).version ?? expectedVersion ?? existing.version;
-
-    let sql = `UPDATE products
-       SET title = ?, price = ?, description = ?, published_year = ?, version = version + 1
-       WHERE (id = ? OR id = ?)`;
-    const params: any[] = [title, price, desc, year, idBuf, id];
-
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
+    const rawVersion = (updates as any).expectedVersion ?? (updates as any).version ?? expectedVersion;
+    if (rawVersion === undefined || rawVersion === null || isNaN(Number(rawVersion))) {
+      throw AppError.badRequest(
+        'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) جهت ویرایش محصول الزامی است.',
+        'VERSION_REQUIRED'
+      );
     }
+    const expVer = Number(rawVersion);
 
-    const [res]: any = await p.query(sql, params);
+    const [res]: any = await p.query(
+      `UPDATE products
+       SET title = ?, price = ?, description = ?, published_year = ?, version = version + 1
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [title, price, desc, year, idBuf, id, expVer]
+    );
+
     if (res && res.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
@@ -268,7 +272,7 @@ export function createProductsRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
-      const expectedVersion = Number(req.body.expectedVersion || req.body._baseVersion || 1);
+      const expectedVersion = extractExpectedVersion(req, true);
       const updated = await service.updateProduct(authCtx, req.params.id, req.body, expectedVersion);
       res.json(updated);
     } catch (err) {

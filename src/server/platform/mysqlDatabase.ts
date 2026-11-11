@@ -59,6 +59,14 @@ export function isDatabaseConnected(): boolean {
   return isConnected;
 }
 
+export function setDatabaseConnected(connected: boolean): void {
+  isConnected = connected;
+}
+
+export function setCustomPool(customPool: Pool | null): void {
+  pool = customPool;
+}
+
 export function ensureDatabaseConnection(): void {
   if (!isConnected) {
     throw AppError.serviceUnavailable('امکان برقراری اتصال با سرور پایگاه داده MySQL وجود ندارد.');

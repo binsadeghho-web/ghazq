@@ -8,6 +8,7 @@ import { getCurrentUser } from '../../platform/sessionAuth';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 export const rulingsRouter = Router();
 export function createRulingsRouter(): Router {
@@ -122,19 +123,15 @@ rulingsRouter.put('/:id', async (req: Request, res: Response, next) => {
     const newSummary = summary !== undefined ? summary.trim() : existing.summary;
     const newFullText = fullRulingText !== undefined ? fullRulingText.trim() : existing.fullRulingText;
 
-    const expVer = req.body.expectedVersion ?? req.body.version ?? existing.version;
+    const expVer = extractExpectedVersion(req, true);
 
-    let sql = `UPDATE judicial_rulings
+    const [res]: any = await p.query(
+      `UPDATE judicial_rulings
        SET title = ?, court_branch = ?, judge_name = ?, summary = ?, full_ruling_text = ?, version = version + 1
-       WHERE (id = ? OR id = ?)`;
-    const params: any[] = [newTitle, newCourt, newJudge, newSummary, newFullText, idBuf, req.params.id];
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [newTitle, newCourt, newJudge, newSummary, newFullText, idBuf, req.params.id, expVer]
+    );
 
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
-    }
-
-    const [res]: any = await p.query(sql, params);
     if (res && res.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
@@ -238,17 +235,13 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
     const rows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     if (!rows || rows.length === 0) throw AppError.notFound('دادنامه');
 
-    const expVer = req.body?.expectedVersion ?? req.body?.version ?? rows[0].version;
+    const expVer = extractExpectedVersion(req, true);
 
-    let sql = `UPDATE judicial_rulings SET status = 'selected', version = version + 1 WHERE (id = ? OR id = ?)`;
-    const params: any[] = [idBuf, req.params.id];
+    const [res]: any = await p.query(
+      `UPDATE judicial_rulings SET status = 'selected', version = version + 1 WHERE (id = ? OR id = ?) AND version = ?`,
+      [idBuf, req.params.id, expVer]
+    );
 
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
-    }
-
-    const [res]: any = await p.query(sql, params);
     if (res && res.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }

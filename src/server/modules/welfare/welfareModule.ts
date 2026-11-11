@@ -8,6 +8,7 @@ import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7'
 import { adminSettingsRepo } from '../admin/adminSettingsRepository';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 export const welfareRouter = Router();
 export function createWelfareRouter(): Router {
@@ -141,18 +142,15 @@ welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => 
     const newDesc = description !== undefined ? description.trim() : existing.description;
     const newTypeTitle = typeTitle !== undefined ? typeTitle.trim() : existing.typeTitle;
 
-    const expVer = expectedVersion ?? req.body.version ?? existing.version;
-    let sql = `UPDATE welfare_requests
+    const expVer = extractExpectedVersion(req, true);
+
+    const [result]: any = await p.query(
+      `UPDATE welfare_requests
        SET title = ?, requested_value = ?, description = ?, type_title = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
-       WHERE (id = ? OR id = ?)`;
-    const params: any[] = [newTitle, newReqVal, newDesc, newTypeTitle, idBuf, req.params.id];
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [newTitle, newReqVal, newDesc, newTypeTitle, idBuf, req.params.id, expVer]
+    );
 
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
-    }
-
-    const [result]: any = await p.query(sql, params);
     if (result && result.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
@@ -545,19 +543,15 @@ welfareRouter.patch('/orders/:id/status', async (req: Request, res: Response, ne
     const p = getPool();
 
     const dbStatus = status === 'registered' ? 'ثبت شده' : status === 'delivered' ? 'تحویل داده شد' : 'در حال پردازش';
-    const expVer = req.body.expectedVersion ?? req.body.version;
+    const expVer = extractExpectedVersion(req, true);
 
-    let sql = `UPDATE consumable_orders
+    const [res]: any = await p.query(
+      `UPDATE consumable_orders
        SET status = ?, payment_status = ?, version = version + 1
-       WHERE (id = ? OR id = ?)`;
-    const params: any[] = [dbStatus, notes || 'به‌روزرسانی شده', idBuf, req.params.id];
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [dbStatus, notes || 'به‌روزرسانی شده', idBuf, req.params.id, expVer]
+    );
 
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
-    }
-
-    const [res]: any = await p.query(sql, params);
     if (res && res.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }

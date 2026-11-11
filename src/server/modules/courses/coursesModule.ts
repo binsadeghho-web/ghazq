@@ -7,6 +7,7 @@ import { Course, CourseEnrollment } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 function mapCourseRow(row: any): Course & { version: number } {
   let topics: string[] = [];
@@ -303,18 +304,21 @@ export class CoursesService {
       const prevStatus = enrollment.paymentStatus;
       const note = adminNote || (status === 'confirmed' ? 'مستندات واریز تایید و ثبت‌نام قطعی شد.' : 'رسید واریزی مورد تایید قرار نگرفت.');
 
-      let sql = `UPDATE course_enrollments
-         SET payment_status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP(3), version = version + 1
-         WHERE (id = ? OR id = ?)`;
-      const params: any[] = [status, note, authCtx.fullName, eBuf, enrollmentId];
-
-      const expVer = expectedVersion ?? (enrollment as any).version;
-      if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-        sql += ` AND version = ?`;
-        params.push(Number(expVer));
+      if (expectedVersion === undefined || expectedVersion === null || isNaN(Number(expectedVersion))) {
+        throw AppError.badRequest(
+          'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) جهت بررسی ثبت‌نام الزامی است.',
+          'VERSION_REQUIRED'
+        );
       }
+      const expVer = Number(expectedVersion);
 
-      const [res]: any = await conn.query(sql, params);
+      const [res]: any = await conn.query(
+        `UPDATE course_enrollments
+         SET payment_status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP(3), version = version + 1
+         WHERE (id = ? OR id = ?) AND version = ?`,
+        [status, note, authCtx.fullName, eBuf, enrollmentId, expVer]
+      );
+
       if (res && res.affectedRows === 0) {
         throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
       }
@@ -431,38 +435,45 @@ export class CoursesService {
     const archiveAccess = updates.archiveAccess !== undefined ? updates.archiveAccess : existing.archiveAccess;
     const archiveResources = updates.archiveResources !== undefined ? updates.archiveResources : existing.archiveResources;
 
-    const expVer = updates.expectedVersion ?? updates.version ?? existing.version;
+    const rawVersion = updates.expectedVersion !== undefined ? updates.expectedVersion : updates.version;
+    if (rawVersion === undefined || rawVersion === null || isNaN(Number(rawVersion))) {
+      throw AppError.badRequest(
+        'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) جهت ویرایش اطلاعات دوره الزامی است.',
+        'VERSION_REQUIRED'
+      );
+    }
+    const expVer = Number(rawVersion);
 
-    let sql = `UPDATE courses
+    const [res]: any = await p.query(
+      `UPDATE courses
        SET title = ?, instructor = ?, duration_hours = ?, capacity = ?, price = ?, start_date = ?, status = ?,
            topics = ?, cover_image_url = ?, allowed_payment_method = ?, archive_access = ?, archive_resources = ?,
            version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
-       WHERE (id = ? OR id = ?)`;
-    const params: any[] = [
-      title,
-      instructor,
-      hours,
-      capacity,
-      price,
-      startDate,
-      status,
-      JSON.stringify(topics),
-      coverImage || null,
-      allowedPaymentMethod,
-      archiveAccess,
-      JSON.stringify(archiveResources),
-      cBuf,
-      courseId,
-    ];
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [
+        title,
+        instructor,
+        hours,
+        capacity,
+        price,
+        startDate,
+        status,
+        JSON.stringify(topics),
+        coverImage || null,
+        allowedPaymentMethod,
+        archiveAccess,
+        JSON.stringify(archiveResources),
+        cBuf,
+        courseId,
+        expVer
+      ]
+    );
 
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
-    }
-
-    const [res]: any = await p.query(sql, params);
     if (res && res.affectedRows === 0) {
-      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+      throw AppError.conflict(
+        'اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
     }
 
     auditChain.appendEntry({
@@ -677,7 +688,11 @@ export function createCoursesRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
-      const updated = await service.updateCourse(authCtx, req.params.id, req.body);
+      const expectedVersion = extractExpectedVersion(req, true);
+      const updated = await service.updateCourse(authCtx, req.params.id, {
+        ...req.body,
+        expectedVersion,
+      });
       res.json(updated);
     } catch (err) {
       next(err);
@@ -723,8 +738,8 @@ export function createCoursesRouter(): Router {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const { status, adminNote } = req.body;
-      const expectedVersion = req.body.expectedVersion ?? req.body.version;
-      const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote, expectedVersion !== undefined ? Number(expectedVersion) : undefined);
+      const expectedVersion = extractExpectedVersion(req, true);
+      const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote, expectedVersion);
       res.json(updated);
     } catch (err) {
       next(err);
