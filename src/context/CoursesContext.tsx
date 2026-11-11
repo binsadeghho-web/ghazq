@@ -147,18 +147,25 @@ export const CoursesProvider: React.FC<CoursesProviderProps> = ({
   }, []);
 
   const updateCourse = useCallback(async (courseId: string, updates: Partial<Course>) => {
+    const existing = courses.find(c => c.id === courseId);
+    const expectedVersion = (existing as any)?.version || 1;
     try {
-      const updated = await api.updateCourse(courseId, updates);
+      const updated = await api.updateCourse(courseId, { ...updates, expectedVersion });
       setCourses(prev => prev.map(c => (c.id === courseId ? updated : c)));
       return updated;
-    } catch {
+    } catch (err: any) {
+      if (err?.problem?.status === 409 || err?.status === 409) {
+        throw err;
+      }
       setCourses(prev => prev.map(c => (c.id === courseId ? { ...c, ...updates } : c)));
     }
-  }, []);
+  }, [courses]);
 
   const reviewCourseEnrollment = useCallback(async (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => {
+    const existing = courseEnrollments.find(e => e.id === enrollmentId);
+    const expectedVersion = (existing as any)?.version || 1;
     try {
-      const updated = await api.reviewCourseEnrollment(enrollmentId, status, adminNote);
+      const updated = await api.reviewCourseEnrollment(enrollmentId, status, adminNote, expectedVersion);
       setCourseEnrollments(prev => prev.map(e => e.id === enrollmentId ? updated : e));
       
       setCourses(prev => prev.map(c => {

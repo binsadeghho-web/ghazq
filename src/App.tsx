@@ -13,6 +13,7 @@ import { FinanceSection } from './components/finance/FinanceSection';
 import { CrextioSubViews } from './components/crextio/CrextioSubViews';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ModuleFallback } from './components/common/ModuleFallback';
+import { ConcurrentConflictModal } from './components/common/ConcurrentConflictModal';
 
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
 const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
@@ -209,6 +210,7 @@ export default function App() {
   return (
     <AppProvider>
       <MainLayout />
+      <ConcurrentConflictModal />
     </AppProvider>
   );
 }

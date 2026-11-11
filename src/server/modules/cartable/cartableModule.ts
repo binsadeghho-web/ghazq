@@ -318,7 +318,7 @@ export class CartableService {
     );
 
     if (res.affectedRows === 0) {
-      throw AppError.conflict('تغییر هم‌زمان شناسایی شد. لطفاً صفحه را تازه‌سازی نموده و مجدداً تلاش کنید.');
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
 
     auditChain.appendEntry({
@@ -396,7 +396,7 @@ export class CartableService {
     );
 
     if (res.affectedRows === 0) {
-      throw AppError.conflict('اطلاعات درخواست توسط کاربر دیگری تغییر یافته است.');
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
 
     const updated = await this.repo.findById(requestId);

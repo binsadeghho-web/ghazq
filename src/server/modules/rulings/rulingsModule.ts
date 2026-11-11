@@ -122,12 +122,22 @@ rulingsRouter.put('/:id', async (req: Request, res: Response, next) => {
     const newSummary = summary !== undefined ? summary.trim() : existing.summary;
     const newFullText = fullRulingText !== undefined ? fullRulingText.trim() : existing.fullRulingText;
 
-    await p.query(
-      `UPDATE judicial_rulings
+    const expVer = req.body.expectedVersion ?? req.body.version ?? existing.version;
+
+    let sql = `UPDATE judicial_rulings
        SET title = ?, court_branch = ?, judge_name = ?, summary = ?, full_ruling_text = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [newTitle, newCourt, newJudge, newSummary, newFullText, idBuf, req.params.id]
-    );
+       WHERE (id = ? OR id = ?)`;
+    const params: any[] = [newTitle, newCourt, newJudge, newSummary, newFullText, idBuf, req.params.id];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [res]: any = await p.query(sql, params);
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ?`, [idBuf, req.params.id]);
@@ -228,10 +238,20 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
     const rows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     if (!rows || rows.length === 0) throw AppError.notFound('دادنامه');
 
-    await p.query(
-      `UPDATE judicial_rulings SET status = 'selected', version = version + 1 WHERE id = ? OR id = ?`,
-      [idBuf, req.params.id]
-    );
+    const expVer = req.body?.expectedVersion ?? req.body?.version ?? rows[0].version;
+
+    let sql = `UPDATE judicial_rulings SET status = 'selected', version = version + 1 WHERE (id = ? OR id = ?)`;
+    const params: any[] = [idBuf, req.params.id];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [res]: any = await p.query(sql, params);
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     auditChain.appendEntry({
       eventType: 'RULING_APPROVED',

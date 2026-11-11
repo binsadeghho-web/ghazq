@@ -141,12 +141,21 @@ welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => 
     const newDesc = description !== undefined ? description.trim() : existing.description;
     const newTypeTitle = typeTitle !== undefined ? typeTitle.trim() : existing.typeTitle;
 
-    const [result] = await p.query<any>(
-      `UPDATE welfare_requests
+    const expVer = expectedVersion ?? req.body.version ?? existing.version;
+    let sql = `UPDATE welfare_requests
        SET title = ?, requested_value = ?, description = ?, type_title = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
-       WHERE id = ? OR id = ?`,
-      [newTitle, newReqVal, newDesc, newTypeTitle, idBuf, req.params.id]
-    );
+       WHERE (id = ? OR id = ?)`;
+    const params: any[] = [newTitle, newReqVal, newDesc, newTypeTitle, idBuf, req.params.id];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [result]: any = await p.query(sql, params);
+    if (result && result.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM welfare_requests WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     res.json(mapWelfareRequestRow(updatedRows[0]));
@@ -452,21 +461,30 @@ welfareRouter.put('/consumables/:id', async (req: Request, res: Response, next) 
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
 
-    await p.query(
-      `UPDATE consumables
+    const expVer = req.body.expectedVersion ?? req.body.version;
+    let sql = `UPDATE consumables
        SET title = ?, price = ?, stock = ?, category = ?, image_url = ?, description = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [
-        req.body.title,
-        Number(req.body.price || 0),
-        Number(req.body.stock || 0),
-        req.body.category,
-        req.body.imageUrl || null,
-        req.body.description || null,
-        idBuf,
-        req.params.id,
-      ]
-    );
+       WHERE (id = ? OR id = ?)`;
+    const params: any[] = [
+      req.body.title,
+      Number(req.body.price || 0),
+      Number(req.body.stock || 0),
+      req.body.category,
+      req.body.imageUrl || null,
+      req.body.description || null,
+      idBuf,
+      req.params.id,
+    ];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [res]: any = await p.query(sql, params);
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
@@ -527,13 +545,22 @@ welfareRouter.patch('/orders/:id/status', async (req: Request, res: Response, ne
     const p = getPool();
 
     const dbStatus = status === 'registered' ? 'ثبت شده' : status === 'delivered' ? 'تحویل داده شد' : 'در حال پردازش';
+    const expVer = req.body.expectedVersion ?? req.body.version;
 
-    await p.query(
-      `UPDATE consumable_orders
+    let sql = `UPDATE consumable_orders
        SET status = ?, payment_status = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [dbStatus, notes || 'به‌روزرسانی شده', idBuf, req.params.id]
-    );
+       WHERE (id = ? OR id = ?)`;
+    const params: any[] = [dbStatus, notes || 'به‌روزرسانی شده', idBuf, req.params.id];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [res]: any = await p.query(sql, params);
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',

@@ -250,7 +250,102 @@ export class OfflineSyncEngine {
           cursor.continue();
         }
       };
-    } catch {}
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
+   * Processes the offline outbox queue with Strict OCC (Item 3).
+   * - Sends expectedVersion to prevent blind overwrite of server changes.
+   * - In case of HTTP 409 Conflict: marks syncStatus = 'conflict', avoids overwriting live server data,
+   *   and dispatches conflict notification.
+   */
+  async processSyncOutbox(
+    apiSender?: (item: OutboxQueueItem, expectedVersion: number) => Promise<any>
+  ): Promise<{ syncedCount: number; conflictCount: number; failedCount: number }> {
+    let syncedCount = 0;
+    let conflictCount = 0;
+    let failedCount = 0;
+
+    try {
+      const db = await getIDB();
+      const outboxItems = await new Promise<OutboxQueueItem[]>((resolve, reject) => {
+        const tx = db.transaction('sync_outbox', 'readonly');
+        const req = tx.objectStore('sync_outbox').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+
+      for (const item of outboxItems) {
+        if (item.status === 'processing') continue;
+
+        const docWrapper = await this.getDocument<{ id: string; version?: number }>(item.collection, item.payload?.id || item.id);
+        const expectedVersion = docWrapper?._meta.serverVersion || item.payload?.version || 1;
+
+        try {
+          if (apiSender) {
+            const serverResult = await apiSender(item, expectedVersion);
+            // Synced successfully: update doc wrapper with new serverVersion
+            if (docWrapper && docWrapper.data) {
+              docWrapper._meta.serverVersion = serverResult?.version || (expectedVersion + 1);
+              docWrapper._meta.syncStatus = 'synced';
+              docWrapper._meta.lastErrorMessage = null;
+              docWrapper._meta.retryCount = 0;
+              await this.saveDocument(item.collection, docWrapper.data, false);
+            }
+            // Remove item from outbox queue
+            await new Promise<void>((resolve, reject) => {
+              const tx = db.transaction('sync_outbox', 'readwrite');
+              tx.objectStore('sync_outbox').delete(item.id);
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject(tx.error);
+            });
+            syncedCount++;
+          }
+        } catch (err: any) {
+          const isConflict = err?.status === 409 || err?.problem?.status === 409 || err?.code === 'CONCURRENT_MODIFICATION_CONFLICT';
+          if (isConflict) {
+            conflictCount++;
+            // Mark document in conflict state - NEVER blind overwrite server
+            if (docWrapper) {
+              docWrapper._meta.syncStatus = 'conflict';
+              docWrapper._meta.lastErrorMessage = 'تداخل در همگام‌سازی هم‌زمان (Conflict). اطلاعات سرور جدیدتر است.';
+              const tx = db.transaction('documents', 'readwrite');
+              tx.objectStore('documents').put(docWrapper);
+            }
+            // Update outbox item status to 'failed' (conflict)
+            await new Promise<void>((resolve, reject) => {
+              const tx = db.transaction('sync_outbox', 'readwrite');
+              item.status = 'failed';
+              tx.objectStore('sync_outbox').put(item);
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject(tx.error);
+            });
+
+            // Dispatch global event so UI can prompt user
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('app:concurrent_conflict', {
+                detail: {
+                  collection: item.collection,
+                  documentId: item.payload?.id || item.id,
+                  message: 'تداخل در همگام‌سازی: اطلاعات در سرور توسط کاربر دیگری تغییر یافته است.',
+                }
+              }));
+            }
+          } else {
+            failedCount++;
+            item.retryCount = (item.retryCount || 0) + 1;
+            const tx = db.transaction('sync_outbox', 'readwrite');
+            tx.objectStore('sync_outbox').put(item);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[OfflineSyncEngine] processSyncOutbox error:', err);
+    }
+
+    return { syncedCount, conflictCount, failedCount };
   }
 }
 

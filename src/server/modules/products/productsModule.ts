@@ -161,12 +161,22 @@ export class ProductsService {
     const desc = updates.description !== undefined ? updates.description.trim() : existing.description;
     const year = updates.publishedYear !== undefined ? updates.publishedYear.trim() : existing.publishedYear;
 
-    await p.query(
-      `UPDATE products
+    const expVer = (updates as any).expectedVersion ?? (updates as any).version ?? expectedVersion ?? existing.version;
+
+    let sql = `UPDATE products
        SET title = ?, price = ?, description = ?, published_year = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [title, price, desc, year, idBuf, id]
-    );
+       WHERE (id = ? OR id = ?)`;
+    const params: any[] = [title, price, desc, year, idBuf, id];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [res]: any = await p.query(sql, params);
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     const updated = await this.getById(id, authCtx);
     if (!updated) throw AppError.internal('خطا در به‌روزرسانی محصول');

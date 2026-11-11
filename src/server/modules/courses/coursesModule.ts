@@ -279,7 +279,8 @@ export class CoursesService {
     authCtx: AuthContext,
     enrollmentId: string,
     status: 'confirmed' | 'rejected',
-    adminNote?: string
+    adminNote?: string,
+    expectedVersion?: number
   ): Promise<CourseEnrollment & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
@@ -302,12 +303,21 @@ export class CoursesService {
       const prevStatus = enrollment.paymentStatus;
       const note = adminNote || (status === 'confirmed' ? 'مستندات واریز تایید و ثبت‌نام قطعی شد.' : 'رسید واریزی مورد تایید قرار نگرفت.');
 
-      await conn.query(
-        `UPDATE course_enrollments
+      let sql = `UPDATE course_enrollments
          SET payment_status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP(3), version = version + 1
-         WHERE id = ? OR id = ?`,
-        [status, note, authCtx.fullName, eBuf, enrollmentId]
-      );
+         WHERE (id = ? OR id = ?)`;
+      const params: any[] = [status, note, authCtx.fullName, eBuf, enrollmentId];
+
+      const expVer = expectedVersion ?? (enrollment as any).version;
+      if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+        sql += ` AND version = ?`;
+        params.push(Number(expVer));
+      }
+
+      const [res]: any = await conn.query(sql, params);
+      if (res && res.affectedRows === 0) {
+        throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+      }
 
       if (status === 'confirmed' && prevStatus !== 'confirmed') {
         await conn.query(`UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ? OR id = ?`, [cBuf, enrollment.courseId]);
@@ -395,7 +405,7 @@ export class CoursesService {
   async updateCourse(
     authCtx: AuthContext,
     courseId: string,
-    updates: Partial<Course>
+    updates: Partial<Course> & { expectedVersion?: number; version?: number }
   ): Promise<Course & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
@@ -421,29 +431,39 @@ export class CoursesService {
     const archiveAccess = updates.archiveAccess !== undefined ? updates.archiveAccess : existing.archiveAccess;
     const archiveResources = updates.archiveResources !== undefined ? updates.archiveResources : existing.archiveResources;
 
-    await p.query(
-      `UPDATE courses
+    const expVer = updates.expectedVersion ?? updates.version ?? existing.version;
+
+    let sql = `UPDATE courses
        SET title = ?, instructor = ?, duration_hours = ?, capacity = ?, price = ?, start_date = ?, status = ?,
            topics = ?, cover_image_url = ?, allowed_payment_method = ?, archive_access = ?, archive_resources = ?,
            version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
-       WHERE id = ? OR id = ?`,
-      [
-        title,
-        instructor,
-        hours,
-        capacity,
-        price,
-        startDate,
-        status,
-        JSON.stringify(topics),
-        coverImage || null,
-        allowedPaymentMethod,
-        archiveAccess,
-        JSON.stringify(archiveResources),
-        cBuf,
-        courseId,
-      ]
-    );
+       WHERE (id = ? OR id = ?)`;
+    const params: any[] = [
+      title,
+      instructor,
+      hours,
+      capacity,
+      price,
+      startDate,
+      status,
+      JSON.stringify(topics),
+      coverImage || null,
+      allowedPaymentMethod,
+      archiveAccess,
+      JSON.stringify(archiveResources),
+      cBuf,
+      courseId,
+    ];
+
+    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
+      sql += ` AND version = ?`;
+      params.push(Number(expVer));
+    }
+
+    const [res]: any = await p.query(sql, params);
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     auditChain.appendEntry({
       eventType: 'ROLE_CHANGED',
@@ -703,7 +723,8 @@ export function createCoursesRouter(): Router {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const { status, adminNote } = req.body;
-      const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote);
+      const expectedVersion = req.body.expectedVersion ?? req.body.version;
+      const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote, expectedVersion !== undefined ? Number(expectedVersion) : undefined);
       res.json(updated);
     } catch (err) {
       next(err);

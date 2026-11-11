@@ -111,6 +111,17 @@ class ApiClient {
       headers.set('Idempotency-Key', generateClientUUID());
     }
 
+    // Attach If-Match header for OCC mutations (Section 6.3)
+    if ((options.method === 'PUT' || options.method === 'PATCH') && typeof options.body === 'string') {
+      try {
+        const bodyObj = JSON.parse(options.body);
+        const ver = bodyObj.expectedVersion ?? bodyObj.version;
+        if (ver !== undefined && ver !== null && !headers.has('If-Match')) {
+          headers.set('If-Match', `"${ver}"`);
+        }
+      } catch {}
+    }
+
     try {
       let response = await fetch(endpoint, {
         ...options,
@@ -159,6 +170,14 @@ class ApiClient {
             code: `HTTP_${response.status}`,
           };
         }
+
+        // Global broadcast for concurrent conflict (409)
+        if (response.status === 409 && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('app:concurrent_conflict', {
+            detail: problem,
+          }));
+        }
+
         throw new ApiError(problem);
       }
 
@@ -303,10 +322,10 @@ class ApiClient {
     });
   }
 
-  async reviewCourseEnrollment(enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) {
+  async reviewCourseEnrollment(enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string, expectedVersion?: number) {
     return this.request<any>(`/api/courses/enrollments/${enrollmentId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status, adminNote }),
+      body: JSON.stringify({ status, adminNote, expectedVersion }),
     });
   }
 
