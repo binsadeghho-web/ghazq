@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { NavTabId } from '../layout/Sidebar';
 import { ModernDashboardCard } from '../ModernDashboardCard';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { DashboardWidgetsSuite } from './DashboardWidgetsSuite';
 import {
   Inbox,
   GraduationCap,
@@ -44,6 +45,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
 
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerMousePos, setHeaderMousePos] = useState({ x: 0, y: 0 });
+  const [isAlumniPreview, setIsAlumniPreview] = useState(false);
 
   const handleHeaderMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!headerRef.current) return;
@@ -58,10 +60,15 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
     r => r.status === 'pending' || r.status === 'need_info'
   ).length;
 
-  const showAdminCard = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const showAdminCard = (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') && !isAlumniPreview;
 
   return (
     <div className="space-y-6">
+      <DashboardWidgetsSuite
+        onNavigateTab={(tab) => onNavigate((tab.toLowerCase() === 'people' ? 'cartable' : tab.toLowerCase()) as NavTabId)}
+        isAlumniPreview={isAlumniPreview}
+        onToggleAlumniPreview={() => setIsAlumniPreview(prev => !prev)}
+      />
       {/* 
         ========================================================================
         باکس بالای داشبورد با طیف رنگی انیمیشنی پویا و تغییرکننده (Aurora Spectrum Header)

@@ -7,6 +7,7 @@ import { WelfareLoanRulesEditor } from './WelfareLoanRulesEditor';
 import { WelfareCooperativeManager } from './WelfareCooperativeManager';
 import { WelfareOrdersAuditView } from './WelfareOrdersAuditView';
 import { WelfareAccommodationsManager } from './WelfareAccommodationsManager';
+import { WelfareCalculatorAndPostalSuite } from './WelfareCalculatorAndPostalSuite';
 import {
   Gift,
   CreditCard,
@@ -148,10 +149,30 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
 
       {/* TAB CONTENT SECTIONS */}
       {activeTab === 'sections_config' && <WelfareSectionsManager />}
-      {activeTab === 'loans' && <WelfareLoanRequestsManager />}
-      {activeTab === 'loan_rules' && <WelfareLoanRulesEditor />}
-      {activeTab === 'cooperative' && <WelfareCooperativeManager />}
-      {activeTab === 'orders_audit' && <WelfareOrdersAuditView />}
+      {activeTab === 'loans' && (
+        <div className="space-y-6">
+          <WelfareCalculatorAndPostalSuite mode="calculator" isOfficial={true} />
+          <WelfareLoanRequestsManager />
+        </div>
+      )}
+      {activeTab === 'loan_rules' && (
+        <div className="space-y-6">
+          <WelfareCalculatorAndPostalSuite mode="calculator" isOfficial={true} />
+          <WelfareLoanRulesEditor />
+        </div>
+      )}
+      {activeTab === 'cooperative' && (
+        <div className="space-y-6">
+          <WelfareCalculatorAndPostalSuite mode="postal_and_inventory" isOfficial={true} />
+          <WelfareCooperativeManager />
+        </div>
+      )}
+      {activeTab === 'orders_audit' && (
+        <div className="space-y-6">
+          <WelfareCalculatorAndPostalSuite mode="postal_and_inventory" isOfficial={true} />
+          <WelfareOrdersAuditView />
+        </div>
+      )}
       {activeTab === 'accommodations' && <WelfareAccommodationsManager />}
     </div>
   );

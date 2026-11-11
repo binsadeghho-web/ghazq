@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { User, UserRole, AppSectionId, PermissionAccessLevel, UserSectionPermissions } from '../../types';
 import { api } from '../../services/apiClient';
+import { AlumniDigitalCardAndAdminTools } from '../alumni/AlumniDigitalCardAndAdminTools';
 import {
   Users,
   UserPlus,
@@ -236,6 +237,12 @@ export const UserManagementModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* کارت عضویت دیجیتال، کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
+      <AlumniDigitalCardAndAdminTools
+        currentUser={currentUser}
+        isOfficial={currentUser?.role === 'admin' || currentUser?.role === 'supervisor'}
+      />
 
       {/* ========================================================================
           SEARCH & FILTER & ACTIONS BAR

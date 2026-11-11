@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { User } from '../../types';
 import { apiClient } from '../../services/apiClient';
+import { AlumniDigitalCardAndAdminTools } from './AlumniDigitalCardAndAdminTools';
 import {
   GraduationCap,
   Search,
@@ -62,18 +63,24 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
     roleTitle: '',
   });
 
-  // Guard: Strictly Admin & Supervisor Only
+  // Guard: Strictly Admin & Supervisor Only for other alumni directory; show personal Digital Card for regular alumni
   const isAllowed = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
   if (!isAllowed) {
     return (
-      <div className="p-8 text-center max-w-xl mx-auto mt-12 bg-white/90 rounded-3xl border border-stone-200 shadow-lg space-y-4 font-sans" dir="rtl">
-        <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
-          <ShieldAlert className="w-8 h-8" />
+      <div className="space-y-6 max-w-4xl mx-auto mt-6 font-sans" dir="rtl">
+        <AlumniDigitalCardAndAdminTools
+          currentUser={currentUser}
+          isOfficial={false}
+        />
+        <div className="p-8 text-center bg-white/90 rounded-3xl border border-stone-200 shadow-lg space-y-4">
+          <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-black text-stone-900">حفاظت کامل از حریم خصوصی دانش‌آموختگان</h3>
+          <p className="text-xs text-stone-600 leading-relaxed">
+            طبق سیاست محرمانگی مرکز، هیچ‌یک از مشخصات سایر دانش‌آموختگان برای دیگر اعضا قابل نمایش نیست. کارت عضویت دیجیتال اختصاصی شما در بالا قابل مشاهده و چاپ است.
+          </p>
         </div>
-        <h3 className="text-lg font-black text-stone-900">محدودیت دسترسی به بانک دانش‌آموختگان</h3>
-        <p className="text-xs text-stone-600 leading-relaxed">
-          این بخش منحصراً در اختیار مدیر ارشد و مسئولین مرکز دانش‌آموختگان فقه و قضا می‌باشد. دانش‌آموختگان گرامی می‌توانند پرونده فردی و خدمات خود را از بخش داشبورد و کارتابل پیگیری نمایند.
-        </p>
       </div>
     );
   }
@@ -201,6 +208,13 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
           </div>
         ))}
       </div>
+
+      {/* کارت عضویت دیجیتال، کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
+      <AlumniDigitalCardAndAdminTools
+        currentUser={currentUser}
+        selectedUserForCard={selectedAlumni}
+        isOfficial={isAllowed}
+      />
 
       {/* Search & Filter Bar */}
       <div className="bg-white/90 p-4 rounded-3xl border border-stone-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">

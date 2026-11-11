@@ -34,23 +34,26 @@ function mapWelfareRequestRow(row: any): WelfareRequest & { version: number; upd
   };
 }
 
-function mapConsumableRow(row: any): ConsumableItem & { version: number } {
-  const price = Number(row.price ?? row.cooperativePrice ?? 0);
+function mapConsumableRow(row: any): ConsumableItem & { version: number; lowStockThreshold?: number } {
+  const price = Number(row.price ?? row.cooperative_price ?? row.cooperativePrice ?? 0);
   return {
     id: fromIdBuffer(row.id),
     title: row.title || '',
+    name: row.title || '',
     category: row.category || 'عمومی',
     cooperativePrice: price,
+    memberPrice: price,
     marketPrice: Number(row.market_price ?? row.marketPrice ?? Math.round(price * 1.2)),
     unit: row.unit || 'عدد',
     stock: Number(row.stock || 0),
+    lowStockThreshold: Number(row.low_stock_threshold ?? 5),
     imageUrl: row.image_url || row.imageUrl || undefined,
     description: row.description || '',
     version: Number(row.version || 1),
   };
 }
 
-function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number; trackingCode?: string; paymentStatus?: string } {
+function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number; trackingCode?: string; postalTrackingCode?: string; shippingStatus?: string; paymentStatus?: string } {
   let items = [];
   try {
     if (typeof row.items === 'string') items = JSON.parse(row.items);
@@ -64,10 +67,12 @@ function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number; t
     items,
     totalAmount: Math.round(Number(row.total_price ?? row.totalAmount ?? 0)),
     deliveryAddress: row.delivery_address || row.deliveryAddress || '',
-    status: row.status === 'ثبت شده' || row.status === 'registered' ? 'registered' : row.status === 'تحویل داده شد' || row.status === 'delivered' ? 'delivered' : 'prepared',
+    status: row.status === 'ثبت شده' || row.status === 'registered' ? 'registered' : row.status === 'تحویل داده شد' || row.status === 'delivered' ? 'delivered' : row.status === 'dispatched' ? 'dispatched' : 'prepared',
     notes: row.payment_status || row.notes || undefined,
     paymentStatus: row.payment_status || 'در انتظار پرداخت',
     trackingCode: row.tracking_code || row.trackingCode || undefined,
+    postalTrackingCode: row.postal_tracking_code || undefined,
+    shippingStatus: row.shipping_status || 'در حال آماده‌سازی',
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
@@ -306,23 +311,49 @@ welfareRouter.post('/orders', idempotencyMiddleware, async (req: Request, res: R
     const p = getPool();
     const now = new Date().toISOString();
 
-    const price = Math.round(Number(totalAmount) || 0);
+    const computedTotal = items.reduce((sum: number, it: any) => sum + (Number(it.unitPrice || it.price || 0) * Number(it.quantity || 1)), 0);
+    const price = Math.round(Number(totalAmount) || computedTotal || 0);
 
-    await p.query(
-      `INSERT INTO consumable_orders (
-        id, user_id, user_name, user_phone, items, total_price, delivery_address, status, payment_status, tracking_code, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ثبت شده', 'در انتظار پرداخت', ?, 1)`,
-      [
-        idBuf,
-        uBuf,
-        currentUser.fullName,
-        (currentUser as any).phone || '09120000000',
-        JSON.stringify(items),
-        price,
-        deliveryAddress,
-        trackingCode,
-      ]
-    );
+    // Atomic Stock Verification & Decrement inside Transaction (withTx)
+    await withTx(async (conn) => {
+      for (const orderItem of items) {
+        const itemId = orderItem.itemId || orderItem.id;
+        const qty = Math.max(1, Number(orderItem.quantity || 1));
+        if (itemId) {
+          const itemBuf = toIdBuffer(itemId);
+          const [stockRows]: any = await conn.query(
+            `SELECT id, title, stock FROM consumables WHERE id = ? OR id = ? FOR UPDATE`,
+            [itemBuf, itemId]
+          );
+          if (stockRows && stockRows.length > 0) {
+            const currentStock = Number(stockRows[0].stock || 0);
+            if (currentStock < qty) {
+              throw AppError.unprocessable(`موجودی کالای «${stockRows[0].title}» به اتمام رسیده است (موجودی فعلی: ${currentStock}). امکان ثبت سفارش وجود ندارد.`);
+            }
+            await conn.query(
+              `UPDATE consumables SET stock = stock - ?, version = version + 1 WHERE id = ? OR id = ?`,
+              [qty, itemBuf, itemId]
+            );
+          }
+        }
+      }
+
+      await conn.query(
+        `INSERT INTO consumable_orders (
+          id, user_id, user_name, user_phone, items, total_price, delivery_address, status, payment_status, tracking_code, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ثبت شده', 'در انتظار پرداخت', ?, 1)`,
+        [
+          idBuf,
+          uBuf,
+          currentUser.fullName,
+          (currentUser as any).phone || '09120000000',
+          JSON.stringify(items),
+          price,
+          deliveryAddress,
+          trackingCode,
+        ]
+      );
+    });
 
     auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
@@ -679,3 +710,6 @@ welfareRouter.put('/cooperative-info', async (req: Request, res: Response, next)
     next(err);
   }
 });
+
+import { registerWelfareInventoryAndPostalRoutes } from './welfareInventoryAndPostalRoutes';
+registerWelfareInventoryAndPostalRoutes(welfareRouter);

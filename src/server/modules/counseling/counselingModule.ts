@@ -9,7 +9,13 @@ import { Consultant, CounselingRequest, CounselingCategory } from '../../../type
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
 
-function mapConsultantRow(row: any): Consultant & { version: number } {
+function mapConsultantRow(row: any): Consultant & { version: number; scheduleSlots?: string[] } {
+  let scheduleSlots: string[] = [];
+  try {
+    if (typeof row.schedule_slots === 'string') scheduleSlots = JSON.parse(row.schedule_slots);
+    else if (Array.isArray(row.schedule_slots)) scheduleSlots = row.schedule_slots;
+  } catch {}
+
   return {
     id: fromIdBuffer(row.id),
     name: row.name,
@@ -18,6 +24,7 @@ function mapConsultantRow(row: any): Consultant & { version: number } {
     bio: row.bio || '',
     experienceYears: Number(row.experience_years ?? row.experienceYears ?? 0),
     availability: row.availability || '',
+    scheduleSlots,
     avatarUrl: row.avatar_url || row.avatarUrl || undefined,
     counselingType: row.counseling_type || row.counselingType || 'general',
     isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
@@ -25,12 +32,14 @@ function mapConsultantRow(row: any): Consultant & { version: number } {
   };
 }
 
-function mapCounselingRequestRow(row: any): CounselingRequest & { version: number; updatedAt?: string } {
+function mapCounselingRequestRow(row: any): CounselingRequest & { version: number; updatedAt?: string; hideIdentity?: boolean } {
   const consultantIdRaw = row.preferred_consultant_id || row.consultant_id;
+  const hideIdentity = Boolean(row.hide_identity);
   return {
     id: fromIdBuffer(row.id),
     applicantId: fromIdBuffer(row.applicant_id),
     applicantName: row.applicant_name || '',
+    hideIdentity,
     category: row.category || 'family',
     categoryTitle: row.category_title || 'مشاوره خانواده',
     preferredConsultantId: consultantIdRaw ? fromIdBuffer(consultantIdRaw) : undefined,
@@ -499,6 +508,9 @@ export function createCounselingRouter(): Router {
     }
   });
 
+  registerCounselingDossierRoutes(router);
+
   return router;
 }
+import { registerCounselingDossierRoutes } from './counselingDossierRoutes';
 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingRequest, CounselingCategory } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossierSuite';
 import {
   Users,
   Calendar,
@@ -295,6 +296,14 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
           );
         })}
       </div>
+
+      {/* سامانه تقویم نوبت‌دهی، مدیریت تقویم حضور مشاوران، پرونده جلسات و کنترل مخفی/آشکارسازی هویت متقاضیان */}
+      <CounselingCalendarAndDossierSuite
+        currentUser={currentUser}
+        consultants={consultants}
+        counselingRequests={counselingRequests}
+        isOfficial={true}
+      />
 
       {/* =========================================================================
           TAB 1: QUEUE & APPOINTMENT MANAGEMENT

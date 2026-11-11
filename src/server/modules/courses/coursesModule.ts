@@ -47,8 +47,10 @@ function mapCourseRow(row: any): Course & { version: number } {
     isDeleted: Boolean(row.is_deleted),
     deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
     deletedBy: row.deleted_by || undefined,
+    sessionsCount: Number(row.sessions_count || 4),
+    waitlistEnabled: row.waitlist_enabled !== undefined ? Boolean(row.waitlist_enabled) : true,
     version: Number(row.version || 1),
-  };
+  } as any;
 }
 
 function mapEnrollmentRow(row: any): CourseEnrollment & { version: number } {
@@ -761,5 +763,8 @@ export function createCoursesRouter(): Router {
     }
   });
 
+  registerCourseOperationsRoutes(router);
+
   return router;
 }
+import { registerCourseOperationsRoutes } from './courseOperationsRoutes';

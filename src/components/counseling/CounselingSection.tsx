@@ -33,6 +33,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { AdminCounselingGeneralSuite } from './AdminCounselingGeneralSuite';
+import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossierSuite';
 
 interface CounselingSectionProps {
   initialTab?: 'request' | 'my_history' | 'consultants' | 'admin_queue' | 'academic_special' | 'articles';
@@ -360,6 +361,20 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
           <span>راهنماهای سلامت روانی</span>
         </button>
       </div>
+
+      {/* سامانه تقویم نوبت‌دهی، مدیریت تقویم حضور مشاوران، پرونده جلسات و کنترل هویت متقاضیان */}
+      <CounselingCalendarAndDossierSuite
+        currentUser={currentUser}
+        consultants={consultants}
+        counselingRequests={counselingRequests}
+        isOfficial={isOfficial}
+        onSelectSlotForBooking={(consId, slotSummary, mode) => {
+          setPreferredConsultantId(consId);
+          setMeetingMode(mode);
+          setDescription(prev => prev ? `${prev}\n[نوبت انتخابی از تقویم: ${slotSummary}]` : `[نوبت انتخابی از تقویم: ${slotSummary}] `);
+          setActiveTab('request');
+        }}
+      />
 
       {/* Tab 1: Request Booking Form */}
       {activeTab === 'request' && (

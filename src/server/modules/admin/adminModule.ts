@@ -628,5 +628,8 @@ export function createAdminRouter(): Router {
     }
   });
 
+  registerAlumniPrivacyAndFinanceRoutes(router);
+
   return router;
 }
+import { registerAlumniPrivacyAndFinanceRoutes } from './alumniPrivacyAndFinanceRoutes';

@@ -9,7 +9,7 @@ export interface CartableContextType {
     data: Omit<CartableRequest, 'id' | 'trackingNumber' | 'createdAt' | 'updatedAt' | 'messages'>,
     initialMessageText: string
   ) => Promise<void>;
-  replyCartableRequest: (requestId: string, text: string) => Promise<void>;
+  replyCartableRequest: (requestId: string, text: string, attachments?: string[]) => Promise<void>;
   updateCartableStatus: (requestId: string, status: CartableRequest['status']) => Promise<void>;
   markCartableAsRead: (requestId: string) => Promise<void>;
   refreshCartable: () => Promise<void>;
@@ -33,7 +33,8 @@ export const CartableProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     refreshCartable();
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type.startsWith('cartable.')) {
-        const delta = event.data?.data;
+        const payload = event.data ?? (event as any).payload;
+        const delta = payload?.data ?? payload;
         const resourceId = delta?.resourceId;
         const updates = delta?.updates;
         const version = delta?.version;
@@ -70,17 +71,17 @@ export const CartableProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCartableRequests(current => [created, ...current]);
     } catch (err: any) {
       setCartableRequests(prev);
-      alert(`خطا در ثبت درخواست کارتابل: ${err.message}`);
+      console.error(`خطا در ثبت درخواست کارتابل: ${err.message}`);
       throw err;
     }
   }, [cartableRequests]);
 
-  const replyCartableRequest = useCallback(async (requestId: string, text: string) => {
+  const replyCartableRequest = useCallback(async (requestId: string, text: string, attachments?: string[]) => {
     try {
-      const updated = await api.replyCartableRequest(requestId, text);
+      const updated = await api.replyCartableRequest(requestId, text, attachments);
       setCartableRequests(prev => prev.map(r => (r.id === requestId ? updated : r)));
     } catch (err: any) {
-      alert(`خطا در ارسال پاسخ: ${err.message}`);
+      console.error(`خطا در ارسال پاسخ: ${err.message}`);
       throw err;
     }
   }, []);
@@ -93,10 +94,9 @@ export const CartableProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCartableRequests(prev => prev.map(r => (r.id === requestId ? updated : r)));
     } catch (err: any) {
       if (err instanceof ApiError && err.problem.status === 409) {
-        alert('تداخل در به‌روزرسانی: داده‌ها توسط کاربر دیگری تغییر یافته‌اند. اطلاعات تازه‌سازی شدند.');
         refreshCartable();
       } else {
-        alert(`خطا: ${err.message}`);
+        console.error(`خطا: ${err.message}`);
       }
     }
   }, [cartableRequests, refreshCartable]);

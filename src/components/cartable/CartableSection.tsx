@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { CartableCategory, CartableRequest, RequestPriority, RequestStatus } from '../../types';
 import { ModernMetricCard } from '../common/ModernMetricCard';
+import { CartableEnhancedTools } from './CartableEnhancedTools';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   Inbox,
@@ -626,6 +627,15 @@ export const CartableSection: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* مراحل پردازش (با گام «در حال پیگیری»)، شاخص زمان انتظار، پیوست در دیسک و ارجاع داخلی */}
+                <CartableEnhancedTools
+                  request={selectedRequest}
+                  isOfficial={isOfficial}
+                  onRequestUpdated={() => {
+                    // SSE automatically updates state; trigger mark-read/refresh fallback if needed
+                  }}
+                />
               </div>
 
               {/* Chat Message Timeline (محیط گفت‌وگوی چت دو طرفه) */}

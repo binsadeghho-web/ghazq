@@ -28,6 +28,12 @@ function mapRulingRow(row: any, discussions: any[] = []): JudicialRuling & { ver
     else if (Array.isArray(row.liked_by)) likedBy = row.liked_by;
   } catch {}
 
+  let highlights: any[] = [];
+  try {
+    if (typeof row.highlights === 'string') highlights = JSON.parse(row.highlights);
+    else if (Array.isArray(row.highlights)) highlights = row.highlights;
+  } catch {}
+
   return {
     id: fromIdBuffer(row.id),
     title: row.title,
@@ -44,9 +50,10 @@ function mapRulingRow(row: any, discussions: any[] = []): JudicialRuling & { ver
     submittedByName: row.submitted_by_name,
     likesCount: Number(row.likes_count || 0),
     likedBy,
+    highlights,
     discussions,
     version: Number(row.version || 1),
-  };
+  } as any;
 }
 
 function mapDiscussionRow(row: any) {
@@ -55,6 +62,7 @@ function mapDiscussionRow(row: any) {
     authorName: row.author_name,
     authorRoleTitle: row.author_role_title,
     comment: row.comment,
+    isFeatured: Boolean(row.is_featured),
     timestamp: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
 }
@@ -377,3 +385,6 @@ rulingsRouter.post('/:id/like', async (req: Request, res: Response, next) => {
     next(err);
   }
 });
+
+import { registerRulingHighlightsAndPinRoutes } from './rulingHighlightsAndPinRoutes';
+registerRulingHighlightsAndPinRoutes(rulingsRouter);

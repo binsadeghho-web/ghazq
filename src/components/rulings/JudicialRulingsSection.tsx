@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { JudicialRuling } from '../../types';
 import { ModernMetricCard } from '../common/ModernMetricCard';
+import { RulingEnhancementsToolbar } from './RulingEnhancementsToolbar';
 import {
   Scale,
   ThumbsUp,
@@ -25,6 +26,17 @@ export const JudicialRulingsSection: React.FC = () => {
   const [selectedRuling, setSelectedRuling] = useState<JudicialRuling | null>(rulings[0] || null);
   const [newRulingModalOpen, setNewRulingModalOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+
+  // Keep selectedRuling synchronized with live SSE updates in rulings array
+  useEffect(() => {
+    if (selectedRuling) {
+      const fresh = rulings.find(r => r.id === selectedRuling.id);
+      if (fresh) setSelectedRuling(fresh);
+    } else if (rulings.length > 0) {
+      setSelectedRuling(rulings[0]);
+    }
+  }, [rulings, selectedRuling]);
 
   // Submit ruling form state
   const [newTitle, setNewTitle] = useState('');
@@ -81,12 +93,14 @@ export const JudicialRulingsSection: React.FC = () => {
     setNewFullText('');
     setNewRulingModalOpen(false);
 
-    alert('رأی قضایی شما به دبیرخانه تالار واصل گردید. پس از ارزیابی علمی منتشر خواهد شد.');
+    setStatusNotice('رأی قضایی شما به دبیرخانه تالار واصل گردید و پس از ارزیابی علمی منتشر خواهد شد.');
+    setTimeout(() => setStatusNotice(null), 4000);
   };
 
   const handleApprove = (rulingId: string) => {
     approveRuling(rulingId);
-    alert('رأی قضایی با موفقیت تایید و به عنوان دادنامه منتخب منتشر گردید.');
+    setStatusNotice('رأی قضایی با موفقیت تایید و به عنوان دادنامه منتخب منتشر گردید.');
+    setTimeout(() => setStatusNotice(null), 4000);
     if (selectedRuling?.id === rulingId) {
       setSelectedRuling({ ...selectedRuling, status: 'selected' });
     }
@@ -96,6 +110,13 @@ export const JudicialRulingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {statusNotice && (
+        <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-between">
+          <span>{statusNotice}</span>
+          <button onClick={() => setStatusNotice(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+        </div>
+      )}
+
       {/* 3 Metrics Overview Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ModernMetricCard
@@ -343,6 +364,13 @@ export const JudicialRulingsSection: React.FC = () => {
                     ارسال‌شده توسط: {selectedRuling.submittedByName}
                   </span>
                 </div>
+
+                {/* ابزار هایلایت، نسخه چاپی و نقد برگزیده */}
+                <RulingEnhancementsToolbar
+                  ruling={selectedRuling}
+                  isOfficial={isOfficial}
+                  onRulingUpdated={() => {}}
+                />
               </div>
 
               {/* Discussions & Critiques */}

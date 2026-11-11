@@ -263,10 +263,17 @@ class ApiClient {
     });
   }
 
-  async replyCartableRequest(id: string, text: string) {
+  async replyCartableRequest(id: string, text: string, attachments?: string[]) {
     return this.request<any>(`/api/cartable/${id}/reply`, {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, attachments }),
+    });
+  }
+
+  async referCartableRequest(id: string, data: { referredDepartment: string; internalReferralNote?: string; status?: string; expectedVersion: number }) {
+    return this.request<any>(`/api/cartable/${id}/referral`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 
@@ -752,14 +759,240 @@ class ApiClient {
     return this.request<any>('/api/ops/weekly-digest');
   }
 
-  /**
-   * Subscribe to real-time Server-Sent Events (SSE) (Section 8)
-   * conformed strictly to Data Layer Architecture v3.0:
-   * Uses fetch-based streaming with 'Authorization: Bearer <token>' header
-   * (since native browser EventSource cannot send Authorization headers),
-   * preventing token leakage in URL query parameters and access logs.
-   * Includes automatic exponential backoff with jitter and silent token refresh.
-   */
+  // Dashboard Widgets, Banners & Calendar Events
+  async getDashboardWidgetsData() {
+    return this.request<{ banners: any[]; events: any[]; widgetConfig: { showStatusSummaryWidget: boolean; showEventsCalendarWidget: boolean; version: number } }>('/api/dashboard/widgets-data');
+  }
+
+  async updateDashboardWidgetToggles(data: { showStatusSummaryWidget: boolean; showEventsCalendarWidget: boolean; expectedVersion: number }) {
+    return this.request<any>('/api/dashboard/widget-toggles', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createDashboardBanner(data: any) {
+    return this.request<any>('/api/dashboard/banners', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDashboardBanner(id: string, data: any) {
+    return this.request<any>(`/api/dashboard/banners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDashboardBanner(id: string) {
+    return this.request<any>(`/api/dashboard/banners/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createDashboardEvent(data: any) {
+    return this.request<any>('/api/dashboard/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDashboardEvent(id: string) {
+    return this.request<any>(`/api/dashboard/events/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Cartable Attachments & Referral helpers
+  async uploadFile(file: File, folder = 'misc'): Promise<{ url: string }> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('خطا در خواندن فایل'));
+      reader.readAsDataURL(file);
+    });
+    const res = await this.request<{ success: boolean; url: string }>(`/api/upload/${folder}`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: file.name, dataUrl }),
+    });
+    return { url: res.url };
+  }
+
+  async uploadCartableAttachment(requestId: string, fileUrl: string, expectedVersion = 1) {
+    return this.request<any>(`/api/cartable/${requestId}/attachments`, {
+      method: 'POST',
+      body: JSON.stringify({ fileUrl, expectedVersion }),
+    });
+  }
+
+  async updateCartableReferral(
+    requestId: string,
+    data: { referredDepartment: string; internalReferralNote?: string; status?: string; expectedVersion: number }
+  ) {
+    return this.referCartableRequest(requestId, data);
+  }
+
+  // Course Attendance, Waitlist & Certificates
+  async getCourseOperations(courseId: string) {
+    return this.request<{
+      courseId: string;
+      sessionsCount: number;
+      waitlistEnabled: boolean;
+      version: number;
+      attendance: any[];
+      waitlist: any[];
+      certificates: any[];
+    }>(`/api/courses/${courseId}/operations`);
+  }
+
+  async getCourseAttendance(courseId: string) {
+    const ops = await this.getCourseOperations(courseId);
+    return ops?.attendance || [];
+  }
+
+  async getCourseWaitlist(courseId: string) {
+    const ops = await this.getCourseOperations(courseId);
+    return ops?.waitlist || [];
+  }
+
+  async getCourseCertificates(courseId: string) {
+    const ops = await this.getCourseOperations(courseId);
+    return ops?.certificates || [];
+  }
+
+  async updateCourseOperationsSettings(courseId: string, data: { sessionsCount?: number; waitlistEnabled?: boolean; expectedVersion: number }) {
+    return this.request<any>(`/api/courses/${courseId}/operations-settings`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCourseOpsConfig(courseId: string, data: { sessionsCount?: number; waitlistEnabled?: boolean; expectedVersion: number }) {
+    return this.updateCourseOperationsSettings(courseId, data);
+  }
+
+  async recordCourseAttendance(courseId: string, data: { userId: string; userName: string; sessionNumber: number; sessionTitle?: string; status: 'present' | 'absent' | 'excused' }) {
+    return this.request<any>(`/api/courses/${courseId}/attendance`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async joinCourseWaitlist(courseId: string) {
+    return this.request<any>(`/api/courses/${courseId}/waitlist`, {
+      method: 'POST',
+    });
+  }
+
+  async updateCourseWaitlistStatus(courseId: string, waitlistId: string, status: string, expectedVersion = 1) {
+    return this.request<any>(`/api/courses/${courseId}/waitlist/${waitlistId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, expectedVersion }),
+    });
+  }
+
+  async issueCourseCertificate(courseId: string, data?: { userId?: string; userName?: string; userNationalId?: string; courseTitle?: string; instructorName?: string; hours?: number; gradeText?: string }) {
+    return this.request<any>(`/api/courses/${courseId}/certificates`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
+  // Rulings Highlights & Featured Critique Pinning
+  async updateRulingHighlights(rulingId: string, highlights: any[], expectedVersion: number) {
+    return this.request<any>(`/api/rulings/${rulingId}/highlights`, {
+      method: 'PUT',
+      body: JSON.stringify({ highlights, expectedVersion }),
+    });
+  }
+
+  async toggleFeaturedCritique(rulingId: string, discussionId: string, isFeatured: boolean) {
+    return this.request<any>(`/api/rulings/${rulingId}/discussions/${discussionId}/feature`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isFeatured }),
+    });
+  }
+
+  async togglePinRulingDiscussion(rulingId: string, discussionId: string, isFeatured: boolean) {
+    return this.toggleFeaturedCritique(rulingId, discussionId, isFeatured);
+  }
+
+  // Counseling Dossiers, Consultant Schedules & Identity Visibility
+  async getCounselingDossiers(requestId?: string) {
+    const url = requestId ? `/api/counseling/dossiers?requestId=${requestId}` : '/api/counseling/dossiers';
+    return this.request<any[]>(url);
+  }
+
+  async createCounselingDossier(data: any) {
+    return this.request<any>('/api/counseling/dossiers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async saveCounselingDossier(data: any) {
+    return this.createCounselingDossier(data);
+  }
+
+  async toggleCounselingIdentityVisibility(requestId: string, hideIdentity: boolean, expectedVersion: number) {
+    return this.request<any>(`/api/counseling/requests/${requestId}/identity-visibility`, {
+      method: 'PATCH',
+      body: JSON.stringify({ hideIdentity, expectedVersion }),
+    });
+  }
+
+  async updateConsultantSchedule(consultantId: string, scheduleSlots: any[], availabilityOrVersion?: string | number, expectedVersion = 1) {
+    const availability = typeof availabilityOrVersion === 'string' ? availabilityOrVersion : undefined;
+    const version = typeof availabilityOrVersion === 'number' ? availabilityOrVersion : expectedVersion;
+    return this.request<any>(`/api/counseling/consultants/${consultantId}/schedule`, {
+      method: 'PUT',
+      body: JSON.stringify({ scheduleSlots, availability, expectedVersion: version }),
+    });
+  }
+
+  // Welfare Postal Tracking & Inventory Stock Control
+  async updateOrderPostalTracking(orderId: string, data: { postalTrackingCode: string; shippingStatus?: string; status?: string; expectedVersion: number }) {
+    return this.request<any>(`/api/welfare/orders/${orderId}/postal-tracking`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateConsumableOrderPostalTracking(orderId: string, data: { postalTrackingCode: string; shippingStatus?: string; status?: string; expectedVersion: number }) {
+    return this.updateOrderPostalTracking(orderId, data);
+  }
+
+  async updateConsumableInventory(consumableId: string, data: { stock: number; lowStockThreshold?: number; expectedVersion: number }) {
+    return this.request<any>(`/api/welfare/consumables/${consumableId}/inventory`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Alumni Privacy Settings, Bulk User Import & Financial Balance Report
+  async getAlumniPrivacySettings() {
+    return this.request<Array<{ sectionId: string; sectionTitle: string; revealNameOnly: boolean; version: number }>>('/api/admin/privacy-settings');
+  }
+
+  async updateAlumniPrivacySetting(sectionId: string, revealNameOnly: boolean, expectedVersion: number) {
+    return this.request<any>(`/api/admin/privacy-settings/${sectionId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ revealNameOnly, expectedVersion }),
+    });
+  }
+
+  async bulkImportUsers(rows: any[]) {
+    return this.request<any>('/api/admin/users/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify({ rows }),
+    });
+  }
+
+  async getFinancialBalanceReport() {
+    return this.request<any>('/api/admin/financial-balance');
+  }
+
   public subscribeToEvents(onEvent: (event: { type: string; data: any }) => void): () => void {
     let abortController: AbortController | null = null;
     let isClosed = false;

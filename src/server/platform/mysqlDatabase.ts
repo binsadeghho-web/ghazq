@@ -356,6 +356,7 @@ export async function checkDatabaseConnection(): Promise<boolean> {
   try {
     await selectWithTimeout('SELECT 1 as alive', [], 2000);
     isConnected = true;
+    import('./domainTablesSetup').then(m => m.ensureDomainTablesAndIndexes()).catch(() => {});
     return true;
   } catch (err: any) {
     isConnected = false;

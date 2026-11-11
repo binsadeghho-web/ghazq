@@ -8,8 +8,17 @@ import { CartableRequest, CartableMessage, RequestStatus, CartableCategory, Requ
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
 
-function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number; trackingCode?: string } {
+function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number; trackingCode?: string; attachments?: string[]; referredDepartment?: string; internalReferralNote?: string; slaDeadlineHours?: number } {
   const trackingNumber = row.tracking_number || row.tracking_code || '';
+  let attachments: string[] = [];
+  try {
+    if (typeof row.attachments === 'string') attachments = JSON.parse(row.attachments);
+    else if (Array.isArray(row.attachments)) attachments = row.attachments;
+  } catch {}
+
+  const priority = row.priority || 'normal';
+  const defaultSla = priority === 'instant' ? 4 : priority === 'urgent' ? 12 : 48;
+
   return {
     id: fromIdBuffer(row.id),
     trackingNumber,
@@ -21,10 +30,14 @@ function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): Cart
     applicantId: fromIdBuffer(row.applicant_id),
     applicantName: row.applicant_name,
     applicantRoleTitle: row.applicant_role_title,
-    priority: row.priority,
+    priority,
     status: row.status,
     hasUnreadSupervisor: Boolean(row.has_unread_supervisor),
     hasUnreadApplicant: Boolean(row.has_unread_applicant),
+    attachments,
+    referredDepartment: row.referred_department || undefined,
+    internalReferralNote: row.internal_referral_note || undefined,
+    slaDeadlineHours: Number(row.sla_deadline_hours || defaultSla),
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
@@ -33,12 +46,19 @@ function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): Cart
 }
 
 function mapCartableMessageRow(row: any): CartableMessage {
+  let attachments: string[] = [];
+  try {
+    if (typeof row.attachments === 'string') attachments = JSON.parse(row.attachments);
+    else if (Array.isArray(row.attachments)) attachments = row.attachments;
+  } catch {}
+
   return {
     id: fromIdBuffer(row.id),
     senderId: fromIdBuffer(row.sender_id),
     senderName: row.sender_name,
     senderRole: row.sender_role,
     text: row.text,
+    attachments: attachments.length > 0 ? attachments : undefined,
     timestamp: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
 }
@@ -135,9 +155,17 @@ export class CartableRepository implements ICartableRepository {
 
     for (const msg of request.messages) {
       await p.query(
-        `INSERT INTO cartable_messages (id, request_id, sender_id, sender_name, sender_role, text)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [toIdBuffer(msg.id), idBuf, toIdBuffer(msg.senderId), msg.senderName, msg.senderRole, msg.text]
+        `INSERT INTO cartable_messages (id, request_id, sender_id, sender_name, sender_role, text, attachments)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          toIdBuffer(msg.id),
+          idBuf,
+          toIdBuffer(msg.senderId),
+          msg.senderName,
+          msg.senderRole,
+          msg.text,
+          msg.attachments && msg.attachments.length > 0 ? JSON.stringify(msg.attachments) : null
+        ]
       );
     }
 
@@ -235,7 +263,8 @@ export class CartableService {
   async addReply(
     authCtx: AuthContext,
     requestId: string,
-    text: string
+    text: string,
+    attachments?: string[]
   ): Promise<CartableRequest & { version: number }> {
     if (!text || !text.trim()) {
       throw AppError.badRequest('متن پاسخ نمی‌تواند خالی باشد.');
@@ -256,6 +285,7 @@ export class CartableService {
       senderName: authCtx.fullName,
       senderRole: authCtx.role,
       text: text.trim(),
+      attachments: Array.isArray(attachments) && attachments.length > 0 ? attachments : undefined,
       timestamp: new Date().toISOString(),
     };
 
@@ -268,9 +298,17 @@ export class CartableService {
       const senderBuf = toIdBuffer(newMessage.senderId);
 
       await conn.query(
-        `INSERT INTO cartable_messages (id, request_id, sender_id, sender_name, sender_role, text)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [msgIdBuf, idBuf, senderBuf, newMessage.senderName, newMessage.senderRole, newMessage.text]
+        `INSERT INTO cartable_messages (id, request_id, sender_id, sender_name, sender_role, text, attachments)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          msgIdBuf,
+          idBuf,
+          senderBuf,
+          newMessage.senderName,
+          newMessage.senderRole,
+          newMessage.text,
+          newMessage.attachments ? JSON.stringify(newMessage.attachments) : null
+        ]
       );
 
       const [res] = await conn.query<any>(
@@ -468,7 +506,7 @@ export function createCartableRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
-      const item = await service.addReply(authCtx, req.params.id, req.body.text);
+      const item = await service.addReply(authCtx, req.params.id, req.body.text, req.body.attachments);
       res.json(item);
     } catch (err) {
       next(err);
@@ -510,5 +548,8 @@ export function createCartableRouter(): Router {
     }
   });
 
+  registerCartableReferralRoutes(router);
+
   return router;
 }
+import { registerCartableReferralRoutes } from './cartableReferralAndAttachmentsRoutes';

@@ -45,6 +45,7 @@ import { CrextioRulingsShowcase } from './CrextioRulingsShowcase';
 import { ResearchPromoShowcase } from './ResearchPromoShowcase';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { DEFAULT_HERO_STATS } from '../../data/mockData';
+import { DashboardWidgetsSuite } from '../dashboard/DashboardWidgetsSuite';
 
 const ThemeCustomizerModal = lazy(() => import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal })));
 
@@ -123,9 +124,10 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isHeroStatsModalOpen, setIsHeroStatsModalOpen] = useState(false);
   const [quickServiceSuccess, setQuickServiceSuccess] = useState<string | null>(null);
+  const [isAlumniPreview, setIsAlumniPreview] = useState(false);
 
-  const isAlumni = currentUser?.role === 'alumni';
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isAlumni = currentUser?.role === 'alumni' || isAlumniPreview;
+  const isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') && !isAlumniPreview;
 
   const heroStats = (crextioConfig.heroStatsConfig || DEFAULT_HERO_STATS).filter(s => s.isVisible !== false);
 
@@ -203,6 +205,13 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           </button>
         </div>
       )}
+
+      {/* DASHBOARD BANNERS, STATUS WIDGET, EVENTS CALENDAR & ALUMNI PREVIEW */}
+      <DashboardWidgetsSuite
+        onNavigateTab={onNavigateTab}
+        isAlumniPreview={isAlumniPreview}
+        onToggleAlumniPreview={() => setIsAlumniPreview(prev => !prev)}
+      />
 
       {/* DYNAMIC DASHBOARD SECTIONS (Order customizable by admin) */}
       {(() => {

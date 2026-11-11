@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { ConsumableItem, WelfareRequest } from '../../types';
 import { ModernMetricCard } from '../common/ModernMetricCard';
 import { AdminWelfareSuite } from './AdminWelfareSuite';
+import { WelfareCalculatorAndPostalSuite } from './WelfareCalculatorAndPostalSuite';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   Gift,
@@ -172,9 +173,13 @@ export const WelfareSection: React.FC = () => {
   };
 
   const handleCartQuantityChange = (itemId: string, delta: number) => {
+    const targetItem = consumables.find(c => c.id === itemId);
+    const availableStock = Number(targetItem?.stock ?? 0);
+    if (delta > 0 && availableStock <= 0) return;
+
     setCartQuantities(prev => {
       const current = prev[itemId] || 0;
-      const updated = Math.max(0, current + delta);
+      const updated = Math.min(availableStock, Math.max(0, current + delta));
       return { ...prev, [itemId]: updated };
     });
   };
@@ -390,7 +395,9 @@ export const WelfareSection: React.FC = () => {
           TAB 1: FINANCIAL LOANS (100% Configured by Admin)
           ========================================================================= */}
       {isLoansEnabled && activeTab === 'loans' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="space-y-6">
+          <WelfareCalculatorAndPostalSuite mode="calculator" isOfficial={isOfficial} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-stone-200/90 shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <h2 className="text-sm font-black text-stone-900">
@@ -544,6 +551,7 @@ export const WelfareSection: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
           </div>
         </div>
       )}
@@ -751,31 +759,50 @@ export const WelfareSection: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Quantity selector */}
+                  {/* Quantity selector or Out-of-Stock lock */}
                   <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-                    <span className="text-xs text-stone-500 font-bold">تعداد درخواستی:</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleCartQuantityChange(item.id, -1)}
-                        className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center font-bold text-stone-700 active:scale-95 cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center font-mono font-bold text-xs text-stone-900">
-                        {toPersianNumbers(qty)}
+                    {Number(item.stock) <= 0 ? (
+                      <span className="w-full py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black text-center">
+                        اتمام موجودی انبار — توقف ثبت سفارش
                       </span>
-                      <button
-                        onClick={() => handleCartQuantityChange(item.id, 1)}
-                        className="w-8 h-8 rounded-xl bg-teal-900 hover:bg-teal-950 text-white flex items-center justify-center font-bold text-xs active:scale-95 cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-stone-500 font-bold">تعداد درخواستی:</span>
+                          {Number(item.stock) <= Number((item as any).lowStockThreshold ?? 5) && (
+                            <span className="text-[10px] text-amber-700 font-black">
+                              هشدار: تنها {toPersianNumbers(item.stock)} {item.unit} باقی مانده
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleCartQuantityChange(item.id, -1)}
+                            className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center font-bold text-stone-700 active:scale-95 cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center font-mono font-bold text-xs text-stone-900">
+                            {toPersianNumbers(qty)}
+                          </span>
+                          <button
+                            onClick={() => handleCartQuantityChange(item.id, 1)}
+                            disabled={qty >= Number(item.stock)}
+                            className="w-8 h-8 rounded-xl bg-teal-900 hover:bg-teal-950 disabled:opacity-40 text-white flex items-center justify-center font-bold text-xs active:scale-95 cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* رهگیری پستی کالاهای ارسالی و مدیریت موجودی انبار */}
+          <WelfareCalculatorAndPostalSuite mode="postal_and_inventory" isOfficial={isOfficial} />
 
           {/* Cart checkout */}
           {cartTotal > 0 && (

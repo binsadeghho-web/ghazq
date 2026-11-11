@@ -32,6 +32,7 @@ interface CourseCardProps {
   onOpenBuilder: (course: Course) => void;
   onStartDelete: (course: Course) => void;
   onImageClick: (img: { url: string; title: string; subtitle?: string }) => void;
+  onOpenCourseOps?: (course: Course) => void;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -45,6 +46,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onOpenBuilder,
   onStartDelete,
   onImageClick,
+  onOpenCourseOps,
 }) => {
   const isEnrolled = Boolean(course.isEnrolled || userEnrollment);
   const enrollmentStatus = userEnrollment?.paymentStatus || course.enrollmentStatus || (course.isEnrolled ? 'confirmed' : undefined);
@@ -275,6 +277,18 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 <ChevronLeft className="w-3.5 h-3.5" />
               </motion.button>
             )
+          )}
+
+          {onOpenCourseOps && (
+            <button
+              type="button"
+              onClick={() => onOpenCourseOps(course)}
+              className="px-2.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[11px] font-black flex items-center gap-1 transition-all cursor-pointer"
+              title="لیست حضور و غیاب چندجلسه‌ای، لیست انتظار و گواهینامه پایان دوره"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>حضور و غیاب / گواهی</span>
+            </button>
           )}
 
           {isOfficial && (

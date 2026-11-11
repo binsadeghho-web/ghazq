@@ -18,6 +18,7 @@ import { CourseReceiptInspectionModal } from './subcomponents/CourseReceiptInspe
 import { CourseDeletedTab } from './subcomponents/CourseDeletedTab';
 import { CourseAdminPanelTab } from './subcomponents/CourseAdminPanelTab';
 import { CourseAdminPanelModal } from './CourseAdminPanelModal';
+import { CourseAttendanceWaitlistCertModal } from './subcomponents/CourseAttendanceWaitlistCertModal';
 
 export const CoursesSection: React.FC = () => {
   const {
@@ -44,6 +45,7 @@ export const CoursesSection: React.FC = () => {
   // Modals & Active Selections
   const [registrationCourse, setRegistrationCourse] = useState<Course | null>(null);
   const [attendanceCourse, setAttendanceCourse] = useState<Course | null>(null);
+  const [opsModalCourse, setOpsModalCourse] = useState<Course | null>(null);
   const [dedicatedCourseAdmin, setDedicatedCourseAdmin] = useState<Course | null>(null);
   const [courseForRoster, setCourseForRoster] = useState<Course | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
@@ -206,6 +208,7 @@ export const CoursesSection: React.FC = () => {
                   }}
                   onStartDelete={handleStartDelete}
                   onImageClick={setLightboxImage}
+                  onOpenCourseOps={setOpsModalCourse}
                 />
               );
             })
@@ -248,6 +251,14 @@ export const CoursesSection: React.FC = () => {
         course={attendanceCourse}
         onClose={() => setAttendanceCourse(null)}
         onImageClick={setLightboxImage}
+      />
+
+      <CourseAttendanceWaitlistCertModal
+        course={opsModalCourse}
+        currentUser={currentUser}
+        enrollments={courseEnrollments}
+        isOfficial={isOfficial}
+        onClose={() => setOpsModalCourse(null)}
       />
 
       <AnimatePresence>
