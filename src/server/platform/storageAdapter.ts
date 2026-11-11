@@ -3,11 +3,13 @@ import path from 'path';
 import { logger } from './logger';
 import { generateUUIDv7 } from './uuidv7';
 import { AppError } from './errors';
-import { storageConfig, UploadCategory, generateSafeCategoryFilePath } from './storage';
+import { storageConfig, UploadCategory } from './storage';
+import { ensureDatabaseConnection } from './mysqlDatabase';
 
 /**
  * StorageAdapter for Persistent Categorized Uploads
  * - Zero-Build-Hanging: NO fs I/O during import or build phases.
+ * - Strict Fail-Fast (HTTP 503): Never falls back to local JSON files when MySQL or storage is disconnected.
  * - Automatic Category Routing: Routes files to avatars/, products/, courses/, consultations/, research/, verdicts/, misc/.
  * - UUIDv7 filename obfuscation: Randomizes filenames to eliminate collisions and prevent PII leakage.
  * - Access control awareness: Categorizes public vs private files.
@@ -38,7 +40,6 @@ export class StorageAdapter implements IStorageAdapter {
 
   constructor() {
     this.uploadDir = storageConfig.uploadsDir;
-    // Defaults to true in production if not explicitly overridden
     this.isFeatureFlagActive = process.env.FEATURE_UPLOAD_ENABLED !== 'false';
   }
 
@@ -58,7 +59,7 @@ export class StorageAdapter implements IStorageAdapter {
           settled = true;
           this.isInitializing = false;
           this.isReady = false;
-          logger.warn(`StorageAdapter init timed out after ${timeoutMs}ms. Uploads temporarily in fallback.`);
+          logger.error(`StorageAdapter init timed out after ${timeoutMs}ms. Fail-Fast active (no local fallback).`);
           resolve(false);
         }
       }, timeoutMs);
@@ -95,7 +96,7 @@ export class StorageAdapter implements IStorageAdapter {
         } catch (err: any) {
           this.isReady = false;
           this.isInitializing = false;
-          logger.warn(`StorageAdapter category binding notice: ${err?.message || err}`);
+          logger.error(`StorageAdapter category binding error: ${err?.message || err}`);
           if (!settled) {
             settled = true;
             clearTimeout(timer);
@@ -116,10 +117,17 @@ export class StorageAdapter implements IStorageAdapter {
 
   /**
    * Saves uploaded file into its designated category directory with UUIDv7 randomized filename.
+   * Strictly enforces MySQL database connectivity (Fail-Fast 503) to prevent orphan files or local JSON fallbacks.
    */
   async saveCategorizedUpload(category: UploadCategory, originalName: string, buffer: Buffer): Promise<SavedUploadResult> {
+    // Strict Fail-Fast 503 if MySQL database is not connected
+    ensureDatabaseConnection();
+
     if (!this.isReady) {
-      await this.initialize(2000);
+      const initialized = await this.initialize(2000);
+      if (!initialized) {
+        throw AppError.serviceUnavailable('سرویس ذخیره‌سازی فایل در دسترس نیست. عملیات به منظور حفظ یکپارچگی متوقف شد.');
+      }
     }
 
     const catConfig = storageConfig.categories[category] || storageConfig.categories.misc;
@@ -163,6 +171,7 @@ export class StorageAdapter implements IStorageAdapter {
   }
 
   async deleteUpload(category: UploadCategory, filename: string): Promise<boolean> {
+    ensureDatabaseConnection();
     try {
       const catConfig = storageConfig.categories[category] || storageConfig.categories.misc;
       const safeFilename = path.basename(filename);
@@ -176,3 +185,4 @@ export class StorageAdapter implements IStorageAdapter {
 }
 
 export const storageAdapter = new StorageAdapter();
+

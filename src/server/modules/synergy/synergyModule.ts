@@ -8,6 +8,7 @@ import { SynergyPost } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 export const synergyRouter = Router();
 export function createSynergyRouter(): Router {
@@ -17,16 +18,16 @@ export function createSynergyRouter(): Router {
 function mapSynergyPostRow(row: any, responses: any[] = []): SynergyPost & { version: number } {
   return {
     id: fromIdBuffer(row.id),
-    authorPseudonym: row.author_pseudonym,
+    authorPseudonym: row.author_pseudonym || '',
     isAnonymous: Boolean(row.is_anonymous),
-    title: row.title,
-    content: row.content,
-    provinceOrCity: row.province_or_city,
-    category: row.category,
-    categoryTitle: row.category_title,
+    title: row.title || '',
+    content: row.content || '',
+    provinceOrCity: row.province_or_city || 'سراسری',
+    category: row.category || 'administrative_help',
+    categoryTitle: row.category_title || 'همکاری و استعلام اداری-قضایی',
     isEmpathy: Boolean(row.is_empathy),
-    urgency: row.urgency,
-    status: row.status,
+    urgency: row.urgency || 'عادی',
+    status: row.status || 'open',
     responses,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
@@ -36,8 +37,8 @@ function mapSynergyPostRow(row: any, responses: any[] = []): SynergyPost & { ver
 function mapSynergyResponseRow(row: any) {
   return {
     id: fromIdBuffer(row.id),
-    responderPseudonym: row.responder_pseudonym,
-    message: row.message,
+    responderPseudonym: row.responder_pseudonym || '',
+    message: row.message || '',
     isPrivate: Boolean(row.is_private),
     contactShared: row.contact_shared || undefined,
     timestamp: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
@@ -91,7 +92,7 @@ synergyRouter.get('/:id', async (req: Request, res: Response, next) => {
 synergyRouter.put('/:id', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
-    const { title, content, provinceOrCity, categoryTitle } = req.body;
+    const { title, content, provinceOrCity, categoryTitle, status } = req.body;
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
 
@@ -107,17 +108,78 @@ synergyRouter.put('/:id', async (req: Request, res: Response, next) => {
     const newContent = content !== undefined ? content.trim() : existing.content;
     const newProv = provinceOrCity !== undefined ? provinceOrCity.trim() : existing.provinceOrCity;
     const newCatTitle = categoryTitle !== undefined ? categoryTitle.trim() : existing.categoryTitle;
+    const newStatus = status !== undefined ? status : existing.status;
 
-    await p.query(
+    const expVer = extractExpectedVersion(req, true);
+
+    const [updateRes]: any = await p.query(
       `UPDATE synergy_posts
-       SET title = ?, content = ?, province_or_city = ?, category_title = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [newTitle, newContent, newProv, newCatTitle, idBuf, req.params.id]
+       SET title = ?, content = ?, province_or_city = ?, category_title = ?, status = ?, version = version + 1
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [newTitle, newContent, newProv, newCatTitle, newStatus, idBuf, req.params.id, expVer]
     );
+
+    if (updateRes && updateRes.affectedRows === 0) {
+      throw AppError.conflict('اطلاعات این پست هم‌افزایی توسط کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     const [respRows] = await p.query<any[]>(`SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ?`, [idBuf, req.params.id]);
-    res.json(mapSynergyPostRow(updatedRows[0], (respRows || []).map(mapSynergyResponseRow)));
+    const finalPost = mapSynergyPostRow(updatedRows[0], (respRows || []).map(mapSynergyResponseRow));
+
+    outbox.enqueue('synergy.updated', {
+      id: finalPost.id,
+      resourceId: finalPost.id,
+      postId: finalPost.id,
+      version: finalPost.version,
+      updates: finalPost,
+    });
+
+    res.json(finalPost);
+  } catch (err) {
+    next(err);
+  }
+});
+
+synergyRouter.patch('/:id/resolve', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const idBuf = toIdBuffer(req.params.id);
+    const p = getPool();
+
+    const existingRows = await selectWithTimeout<any>(
+      `SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id],
+      3000
+    );
+    if (!existingRows || existingRows.length === 0) throw AppError.notFound('پست هم‌افزایی');
+
+    const expVer = extractExpectedVersion(req, true);
+
+    const [updateRes]: any = await p.query(
+      `UPDATE synergy_posts
+       SET status = 'resolved', version = version + 1
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [idBuf, req.params.id, expVer]
+    );
+
+    if (updateRes && updateRes.affectedRows === 0) {
+      throw AppError.conflict('وضعیت این پست توسط کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    }
+
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM synergy_posts WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    const [respRows] = await p.query<any[]>(`SELECT * FROM synergy_responses WHERE post_id = ? OR post_id = ?`, [idBuf, req.params.id]);
+    const finalPost = mapSynergyPostRow(updatedRows[0], (respRows || []).map(mapSynergyResponseRow));
+
+    outbox.enqueue('synergy.updated', {
+      id: finalPost.id,
+      resourceId: finalPost.id,
+      postId: finalPost.id,
+      version: finalPost.version,
+      updates: finalPost,
+    });
+
+    res.json(finalPost);
   } catch (err) {
     next(err);
   }

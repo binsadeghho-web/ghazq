@@ -194,12 +194,7 @@ rulingsRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
       severity: 'info',
     });
 
-    outbox.enqueue('rulings.created', {
-      rulingId: id,
-      submittedById: currentUser.id,
-    });
-
-    res.status(201).json({
+    const createdRuling = {
       id,
       title,
       courtBranch,
@@ -217,7 +212,18 @@ rulingsRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
       likedBy: [],
       discussions: [],
       version: 1,
+    };
+
+    outbox.enqueue('rulings.created', {
+      id,
+      resourceId: id,
+      rulingId: id,
+      submittedById: currentUser.id,
+      version: 1,
+      updates: createdRuling,
     });
+
+    res.status(201).json(createdRuling);
   } catch (err) {
     next(err);
   }
@@ -237,12 +243,12 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
 
     const expVer = extractExpectedVersion(req, true);
 
-    const [res]: any = await p.query(
+    const [updateRes]: any = await p.query(
       `UPDATE judicial_rulings SET status = 'selected', version = version + 1 WHERE (id = ? OR id = ?) AND version = ?`,
       [idBuf, req.params.id, expVer]
     );
 
-    if (res && res.affectedRows === 0) {
+    if (updateRes && updateRes.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
 
@@ -256,17 +262,25 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
       severity: 'info',
     });
 
-    outbox.enqueue('rulings.approved', { rulingId: req.params.id });
-
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ?`, [idBuf, req.params.id]);
-    res.json({ success: true, ruling: mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow)) });
+    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow));
+
+    outbox.enqueue('rulings.approved', {
+      id: finalRuling.id,
+      resourceId: finalRuling.id,
+      rulingId: finalRuling.id,
+      version: finalRuling.version,
+      updates: finalRuling,
+    });
+
+    res.json({ success: true, ruling: finalRuling });
   } catch (err) {
     next(err);
   }
 });
 
-rulingsRouter.post('/:id/discussion', async (req: Request, res: Response, next) => {
+const handleAddDiscussion = async (req: Request, res: Response, next: any) => {
   try {
     ensureDatabaseConnection();
     const currentUser = getCurrentUser(req);
@@ -293,19 +307,28 @@ rulingsRouter.post('/:id/discussion', async (req: Request, res: Response, next) 
 
     await p.query(`UPDATE judicial_rulings SET version = version + 1 WHERE id = ? OR id = ?`, [idBuf, req.params.id]);
 
-    outbox.enqueue('rulings.critique_added', {
-      rulingId: req.params.id,
-      commentId,
-      authorId: currentUser.id,
-    });
-
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ? ORDER BY created_at ASC`, [idBuf, req.params.id]);
-    res.json({ success: true, ruling: mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow)) });
+    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow));
+
+    outbox.enqueue('rulings.critique_added', {
+      id: finalRuling.id,
+      resourceId: finalRuling.id,
+      rulingId: finalRuling.id,
+      commentId,
+      authorId: currentUser.id,
+      version: finalRuling.version,
+      updates: finalRuling,
+    });
+
+    res.json({ success: true, ruling: finalRuling });
   } catch (err) {
     next(err);
   }
-});
+};
+
+rulingsRouter.post('/:id/discussion', handleAddDiscussion);
+rulingsRouter.post('/:id/critique', handleAddDiscussion);
 
 rulingsRouter.post('/:id/like', async (req: Request, res: Response, next) => {
   try {
@@ -339,7 +362,17 @@ rulingsRouter.post('/:id/like', async (req: Request, res: Response, next) => {
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ?`, [idBuf, req.params.id]);
-    res.json({ success: true, ruling: mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow)) });
+    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow));
+
+    outbox.enqueue('rulings.liked', {
+      id: finalRuling.id,
+      resourceId: finalRuling.id,
+      rulingId: finalRuling.id,
+      version: finalRuling.version,
+      updates: finalRuling,
+    });
+
+    res.json({ success: true, ruling: finalRuling });
   } catch (err) {
     next(err);
   }

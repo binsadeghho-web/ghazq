@@ -121,7 +121,7 @@ export class ProductsService {
       severity: 'info',
     });
 
-    return {
+    const created: Product & { version: number } = {
       id,
       title,
       authorOrPresenter: author,
@@ -135,6 +135,18 @@ export class ProductsService {
       isOwned: false,
       version: 1,
     };
+
+    outbox.enqueue('products.created', {
+      id,
+      resourceId: id,
+      productId: id,
+      version: 1,
+      updates: created,
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+    });
+
+    return created;
   }
 
   async updateProduct(
@@ -147,7 +159,7 @@ export class ProductsService {
       description?: string;
       publishedYear?: string;
     },
-    expectedVersion = 1
+    expectedVersion?: number
   ): Promise<Product & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
@@ -162,7 +174,7 @@ export class ProductsService {
     const desc = updates.description !== undefined ? updates.description.trim() : existing.description;
     const year = updates.publishedYear !== undefined ? updates.publishedYear.trim() : existing.publishedYear;
 
-    const rawVersion = (updates as any).expectedVersion ?? (updates as any).version ?? expectedVersion;
+    const rawVersion = expectedVersion ?? (updates as any).expectedVersion ?? (updates as any).version;
     if (rawVersion === undefined || rawVersion === null || isNaN(Number(rawVersion))) {
       throw AppError.badRequest(
         'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) جهت ویرایش محصول الزامی است.',
@@ -184,6 +196,17 @@ export class ProductsService {
 
     const updated = await this.getById(id, authCtx);
     if (!updated) throw AppError.internal('خطا در به‌روزرسانی محصول');
+
+    outbox.enqueue('products.updated', {
+      id: updated.id,
+      resourceId: updated.id,
+      productId: updated.id,
+      version: updated.version,
+      updates: updated,
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+    });
+
     return updated;
   }
 

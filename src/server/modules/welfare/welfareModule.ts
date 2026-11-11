@@ -15,40 +15,42 @@ export function createWelfareRouter(): Router {
   return welfareRouter;
 }
 
-function mapWelfareRequestRow(row: any): WelfareRequest & { version: number } {
+function mapWelfareRequestRow(row: any): WelfareRequest & { version: number; updatedAt?: string } {
   return {
     id: fromIdBuffer(row.id),
     type: row.type || 'loan',
-    typeTitle: row.type_title || 'وام قرض‌الحسنه',
-    applicantId: fromIdBuffer(row.applicant_id),
-    applicantName: row.applicant_name,
-    title: row.title,
-    requestedValue: row.requested_value,
+    typeTitle: row.type_title || row.typeTitle || 'وام قرض‌الحسنه',
+    applicantId: fromIdBuffer(row.applicant_id || row.applicantId),
+    applicantName: row.applicant_name || row.applicantName || '',
+    title: row.title || '',
+    requestedValue: row.requested_value || row.requestedValue || '',
     description: row.description || '',
-    rulesAcknowledged: Boolean(row.rules_acknowledged),
-    status: row.status,
+    rulesAcknowledged: row.rules_acknowledged !== undefined ? Boolean(row.rules_acknowledged) : true,
+    status: row.status || 'pending',
+    adminNote: row.admin_note || row.adminNote || undefined,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
   };
 }
 
 function mapConsumableRow(row: any): ConsumableItem & { version: number } {
-  const price = Number(row.price || 0);
+  const price = Number(row.price ?? row.cooperativePrice ?? 0);
   return {
     id: fromIdBuffer(row.id),
-    title: row.title,
+    title: row.title || '',
     category: row.category || 'عمومی',
     cooperativePrice: price,
-    marketPrice: Math.round(price * 1.2),
-    unit: 'عدد',
+    marketPrice: Number(row.market_price ?? row.marketPrice ?? Math.round(price * 1.2)),
+    unit: row.unit || 'عدد',
     stock: Number(row.stock || 0),
-    imageUrl: row.image_url || undefined,
+    imageUrl: row.image_url || row.imageUrl || undefined,
     description: row.description || '',
     version: Number(row.version || 1),
   };
 }
 
-function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number } {
+function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number; trackingCode?: string; paymentStatus?: string } {
   let items = [];
   try {
     if (typeof row.items === 'string') items = JSON.parse(row.items);
@@ -57,13 +59,15 @@ function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number } 
 
   return {
     id: fromIdBuffer(row.id),
-    applicantId: fromIdBuffer(row.user_id),
-    applicantName: row.user_name,
+    applicantId: fromIdBuffer(row.user_id || row.applicant_id || row.applicantId),
+    applicantName: row.user_name || row.applicant_name || row.applicantName || '',
     items,
-    totalAmount: Math.round(Number(row.total_price || 0)),
-    deliveryAddress: row.delivery_address,
-    status: row.status === 'ثبت شده' ? 'registered' : row.status === 'تحویل داده شد' ? 'delivered' : 'prepared',
-    notes: row.payment_status || undefined,
+    totalAmount: Math.round(Number(row.total_price ?? row.totalAmount ?? 0)),
+    deliveryAddress: row.delivery_address || row.deliveryAddress || '',
+    status: row.status === 'ثبت شده' || row.status === 'registered' ? 'registered' : row.status === 'تحویل داده شد' || row.status === 'delivered' ? 'delivered' : 'prepared',
+    notes: row.payment_status || row.notes || undefined,
+    paymentStatus: row.payment_status || 'در انتظار پرداخت',
+    trackingCode: row.tracking_code || row.trackingCode || undefined,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
@@ -72,14 +76,14 @@ function mapConsumableOrderRow(row: any): ConsumableOrder & { version: number } 
 function mapProductProposalRow(row: any): MemberProductProposal & { version: number } {
   return {
     id: fromIdBuffer(row.id),
-    proposerId: fromIdBuffer(row.applicant_id),
-    proposerName: row.applicant_name,
-    productName: row.title,
-    offeredPrice: 0,
-    marketPrice: 0,
-    supplierDetails: row.author_or_translator || '',
+    proposerId: fromIdBuffer(row.applicant_id || row.proposer_id || row.proposerId),
+    proposerName: row.applicant_name || row.proposer_name || row.proposerName || '',
+    productName: row.title || row.product_name || row.productName || '',
+    offeredPrice: Number(row.offered_price ?? row.offeredPrice ?? 0),
+    marketPrice: Number(row.market_price ?? row.marketPrice ?? 0),
+    supplierDetails: row.author_or_translator || row.supplier_details || row.supplierDetails || '',
     description: row.description || '',
-    status: row.status === 'در حال بررسی' ? 'under_evaluation' : row.status === 'تایید شده' ? 'approved_for_procurement' : 'rejected',
+    status: row.status === 'در حال بررسی' || row.status === 'under_evaluation' ? 'under_evaluation' : row.status === 'تایید شده' || row.status === 'approved_for_procurement' ? 'approved_for_procurement' : 'rejected',
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
@@ -125,7 +129,7 @@ welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => 
   try {
     ensureDatabaseConnection();
     const currentUser = getCurrentUser(req);
-    const { title, requestedValue, description, typeTitle, expectedVersion } = req.body;
+    const { title, requestedValue, description, typeTitle, status, adminNote } = req.body;
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
 
@@ -141,14 +145,15 @@ welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => 
     const newReqVal = requestedValue !== undefined ? requestedValue.trim() : existing.requestedValue;
     const newDesc = description !== undefined ? description.trim() : existing.description;
     const newTypeTitle = typeTitle !== undefined ? typeTitle.trim() : existing.typeTitle;
+    const newStatus = status !== undefined ? status : existing.status;
 
     const expVer = extractExpectedVersion(req, true);
 
     const [result]: any = await p.query(
       `UPDATE welfare_requests
-       SET title = ?, requested_value = ?, description = ?, type_title = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       SET title = ?, requested_value = ?, description = ?, type_title = ?, status = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
        WHERE (id = ? OR id = ?) AND version = ?`,
-      [newTitle, newReqVal, newDesc, newTypeTitle, idBuf, req.params.id, expVer]
+      [newTitle, newReqVal, newDesc, newTypeTitle, newStatus, idBuf, req.params.id, expVer]
     );
 
     if (result && result.affectedRows === 0) {
@@ -156,7 +161,20 @@ welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => 
     }
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM welfare_requests WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    res.json(mapWelfareRequestRow(updatedRows[0]));
+    const finalReq = mapWelfareRequestRow(updatedRows[0]);
+    if (adminNote !== undefined) finalReq.adminNote = adminNote;
+
+    outbox.enqueue('welfare.updated', {
+      id: finalReq.id,
+      resourceId: finalReq.id,
+      requestId: finalReq.id,
+      version: finalReq.version,
+      updates: finalReq,
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+    });
+
+    res.json(finalReq);
   } catch (err) {
     next(err);
   }
@@ -459,28 +477,27 @@ welfareRouter.put('/consumables/:id', async (req: Request, res: Response, next) 
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
 
-    const expVer = req.body.expectedVersion ?? req.body.version;
-    let sql = `UPDATE consumables
+    const expVer = extractExpectedVersion(req, true);
+    const priceVal = Number(req.body.price ?? req.body.cooperativePrice ?? 0);
+
+    const [updateRes]: any = await p.query(
+      `UPDATE consumables
        SET title = ?, price = ?, stock = ?, category = ?, image_url = ?, description = ?, version = version + 1
-       WHERE (id = ? OR id = ?)`;
-    const params: any[] = [
-      req.body.title,
-      Number(req.body.price || 0),
-      Number(req.body.stock || 0),
-      req.body.category,
-      req.body.imageUrl || null,
-      req.body.description || null,
-      idBuf,
-      req.params.id,
-    ];
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [
+        req.body.title,
+        priceVal,
+        Number(req.body.stock || 0),
+        req.body.category || 'عمومی',
+        req.body.imageUrl || null,
+        req.body.description || null,
+        idBuf,
+        req.params.id,
+        expVer,
+      ]
+    );
 
-    if (expVer !== undefined && expVer !== null && !isNaN(Number(expVer))) {
-      sql += ` AND version = ?`;
-      params.push(Number(expVer));
-    }
-
-    const [res]: any = await p.query(sql, params);
-    if (res && res.affectedRows === 0) {
+    if (updateRes && updateRes.affectedRows === 0) {
       throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
     }
 
@@ -495,7 +512,16 @@ welfareRouter.put('/consumables/:id', async (req: Request, res: Response, next) 
     });
 
     const rows = await selectWithTimeout<any>(`SELECT * FROM consumables WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    res.json(mapConsumableRow(rows[0]));
+    const finalItem = mapConsumableRow(rows[0]);
+
+    outbox.enqueue('welfare.consumable_updated', {
+      id: finalItem.id,
+      resourceId: finalItem.id,
+      version: finalItem.version,
+      updates: finalItem,
+    });
+
+    res.json(finalItem);
   } catch (err) {
     next(err);
   }

@@ -8,10 +8,12 @@ import { CartableRequest, CartableMessage, RequestStatus, CartableCategory, Requ
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
 
-function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number } {
+function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number; trackingCode?: string } {
+  const trackingNumber = row.tracking_number || row.tracking_code || '';
   return {
     id: fromIdBuffer(row.id),
-    trackingNumber: row.tracking_number,
+    trackingNumber,
+    trackingCode: trackingNumber,
     category: row.category,
     categoryTitle: row.category_title,
     title: row.title,

@@ -8,6 +8,7 @@ import { getCurrentUser } from '../../platform/sessionAuth';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 
 export const researchRouter = Router();
 export function createResearchRouter(): Router {
@@ -15,23 +16,25 @@ export function createResearchRouter(): Router {
 }
 
 function mapResearchMentorshipRow(row: any): ResearchMentorship & { version: number } {
+  const stage: ResearchMentorship['stage'] =
+    row.status === 'در حال بررسی' ? 'proposal' : row.status === 'تایید شده' ? 'drafting' : 'defense_prep';
   return {
     id: fromIdBuffer(row.id),
     applicantId: fromIdBuffer(row.applicant_id),
-    applicantName: row.applicant_name,
-    thesisTitle: row.thesis_title,
-    field: row.field,
-    stage: row.status === 'در حال بررسی' ? 'proposal' : row.status === 'تایید شده' ? 'drafting' : 'defense_prep',
+    applicantName: row.applicant_name || '',
+    thesisTitle: row.thesis_title || '',
+    field: row.field || '',
+    stage,
     stageTitle: row.description || 'تصویب پروپوزال و تعیین استاد',
-    progressPercent: 25,
-    assignedSupervisor: row.supervisor_professor,
+    progressPercent: stage === 'proposal' ? 25 : stage === 'drafting' ? 60 : 90,
+    assignedSupervisor: row.supervisor_professor || 'دکتر سید محمدمهدی میرباقری',
     accommodationRequested: false,
-    status: row.status === 'در حال بررسی' ? 'active' : row.status === 'تایید شده' ? 'completed' : 'suspended',
+    status: row.status === 'در حال بررسی' ? 'active' : row.status === 'تایید شده' ? 'completed' : 'active',
     milestones: [
       { title: 'نگارش و ثبت طرح‌نامه (پروپوزال)', isDone: true, date: '۱۴۰۳/۰۴/۱۵' },
       { title: 'تأیید کمیته علمی و صدور ابلاغ استاد ناظر', isDone: true, date: '۱۴۰۳/۰۵/۲۰' },
-      { title: 'تدوین فصل‌های نخستین و منابع فقهی', isDone: false, date: '۱۴۰۳/۰۸/۳۰' },
-      { title: 'پیش‌دفاع و بررسی نهایی رساله', isDone: false, date: '۱۴۰۳/۱۱/۱۵' },
+      { title: 'تدوین فصل‌های نخستین و منابع فقهی', isDone: stage !== 'proposal', date: '۱۴۰۳/۰۸/۳۰' },
+      { title: 'پیش‌دفاع و بررسی نهایی رساله', isDone: stage === 'defense_prep', date: '۱۴۰۳/۱۱/۱۵' },
     ],
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
@@ -123,11 +126,6 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
       severity: 'info',
     });
 
-    outbox.enqueue('research.created', {
-      projectId: id,
-      applicantId: currentUser.id,
-    });
-
     const newMentorship: ResearchMentorship & { version: number } = {
       id,
       applicantId: currentUser.id,
@@ -149,6 +147,17 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
       version: 1,
       createdAt: now,
     };
+
+    outbox.enqueue('research.created', {
+      id,
+      resourceId: id,
+      projectId: id,
+      applicantId: currentUser.id,
+      version: 1,
+      updates: newMentorship,
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+    });
 
     res.status(201).json(newMentorship);
   } catch (err) {
@@ -179,15 +188,36 @@ researchRouter.put('/:id', async (req: Request, res: Response, next) => {
     const newSup = assignedSupervisor !== undefined ? assignedSupervisor.trim() : existing.assignedSupervisor;
     const newStageTitle = stageTitle !== undefined ? stageTitle.trim() : existing.stageTitle;
 
-    await p.query(
+    const expVer = extractExpectedVersion(req, true);
+
+    const [updateRes]: any = await p.query(
       `UPDATE research_mentorships
        SET thesis_title = ?, field = ?, supervisor_professor = ?, description = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [newTitle, newField, newSup, newStageTitle, idBuf, req.params.id]
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [newTitle, newField, newSup, newStageTitle, idBuf, req.params.id, expVer]
     );
 
+    if (updateRes && updateRes.affectedRows === 0) {
+      throw AppError.conflict(
+        'اطلاعات این طرح پژوهشی توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
+    }
+
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM research_mentorships WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    res.json(mapResearchMentorshipRow(updatedRows[0]));
+    const finalItem = mapResearchMentorshipRow(updatedRows[0]);
+
+    outbox.enqueue('research.updated', {
+      id: finalItem.id,
+      resourceId: finalItem.id,
+      projectId: finalItem.id,
+      version: finalItem.version,
+      updates: finalItem,
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+    });
+
+    res.json(finalItem);
   } catch (err) {
     next(err);
   }
@@ -211,22 +241,81 @@ researchRouter.patch('/:id/progress', async (req: Request, res: Response, next) 
 
     AuthorizationPolicy.assertCanAccessResource({ userId: currentUser.id, role: currentUser.role, fullName: currentUser.fullName }, { applicantId: existing.applicantId }, 'طرح پژوهشی');
 
-    await p.query(
+    const expVer = extractExpectedVersion(req, true);
+    const dbStatus = stage === 'proposal' ? 'در حال بررسی' : stage === 'drafting' ? 'تایید شده' : 'آماده دفاع';
+
+    const [updateRes]: any = await p.query(
       `UPDATE research_mentorships
-       SET description = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [stageTitle || existing.stageTitle, idBuf, req.params.id]
+       SET description = ?, status = ?, version = version + 1
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [stageTitle || existing.stageTitle, dbStatus, idBuf, req.params.id, expVer]
     );
 
-    outbox.enqueue('research.progress_updated', {
-      projectId: existing.id,
-      stage,
-      progressPercent,
-    });
+    if (updateRes && updateRes.affectedRows === 0) {
+      throw AppError.conflict(
+        'وضعیت پیشرفت این رساله توسط مدیر یا استاد دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
+    }
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM research_mentorships WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    res.json({ success: true, mentorship: mapResearchMentorshipRow(updatedRows[0]) });
+    const finalItem = mapResearchMentorshipRow(updatedRows[0]);
+    if (progressPercent !== undefined) {
+      finalItem.progressPercent = Number(progressPercent);
+    }
+    if (stage) {
+      finalItem.stage = stage;
+    }
+
+    outbox.enqueue('research.progress_updated', {
+      id: finalItem.id,
+      resourceId: finalItem.id,
+      projectId: finalItem.id,
+      stage: finalItem.stage,
+      stageTitle: finalItem.stageTitle,
+      progressPercent: finalItem.progressPercent,
+      version: finalItem.version,
+      updates: finalItem,
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+    });
+
+    res.json({ success: true, mentorship: finalItem });
   } catch (err) {
     next(err);
   }
 });
+
+researchRouter.delete('/:id', async (req: Request, res: Response, next) => {
+  try {
+    ensureDatabaseConnection();
+    const currentUser = getCurrentUser(req);
+    const idBuf = toIdBuffer(req.params.id);
+    const p = getPool();
+
+    const existingRows = await selectWithTimeout<any>(
+      `SELECT * FROM research_mentorships WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id],
+      3000
+    );
+    if (!existingRows || existingRows.length === 0) throw AppError.notFound('طرح پژوهشی');
+    const existing = mapResearchMentorshipRow(existingRows[0]);
+
+    AuthorizationPolicy.assertCanAccessResource({ userId: currentUser.id, role: currentUser.role, fullName: currentUser.fullName }, { applicantId: existing.applicantId }, 'طرح پژوهشی');
+
+    await p.query(`DELETE FROM research_mentorships WHERE id = ? OR id = ?`, [idBuf, req.params.id]);
+
+    outbox.enqueue('research.deleted', {
+      id: existing.id,
+      resourceId: existing.id,
+      projectId: existing.id,
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+    });
+
+    res.json({ success: true, id: existing.id });
+  } catch (err) {
+    next(err);
+  }
+});
+

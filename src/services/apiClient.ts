@@ -356,6 +356,26 @@ class ApiClient {
     return this.request<any[]>('/api/counseling/consultants');
   }
 
+  async createConsultant(data: any) {
+    return this.request<any>('/api/counseling/consultants', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateConsultant(consultantId: string, data: any) {
+    return this.request<any>(`/api/counseling/consultants/${consultantId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteConsultant(consultantId: string) {
+    return this.request<any>(`/api/counseling/consultants/${consultantId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getCounselingRequests() {
     return this.request<any[]>('/api/counseling/requests');
   }
@@ -363,6 +383,20 @@ class ApiClient {
   async bookCounseling(data: any) {
     return this.request<any>('/api/counseling/requests', {
       method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCounselingRequest(requestId: string, data: any) {
+    return this.request<any>(`/api/counseling/requests/${requestId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCounselingStatus(requestId: string, data: any) {
+    return this.request<any>(`/api/counseling/requests/${requestId}/status`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
@@ -379,9 +413,36 @@ class ApiClient {
     });
   }
 
+  async updateResearchProgress(projectId: string, data: { stage: string; stageTitle: string; progressPercent: number; expectedVersion: number }) {
+    return this.request<any>(`/api/research/${projectId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateResearchProject(projectId: string, data: any) {
+    return this.request<any>(`/api/research/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteResearchProject(projectId: string) {
+    return this.request<any>(`/api/research/${projectId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Rulings endpoints
   async getRulings() {
     return this.request<any[]>('/api/rulings');
+  }
+
+  async submitRuling(data: any) {
+    return this.request<any>('/api/rulings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async addRulingCritique(rulingId: string, comment: string) {
@@ -391,8 +452,17 @@ class ApiClient {
     });
   }
 
-  async approveRuling(rulingId: string) {
-    return this.request<any>(`/api/rulings/${rulingId}/approve`, { method: 'POST' });
+  async approveRuling(rulingId: string, expectedVersion?: number) {
+    return this.request<any>(`/api/rulings/${rulingId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ expectedVersion }),
+    });
+  }
+
+  async toggleRulingLike(rulingId: string) {
+    return this.request<any>(`/api/rulings/${rulingId}/like`, {
+      method: 'POST',
+    });
   }
 
   // Welfare endpoints
@@ -442,6 +512,13 @@ class ApiClient {
     return this.request<any>(`/api/synergy/${postId}/respond`, {
       method: 'POST',
       body: JSON.stringify({ message, isPrivate, contactShared }),
+    });
+  }
+
+  async resolveSynergyPost(postId: string, expectedVersion: number) {
+    return this.request<any>(`/api/synergy/${postId}/resolve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ expectedVersion }),
     });
   }
 
