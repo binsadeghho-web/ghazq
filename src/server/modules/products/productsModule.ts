@@ -24,6 +24,7 @@ function mapProductRow(row: any, isOwned = false): Product & { version: number }
     isAvailable: Boolean(row.is_available),
     isOwned,
     badgeText: row.badge_text || undefined,
+    visibleToCustomer: row.visible_to_customer !== undefined ? Boolean(row.visible_to_customer) : true,
     version: Number(row.version || 1),
   };
 }
@@ -32,7 +33,12 @@ export class ProductsService {
   async getAll(authCtx?: AuthContext): Promise<Array<Product & { version: number }>> {
     ensureDatabaseConnection();
     const p = getPool();
-    const rows = await selectWithTimeout<any>(`SELECT * FROM products WHERE is_available = 1 ORDER BY created_at DESC`, [], 4000);
+    let sql = `SELECT * FROM products WHERE is_available = 1`;
+    if (authCtx?.role === 'customer') {
+      sql += ` AND (visible_to_customer = 1 OR visible_to_customer IS NULL)`;
+    }
+    sql += ` ORDER BY created_at DESC`;
+    const rows = await selectWithTimeout<any>(sql, [], 4000);
     const products = (rows || []).map(r => mapProductRow(r, false));
 
     if (authCtx?.userId && products.length > 0) {

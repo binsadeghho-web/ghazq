@@ -508,20 +508,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   }, [users, currentUser, addAuditLog]);
 
   const updateUserSectionPermissions = useCallback(async (userId: string, permissions: UserSectionPermissions) => {
+    const targetUser = users.find(u => u.id === userId);
+    const mergedPermissions = {
+      ...(targetUser?.sectionPermissions || {}),
+      ...permissions,
+    };
+
+    try {
+      await api.updateUser(userId, {
+        sectionPermissions: mergedPermissions,
+        _baseVersion: targetUser?.version || 1,
+      });
+    } catch (err) {
+      console.warn('Backend updateUserSectionPermissions fallback:', err);
+    }
+
     setUsers(prev => prev.map(u => {
       if (u.id !== userId) return u;
       const updated = {
         ...u,
-        sectionPermissions: {
-          ...u.sectionPermissions,
-          ...permissions,
-        }
+        sectionPermissions: mergedPermissions,
       };
       if (currentUser?.id === userId) setCurrentUserState(updated);
       return updated;
     }));
 
-    const targetUser = users.find(u => u.id === userId);
     if (addAuditLog) {
       addAuditLog({
         eventType: 'ROLE_CHANGED',
@@ -536,17 +547,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   }, [users, currentUser, addAuditLog]);
 
   const updateRoleDefaultPermissions = useCallback(async (role: UserRole, permissions: UserSectionPermissions) => {
+    try {
+      await api.updateRbacRolePolicy(role, {
+        sectionPermissions: permissions as Record<string, string>,
+      });
+    } catch (err) {
+      console.warn('Backend updateRoleDefaultPermissions fallback:', err);
+    }
+
     setUsers(prev => prev.map(u => {
       if (u.role !== role) return u;
-      return {
+      const updated = {
         ...u,
         sectionPermissions: {
           ...u.sectionPermissions,
           ...permissions,
         }
       };
+      if (currentUser?.id === u.id) setCurrentUserState(updated);
+      return updated;
     }));
-  }, []);
+  }, [currentUser]);
 
   const value = useMemo<AuthContextType>(() => ({
     currentUser,

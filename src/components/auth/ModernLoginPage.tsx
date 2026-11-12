@@ -53,7 +53,44 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
   // Forgot Password / Support Modal State
   const [showHelpModal, setShowHelpModal] = useState(false);
 
+  // Simple Customer Registration Mode (ثبت‌نام ساده کاربران مشتری)
+  const [customerRegisterMode, setCustomerRegisterMode] = useState(false);
+  const [custFullName, setCustFullName] = useState('');
+  const [custNationalId, setCustNationalId] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [custPassword, setCustPassword] = useState('');
+
   if (!isOpen) return null;
+
+  const handleCustomerRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const res = await api.registerCustomerAccount({
+        fullName: custFullName,
+        nationalId: custNationalId,
+        phone: custPhone,
+        password: custPassword || custPhone,
+      });
+      if (res.success && res.user) {
+        api.setAuthContext(
+          res.user.id,
+          res.user.role,
+          res.user.fullName,
+          res.token || res.accessToken
+        );
+        setCurrentUser(res.user);
+        if (onClose) onClose();
+        return;
+      }
+      setErrorMsg(res.message || 'خطا در ثبت‌نام حساب مشتری.');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'خطا در ثبت‌نام کاربر مشتری.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,18 +241,58 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
         )}
 
         <div className="space-y-6 my-auto">
+          {/* Mode Switcher Tabs: ورود اعضا / ثبت‌نام ساده کاربران مشتری */}
+          {!mustChangePasswordMode && (
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[#14231E] border border-[#223A33]">
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerRegisterMode(false);
+                  setErrorMsg('');
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  !customerRegisterMode
+                    ? 'bg-emerald-500 text-stone-950 shadow-sm'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                ورود اعضا و مدیران
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerRegisterMode(true);
+                  setErrorMsg('');
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  customerRegisterMode
+                    ? 'bg-amber-400 text-stone-950 shadow-sm'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                ثبت‌نام ساده مشتریان
+              </button>
+            </div>
+          )}
+
           {/* Form Header */}
           <div>
             <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
               <KeyRound className="w-4 h-4" />
-              <span>احراز هویت کاربران</span>
+              <span>{customerRegisterMode ? 'عضویت سریع متقاضیان دوره‌ها و کتب' : 'احراز هویت کاربران'}</span>
             </div>
             <h3 className="text-xl font-black text-white">
-              {mustChangePasswordMode ? 'تغییر اجباری رمز عبور اولیه' : 'ورود به حساب کاربری'}
+              {mustChangePasswordMode
+                ? 'تغییر اجباری رمز عبور اولیه'
+                : customerRegisterMode
+                ? 'ثبت‌نام ساده کاربران مشتری'
+                : 'ورود به حساب کاربری'}
             </h3>
             <p className="text-xs text-stone-400 mt-1">
               {mustChangePasswordMode
                 ? 'جهت حفظ امنیت حساب، لطفاً رمز عبور جدید خود را مشخص نمائید.'
+                : customerRegisterMode
+                ? 'ویژه متقاضیان غیر دانش‌آموخته جهت خرید دوره‌ها، کتب و خدمات مجاز'
                 : 'شناسه کاربری/کد ملی و رمز عبور خود را وارد نمائید.'}
             </p>
           </div>
@@ -243,8 +320,89 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
             </motion.div>
           )}
 
-          {/* NORMAL LOGIN FORM */}
-          {!mustChangePasswordMode ? (
+          {/* CUSTOMER SIMPLE REGISTRATION FORM */}
+          {!mustChangePasswordMode && customerRegisterMode ? (
+            <form onSubmit={handleCustomerRegisterSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-stone-300 mb-1.5">
+                  نام و نام خانوادگی
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custFullName}
+                  onChange={e => setCustFullName(e.target.value)}
+                  placeholder="مثال: محمد محمدی"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-[#14231E] border border-[#223A33] text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-300 mb-1.5">
+                  کد ملی (شناسه کاربری ورود)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custNationalId}
+                  onChange={e => setCustNationalId(e.target.value)}
+                  placeholder="۱۰ رقم کد ملی"
+                  dir="ltr"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-[#14231E] border border-[#223A33] text-white placeholder-stone-500 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-300 mb-1.5">
+                  شماره تلفن همراه
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custPhone}
+                  onChange={e => {
+                    setCustPhone(e.target.value);
+                    if (!custPassword) setCustPassword(e.target.value);
+                  }}
+                  placeholder="09120000000"
+                  dir="ltr"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-[#14231E] border border-[#223A33] text-white placeholder-stone-500 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-300 mb-1.5">
+                  رمز عبور دلخواه
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={custPassword}
+                  onChange={e => setCustPassword(e.target.value)}
+                  placeholder="حداقل ۴ کاراکتر"
+                  dir="ltr"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-[#14231E] border border-[#223A33] text-white placeholder-stone-500 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 px-6 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-amber-500/20 disabled:opacity-50 mt-2 cursor-pointer"
+              >
+                {loading ? (
+                  <span>در حال ایجاد حساب مشتری...</span>
+                ) : (
+                  <>
+                    <span>تکمیل ثبت‌نام و ورود مستقیم به ویترین</span>
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : !mustChangePasswordMode ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-stone-300 mb-2">

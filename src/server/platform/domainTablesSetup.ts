@@ -249,9 +249,37 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       );
     }
 
+    // 8. 9-Role RBAC + ABAC Policies Table & Customer Item Visibility Columns
+    try {
+      await p.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(64) NOT NULL DEFAULT 'alumni';`);
+    } catch {}
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS role_access_policies (
+        role_id VARCHAR(64) NOT NULL PRIMARY KEY,
+        role_title VARCHAR(128) NOT NULL,
+        section_permissions JSON NOT NULL,
+        sub_section_permissions JSON NULL,
+        is_read_only TINYINT(1) NOT NULL DEFAULT 0,
+        version INT NOT NULL DEFAULT 1,
+        updated_by VARCHAR(128) NULL,
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_role_policies_updated (updated_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    try { await p.query(`ALTER TABLE courses ADD COLUMN visible_to_customer TINYINT(1) NOT NULL DEFAULT 1;`); } catch {}
+    try { await p.query(`ALTER TABLE products ADD COLUMN visible_to_customer TINYINT(1) NOT NULL DEFAULT 1;`); } catch {}
+    try { await p.query(`ALTER TABLE consumables ADD COLUMN visible_to_customer TINYINT(1) NOT NULL DEFAULT 1;`); } catch {}
+
+    try { await p.query(`CREATE INDEX idx_courses_cust_vis ON courses (visible_to_customer, is_deleted);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_products_cust_vis ON products (visible_to_customer, is_deleted);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_consumables_cust_vis ON consumables (visible_to_customer, category);`); } catch {}
+
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');
   } catch (err: any) {
     logger.warn(`Domain tables setup warning: ${err?.message || err}`);
   }
 }
+

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
 import { BookOpen } from 'lucide-react';
+import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 
 import { ProductStatsHeader } from './subcomponents/ProductStatsHeader';
 import { ProductShelfBar } from './subcomponents/ProductShelfBar';
@@ -14,8 +15,9 @@ import { ProductLightboxModal } from './subcomponents/ProductLightboxModal';
 
 export const ProductsSection: React.FC = () => {
   const { currentUser, products, purchaseProduct, addProduct, updateProduct, sendPinOtpSms } = useApp();
+  const { rolePolicies } = useRbacPolicies();
 
-  const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isOfficial = canManageAllInSection(currentUser, 'products', rolePolicies);
 
   // Shelves / Tabs: 'books' | 'multimedia' | 'combined' | 'my_library'
   const [activeShelf, setActiveShelf] = useState<'books' | 'multimedia' | 'combined' | 'my_library'>('books');
@@ -29,8 +31,16 @@ export const ProductsSection: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
-  // Active non-deleted products
-  const activeProducts = useMemo(() => products.filter(p => !p.isDeleted), [products]);
+  // Active non-deleted products (with granular customer visibility filtering)
+  const activeProducts = useMemo(
+    () =>
+      products.filter(p => {
+        if (p.isDeleted) return false;
+        if (currentUser?.role === 'customer' && p.visibleToCustomer === false) return false;
+        return true;
+      }),
+    [products, currentUser?.role]
+  );
   const booksShelf = useMemo(() => activeProducts.filter(p => p.format === 'book'), [activeProducts]);
   const multimediaShelf = useMemo(
     () => activeProducts.filter(p => p.format === 'multimedia' || p.format === 'audio_series'),

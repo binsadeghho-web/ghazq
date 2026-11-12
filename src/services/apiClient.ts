@@ -1102,7 +1102,89 @@ class ApiClient {
       }
     };
   }
+
+  // ---------------------------------------------------------------------------
+  // 9-Role RBAC + ABAC + Customer Item Visibility & Registration Endpoints
+  // ---------------------------------------------------------------------------
+  async getRbacPolicies() {
+    return this.request<{
+      success: boolean;
+      policies: Record<string, any>;
+      customerVisibility: {
+        courses: Array<{ id: string; title: string; instructor: string; price: number; visibleToCustomer: boolean }>;
+        products: Array<{ id: string; title: string; formatTitle: string; price: number; visibleToCustomer: boolean }>;
+        consumables: Array<{ id: string; title: string; category: string; cooperativePrice: number; visibleToCustomer: boolean }>;
+      };
+    }>('/api/rbac/policies');
+  }
+
+  async updateRbacRolePolicy(
+    roleId: string,
+    payload: {
+      sectionPermissions?: Record<string, string>;
+      subSectionPermissions?: Record<string, boolean>;
+      expectedVersion?: number;
+    }
+  ) {
+    return this.request<{ success: boolean; policy: any; policies: Record<string, any>; message: string }>(
+      `/api/rbac/policies/${encodeURIComponent(roleId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async toggleCustomerItemVisibility(payload: {
+    entityType: 'course' | 'product' | 'consumable';
+    itemId: string;
+    visibleToCustomer: boolean;
+  }) {
+    return this.request<{ success: boolean; entityType: string; itemId: string; visibleToCustomer: boolean; message: string }>(
+      '/api/rbac/customer-item-visibility',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async bulkAssignUsersRole(payload: {
+    userIds: string[];
+    role: string;
+    roleTitle?: string;
+    applyRoleDefaultPermissions?: boolean;
+  }) {
+    return this.request<{ success: boolean; updatedCount: number; message: string }>(
+      '/api/rbac/bulk-assign-role',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async registerCustomerAccount(payload: {
+    fullName: string;
+    nationalId: string;
+    phone: string;
+    password: string;
+    organization?: string;
+  }) {
+    return this.request<{
+      success: boolean;
+      user: any;
+      token?: string;
+      accessToken?: string;
+      refreshToken?: string;
+      message?: string;
+    }>('/api/rbac/register-customer', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
 }
 
 export const api = new ApiClient();
 export const apiClient = api;
+

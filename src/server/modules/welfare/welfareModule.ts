@@ -49,6 +49,7 @@ function mapConsumableRow(row: any): ConsumableItem & { version: number; lowStoc
     lowStockThreshold: Number(row.low_stock_threshold ?? 5),
     imageUrl: row.image_url || row.imageUrl || undefined,
     description: row.description || '',
+    visibleToCustomer: row.visible_to_customer !== undefined ? Boolean(row.visible_to_customer) : true,
     version: Number(row.version || 1),
   };
 }
@@ -101,7 +102,7 @@ welfareRouter.get('/requests', async (req: Request, res: Response, next) => {
     let sql = `SELECT * FROM welfare_requests WHERE 1=1`;
     const params: any[] = [];
 
-    if (currentUser.role === 'alumni') {
+    if (currentUser.role === 'alumni' || currentUser.role === 'customer') {
       sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
       params.push(toIdBuffer(currentUser.id), currentUser.id);
     }

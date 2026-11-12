@@ -6,6 +6,11 @@ import { AdminWelfareSuite } from './AdminWelfareSuite';
 import { WelfareCalculatorAndPostalSuite } from './WelfareCalculatorAndPostalSuite';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
+  canManageAllInSection,
+  canAccessWelfareSubSection,
+  useRbacPolicies,
+} from '../../utils/rbacPolicy';
+import {
   Gift,
   Coins,
   Home,
@@ -34,7 +39,7 @@ export const WelfareSection: React.FC = () => {
   const {
     currentUser,
     welfareRequests,
-    consumables,
+    consumables: rawConsumables,
     consumableOrders,
     productProposals,
     submitWelfareRequest,
@@ -45,11 +50,18 @@ export const WelfareSection: React.FC = () => {
     loanTermsAndRules,
     cooperativeSectionInfo
   } = useApp();
+  const { rolePolicies } = useRbacPolicies();
 
-  const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isOfficial = canManageAllInSection(currentUser, 'welfare', rolePolicies);
   const [previewStudentMode, setPreviewStudentMode] = useState(false);
 
-  // Check which sections are enabled
+  // Filter consumables for customer users based on item-level visibleToCustomer
+  const consumables = rawConsumables.filter(item => {
+    if (currentUser?.role === 'customer' && item.visibleToCustomer === false) return false;
+    return true;
+  });
+
+  // Check which sections are enabled globally AND permitted for the user's role (e.g., customer vs alumni)
   const loansConfig = welfareSectionsConfig.find(s => s.id === 'financial_loans');
   const accommodationsConfig = welfareSectionsConfig.find(s => s.id === 'accommodations');
   const cooperativeConfig = welfareSectionsConfig.find(s => s.id === 'cooperative_groceries');
@@ -58,10 +70,18 @@ export const WelfareSection: React.FC = () => {
     s => s.id.startsWith('welf_sec_') && s.isEnabled
   );
 
-  const isLoansEnabled = loansConfig?.isEnabled !== false;
-  const isAccommodationsEnabled = accommodationsConfig?.isEnabled !== false;
-  const isCooperativeEnabled = cooperativeConfig?.isEnabled !== false;
-  const isHealthEnabled = healthConfig?.isEnabled === true;
+  const isLoansEnabled =
+    loansConfig?.isEnabled !== false &&
+    canAccessWelfareSubSection(currentUser, 'welfare_loans', rolePolicies);
+  const isAccommodationsEnabled =
+    accommodationsConfig?.isEnabled !== false &&
+    canAccessWelfareSubSection(currentUser, 'welfare_accommodations', rolePolicies);
+  const isCooperativeEnabled =
+    cooperativeConfig?.isEnabled !== false &&
+    canAccessWelfareSubSection(currentUser, 'welfare_cooperative', rolePolicies);
+  const isHealthEnabled =
+    healthConfig?.isEnabled === true &&
+    currentUser?.role !== 'customer';
 
   // Initial active tab determination
   const initialActive = isLoansEnabled

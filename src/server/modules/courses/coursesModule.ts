@@ -49,6 +49,7 @@ function mapCourseRow(row: any): Course & { version: number } {
     deletedBy: row.deleted_by || undefined,
     sessionsCount: Number(row.sessions_count || 4),
     waitlistEnabled: row.waitlist_enabled !== undefined ? Boolean(row.waitlist_enabled) : true,
+    visibleToCustomer: row.visible_to_customer !== undefined ? Boolean(row.visible_to_customer) : true,
     version: Number(row.version || 1),
   } as any;
 }
@@ -83,11 +84,14 @@ export class CoursesService {
     ensureDatabaseConnection();
     const p = getPool();
     const userId = authCtx?.userId;
-    const isStaff = authCtx?.role === 'admin' || authCtx?.role === 'supervisor';
+    const isStaff = authCtx?.role !== 'alumni' && authCtx?.role !== 'customer';
 
     let sql = `SELECT * FROM courses WHERE 1=1`;
     if (!includeDeleted || !isStaff) {
       sql += ` AND is_deleted = 0`;
+    }
+    if (authCtx?.role === 'customer') {
+      sql += ` AND (visible_to_customer = 1 OR visible_to_customer IS NULL)`;
     }
     sql += ` ORDER BY created_at DESC`;
 

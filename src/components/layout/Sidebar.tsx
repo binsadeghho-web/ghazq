@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { AppSectionId } from '../../types';
+import { canViewSection, useRbacPolicies, isOrganizationalRole } from '../../utils/rbacPolicy';
 import {
   LayoutDashboard,
   Inbox,
@@ -57,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setMobileMenuOpen,
 }) => {
   const { currentUser, cartableRequests, rulings, synergyPosts } = useApp();
+  const { rolePolicies } = useRbacPolicies();
   const [hoveredTab, setHoveredTab] = useState<NavTabId | null>(null);
 
   const pendingCartableCount = cartableRequests.filter(
@@ -66,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pendingRulingsCount = rulings.filter(r => r.status === 'pending_review').length;
   const openSynergyCount = synergyPosts.filter(p => p.status === 'open').length;
 
-  const mainNavItems: NavItemConfig[] = [
+  const allNavCandidates: NavItemConfig[] = [
     {
       id: 'dashboard',
       label: 'داشبورد جامع',
@@ -139,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       accentColor: 'text-cyan-500 dark:text-cyan-400',
       glowColor: 'rgba(6, 182, 212, 0.2)',
       activeBg: 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950',
-      count: currentUser?.role !== 'alumni' && pendingRulingsCount > 0 ? pendingRulingsCount : undefined,
+      count: isOrganizationalRole(currentUser?.role) && pendingRulingsCount > 0 ? pendingRulingsCount : undefined,
     },
     {
       id: 'welfare',
@@ -160,38 +163,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
       activeBg: 'bg-purple-600 text-white dark:bg-purple-500 dark:text-white',
       count: openSynergyCount,
     },
-    ...(currentUser?.role === 'admin' || currentUser?.role === 'supervisor' ? [
-      {
-        id: 'finance' as NavTabId,
-        label: 'امور مالی و حسابداری',
-        subtext: 'مدیریت درآمدها، تسویه‌حساب‌ها و آمار جامع مالی',
-        icon: Wallet,
-        accentColor: 'text-emerald-500 dark:text-emerald-400',
-        glowColor: 'rgba(16, 185, 129, 0.2)',
-        activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
-      },
-      {
-        id: 'alumni' as NavTabId,
-        label: 'دانش‌آموختگان',
-        subtext: 'بانک جامع اطلاعات، سوابق قضایی و علمی دانش‌آموختگان',
-        icon: GraduationCap,
-        accentColor: 'text-emerald-500 dark:text-emerald-400',
-        glowColor: 'rgba(16, 185, 129, 0.2)',
-        activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
-      },
-      {
-        id: 'users' as NavTabId,
-        label: 'مدیریت کاربران (حساب‌های کاربری)',
-        subtext: 'مدیریت حساب‌ها، رمزهای عبور و سطوح دسترسی',
-        icon: Users2,
-        accentColor: 'text-indigo-500 dark:text-indigo-400',
-        glowColor: 'rgba(99, 102, 241, 0.2)',
-        activeBg: 'bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white',
-      }
-    ] : []),
+    {
+      id: 'finance' as NavTabId,
+      label: 'امور مالی و حسابداری',
+      subtext: 'مدیریت درآمدها، تسویه‌حساب‌ها و آمار جامع مالی',
+      icon: Wallet,
+      accentColor: 'text-emerald-500 dark:text-emerald-400',
+      glowColor: 'rgba(16, 185, 129, 0.2)',
+      activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
+    },
+    {
+      id: 'alumni' as NavTabId,
+      label: 'دانش‌آموختگان',
+      subtext: 'بانک جامع اطلاعات، سوابق قضایی و علمی دانش‌آموختگان',
+      icon: GraduationCap,
+      accentColor: 'text-emerald-500 dark:text-emerald-400',
+      glowColor: 'rgba(16, 185, 129, 0.2)',
+      activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
+    },
+    {
+      id: 'users' as NavTabId,
+      label: 'مدیریت کاربران و نقش‌ها',
+      subtext: 'مدیریت حساب‌ها، ۹ نقش سازمانی و سطوح دسترسی',
+      icon: Users2,
+      accentColor: 'text-indigo-500 dark:text-indigo-400',
+      glowColor: 'rgba(99, 102, 241, 0.2)',
+      activeBg: 'bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white',
+    },
   ];
 
-  const showAdminTab = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  // Strict Menu Cloaking: Any section with 'none' permission is completely hidden from the sidebar
+  const mainNavItems = allNavCandidates.filter(item =>
+    canViewSection(currentUser, item.id as AppSectionId, rolePolicies)
+  );
+
+  const showAdminTab = canViewSection(currentUser, 'admin', rolePolicies);
 
   const handleSelect = (tab: NavTabId) => {
     setActiveTab(tab);

@@ -18,6 +18,7 @@ import { synergyRouter } from './modules/synergy/synergyModule';
 import { createAdminRouter } from './modules/admin/adminModule';
 import { createOpsRouter } from './modules/ops/opsModule';
 import { createDashboardRouter } from './modules/dashboard/dashboardModule';
+import { createRbacRouter } from './modules/rbac/rbacModule';
 
 // Metrics tracker for Golden Signals (Section 11)
 export const metricsStore = {
@@ -33,6 +34,7 @@ export function createMasterRouter(): Router {
 
   // Mount individual domain modules
   router.use('/auth', createAuthRouter());
+  router.use('/rbac', createRbacRouter());
   router.use('/dashboard', createDashboardRouter());
   router.use('/cartable', createCartableRouter());
   router.use('/courses', createCoursesRouter());

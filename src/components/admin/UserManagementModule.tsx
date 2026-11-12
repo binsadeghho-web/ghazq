@@ -4,6 +4,14 @@ import { useApp } from '../../context/AppContext';
 import { User, UserRole, AppSectionId, PermissionAccessLevel, UserSectionPermissions } from '../../types';
 import { api } from '../../services/apiClient';
 import { AlumniDigitalCardAndAdminTools } from '../alumni/AlumniDigitalCardAndAdminTools';
+import { RoleAndCustomerAccessCenter } from './RoleAndCustomerAccessCenter';
+import {
+  NINE_ORGANIZATIONAL_ROLES,
+  DEFAULT_ROLE_POLICIES,
+  getRoleMetadata,
+  isSuperAdminRole,
+  isReadOnlyObserverRole,
+} from '../../utils/rbacPolicy';
 import {
   Users,
   UserPlus,
@@ -30,7 +38,8 @@ import {
   RotateCcw,
   Sparkles,
   Building2,
-  FileText
+  FileText,
+  Wallet
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 
@@ -40,13 +49,16 @@ export const SYSTEM_SECTIONS: { id: AppSectionId; title: string; subtitle: strin
   { id: 'cartable', title: 'کارتابل اداری و مکاتبات', subtitle: 'ارسال و پیگیری درخواست‌های شغلی، اداری و آموزشی', icon: FileText },
   { id: 'courses', title: 'دوره‌ها و کارگاه‌های آموزشی', subtitle: 'ثبت‌نام، سرفصل‌ها و آرشیو جلسات مجازی', icon: GraduationCap },
   { id: 'products', title: 'انتشارات، کتب و محصولات علمی', subtitle: 'خرید کتب فقهی، درس‌گفتارها و چندرسانه‌ای', icon: FileText },
-  { id: 'counseling', title: 'کلینیک و نوبت‌دهی مشاوره', subtitle: 'رزرو وقت مشاوره فردی، خانوادگی و شغلی قضایی', icon: Users },
+  { id: 'counseling', title: 'کلینیک و نوبت‌دهی مشاوره عمومی', subtitle: 'رزرو وقت مشاوره فردی و خانوادگی', icon: Users },
+  { id: 'specialized_counseling', title: 'مشاوره تخصصی شغلی و تحصیلی', subtitle: 'هدایت قضایی و تحصیلی با اساتید عالی', icon: Scale },
   { id: 'research', title: 'شبکه رساله‌ها و هدایت پژوهش', subtitle: 'طرح موضوعات، پیگیری استاد راهنما و مراحل داوری', icon: Scale },
   { id: 'rulings', title: 'تالار نقد و اشتراک آراء قضایی', subtitle: 'مشاهده دادنامه‌های منتخب، ثبت رأی و نقدهای حقوقی', icon: Scale },
   { id: 'welfare', title: 'صندوق تعاون، تسهیلات و ملزومات', subtitle: 'درخواست وام قرض‌الحسنه و اقلام معیشتی تعاونی', icon: Building2 },
   { id: 'synergy', title: 'دیوار هم‌افزایی و همدلی قضایی', subtitle: 'طرح درخواست‌های هم‌افزایی شغلی با حفظ محرمانگی', icon: Users },
+  { id: 'finance', title: 'امور مالی و حسابداری', subtitle: 'مدیریت درآمدها، تسویه‌ها و تراز مالی', icon: Wallet },
   { id: 'alumni', title: 'بانک جامع دانش‌آموختگان', subtitle: 'شناسنامه الکترونیک ۴ سربرگه هویتی، علمی و شغلی', icon: GraduationCap },
   { id: 'users', title: 'مدیریت کاربران و حساب‌های کاربری', subtitle: 'کنترل دسترسی‌ها، نام کاربری و رمز عبور', icon: ShieldCheck },
+  { id: 'admin', title: 'مرکز مدیریت و پایش امنیت', subtitle: 'تنظیمات کلان و امنیت سامانه', icon: ShieldCheck },
 ];
 
 export const PERMISSION_LEVEL_DESCRIPTIONS: { level: PermissionAccessLevel; title: string; color: string; desc: string }[] = [
@@ -54,7 +66,7 @@ export const PERMISSION_LEVEL_DESCRIPTIONS: { level: PermissionAccessLevel; titl
   { level: 'manage_all', title: 'هم ببیند و هم ویرایش کند', color: 'bg-emerald-50 text-emerald-800 border-emerald-300', desc: 'دسترسی کامل مدیریتی جهت مشاهده و ویرایش کل اطلاعات' },
   { level: 'view_own', title: 'منحصراً فقط اطلاعات خودش را ببیند', color: 'bg-teal-50 text-teal-800 border-teal-200', desc: 'فقط دیدن رکوردهای ثبت‌شده توسط خود کاربر بدون دسترسی به دیگران' },
   { level: 'manage_own', title: 'مستقل اطلاعات خودش را ببیند و ویرایش کند', color: 'bg-amber-50 text-amber-900 border-amber-300', desc: 'مشاهده و ویرایش داده‌های اختصاصی خود بدون دسترسی به سایر کاربران' },
-  { level: 'none', title: 'عدم دسترسی', color: 'bg-rose-50 text-rose-700 border-rose-200', desc: 'بخش مسدود یا پنهان برای این سطح کاربری' },
+  { level: 'none', title: 'عدم دسترسی (حذف از منو)', color: 'bg-rose-50 text-rose-700 border-rose-200', desc: 'بخش به طور کامل از منوی کاربر حذف و در سرور مسدود می‌شود' },
 ];
 
 export const UserManagementModule: React.FC = () => {
@@ -68,6 +80,7 @@ export const UserManagementModule: React.FC = () => {
     updateUserCredentials,
     updateUserSectionPermissions,
     updateRoleDefaultPermissions,
+    refreshUsers,
     securityPin,
     isPinUnlocked,
     setPinUnlocked,
@@ -241,7 +254,14 @@ export const UserManagementModule: React.FC = () => {
       {/* کارت عضویت دیجیتال، کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
       <AlumniDigitalCardAndAdminTools
         currentUser={currentUser}
-        isOfficial={currentUser?.role === 'admin' || currentUser?.role === 'supervisor'}
+        isOfficial={!isReadOnlyObserverRole(currentUser?.role) && currentUser?.role !== 'alumni' && currentUser?.role !== 'customer'}
+      />
+
+      {/* مرکز فرماندهی ۹ نقش سازمانی، منوهای پویا و ویترین اختصاصی کاربران مشتری */}
+      <RoleAndCustomerAccessCenter
+        currentUser={currentUser}
+        users={users}
+        onRefreshUsers={refreshUsers}
       />
 
       {/* ========================================================================
@@ -261,37 +281,33 @@ export const UserManagementModule: React.FC = () => {
             <Search className="w-4 h-4 text-stone-400 absolute right-3.5 top-3" />
           </div>
 
-          {/* Role Filter */}
-          <div className="flex items-center gap-1.5 bg-[#F5F4EE] p-1 rounded-full text-xs">
-            <span className="text-stone-500 px-2 font-bold">نقش:</span>
-            {[
-              { id: 'all' as const, label: 'همه' },
-              { id: 'admin' as const, label: 'مدیران' },
-              { id: 'supervisor' as const, label: 'مسئولین' },
-              { id: 'alumni' as const, label: 'کاربران و اعضا' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setRoleFilter(tab.id)}
-                className={`px-3 py-1 rounded-full font-bold transition-all ${
-                  roleFilter === tab.id
-                    ? 'bg-emerald-800 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* 9-Role Filter Select */}
+          <div className="flex items-center gap-2 bg-[#F5F4EE] px-3 py-1.5 rounded-full text-xs border border-stone-200">
+            <span className="text-stone-500 font-bold">فیلتر نقش (۹ نقش):</span>
+            <select
+              value={roleFilter}
+              onChange={e => setRoleFilter(e.target.value as 'all' | UserRole)}
+              className="bg-transparent font-extrabold text-stone-900 focus:outline-none cursor-pointer"
+            >
+              <option value="all">همه نقش‌ها ({toPersianNumbers(users.length)})</option>
+              {NINE_ORGANIZATIONAL_ROLES.map(r => (
+                <option key={r.id} value={r.id}>
+                  نقش {toPersianNumbers(r.number)}: {r.title}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <button
-          onClick={() => setIsNewUserModalOpen(true)}
-          className="px-5 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-extrabold shadow-sm flex items-center gap-2 self-start md:self-auto shrink-0 transition-transform active:scale-95"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>افزودن کاربر جدید</span>
-        </button>
+        {!isReadOnlyObserverRole(currentUser?.role) && (
+          <button
+            onClick={() => setIsNewUserModalOpen(true)}
+            className="px-5 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-extrabold shadow-sm flex items-center gap-2 self-start md:self-auto shrink-0 transition-transform active:scale-95 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>افزودن کاربر جدید</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================================
@@ -300,7 +316,7 @@ export const UserManagementModule: React.FC = () => {
           ۲. کد ملی
           ۳. نام کاربری
           ۴. رمز
-          ۵. سطح / نقش
+          ۵. سطح / نقش (با قابلیت انتخاب از بین ۹ نقش سازمانی)
           ۶. تنظیم سطح دسترسی برای اون کاربر
           ======================================================================== */}
       <div className="bg-white/90 rounded-[36px] border border-stone-200 shadow-2xs overflow-hidden">
@@ -312,7 +328,7 @@ export const UserManagementModule: React.FC = () => {
                 <th className="p-4">کد ملی</th>
                 <th className="p-4">نام کاربری</th>
                 <th className="p-4">رمز</th>
-                <th className="p-4">سطح / نقش</th>
+                <th className="p-4">سطح / نقش (۹ نقش سازمانی)</th>
                 <th className="p-4 text-center pl-6">تنظیم سطح دسترسی برای اون کاربر</th>
               </tr>
             </thead>
@@ -322,6 +338,7 @@ export const UserManagementModule: React.FC = () => {
                 const isPasswordRevealed = showPasswordMap[u.id] || false;
                 const displayUsername = u.username || u.nationalId;
                 const displayPassword = u.password || u.phone || '123456';
+                const roleMeta = getRoleMetadata(u.role);
 
                 return (
                   <tr key={u.id} className="hover:bg-emerald-50/40 transition-colors">
@@ -381,13 +398,15 @@ export const UserManagementModule: React.FC = () => {
                         >
                           {copiedKey === `un_${u.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
-                        <button
-                          onClick={() => openEditUser(u)}
-                          className="p-1 rounded-md text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
-                          title="ویرایش کامل مشخصات، نام کاربری و رمز عبور"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
+                        {!isReadOnlyObserverRole(currentUser?.role) && (
+                          <button
+                            onClick={() => openEditUser(u)}
+                            className="p-1 rounded-md text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            title="ویرایش کامل مشخصات، نام کاربری و رمز عبور"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
 
@@ -413,13 +432,15 @@ export const UserManagementModule: React.FC = () => {
                             >
                               {copiedKey === `pw_${u.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>
-                            <button
-                              onClick={() => openEditUser(u)}
-                              className="p-1 rounded-md text-stone-400 hover:text-amber-700 hover:bg-amber-50 transition-colors"
-                              title="ویرایش کامل مشخصات و رمز عبور"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
+                            {!isReadOnlyObserverRole(currentUser?.role) && (
+                              <button
+                                onClick={() => openEditUser(u)}
+                                className="p-1 rounded-md text-stone-400 hover:text-amber-700 hover:bg-amber-50 transition-colors"
+                                title="ویرایش کامل مشخصات و رمز عبور"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </>
                         ) : (
                           <button
@@ -436,27 +457,35 @@ export const UserManagementModule: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* COLUMN 5: سطح / نقش */}
+                    {/* COLUMN 5: سطح / نقش (با قابلیت انتخاب مستقیم از بین ۹ نقش) */}
                     <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-black inline-flex items-center gap-1 ${
-                        u.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-900 border border-purple-200' 
-                          : u.role === 'supervisor' 
-                          ? 'bg-teal-100 text-teal-900 border border-teal-200' 
-                          : (u.judicialGrade && u.judicialGrade > 0)
-                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
-                          : 'bg-stone-100 text-stone-800 border border-stone-200'
-                      }`}>
-                        {u.role === 'admin' 
-                          ? 'مدیر ارشد' 
-                          : u.role === 'supervisor' 
-                          ? 'مسئول سامانه' 
-                          : (u.judicialGrade && u.judicialGrade > 0)
-                          ? 'دانش‌آموخته قضایی'
-                          : (u.roleTitle && (u.roleTitle.includes('اداری') || u.roleTitle.includes('کارمند') || u.roleTitle.includes('کاربر')))
-                          ? 'کاربر اداری / پرسنل'
-                          : 'کاربر سامانه'}
-                      </span>
+                      <div className="flex flex-col gap-1.5">
+                        <span className={`px-3 py-1 rounded-full text-xs font-black inline-flex items-center gap-1 w-fit border ${roleMeta.badgeColor}`}>
+                          {roleMeta.title}
+                        </span>
+                        {isSuperAdminRole(currentUser?.role) && (
+                          <select
+                            value={u.role === 'super_admin' ? 'admin' : u.role}
+                            onChange={async e => {
+                              const nextRole = e.target.value as UserRole;
+                              const nextMeta = getRoleMetadata(nextRole);
+                              const defPerms = DEFAULT_ROLE_POLICIES[nextRole]?.sectionPermissions;
+                              await updateUserDetails(u.id, {
+                                role: nextRole,
+                                roleTitle: nextMeta.title,
+                                sectionPermissions: defPerms,
+                              });
+                            }}
+                            className="px-2 py-1 rounded-lg bg-[#F5F4EE] border border-stone-200 text-[11px] font-bold text-stone-700 focus:outline-none focus:ring-1 focus:ring-emerald-700 cursor-pointer"
+                          >
+                            {NINE_ORGANIZATIONAL_ROLES.map(r => (
+                              <option key={r.id} value={r.id}>
+                                تغییر به: {r.shortTitle}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </td>
 
                     {/* COLUMN 6: تنظیم سطح دسترسی برای اون کاربر */}
@@ -1152,35 +1181,32 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-          {/* USER CATEGORY SELECTOR */}
+          {/* 9 ORGANIZATIONAL ROLES SELECTOR */}
           <div className="space-y-2 p-3.5 rounded-2xl bg-stone-100/90 border border-stone-200">
             <label className="font-extrabold text-stone-800 block">
-              رسته و نوع جایگاه کاربر در سامانه:
+              انتخاب نقش سازمانی کاربر (از میان ۹ نقش رسمی سامانه):
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { id: 'alumni' as const, label: 'دانش‌آموخته قضایی', desc: 'قاضی، مستشار، پژوهشگر' },
-                { id: 'supervisor' as const, label: 'مسئول سامانه', desc: 'کارشناس مسئول، کارتابل' },
-                { id: 'staff' as const, label: 'کاربر اداری / پرسنل', desc: 'کارمند دفتری، کاربر عادی' },
-                { id: 'admin' as const, label: 'مدیر ارشد', desc: 'ادمین با دسترسی کل' },
-              ].map(cat => (
-                <button
-                  type="button"
-                  key={cat.id}
-                  onClick={() => handleCategoryChange(cat.id)}
-                  className={`p-2.5 rounded-xl text-right transition-all border text-xs flex flex-col justify-between ${
-                    userCategory === cat.id
-                      ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs ring-2 ring-emerald-600/30'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <span className="font-black text-xs block mb-0.5">{cat.label}</span>
-                  <span className={`text-[10px] leading-tight ${userCategory === cat.id ? 'text-emerald-100' : 'text-stone-400'}`}>
-                    {cat.desc}
-                  </span>
-                </button>
+            <select
+              value={formData.role}
+              onChange={e => {
+                const nextRole = e.target.value as UserRole;
+                const meta = getRoleMetadata(nextRole);
+                setFormData(prev => ({
+                  ...prev,
+                  role: nextRole,
+                  roleTitle: meta.title,
+                  judicialGrade: nextRole === 'alumni' ? 8 : 0,
+                }));
+                setUserCategory(nextRole === 'alumni' ? 'alumni' : nextRole === 'admin' ? 'admin' : 'supervisor');
+              }}
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-stone-300 font-extrabold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+            >
+              {NINE_ORGANIZATIONAL_ROLES.map(r => (
+                <option key={r.id} value={r.id}>
+                  نقش {toPersianNumbers(r.number)}: {r.title} — {r.description}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1577,35 +1603,31 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-          {/* USER CATEGORY SELECTOR */}
+          {/* 9 ORGANIZATIONAL ROLES SELECTOR */}
           <div className="space-y-2 p-3.5 rounded-2xl bg-stone-100/90 border border-stone-200">
             <label className="font-extrabold text-stone-800 block">
-              رسته و نوع جایگاه کاربر در سامانه:
+              انتخاب نقش سازمانی کاربر (از میان ۹ نقش رسمی سامانه):
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { id: 'alumni' as const, label: 'دانش‌آموخته قضایی', desc: 'قاضی، مستشار، پژوهشگر' },
-                { id: 'supervisor' as const, label: 'مسئول سامانه', desc: 'کارشناس مسئول، کارتابل' },
-                { id: 'staff' as const, label: 'کاربر اداری / پرسنل', desc: 'کارمند دفتری، کاربر عادی' },
-                { id: 'admin' as const, label: 'مدیر ارشد', desc: 'ادمین با دسترسی کل' },
-              ].map(cat => (
-                <button
-                  type="button"
-                  key={cat.id}
-                  onClick={() => handleCategoryChange(cat.id)}
-                  className={`p-2.5 rounded-xl text-right transition-all border text-xs flex flex-col justify-between ${
-                    userCategory === cat.id
-                      ? 'bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-500/30 font-extrabold'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <span className="font-black text-xs block mb-0.5">{cat.label}</span>
-                  <span className={`text-[10px] leading-tight ${userCategory === cat.id ? 'text-amber-100' : 'text-stone-400'}`}>
-                    {cat.desc}
-                  </span>
-                </button>
+            <select
+              value={formData.role === 'super_admin' ? 'admin' : formData.role}
+              onChange={e => {
+                const nextRole = e.target.value as UserRole;
+                const meta = getRoleMetadata(nextRole);
+                setFormData(prev => ({
+                  ...prev,
+                  role: nextRole,
+                  roleTitle: meta.title,
+                }));
+                setUserCategory(nextRole === 'alumni' ? 'alumni' : nextRole === 'admin' ? 'admin' : 'supervisor');
+              }}
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-stone-300 font-extrabold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+            >
+              {NINE_ORGANIZATIONAL_ROLES.map(r => (
+                <option key={r.id} value={r.id}>
+                  نقش {toPersianNumbers(r.number)}: {r.title}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

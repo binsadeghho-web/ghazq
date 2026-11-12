@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { AppSectionId } from '../../types';
+import { canViewSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
   LayoutGrid,
   Inbox,
@@ -38,7 +40,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { currentUser, cartableRequests, courses, rulings, products, consultants, researchMentorships } = useApp();
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const { rolePolicies } = useRbacPolicies();
   const pendingCartable = cartableRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length;
 
   useEffect(() => {
@@ -63,9 +65,20 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     }, 300);
   };
 
-  const serviceCards = [
+  const allServiceCards: Array<{
+    id: string;
+    sectionId: AppSectionId;
+    title: string;
+    subtext: string;
+    badge: string;
+    tag: string;
+    icon: any;
+    accent: string;
+    category: string;
+  }> = [
     {
       id: 'People',
+      sectionId: 'cartable',
       title: 'کارتابل خدمات اداری و استعلامات',
       subtext: 'ثبت، گردش اسناد رسمی و استعلام پایه‌های قضایی با پاسخگویی دبیرخانه',
       badge: 'پرتال اداری',
@@ -76,6 +89,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'SpecializedCounseling',
+      sectionId: 'specialized_counseling',
       title: 'مشاوره تخصصی شغلی و تحصیلی',
       subtext: 'هدایت مسیر نخبگانی قضایی، موفقیت در اختبار، ترفیع رتبه و مصاحبه‌ها',
       badge: 'هدایت شغلی',
@@ -86,6 +100,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'CounselingGeneral',
+      sectionId: 'counseling',
       title: 'خدمات مشاوره عمومی و فردی',
       subtext: 'روان‌شناختی، خانواده، زوج‌درمانی، تاب‌آوری شغلی و مدیریت اضطراب',
       badge: 'سلامت روان',
@@ -96,6 +111,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'Courses',
+      sectionId: 'courses',
       title: 'دوره‌ها و کارگاه‌های تخصصی',
       subtext: 'کارگاه‌های عالی فقه کاربردی، اسناد و آرشیو صوتی و تصویری جلسات',
       badge: 'آموزش عالی',
@@ -106,6 +122,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'Research',
+      sectionId: 'research',
       title: 'راهبری پایان‌نامه‌ها و رساله‌ها',
       subtext: 'هدایت رساله دکتری، مشاوره اساتید عالی‌رتبه و حمایت مادی از رساله‌ها',
       badge: 'راهبری علمی',
@@ -116,6 +133,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'Rulings',
+      sectionId: 'rulings',
       title: 'تالار نقد و مباحثه آراء قضایی',
       subtext: 'نقد موشکافانه احکام توسط قضات تجدیدنظر و دیوان عالی کشور',
       badge: 'مباحثات فقهی',
@@ -126,6 +144,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'Products',
+      sectionId: 'products',
       title: 'محصولات، منشورات و کتب',
       subtext: 'دانشنامه‌های فقهی-حقوقی، آرای وحدت رویه و متون مرجع قضایی',
       badge: 'انتشارات مرجع',
@@ -136,6 +155,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'Welfare',
+      sectionId: 'welfare',
       title: 'تسهیلات رفاهی و اقامتگاه‌ها',
       subtext: 'وام قرض‌الحسنه صندوق رفاه، اقامتگاه مشهد و قم، تعاونی مصرف',
       badge: 'صندوق رفاهی',
@@ -146,6 +166,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     },
     {
       id: 'Synergy',
+      sectionId: 'synergy',
       title: 'دیوار هم‌افزایی شغلی و تجربیات',
       subtext: 'تبادل مستقیم تجارب اداری، رویه‌های قضایی شعب و استعلامات محلی',
       badge: 'شبکه همکاران',
@@ -154,40 +175,47 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
       accent: '#2563EB',
       category: 'قضایی'
     },
-    ...(isAdmin ? [
-      {
-        id: 'Alumni',
-        title: 'بانک جامع دانش‌آموختگان',
-        subtext: 'فهرست ۱,۰۰۰ دانش‌آموخته حوزوی و قضایی، سوابق علمی و تخصصی',
-        badge: 'دایرکتوری',
-        tag: 'بانک اطلاعاتی',
-        icon: Users2,
-        accent: '#0D9488',
-        category: 'مدیریت'
-      },
-      {
-        id: 'Users',
-        title: 'مدیریت کاربران و حساب‌ها',
-        subtext: 'صدور حساب کاربری، قفل/فعال‌سازی، تعیین دسترسی و ماتریس نقش‌ها',
-        badge: 'کنترل دسترسی',
-        tag: 'امنیت نشست‌ها',
-        icon: Users,
-        accent: '#4F46E5',
-        category: 'مدیریت'
-      },
-      {
-        id: 'Admin',
-        title: 'مرکز مدیریت و تنظیمات کلان',
-        subtext: 'تنظیمات امنیتی، لاگ‌های سیستمی، نظارت بر کارتابل و تالارها',
-        badge: 'مدیریت ارشد',
-        tag: 'فرماندهی',
-        icon: ShieldCheck,
-        accent: '#DC2626',
-        category: 'مدیریت'
-      }
-    ] : [])
+    {
+      id: 'Alumni',
+      sectionId: 'alumni',
+      title: 'بانک جامع دانش‌آموختگان',
+      subtext: 'فهرست ۱,۰۰۰ دانش‌آموخته حوزوی و قضایی، سوابق علمی و تخصصی',
+      badge: 'دایرکتوری',
+      tag: 'بانک اطلاعاتی',
+      icon: Users2,
+      accent: '#0D9488',
+      category: 'مدیریت'
+    },
+    {
+      id: 'Users',
+      sectionId: 'users',
+      title: 'مدیریت کاربران، نقش‌ها و حساب‌ها',
+      subtext: 'صدور حساب کاربری، مدیریت ۹ نقش سازمانی، ویترین مشتریان و ماتریس دسترسی',
+      badge: 'کنترل دسترسی',
+      tag: '۹ نقش سازمانی',
+      icon: Users,
+      accent: '#4F46E5',
+      category: 'مدیریت'
+    },
+    {
+      id: 'Admin',
+      sectionId: 'admin',
+      title: 'مرکز مدیریت و تنظیمات کلان',
+      subtext: 'تنظیمات امنیتی، لاگ‌های سیستمی، نظارت بر کارتابل و تالارها',
+      badge: 'مدیریت ارشد',
+      tag: 'فرماندهی',
+      icon: ShieldCheck,
+      accent: '#DC2626',
+      category: 'مدیریت'
+    }
   ];
 
+  // Strict Menu Cloaking: Hide any service card whose section permission is 'none'
+  const serviceCards = allServiceCards.filter(card =>
+    canViewSection(currentUser, card.sectionId, rolePolicies)
+  );
+
+  const visibleCategoriesSet = new Set(serviceCards.map(c => c.category));
   const categories = [
     { id: 'all', label: 'همه خدمات' },
     { id: 'اداری', label: 'اداری و کارتابل' },
@@ -195,8 +223,8 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     { id: 'آموزش', label: 'آموزش و پژوهش' },
     { id: 'قضایی', label: 'رویه قضایی و آراء' },
     { id: 'رفاه', label: 'رفاهیات و تعاونی' },
-    ...(isAdmin ? [{ id: 'مدیریت', label: 'مدیریت' }] : [])
-  ];
+    { id: 'مدیریت', label: 'مدیریت' }
+  ].filter(cat => cat.id === 'all' || visibleCategoriesSet.has(cat.id));
 
   const filteredCards = serviceCards.filter(c => {
     const matchesSearch =

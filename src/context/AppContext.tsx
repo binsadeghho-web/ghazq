@@ -186,6 +186,7 @@ export interface AppContextType {
   updateUserCredentials: (userId: string, username: string, password: string) => Promise<void>;
   updateUserSectionPermissions: (userId: string, permissions: UserSectionPermissions) => Promise<void>;
   updateRoleDefaultPermissions: (role: UserRole, permissions: UserSectionPermissions) => Promise<void>;
+  refreshUsers: () => Promise<void>;
 
   // Admin Security PIN & Verification
   securityPin: string;
@@ -333,6 +334,7 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     updateUserCredentials: auth.updateUserCredentials,
     updateUserSectionPermissions: auth.updateUserSectionPermissions,
     updateRoleDefaultPermissions: auth.updateRoleDefaultPermissions,
+    refreshUsers: auth.refreshUsers,
 
     // Theme & Layouts
     theme: theme.theme,

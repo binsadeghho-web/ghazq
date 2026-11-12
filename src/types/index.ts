@@ -2,7 +2,18 @@
  * Data structures and types for the Fiqh & Judiciary Alumni Portal
  */
 
-export type UserRole = 'admin' | 'supervisor' | 'alumni';
+export type UserRole =
+  | 'admin'
+  | 'super_admin'
+  | 'general_observer'
+  | 'alumni_manager'
+  | 'admin_finance_officer'
+  | 'education_deputy'
+  | 'cultural_educational_officer'
+  | 'research_deputy'
+  | 'supervisor'
+  | 'alumni'
+  | 'customer';
 
 export interface UserSession {
   id: string;
@@ -20,21 +31,43 @@ export type AppSectionId =
   | 'courses'
   | 'products'
   | 'counseling'
+  | 'specialized_counseling'
   | 'research'
   | 'rulings'
   | 'welfare'
   | 'synergy'
   | 'alumni'
-  | 'users';
+  | 'users'
+  | 'finance'
+  | 'admin';
 
 export type PermissionAccessLevel =
-  | 'none'          // عدم دسترسی
-  | 'view_all'      // فقط مشاهده (کل اطلاعات)
+  | 'none'          // عدم دسترسی (مخفی‌سازی کامل از منو و مسدود در سرور)
+  | 'view_all'      // فقط مشاهده (کل اطلاعات - بدون حق ویرایش)
   | 'manage_all'    // مشاهده و ویرایش (کل اطلاعات)
   | 'view_own'      // منحصراً فقط مشاهده اطلاعات خود
   | 'manage_own';   // مشاهده و ویرایش مستقل اطلاعات خود
 
 export type UserSectionPermissions = Partial<Record<AppSectionId, PermissionAccessLevel>>;
+
+export interface RoleSubSectionPermissions {
+  welfare_loans?: boolean;
+  welfare_accommodations?: boolean;
+  welfare_cooperative?: boolean;
+}
+
+export interface RoleAccessPolicy {
+  roleId: UserRole;
+  roleTitle: string;
+  description: string;
+  badgeColor: string;
+  isReadOnlyRole?: boolean;
+  sectionPermissions: UserSectionPermissions;
+  subSectionPermissions?: RoleSubSectionPermissions;
+  version?: number;
+  updatedBy?: string;
+  updatedAt?: string;
+}
 
 export interface UserPermissions {
   canSubmitRuling: boolean;
@@ -479,6 +512,7 @@ export interface Course {
     format?: string;
     description?: string;
   }>;
+  visibleToCustomer?: boolean;
   version?: number;
 }
 
@@ -531,6 +565,7 @@ export interface Product {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  visibleToCustomer?: boolean;
   version?: number;
 }
 
@@ -688,6 +723,7 @@ export interface ConsumableItem {
   discountPercent?: number;
   rating?: number;
   imageUrl?: string;
+  visibleToCustomer?: boolean;
 }
 
 export interface ConsumableOrder {

@@ -38,7 +38,16 @@ import {
   Wallet
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
-import { UserRole } from '../../types';
+import { UserRole, AppSectionId } from '../../types';
+import {
+  canViewSection,
+  useRbacPolicies,
+  getRoleMetadata,
+  isOrganizationalRole,
+  isReadOnlyObserverRole,
+  isSuperAdminRole,
+  NINE_ORGANIZATIONAL_ROLES,
+} from '../../utils/rbacPolicy';
 
 import { Sidebar, NavTabId } from '../layout/Sidebar';
 
@@ -48,6 +57,7 @@ interface CrextioLayoutProps {
 
 export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTheme }) => {
   const { currentUser, users, switchUserRole, logout, crextioConfig, setDesignTheme } = useApp();
+  const { rolePolicies } = useRbacPolicies();
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
@@ -85,26 +95,32 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     }
   };
 
-  const isAdminOrSupervisor = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isStaffMember = isOrganizationalRole(currentUser?.role);
+  const isReadOnlyObserver = isReadOnlyObserverRole(currentUser?.role);
+  const currentRoleMeta = getRoleMetadata(currentUser?.role);
 
-  const navItems = [
-    { id: 'Dashboard', label: 'داشبورد', icon: ShieldCheck },
-    { id: 'People', label: 'کارتابل', icon: Inbox },
-    { id: 'Courses', label: 'گالری دوره‌ها', icon: BookOpen },
-    { id: 'Products', label: 'ویترین انتشارات', icon: BookOpen },
-    { id: 'Counseling', label: 'مشاوره', icon: HeartHandshake },
-    { id: 'Research', label: 'راهبری پایان‌نامه‌ها', icon: Compass },
-    { id: 'Welfare', label: 'رفاهیات', icon: Gift },
-    { id: 'Rulings', label: 'تالار آراء', icon: Laptop },
-    { id: 'Synergy', label: 'هم‌افزایی', icon: HeartHandshake },
-    ...(isAdminOrSupervisor ? [
-      { id: 'Finance', label: 'امور مالی و حسابداری', icon: Wallet },
-      { id: 'Alumni', label: 'دانش‌آموختگان', icon: GraduationCap },
-      { id: 'Users', label: 'مدیریت کاربران (حساب‌ها)', icon: Users },
-      { id: 'Admin', label: 'مدیریت سایت و پایش امنیت', icon: ShieldCheck }
-    ] : []),
+  const allNavCandidates: Array<{ id: string; sectionId?: AppSectionId; label: string; icon: any }> = [
+    { id: 'Dashboard', sectionId: 'dashboard', label: 'داشبورد', icon: ShieldCheck },
+    { id: 'People', sectionId: 'cartable', label: 'کارتابل', icon: Inbox },
+    { id: 'Courses', sectionId: 'courses', label: 'گالری دوره‌ها', icon: BookOpen },
+    { id: 'Products', sectionId: 'products', label: 'ویترین انتشارات', icon: BookOpen },
+    { id: 'Counseling', sectionId: 'counseling', label: 'مشاوره', icon: HeartHandshake },
+    { id: 'Research', sectionId: 'research', label: 'راهبری پایان‌نامه‌ها', icon: Compass },
+    { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات', icon: Gift },
+    { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء', icon: Laptop },
+    { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی', icon: HeartHandshake },
+    { id: 'Finance', sectionId: 'finance', label: 'امور مالی و حسابداری', icon: Wallet },
+    { id: 'Alumni', sectionId: 'alumni', label: 'دانش‌آموختگان', icon: GraduationCap },
+    { id: 'Users', sectionId: 'users', label: 'مدیریت کاربران و نقش‌ها', icon: Users },
+    { id: 'Admin', sectionId: 'admin', label: 'مدیریت سایت و پایش امنیت', icon: ShieldCheck },
     { id: 'Setting', label: 'تنظیمات', icon: Settings },
   ];
+
+  // Strict Menu Cloaking: Completely remove any item whose section permission is 'none'
+  const navItems = allNavCandidates.filter(item => {
+    if (!item.sectionId) return true;
+    return canViewSection(currentUser, item.sectionId, rolePolicies);
+  });
 
   const canvasBgClass = 
     crextioConfig.canvasTheme === 'royal_emerald' 
@@ -138,38 +154,53 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
       <div className="relative z-10 max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 lg:pr-28 py-5 space-y-5">
         
-        {/* TOP BAR: THEME SWITCHER BANNER & ROLE INDICATOR (Hidden for alumni role as requested) */}
-        {!currentUser || currentUser.role !== 'alumni' ? (
+        {/* READ-ONLY OBSERVER BANNER FOR GENERAL OBSERVER (ناظر کل) */}
+        {isReadOnlyObserver && (
+          <div className="w-full bg-sky-900 text-white rounded-2xl px-5 py-3 border border-sky-400/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2.5 text-xs font-extrabold">
+              <Shield className="w-4 h-4 text-sky-300 shrink-0" />
+              <span>
+                حالت نظارت کلان (ناظر کل سامانه): شما به ۱۰۰٪ بخش‌ها و آمارها دسترسی مشاهده دارید، اما طبق سیاست امنیتی هیچ‌گونه مجوز ویرایش یا ثبت اطلاعات ندارید.
+              </span>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-sky-500/20 border border-sky-300/40 text-[11px] font-black text-sky-200 shrink-0">
+              صرفاً مشاهده (Read-Only)
+            </span>
+          </div>
+        )}
+
+        {/* TOP BAR: THEME SWITCHER BANNER & ROLE INDICATOR (Shown for Organizational Roles) */}
+        {!currentUser || isStaffMember ? (
           <div className="w-full bg-white/90 backdrop-blur-xl rounded-2xl px-4 sm:px-5 py-2.5 border border-stone-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
                 <Scale className="w-3.5 h-3.5 text-amber-600" />
                 تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان (طرح میزان)
               </span>
-              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
-                نقش فعلی: {currentUser?.role === 'supervisor' ? 'مسئول کارتابل' : 'مدیر ارشد سامانه'}
+              <span className={`px-3 py-1 rounded-full border text-xs font-extrabold ${currentRoleMeta.badgeColor}`}>
+                نقش فعلی: {currentRoleMeta.title}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              {isAdminOrSupervisor && (
-                <>
-                  <button
-                    onClick={() => setIsCustomizerOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
-                  >
-                    <Palette className="w-3.5 h-3.5 text-amber-600" />
-                    <span>شخصی‌سازی تم ۲</span>
-                  </button>
+              {isStaffMember && !isReadOnlyObserver && (
+                <button
+                  onClick={() => setIsCustomizerOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                >
+                  <Palette className="w-3.5 h-3.5 text-amber-600" />
+                  <span>شخصی‌سازی تم ۲</span>
+                </button>
+              )}
 
-                  <button
-                    onClick={onToggleToPortalTheme}
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5" />
-                    <span>تغییر به تم ۱ (پرتال)</span>
-                  </button>
-                </>
+              {isStaffMember && (
+                <button
+                  onClick={onToggleToPortalTheme}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>تغییر به تم ۱ (پرتال)</span>
+                </button>
               )}
             </div>
           </div>

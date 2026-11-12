@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Course, CourseEnrollment } from '../../types';
 import { GraduationCap } from 'lucide-react';
+import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 
 // Subcomponents
 import { CourseStatsHeader } from './subcomponents/CourseStatsHeader';
@@ -34,8 +35,9 @@ export const CoursesSection: React.FC = () => {
     reviewCourseEnrollment,
     sendPinOtpSms,
   } = useApp();
+  const { rolePolicies } = useRbacPolicies();
 
-  const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isOfficial = canManageAllInSection(currentUser, 'courses', rolePolicies);
 
   // Navigation & Filter States
   const [activeTab, setActiveTab] = useState<CourseTab>('available');
@@ -55,8 +57,16 @@ export const CoursesSection: React.FC = () => {
   const [inspectingEnrollment, setInspectingEnrollment] = useState<CourseEnrollment | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
 
-  // Memoized Lists
-  const activeCourses = useMemo(() => courses.filter(c => !c.isDeleted), [courses]);
+  // Memoized Lists (with granular customer visibility filtering)
+  const activeCourses = useMemo(
+    () =>
+      courses.filter(c => {
+        if (c.isDeleted) return false;
+        if (currentUser?.role === 'customer' && c.visibleToCustomer === false) return false;
+        return true;
+      }),
+    [courses, currentUser?.role]
+  );
   const deletedCourses = useMemo(() => courses.filter(c => c.isDeleted), [courses]);
   const availableCourses = useMemo(() => activeCourses.filter(c => c.status === 'enrolling' || c.status === 'ongoing'), [activeCourses]);
   const myEnrolledCourses = useMemo(() => {
