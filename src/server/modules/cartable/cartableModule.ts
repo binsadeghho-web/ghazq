@@ -7,6 +7,7 @@ import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
 import { CartableRequest, CartableMessage, RequestStatus, CartableCategory, RequestPriority } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
+import { registerCartableReferralRoutes } from './cartableReferralAndAttachmentsRoutes';
 
 function mapCartableRequestRow(row: any, messages: CartableMessage[] = []): CartableRequest & { version: number; trackingCode?: string; attachments?: string[]; referredDepartment?: string; internalReferralNote?: string; slaDeadlineHours?: number } {
   const trackingNumber = row.tracking_number || row.tracking_code || '';
@@ -133,8 +134,8 @@ export class CartableRepository implements ICartableRepository {
       `INSERT INTO cartable_requests (
         id, tracking_number, category, category_title, title, description,
         applicant_id, applicant_name, applicant_role_title, priority, status,
-        has_unread_supervisor, has_unread_applicant, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        has_unread_supervisor, has_unread_applicant, version, referred_department, internal_referral_note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         idBuf,
         request.trackingNumber,
@@ -150,6 +151,8 @@ export class CartableRepository implements ICartableRepository {
         request.hasUnreadSupervisor ? 1 : 0,
         request.hasUnreadApplicant ? 1 : 0,
         request.version,
+        (request as any).referredDepartment || null,
+        (request as any).internalReferralNote || null,
       ]
     );
 
@@ -218,7 +221,28 @@ export class CartableService {
       timestamp: now,
     };
 
-    const newRequest: CartableRequest & { version: number } = {
+    // Auto-referral routing based on category matrix
+    let autoReferredDepartment: string | undefined = undefined;
+    let autoInternalNote: string | undefined = undefined;
+    try {
+      const p = getPool();
+      const [rows] = await p.query<any[]>(
+        `SELECT setting_value FROM system_settings WHERE setting_key = 'cartable_config' LIMIT 1`
+      );
+      if (rows && rows.length > 0) {
+        let val = rows[0].setting_value;
+        if (typeof val === 'string') {
+          try { val = JSON.parse(val); } catch {}
+        }
+        const found = (val?.categories || []).find((c: any) => c.id === dto.category);
+        if (found) {
+          autoReferredDepartment = found.assignedOfficialTitle || found.defaultDepartment || found.assignedOfficialRole;
+          autoInternalNote = `ارجاع خودکار بر اساس دسته‌بندی موضوعی (${found.title})`;
+        }
+      }
+    } catch {}
+
+    const newRequest: CartableRequest & { version: number; referredDepartment?: string; internalReferralNote?: string } = {
       id,
       trackingNumber,
       applicantId: authCtx.userId,
@@ -229,7 +253,9 @@ export class CartableService {
       title: dto.title,
       description: dto.description,
       priority: dto.priority,
-      status: 'pending',
+      status: autoReferredDepartment ? 'in_progress' : 'pending',
+      referredDepartment: autoReferredDepartment,
+      internalReferralNote: autoInternalNote,
       createdAt: now,
       updatedAt: now,
       messages: [initialMessage],
@@ -480,6 +506,8 @@ export function createCartableRouter(): Router {
     }
   });
 
+  registerCartableReferralRoutes(router);
+
   router.get('/:id', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
@@ -548,8 +576,5 @@ export function createCartableRouter(): Router {
     }
   });
 
-  registerCartableReferralRoutes(router);
-
   return router;
 }
-import { registerCartableReferralRoutes } from './cartableReferralAndAttachmentsRoutes';

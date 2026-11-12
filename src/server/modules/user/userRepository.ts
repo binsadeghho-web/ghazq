@@ -195,11 +195,11 @@ export class UserRepository {
     ensureDatabaseConnection();
     try {
       const sql = includeArchived
-        ? `SELECT * FROM users WHERE id = ? LIMIT 1`
-        : `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1`;
+        ? `SELECT * FROM users WHERE (id = ? OR national_id = ?) LIMIT 1`
+        : `SELECT * FROM users WHERE (id = ? OR national_id = ?) AND deleted_at IS NULL LIMIT 1`;
       const rows = await selectWithTimeout<UserDbRow>(
         sql,
-        [id],
+        [toIdBuffer(id), id],
         3000
       );
 
@@ -380,7 +380,7 @@ export class UserRepository {
           avatar_text = VALUES(avatar_text),
           is_active = VALUES(is_active)`,
         [
-          user.id,
+          toIdBuffer(user.id),
           user.nationalId,
           username,
           user.passwordHash,
@@ -573,7 +573,7 @@ export class UserRepository {
 
         if (fields.length > 0) {
           let sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`;
-          params.push(id);
+          params.push(toIdBuffer(id));
 
           if (expectedVersion !== undefined && expectedVersion !== null && !isNaN(Number(expectedVersion))) {
             sql += ` AND version = ?`;
@@ -589,8 +589,8 @@ export class UserRepository {
 
         if (isSecurityImpacted) {
           // Instant revocation of all user sessions & refresh tokens
-          await conn.query(`UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ?`, [id]);
-          await conn.query(`UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'SECURITY_CHANGE' WHERE user_id = ?`, [id]);
+          await conn.query(`UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ?`, [toIdBuffer(id)]);
+          await conn.query(`UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'SECURITY_CHANGE' WHERE user_id = ?`, [toIdBuffer(id)]);
         }
       });
     } catch (err: any) {

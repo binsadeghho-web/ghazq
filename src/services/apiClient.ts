@@ -277,6 +277,17 @@ class ApiClient {
     });
   }
 
+  async updateCartableReferral(id: string, data: { referredDepartment: string; internalReferralNote?: string; status?: string; expectedVersion: number }) {
+    return this.referCartableRequest(id, data);
+  }
+
+  async uploadCartableAttachment(id: string, fileUrl: string, expectedVersion?: number) {
+    return this.request<any>(`/api/cartable/${id}/attachments`, {
+      method: 'POST',
+      body: JSON.stringify({ fileUrl, expectedVersion }),
+    });
+  }
+
   async updateCartableStatus(id: string, status: string, expectedVersion: number) {
     return this.request<any>(`/api/cartable/${id}/status`, {
       method: 'PATCH',
@@ -287,6 +298,24 @@ class ApiClient {
   async markCartableAsRead(id: string) {
     return this.request<any>(`/api/cartable/${id}/read`, {
       method: 'POST',
+    });
+  }
+
+  async getCartableConfig() {
+    return this.request<{ categories: any[]; guide: any; officials: any[] }>('/api/cartable/config');
+  }
+
+  async updateCartableGuide(guide: any) {
+    return this.request<{ success: boolean; guide: any }>('/api/cartable/config/guide', {
+      method: 'PUT',
+      body: JSON.stringify({ guide }),
+    });
+  }
+
+  async updateCartableCategories(categories: any[]) {
+    return this.request<{ success: boolean; categories: any[] }>('/api/cartable/config/categories', {
+      method: 'PUT',
+      body: JSON.stringify({ categories }),
     });
   }
 
@@ -817,20 +846,6 @@ class ApiClient {
       body: JSON.stringify({ fileName: file.name, dataUrl }),
     });
     return { url: res.url };
-  }
-
-  async uploadCartableAttachment(requestId: string, fileUrl: string, expectedVersion = 1) {
-    return this.request<any>(`/api/cartable/${requestId}/attachments`, {
-      method: 'POST',
-      body: JSON.stringify({ fileUrl, expectedVersion }),
-    });
-  }
-
-  async updateCartableReferral(
-    requestId: string,
-    data: { referredDepartment: string; internalReferralNote?: string; status?: string; expectedVersion: number }
-  ) {
-    return this.referCartableRequest(requestId, data);
   }
 
   // Course Attendance, Waitlist & Certificates

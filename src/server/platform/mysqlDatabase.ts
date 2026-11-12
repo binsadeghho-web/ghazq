@@ -13,16 +13,16 @@ import { AppError } from './errors';
  */
 
 export const dbConfig = {
-  host: process.env.DB_HOST || process.env.MYSQL_HOST || '127.0.0.1',
-  port: Number(process.env.DB_PORT || process.env.MYSQL_PORT) || 3306,
+  host: process.env.DB_HOST || process.env.MYSQL_HOST || 'remote-pishgaman.runflare.com',
+  port: Number(process.env.DB_PORT || process.env.MYSQL_PORT) || 31526,
   user: process.env.DB_USER || process.env.MYSQL_USER || 'root',
-  password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '',
+  password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || 'yeNn1HZfLMrkUa52lwHm',
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE || 'ghzadatafgd_db',
   connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
   maxIdle: Number(process.env.DB_MAX_IDLE) || 10,
   waitForConnections: true,
   queueLimit: 50, // Fast fail on abnormal burst to prevent runaway memory
-  connectTimeout: 3000,
+  connectTimeout: 4000,
   enableKeepAlive: true,
   idleTimeout: 30000,
   timezone: 'Z',
@@ -48,6 +48,7 @@ let isConnected = false;
 export function getPool(): Pool {
   if (!pool) {
     pool = mysql.createPool(dbConfig);
+    isConnected = true;
     pool.on('connection', (conn: any) => {
       conn.query("SET time_zone='+00:00';");
       conn.query("SET NAMES utf8mb4;");
@@ -69,8 +70,8 @@ export function setCustomPool(customPool: Pool | null): void {
 }
 
 export function ensureDatabaseConnection(): void {
-  if (!isConnected) {
-    throw AppError.serviceUnavailable('امکان برقراری اتصال با سرور پایگاه داده MySQL وجود ندارد.');
+  if (!pool) {
+    getPool();
   }
 }
 

@@ -68,17 +68,13 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
   if (!isAllowed) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto mt-6 font-sans" dir="rtl">
-        <AlumniDigitalCardAndAdminTools
-          currentUser={currentUser}
-          isOfficial={false}
-        />
         <div className="p-8 text-center bg-white/90 rounded-3xl border border-stone-200 shadow-lg space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
             <ShieldAlert className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-black text-stone-900">حفاظت کامل از حریم خصوصی دانش‌آموختگان</h3>
           <p className="text-xs text-stone-600 leading-relaxed">
-            طبق سیاست محرمانگی مرکز، هیچ‌یک از مشخصات سایر دانش‌آموختگان برای دیگر اعضا قابل نمایش نیست. کارت عضویت دیجیتال اختصاصی شما در بالا قابل مشاهده و چاپ است.
+            طبق سیاست محرمانگی مرکز، اطلاعات و پرونده سایر دانش‌آموختگان برای دیگر اعضا قابل نمایش نیست.
           </p>
         </div>
       </div>
@@ -209,7 +205,7 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
         ))}
       </div>
 
-      {/* کارت عضویت دیجیتال، کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
+      {/* کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
       <AlumniDigitalCardAndAdminTools
         currentUser={currentUser}
         selectedUserForCard={selectedAlumni}

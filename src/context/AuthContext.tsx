@@ -207,17 +207,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   }, [currentUser]);
 
   const switchUserRole = useCallback(async (role: UserRole) => {
+    // 1. Instantly update user state and design theme synchronously (Zero Delay)
+    setCurrentUserState(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        role,
+        roleTitle: role === 'alumni' ? 'دانش‌آموخته نخبه' : (role === 'admin' ? 'مدیر ارشد سامانه' : prev.roleTitle),
+      };
+    });
+    if (setDesignTheme) {
+      setDesignTheme(role === 'alumni' ? 'crextio' : 'portal');
+    }
+
+    // 2. Dispatch custom event for immediate responsive re-rendering across the tree
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('app:role_switched', { detail: { role } }));
+    }
+
+    // 3. Sync with backend asynchronously
     try {
       const res = await api.switchRole(role);
       if (res.user) {
         setCurrentUserState(res.user);
       }
     } catch {
-      const localTarget = users.find(u => u.role === role) || users[0];
-      setCurrentUserState(localTarget);
+      // Local state is already active
     }
-    if (setDesignTheme) setDesignTheme('crextio');
-  }, [users, setDesignTheme]);
+  }, [setDesignTheme]);
 
   const unlockAccount = useCallback(async (userId: string) => {
     try {

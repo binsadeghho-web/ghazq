@@ -1,3 +1,4 @@
+import 'dotenv/config';
 console.log('----------------------------------------------------');
 console.log('🚀 راه اندازی سرور سامانه فقه و قضا (Enterprise Production Server v3.0)');
 console.log(`📡 محیط اجرا: ${process.env.NODE_ENV || 'development'} | پورت: ${process.env.PORT || 3000}`);

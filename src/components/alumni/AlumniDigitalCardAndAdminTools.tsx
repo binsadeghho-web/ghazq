@@ -43,7 +43,7 @@ export const AlumniDigitalCardAndAdminTools: React.FC<AlumniDigitalCardAndAdminT
   isOfficial,
   onUsersImported,
 }) => {
-  const [activeTab, setActiveTab] = useState<'digital_card' | 'privacy_matrix' | 'bulk_import' | 'financial_balance'>('digital_card');
+  const [activeTab, setActiveTab] = useState<'privacy_matrix' | 'bulk_import' | 'financial_balance'>('privacy_matrix');
   const [privacySettings, setPrivacySettings] = useState<any[]>([]);
   const [financialReport, setFinancialReport] = useState<any | null>(null);
   const [bulkText, setBulkText] = useState<string>(
@@ -130,6 +130,10 @@ export const AlumniDigitalCardAndAdminTools: React.FC<AlumniDigitalCardAndAdminT
     }
   };
 
+  if (!isOfficial) {
+    return null;
+  }
+
   return (
     <div className="bg-white/95 rounded-3xl p-6 border border-stone-200 shadow-2xs space-y-5 font-sans" dir="rtl">
       {toastMsg && (
@@ -143,145 +147,55 @@ export const AlumniDigitalCardAndAdminTools: React.FC<AlumniDigitalCardAndAdminT
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-4">
         <div>
           <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-emerald-800" />
-            <span>کارت عضویت دیجیتال، کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای و تراز مالی</span>
+            <Lock className="w-4 h-4 text-emerald-800" />
+            <span>کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای و تراز مالی</span>
           </h3>
           <p className="text-[11px] text-stone-500 mt-0.5">
-            صدور کارت شناسایی دیجیتال عضو، سیاست عدم نمایش مشخصات اعضا برای دیگران، ورود گروهی و گزارش مالی کل سامانه
+            سیاست عدم نمایش مشخصات اعضا برای دیگران، ورود گروهی و گزارش مالی کل سامانه
           </p>
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
           <button
             type="button"
-            onClick={() => setActiveTab('digital_card')}
+            onClick={() => setActiveTab('privacy_matrix')}
             className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-              activeTab === 'digital_card'
+              activeTab === 'privacy_matrix'
                 ? 'bg-emerald-800 text-white shadow-2xs'
                 : 'bg-[#F5F4EE] text-stone-700 hover:bg-stone-200/70'
             }`}
           >
-            <CreditCard className="w-3.5 h-3.5" />
-            <span>کارت عضویت دیجیتال</span>
+            <Lock className="w-3.5 h-3.5" />
+            <span>محرمانگی مشخصات دانش‌آموختگان</span>
           </button>
 
-          {isOfficial && (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveTab('privacy_matrix')}
-                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                  activeTab === 'privacy_matrix'
-                    ? 'bg-emerald-800 text-white shadow-2xs'
-                    : 'bg-[#F5F4EE] text-stone-700 hover:bg-stone-200/70'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>محرمانگی مشخصات دانش‌آموختگان</span>
-              </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('bulk_import')}
+            className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+              activeTab === 'bulk_import'
+                ? 'bg-emerald-800 text-white shadow-2xs'
+                : 'bg-[#F5F4EE] text-stone-700 hover:bg-stone-200/70'
+            }`}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>ورود دسته‌ای کاربران</span>
+          </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('bulk_import')}
-                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                  activeTab === 'bulk_import'
-                    ? 'bg-emerald-800 text-white shadow-2xs'
-                    : 'bg-[#F5F4EE] text-stone-700 hover:bg-stone-200/70'
-                }`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>ورود دسته‌ای کاربران</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('financial_balance')}
-                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                  activeTab === 'financial_balance'
-                    ? 'bg-emerald-800 text-white shadow-2xs'
-                    : 'bg-[#F5F4EE] text-stone-700 hover:bg-stone-200/70'
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>گزارش تراز مالی</span>
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('financial_balance')}
+            className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+              activeTab === 'financial_balance'
+                ? 'bg-emerald-800 text-white shadow-2xs'
+                : 'bg-[#F5F4EE] text-stone-700 hover:bg-stone-200/70'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>گزارش تراز مالی</span>
+          </button>
         </div>
       </div>
-
-      {/* ۱. کارت عضویت دیجیتال */}
-      {activeTab === 'digital_card' && cardUser && (
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-          <div className="w-full max-w-md rounded-3xl p-6 bg-gradient-to-br from-emerald-950 via-teal-900 to-stone-900 text-white shadow-xl border border-emerald-700/40 relative overflow-hidden space-y-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center font-black text-lg text-amber-300">
-                  {cardUser.avatarText || cardUser.fullName.slice(0, 2)}
-                </div>
-                <div>
-                  <span className="text-[10px] text-emerald-300 font-bold block">
-                    کارت رسمی عضویت کانون دانش‌آموختگان فقه و قضا
-                  </span>
-                  <h4 className="text-base font-black text-white mt-0.5">{cardUser.fullName}</h4>
-                  <span className="text-[11px] text-stone-300">{cardUser.roleTitle}</span>
-                </div>
-              </div>
-              <Scale className="w-6 h-6 text-amber-400/80 shrink-0" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs bg-white/10 rounded-2xl p-3.5 border border-white/10">
-              <div>
-                <span className="text-[10px] text-stone-300 block">کد ملی / شناسه یکتا:</span>
-                <strong className="font-mono font-black text-white">
-                  {toPersianNumbers(cardUser.nationalId)}
-                </strong>
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-300 block">شماره پرسنلی / عضویت:</span>
-                <strong className="font-mono font-black text-emerald-300">
-                  {toPersianNumbers(cardUser.personnelId || '۹۹۴۱۸')}
-                </strong>
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-300 block">پایه قضایی / مرتبه:</span>
-                <strong className="font-bold text-amber-300">
-                  پایه {toPersianNumbers(cardUser.judicialGrade || 8)} قضایی
-                </strong>
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-300 block">وضعیت اعتبار کارت:</span>
-                <strong className="font-bold text-emerald-300">معتبر و فعال (۱۴۰۳-۱۴۰۵)</strong>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 text-[11px] text-stone-300">
-              <div className="flex items-center gap-1.5 font-mono">
-                <QrCode className="w-5 h-5 text-amber-300" />
-                <span>VERIFIED-ID: FQ-{cardUser.nationalId.slice(-5)}</span>
-              </div>
-              <span>صادرشده توسط دبیرخانه مرکزی</span>
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-3 text-xs text-stone-600">
-            <h4 className="font-black text-stone-900 text-sm">
-              مزایا و کاربردهای کارت عضویت دیجیتال دانش‌آموختگان:
-            </h4>
-            <p className="leading-relaxed">
-              این کارت دارای شناسه دیجیتال یکتا جهت احراز هویت در همایش‌های تخصصی قوه قضائیه، استفاده از مجتمع‌های اقامتی مشهد و قم، و بهره‌مندی از تسهیلات صندوق قرض‌الحسنه حامی می‌باشد.
-            </p>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-4 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-black inline-flex items-center gap-2 cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-amber-400" />
-              <span>چاپ کارت عضویت دیجیتال</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ۲. ماتریس محرمانگی مطلق مشخصات دانش‌آموختگان در بخش‌های مختلف */}
       {activeTab === 'privacy_matrix' && isOfficial && (

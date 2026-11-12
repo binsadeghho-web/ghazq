@@ -251,7 +251,7 @@ export const UserManagementModule: React.FC = () => {
         </div>
       </div>
 
-      {/* کارت عضویت دیجیتال، کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
+      {/* کنترل محرمانگی دانش‌آموختگان، ورود دسته‌ای کاربران و گزارش تراز مالی */}
       <AlumniDigitalCardAndAdminTools
         currentUser={currentUser}
         isOfficial={!isReadOnlyObserverRole(currentUser?.role) && currentUser?.role !== 'alumni' && currentUser?.role !== 'customer'}

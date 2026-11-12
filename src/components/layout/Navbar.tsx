@@ -12,7 +12,8 @@ import {
   KeyRound,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  Eye
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -82,6 +83,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Zone 3: Actions (Theme Toggle, Sessions, Role Switcher, Profile/Login) */}
           <div className="flex items-center gap-2.5 shrink-0">
             
+            {/* Quick Alumni Simulation Switch */}
+            {currentUser && currentUser.role !== 'alumni' && (
+              <button
+                onClick={() => switchUserRole('alumni')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 rounded-xl transition-all border border-indigo-200 dark:border-indigo-800 shadow-2xs active:scale-95 cursor-pointer"
+                title="مشاهده فوری سامانه از دید دانش‌آموخته"
+              >
+                <Eye className="w-3.5 h-3.5 text-indigo-500" />
+                <span>دید دانش‌آموخته</span>
+              </button>
+            )}
+
             {/* Theme 2 (Crextio) Switcher Button */}
             <button
               onClick={toggleDesignTheme}

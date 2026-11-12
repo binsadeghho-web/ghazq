@@ -31,10 +31,15 @@ export function generateUUIDv7(): string {
 
 export function uuidStringToBinary(uuid: string): Buffer {
   const cleanHex = uuid.replace(/-/g, '');
-  if (cleanHex.length !== 32) {
-    return crypto.createHash('md5').update(uuid).digest();
+  if (cleanHex.length === 32 && /^[0-9a-fA-F]{32}$/.test(cleanHex)) {
+    return Buffer.from(cleanHex, 'hex');
   }
-  return Buffer.from(cleanHex, 'hex');
+  if (uuid.length <= 16) {
+    const buf = Buffer.alloc(16);
+    buf.write(uuid, 'utf-8');
+    return buf;
+  }
+  return crypto.createHash('md5').update(uuid).digest();
 }
 
 export function binaryToUuidString(buffer: Buffer): string {

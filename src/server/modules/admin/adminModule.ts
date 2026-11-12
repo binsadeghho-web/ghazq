@@ -69,7 +69,7 @@ export class AdminService {
       throw AppError.badRequest('کاربری با این کد ملی یا نام کاربری از قبل در سامانه ثبت شده است.');
     }
 
-    const passwordHash = bcrypt.hashSync(rawPassword, 10);
+    const passwordHash = await bcrypt.hash(rawPassword, 8);
     const id = generateUUIDv7();
 
     const createdUser = await userRepository.createUser({
