@@ -48,7 +48,7 @@ researchRouter.get('/', async (req: Request, res: Response, next) => {
     let sql = `SELECT * FROM research_mentorships WHERE 1=1`;
     const params: any[] = [];
 
-    if (currentUser.role === 'alumni') {
+    if (currentUser.role === 'alumni' || currentUser.role === 'customer') {
       sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
       params.push(toIdBuffer(currentUser.id), currentUser.id);
     }

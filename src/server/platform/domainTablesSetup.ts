@@ -270,10 +270,12 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
 
     try { await p.query(`ALTER TABLE courses ADD COLUMN visible_to_customer TINYINT(1) NOT NULL DEFAULT 1;`); } catch {}
     try { await p.query(`ALTER TABLE products ADD COLUMN visible_to_customer TINYINT(1) NOT NULL DEFAULT 1;`); } catch {}
+    try { await p.query(`ALTER TABLE products ADD COLUMN stock INT NOT NULL DEFAULT 20;`); } catch {}
     try { await p.query(`ALTER TABLE consumables ADD COLUMN visible_to_customer TINYINT(1) NOT NULL DEFAULT 1;`); } catch {}
 
     try { await p.query(`CREATE INDEX idx_courses_cust_vis ON courses (visible_to_customer, is_deleted);`); } catch {}
     try { await p.query(`CREATE INDEX idx_products_cust_vis ON products (visible_to_customer, is_deleted);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_products_stock ON products (stock, is_available);`); } catch {}
     try { await p.query(`CREATE INDEX idx_consumables_cust_vis ON consumables (visible_to_customer, category);`); } catch {}
 
     domainTablesInitialized = true;

@@ -22,6 +22,7 @@ function mapProductRow(row: any, isOwned = false): Product & { version: number }
     publishedYear: row.published_year,
     coverImage: row.cover_image || undefined,
     isAvailable: Boolean(row.is_available),
+    stock: Number(row.stock !== undefined ? row.stock : 20),
     isOwned,
     badgeText: row.badge_text || undefined,
     visibleToCustomer: row.visible_to_customer !== undefined ? Boolean(row.visible_to_customer) : true,
@@ -62,6 +63,10 @@ export class ProductsService {
     const idBuf = toIdBuffer(id);
     const rows = await selectWithTimeout<any>(`SELECT * FROM products WHERE id = ? OR id = ? LIMIT 1`, [idBuf, id], 3000);
     if (!rows || rows.length === 0) return undefined;
+
+    if (authCtx?.role === 'customer' && rows[0].visible_to_customer === 0) {
+      return undefined;
+    }
 
     let isOwned = false;
     if (authCtx?.userId) {
@@ -221,6 +226,10 @@ export class ProductsService {
     const product = await this.getById(productId, authCtx);
     if (!product) throw AppError.notFound(`اثر یا کتاب با شناسه ${productId}`);
 
+    if (authCtx.role === 'customer' && product.visibleToCustomer === false) {
+      throw AppError.forbidden('امکان خرید این اثر برای کاربران مشتری وجود ندارد.');
+    }
+
     const pBuf = toIdBuffer(productId);
     const uBuf = toIdBuffer(authCtx.userId);
     const orderId = generateUUIDv7();
@@ -228,6 +237,21 @@ export class ProductsService {
     const trackingCode = `PRD-${Date.now().toString().slice(-7)}`;
 
     return await withTx(async (conn) => {
+      // Atomic Conditional Inventory Decrement (Item 3: Atomic Inventory Guard)
+      const [stockRes]: any = await conn.query(
+        `UPDATE products 
+         SET stock = stock - 1, version = version + 1 
+         WHERE (id = ? OR id = ?) AND stock >= 1`,
+        [pBuf, productId]
+      );
+
+      if (!stockRes || stockRes.affectedRows === 0) {
+        throw AppError.conflict(
+          'موجودی کالا به پایان رسیده است.',
+          'PRODUCT_OUT_OF_STOCK'
+        );
+      }
+
       await conn.query(
         `INSERT INTO product_orders (
           id, product_id, product_title, user_id, user_name, user_phone, amount_paid, payment_status, tracking_code, version

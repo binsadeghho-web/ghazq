@@ -3,6 +3,7 @@ import { User, UserRole, UserSectionPermissions, AuditLog } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
 import { api } from '../services/apiClient';
 import { clearAllDrafts } from '../utils/draftStorage';
+import { refreshRolePoliciesFromServer } from '../utils/rbacPolicy';
 
 const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
 
@@ -87,6 +88,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   useEffect(() => {
     refreshUsers();
     const unsubscribe = api.subscribeToEvents(event => {
+      if (
+        event.type === 'rbac.permissions_updated' ||
+        event.type === 'rbac.policy_updated' ||
+        event.type === 'rbac.item_visibility_updated'
+      ) {
+        refreshRolePoliciesFromServer();
+        refreshUsers();
+
+        const data = event.data?.data || event.data;
+        if (currentUser && data && data.userId === currentUser.id) {
+          setCurrentUser({
+            ...currentUser,
+            ...(data.role ? { role: data.role } : {}),
+            ...(data.sectionPermissions ? { sectionPermissions: data.sectionPermissions } : {}),
+          });
+        }
+      }
+
       if (event.type.startsWith('user.')) {
         const delta = event.data?.data;
         const resourceId = delta?.resourceId;
@@ -104,6 +123,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
             }
             return prev;
           });
+
+          if (currentUser && currentUser.id === resourceId) {
+            setCurrentUser({
+              ...currentUser,
+              ...updates,
+            });
+          }
         } else {
           refreshUsers();
         }

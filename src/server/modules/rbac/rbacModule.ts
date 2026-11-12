@@ -26,6 +26,10 @@ import { DEFAULT_ROLE_POLICIES } from '../../../utils/rbacPolicy';
 let serverRolePoliciesCache: Record<string, RoleAccessPolicy> = { ...DEFAULT_ROLE_POLICIES };
 let policiesLoadedFromDb = false;
 
+export function getRolePoliciesCache(): Record<string, RoleAccessPolicy> {
+  return serverRolePoliciesCache;
+}
+
 export async function loadAndEnsureRolePolicies(): Promise<Record<string, RoleAccessPolicy>> {
   await ensureDomainTablesAndIndexes();
   if (!isDatabaseConnected()) {
@@ -74,7 +78,7 @@ export async function loadAndEnsureRolePolicies(): Promise<Record<string, RoleAc
           ...defPolicy,
           roleId: roleId as UserRole,
           roleTitle: dbRow.role_title || defPolicy.roleTitle,
-          isReadOnlyRole: Boolean(dbRow.is_read_only) || roleId === 'general_observer',
+          isReadOnlyRole: Boolean(dbRow.is_read_only),
           sectionPermissions: {
             ...defPolicy.sectionPermissions,
             ...parsedSections,
@@ -115,12 +119,6 @@ export function getServerEffectivePermission(
     DEFAULT_ROLE_POLICIES[role]?.sectionPermissions?.[sectionId] ||
     'none';
 
-  // Enforce strict read-only cap for General Observer (ناظر کل)
-  if (role === 'general_observer') {
-    if (perm === 'manage_all') perm = 'view_all';
-    if (perm === 'manage_own') perm = 'view_own';
-  }
-
   return perm;
 }
 
@@ -158,19 +156,7 @@ export async function rbacEnforcementMiddleware(
 
     const isMutation = req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS';
 
-    // 2. STRICT READ-ONLY ENFORCEMENT FOR GENERAL OBSERVER (ناظر کل)
-    if (user.role === 'general_observer' && isMutation) {
-      res.status(403).json({
-        type: 'forbidden',
-        title: 'نقش ناظر کل (صرفاً مشاهده)',
-        status: 403,
-        detail: 'نقش «ناظر کل» صرفاً دارای مجوز مشاهده (Read-Only) تمامی بخش‌های سامانه است و حق ویرایش، ثبت یا حذف هیچ داده‌ای را ندارد.',
-        code: 'OBSERVER_READ_ONLY_FORBIDDEN',
-      });
-      return;
-    }
-
-    // 3. Super Admin has full access to all endpoints
+    // 2. Super Admin has full access to all endpoints
     if (user.role === 'admin' || user.role === 'super_admin') {
       return next();
     }
@@ -222,18 +208,18 @@ export async function rbacEnforcementMiddleware(
     }
 
     // 5. Granular Welfare Sub-Section Enforcement for Customers & Alumni
-    if (subPath.startsWith('/welfare') && isMutation) {
+    if (subPath.startsWith('/welfare')) {
       const rolePolicy = serverRolePoliciesCache[user.role] || DEFAULT_ROLE_POLICIES[user.role as UserRole];
       const subPerms = rolePolicy?.subSectionPermissions;
       if (subPerms) {
-        if (subPath.includes('/requests') && req.method === 'POST') {
-          const reqType = req.body?.type;
+        if (subPath.includes('/requests')) {
+          const reqType = (req.method === 'GET' ? req.query?.type : req.body?.type) as string | undefined;
           if (reqType === 'loan' && subPerms.welfare_loans === false) {
             res.status(403).json({
               type: 'forbidden',
               title: 'عدم دسترسی به تسهیلات وام',
               status: 403,
-              detail: 'درخواست وام قرض‌الحسنه برای گروه کاربری شما فعال نیست.',
+              detail: 'دسترسی به بخش و درخواست وام قرض‌الحسنه برای گروه کاربری شما غیرفعال است.',
               code: 'WELFARE_LOAN_DISABLED',
             });
             return;
@@ -243,18 +229,18 @@ export async function rbacEnforcementMiddleware(
               type: 'forbidden',
               title: 'عدم دسترسی به اسکان زیارتی',
               status: 403,
-              detail: 'رزرو اسکان و اقامتگاه برای گروه کاربری شما فعال نیست.',
+              detail: 'دسترسی به بخش و رزرو اسکان و اقامتگاه برای گروه کاربری شما غیرفعال است.',
               code: 'WELFARE_ACCOMMODATION_DISABLED',
             });
             return;
           }
         }
-        if (subPath.includes('/orders') && req.method === 'POST' && subPerms.welfare_cooperative === false) {
+        if ((subPath.includes('/orders') || subPath.includes('/consumables')) && subPerms.welfare_cooperative === false) {
           res.status(403).json({
             type: 'forbidden',
             title: 'عدم دسترسی به تعاونی مصرف',
             status: 403,
-            detail: 'ثبت سفارش اقلام تعاونی برای گروه کاربری شما فعال نیست.',
+            detail: 'دسترسی به بخش و سفارش اقلام تعاونی برای گروه کاربری شما غیرفعال است.',
             code: 'WELFARE_COOPERATIVE_DISABLED',
           });
           return;
@@ -405,14 +391,6 @@ export function createRbacRouter(): Router {
         ...(sectionPermissions || {}),
       };
 
-      // If role is general_observer, ensure no permission exceeds view_all / view_own
-      if (roleId === 'general_observer') {
-        for (const k of Object.keys(nextSections) as AppSectionId[]) {
-          if (nextSections[k] === 'manage_all') nextSections[k] = 'view_all';
-          if (nextSections[k] === 'manage_own') nextSections[k] = 'view_own';
-        }
-      }
-
       const nextSubSections: RoleSubSectionPermissions = {
         ...currentPolicy.subSectionPermissions,
         ...(subSectionPermissions || {}),
@@ -436,7 +414,7 @@ export function createRbacRouter(): Router {
             currentPolicy.roleTitle,
             JSON.stringify(nextSections),
             JSON.stringify(nextSubSections),
-            roleId === 'general_observer' ? 1 : 0,
+            currentPolicy.isReadOnlyRole ? 1 : 0,
             nextVersion,
             actor.fullName,
           ]
@@ -466,6 +444,12 @@ export function createRbacRouter(): Router {
         resourceId: roleId,
         version: nextVersion,
         updates: updatedPolicy,
+      });
+      outbox.enqueue('rbac.permissions_updated', {
+        targetType: 'role',
+        roleId,
+        version: nextVersion,
+        policy: updatedPolicy,
       });
 
       auditChain.appendEntry({
@@ -562,6 +546,12 @@ export function createRbacRouter(): Router {
         itemId,
         visibleToCustomer,
       });
+      outbox.enqueue('rbac.permissions_updated', {
+        targetType: 'customer_item_visibility',
+        entityType,
+        itemId,
+        visibleToCustomer,
+      });
 
       res.json({
         success: true,
@@ -615,6 +605,7 @@ export function createRbacRouter(): Router {
         const updates: any = {
           role: role as UserRole,
           roleTitle: resolvedTitle,
+          tokenVersionIncrement: true,
         };
         if (applyRoleDefaultPermissions !== false) {
           updates.sectionPermissions = targetPolicy.sectionPermissions;
@@ -629,6 +620,12 @@ export function createRbacRouter(): Router {
           updates: sanitizeUserForApi(updated),
         });
       }
+
+      outbox.enqueue('rbac.permissions_updated', {
+        targetType: 'bulk_users',
+        userIds,
+        role,
+      });
 
       res.json({
         success: true,

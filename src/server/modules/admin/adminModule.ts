@@ -123,6 +123,8 @@ export class AdminService {
       isActive?: boolean;
       password?: string;
       mustChangePassword?: boolean;
+      sectionPermissions?: any;
+      [key: string]: any;
     },
     baseVersion?: number
   ): Promise<User> {
@@ -168,6 +170,10 @@ export class AdminService {
       updateFields.tokenVersionIncrement = true;
     }
 
+    if (updates.sectionPermissions !== undefined || updates.role !== undefined) {
+      updateFields.tokenVersionIncrement = true;
+    }
+
     const updatedUser = await userRepository.updateUserOptimistic(
       targetUserId,
       updateFields,
@@ -178,6 +184,15 @@ export class AdminService {
       userId: updatedUser.id,
       version: updatedUser.version,
     });
+
+    if (updates.sectionPermissions !== undefined || updates.role !== undefined) {
+      outbox.enqueue('rbac.permissions_updated', {
+        targetType: 'user',
+        userId: updatedUser.id,
+        role: updatedUser.role,
+        sectionPermissions: updatedUser.sectionPermissions,
+      });
+    }
 
     auditChain.appendEntry({
       eventType: 'USER_UPDATED',

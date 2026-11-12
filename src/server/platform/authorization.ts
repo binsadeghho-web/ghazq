@@ -95,4 +95,73 @@ export class AuthorizationPolicy {
     const ownerId = resource.applicantId || resource.authorId || resource.submittedById || '';
     return this.assertOwnership(currentUser, ownerId, resourceName, true);
   }
+
+  /**
+   * Central Guard checking whether a user has 'view' or 'edit' access to an application section
+   * based on the MySQL-backed effective permission matrix.
+   */
+  static assertSectionAccess(
+    user: any,
+    sectionId: import('../../types').AppSectionId,
+    action: 'view' | 'edit' = 'view'
+  ): void {
+    if (!user) {
+      throw AppError.unauthorized('جهت دسترسی به این بخش، احراز هویت الزامی است.');
+    }
+    const role: UserRole = user.role || 'alumni';
+    if (role === 'admin' || role === 'super_admin') {
+      return;
+    }
+
+    // Lazy load rbacModule permission lookup
+    const { getServerEffectivePermission } = require('../modules/rbac/rbacModule');
+    const perm = getServerEffectivePermission(user, sectionId);
+
+    if (perm === 'none') {
+      throw AppError.forbidden(
+        `دسترسی به بخش «${sectionId}» برای نقش یا حساب کاربری شما غیرفعال شده است.`,
+        'SECTION_ACCESS_DENIED'
+      );
+    }
+
+    if (action === 'edit' && (perm === 'view_all' || perm === 'view_own')) {
+      throw AppError.forbidden(
+        `سطح دسترسی شما در بخش «${sectionId}» صرفاً مشاهده است و مجاز به ویرایش داده‌ها نیستید.`,
+        'SECTION_READ_ONLY'
+      );
+    }
+  }
+
+  /**
+   * Granular Welfare Sub-Section Guard (loans, accommodations, cooperative)
+   */
+  static assertWelfareSubSection(
+    user: any,
+    subSection: 'welfare_loans' | 'welfare_accommodations' | 'welfare_cooperative',
+    action: 'view' | 'edit' = 'view'
+  ): void {
+    if (!user) throw AppError.unauthorized();
+    if (user.role === 'admin' || user.role === 'super_admin') return;
+
+    const { getRolePoliciesCache } = require('../modules/rbac/rbacModule');
+    const policies = getRolePoliciesCache();
+    const policy = policies[user.role];
+    const subPerms = policy?.subSectionPermissions;
+
+    if (subPerms && subPerms[subSection] === false) {
+      const titles = {
+        welfare_loans: 'تسهیلات وام قرض‌الحسنه',
+        welfare_accommodations: 'اسکان و اقامتگاه زیارتی',
+        welfare_cooperative: 'تعاونی مصرف دانش‌آموختگان',
+      };
+      throw AppError.forbidden(
+        `دسترسی به «${titles[subSection]}» برای گروه کاربری شما غیرفعال شده است.`,
+        `WELFARE_${subSection.toUpperCase()}_DISABLED`
+      );
+    }
+  }
+
+  static isCustomer(user: any): boolean {
+    return user?.role === 'customer';
+  }
 }

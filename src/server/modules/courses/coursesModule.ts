@@ -183,8 +183,12 @@ export class CoursesService {
     }
     const course = mapCourseRow(coursesRows[0]);
 
+    if (authCtx.role === 'customer' && course.visibleToCustomer === false) {
+      throw AppError.forbidden('این دوره آموزشی برای کاربران مشتری در دسترس نیست.');
+    }
+
     if (course.enrolledCount >= course.capacity) {
-      throw AppError.unprocessable('ظرفیت ثبت‌نام در این دوره تکمیل گردیده است.');
+      throw AppError.conflict('ظرفیت دوره تکمیل شده است.', 'COURSE_CAPACITY_EXCEEDED');
     }
 
     const [existingRows] = await p.query<any[]>(
@@ -210,7 +214,7 @@ export class CoursesService {
       userName: authCtx.fullName,
       userNationalId: (authCtx as any).nationalId || '0019988776',
       userPhone: (authCtx as any).phone || '09120000000',
-      userRoleTitle: authCtx.role === 'alumni' ? 'دانش‌آموخته' : 'عضو هیئت علمی / مسئول',
+      userRoleTitle: authCtx.role === 'alumni' ? 'دانش‌آموخته' : authCtx.role === 'customer' ? 'کاربر مشتری' : 'عضو هیئت علمی / مسئول',
       enrolledAt: now,
       paymentMethod: dto.paymentMethod,
       paymentStatus,
@@ -223,6 +227,18 @@ export class CoursesService {
     };
 
     return await withTx(async (conn) => {
+      // Atomic Conditional Capacity Increment in MySQL (Item 3: Atomic Inventory Guard)
+      const [capRes]: any = await conn.query(
+        `UPDATE courses 
+         SET enrolled_count = enrolled_count + 1, version = version + 1 
+         WHERE (id = ? OR id = ?) AND enrolled_count < capacity`,
+        [cBuf, courseId]
+      );
+
+      if (!capRes || capRes.affectedRows === 0) {
+        throw AppError.conflict('ظرفیت دوره تکمیل شده است.', 'COURSE_CAPACITY_EXCEEDED');
+      }
+
       await conn.query(
         `INSERT INTO course_enrollments (
           id, course_id, course_title, user_id, user_name, user_national_id, user_phone, user_role_title,
@@ -246,13 +262,6 @@ export class CoursesService {
           enrollment.receiptFileUrl || null,
         ]
       );
-
-      if (paymentStatus === 'confirmed') {
-        await conn.query(
-          `UPDATE courses SET enrolled_count = enrolled_count + 1, version = version + 1 WHERE id = ? OR id = ?`,
-          [cBuf, courseId]
-        );
-      }
 
       auditChain.appendEntry({
         eventType: 'LOGIN_SUCCESS',

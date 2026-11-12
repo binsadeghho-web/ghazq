@@ -560,6 +560,7 @@ export interface Product {
   shippingFixedFee?: number;
   pickupAddressNotice?: string;
   isAvailable: boolean;
+  stock?: number;
   badgeText?: string;
   isOwned?: boolean;
   isDeleted?: boolean;

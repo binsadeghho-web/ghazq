@@ -451,7 +451,11 @@ export function useRbacPolicies(): {
       initialized = true;
       refreshRolePoliciesFromServer();
       api.subscribeToEvents(ev => {
-        if (ev.type === 'rbac.policy_updated' || ev.type === 'rbac.item_visibility_updated') {
+        if (
+          ev.type === 'rbac.policy_updated' ||
+          ev.type === 'rbac.item_visibility_updated' ||
+          ev.type === 'rbac.permissions_updated'
+        ) {
           refreshRolePoliciesFromServer();
         }
       });
@@ -506,9 +510,8 @@ export function getRoleMetadata(role?: UserRole | string | null) {
 /**
  * Computes effective permission for a user on a given section:
  * 1. Super Admin ('admin' / 'super_admin') ALWAYS has 'manage_all'.
- * 2. General Observer ('general_observer') NEVER has edit rights; if a section is not 'none', it is capped at 'view_all'.
- * 3. Individual user override (`user.sectionPermissions?.[sectionId]`) takes precedence if explicitly set.
- * 4. Otherwise falls back to the Role's policy in `rolePolicies[user.role]`.
+ * 2. Individual user override (`user.sectionPermissions?.[sectionId]`) takes precedence if explicitly set.
+ * 3. Otherwise falls back to the Role's policy in `rolePolicies[user.role]` (dynamic DB policy matrix).
  */
 export function getEffectiveSectionPermission(
   user: User | null | undefined,
@@ -528,17 +531,11 @@ export function getEffectiveSectionPermission(
       ? 'counseling'
       : sectionId;
 
-  let rawPerm: PermissionAccessLevel =
+  const rawPerm: PermissionAccessLevel =
     user.sectionPermissions?.[fallbackSectionId] ||
     rolePolicy?.sectionPermissions?.[fallbackSectionId] ||
     DEFAULT_ROLE_POLICIES[user.role]?.sectionPermissions?.[fallbackSectionId] ||
     'none';
-
-  // Enforce strict read-only cap for General Observer (ناظر کل)
-  if (isReadOnlyObserverRole(user.role)) {
-    if (rawPerm === 'manage_all') rawPerm = 'view_all';
-    if (rawPerm === 'manage_own') rawPerm = 'view_own';
-  }
 
   return rawPerm;
 }
@@ -560,7 +557,6 @@ export function canViewSection(
 
 /**
  * Returns true if the user has administrative/edit rights in the section ('manage_all').
- * Note: General Observer ('general_observer') ALWAYS returns false here!
  */
 export function canManageAllInSection(
   user: User | null | undefined,
@@ -568,7 +564,6 @@ export function canManageAllInSection(
   policies: Record<string, RoleAccessPolicy> = cachedRolePolicies
 ): boolean {
   if (!user) return false;
-  if (isReadOnlyObserverRole(user.role)) return false;
   if (isSuperAdminRole(user.role)) return true;
   const perm = getEffectiveSectionPermission(user, sectionId, policies);
   return perm === 'manage_all';
@@ -576,7 +571,7 @@ export function canManageAllInSection(
 
 /**
  * Returns true if the user can perform personal mutations (e.g., enrolling, submitting a request)
- * OR full management in the section. General Observer returns false.
+ * OR full management in the section.
  */
 export function canMutateInSection(
   user: User | null | undefined,
@@ -584,7 +579,6 @@ export function canMutateInSection(
   policies: Record<string, RoleAccessPolicy> = cachedRolePolicies
 ): boolean {
   if (!user) return false;
-  if (isReadOnlyObserverRole(user.role)) return false;
   if (isSuperAdminRole(user.role)) return true;
   const perm = getEffectiveSectionPermission(user, sectionId, policies);
   return perm === 'manage_all' || perm === 'manage_own';

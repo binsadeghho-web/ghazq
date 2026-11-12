@@ -177,7 +177,7 @@ export class CartableService {
   constructor(private repo: ICartableRepository) {}
 
   async getRequests(authCtx: AuthContext): Promise<Array<CartableRequest & { version: number }>> {
-    if (authCtx.role === 'alumni') {
+    if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       return this.repo.findAll({ applicantId: authCtx.userId });
     }
     return this.repo.findAll();

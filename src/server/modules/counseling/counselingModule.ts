@@ -212,7 +212,7 @@ export class CounselingService {
     let sql = `SELECT * FROM counseling_requests WHERE 1=1`;
     const params: any[] = [];
 
-    if (authCtx.role === 'alumni') {
+    if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
       params.push(toIdBuffer(authCtx.userId), authCtx.userId);
     }
@@ -232,7 +232,7 @@ export class CounselingService {
     );
     if (!rows || rows.length === 0) return undefined;
     const item = mapCounselingRequestRow(rows[0]);
-    if (authCtx.role === 'alumni') {
+    if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       AuthorizationPolicy.assertOwnership(authCtx, item.applicantId, 'درخواست مشاوره');
     }
     return item;

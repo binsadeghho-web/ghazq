@@ -186,10 +186,16 @@ welfareRouter.put('/requests/:id', async (req: Request, res: Response, next) => 
   }
 });
 
-welfareRouter.get('/consumables', async (_req: Request, res: Response, next) => {
+welfareRouter.get('/consumables', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
-    const rows = await selectWithTimeout<any>(`SELECT * FROM consumables ORDER BY created_at DESC`, [], 3000);
+    const currentUser = getCurrentUser(req);
+    let sql = `SELECT * FROM consumables`;
+    if (currentUser.role === 'customer') {
+      sql += ` WHERE (visible_to_customer = 1 OR visible_to_customer IS NULL)`;
+    }
+    sql += ` ORDER BY created_at DESC`;
+    const rows = await selectWithTimeout<any>(sql, [], 3000);
     res.json((rows || []).map(mapConsumableRow));
   } catch (err) {
     next(err);
@@ -203,7 +209,7 @@ welfareRouter.get('/orders', async (req: Request, res: Response, next) => {
     let sql = `SELECT * FROM consumable_orders WHERE 1=1`;
     const params: any[] = [];
 
-    if (currentUser.role === 'alumni') {
+    if (currentUser.role === 'alumni' || currentUser.role === 'customer') {
       sql += ` AND (user_id = ? OR user_id = ?)`;
       params.push(toIdBuffer(currentUser.id), currentUser.id);
     }
@@ -315,25 +321,24 @@ welfareRouter.post('/orders', idempotencyMiddleware, async (req: Request, res: R
     const computedTotal = items.reduce((sum: number, it: any) => sum + (Number(it.unitPrice || it.price || 0) * Number(it.quantity || 1)), 0);
     const price = Math.round(Number(totalAmount) || computedTotal || 0);
 
-    // Atomic Stock Verification & Decrement inside Transaction (withTx)
+    // Atomic Stock Verification & Decrement inside Transaction (Item 3: Atomic Inventory Guard)
     await withTx(async (conn) => {
       for (const orderItem of items) {
         const itemId = orderItem.itemId || orderItem.id;
         const qty = Math.max(1, Number(orderItem.quantity || 1));
         if (itemId) {
           const itemBuf = toIdBuffer(itemId);
-          const [stockRows]: any = await conn.query(
-            `SELECT id, title, stock FROM consumables WHERE id = ? OR id = ? FOR UPDATE`,
-            [itemBuf, itemId]
+          const [stockDec]: any = await conn.query(
+            `UPDATE consumables 
+             SET stock = stock - ?, version = version + 1 
+             WHERE (id = ? OR id = ?) AND stock >= ?`,
+            [qty, itemBuf, itemId, qty]
           );
-          if (stockRows && stockRows.length > 0) {
-            const currentStock = Number(stockRows[0].stock || 0);
-            if (currentStock < qty) {
-              throw AppError.unprocessable(`موجودی کالای «${stockRows[0].title}» به اتمام رسیده است (موجودی فعلی: ${currentStock}). امکان ثبت سفارش وجود ندارد.`);
-            }
-            await conn.query(
-              `UPDATE consumables SET stock = stock - ?, version = version + 1 WHERE id = ? OR id = ?`,
-              [qty, itemBuf, itemId]
+          if (!stockDec || stockDec.affectedRows === 0) {
+            const title = orderItem.title || orderItem.name || 'کالای انتخابی';
+            throw AppError.conflict(
+              `موجودی کالا به پایان رسیده است (کالای «${title}»).`,
+              'CONSUMABLE_OUT_OF_STOCK'
             );
           }
         }
