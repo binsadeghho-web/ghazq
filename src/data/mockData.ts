@@ -322,7 +322,31 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
     researchBody: 'text-xs',
     cardTitles: 'text-sm',
     cardSubtitles: 'text-[11px]'
-  }
+  },
+  dashboardSectionOrder: [
+    'top_vip_row',
+    'rulings_showcase',
+    'research_promo',
+    'course_showcase',
+    'counseling_promo',
+    'welfare_showcase',
+    'multimedia_showcase',
+    'bento_grid',
+    'books_showcase'
+  ],
+  hiddenDashboardSections: {},
+  dashboardSectionLayouts: {
+    top_vip_row: { span: 'full', density: 'full' },
+    rulings_showcase: { span: 'full', density: 'full' },
+    research_promo: { span: 'full', density: 'full' },
+    course_showcase: { span: 'full', density: 'full' },
+    counseling_promo: { span: 'full', density: 'full' },
+    welfare_showcase: { span: 'full', density: 'full' },
+    multimedia_showcase: { span: 'full', density: 'full' },
+    bento_grid: { span: 'full', density: 'full' },
+    books_showcase: { span: 'full', density: 'full' },
+  },
+  defaultAlumniTheme: 'crextio'
 };
 
 export const DEFAULT_MIZAN_CONFIG: MizanDashboardConfig = {

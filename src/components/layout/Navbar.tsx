@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setMobileMenuOpen,
   activeSectionTitle = 'کارتابل خدمات اداری و آموزشی',
 }) => {
-  const { currentUser, logout, switchUserRole, theme, toggleTheme, designTheme, toggleDesignTheme } = useApp();
+  const { currentUser, logout, switchUserRole, theme, toggleTheme, designTheme, setDesignTheme } = useApp();
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
   const getRoleLabel = (role: UserRole) => {
@@ -95,15 +95,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Theme 2 (Crextio) Switcher Button */}
-            <button
-              onClick={toggleDesignTheme}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-amber-300 bg-amber-400/20 hover:bg-amber-400/30 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 rounded-xl transition-all border border-amber-400/50 dark:border-amber-500/40 shadow-2xs active:scale-95"
-              title="نمایش تم دوم (طرح مینیمال Crextio)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-              <span>تم ۲: Crextio</span>
-            </button>
+            {/* Theme 2 & Theme 3 Switcher Buttons */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold">
+              <button
+                onClick={() => setDesignTheme('crextio')}
+                className="px-2.5 py-1 rounded-lg text-slate-700 dark:text-amber-300 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
+                title="تم ۲: ویترین و طرح میزان"
+              >
+                تم ۲
+              </button>
+              <button
+                onClick={() => setDesignTheme('minimal')}
+                className="px-2.5 py-1 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
+                title="تم ۳: مجمع مینیمال و هم‌افزایی"
+              >
+                تم ۳ (مینیمال)
+              </button>
+            </div>
 
             {/* Theme Toggle Button */}
             <button

@@ -18,6 +18,7 @@ import { ConcurrentConflictModal } from './components/common/ConcurrentConflictM
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
 const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
 const CrextioLayout = lazy(() => import('./components/crextio/CrextioLayout').then(m => ({ default: m.CrextioLayout })));
+const MinimalThemeLayout = lazy(() => import('./components/minimal/MinimalThemeLayout').then(m => ({ default: m.MinimalThemeLayout })));
 const MizanLayout = lazy(() => import('./components/mizan/MizanLayout').then(m => ({ default: m.MizanLayout })));
 const WelfareSection = lazy(() => import('./components/welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
 const AlumniDirectorySection = lazy(() => import('./components/alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
@@ -41,7 +42,7 @@ const tabTitles: Record<NavTabId, string> = {
 };
 
 const MainLayout: React.FC = () => {
-  const { designTheme, setDesignTheme, currentUser } = useApp();
+  const { designTheme, setDesignTheme, currentUser, crextioConfig } = useApp();
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
@@ -52,7 +53,16 @@ const MainLayout: React.FC = () => {
     return <ModernLoginPage isFullPage={true} />;
   }
 
-  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio.
+  // Theme 3: Minimalist Community Hub
+  if (designTheme === 'minimal' || (currentUser?.role === 'alumni' && crextioConfig.defaultAlumniTheme === 'minimal')) {
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <MinimalThemeLayout onSelectTheme={setDesignTheme} />
+      </Suspense>
+    );
+  }
+
+  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio unless Minimal is selected as default.
   if (designTheme === 'crextio' || currentUser?.role === 'alumni') {
     return <CrextioLayout onToggleToPortalTheme={() => setDesignTheme('portal')} />;
   }
@@ -190,15 +200,21 @@ const MainLayout: React.FC = () => {
 
       {/* Floating Theme Switcher Capsule (Only for Admin / Supervisor on Theme 1) */}
       {currentUser && (currentUser.role === 'admin' || currentUser.role === 'supervisor') && (
-        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
+        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-1.5 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
           <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-slate-900 shadow-sm">
-            تم ۱: پرتال (فعال)
+            تم ۱: پرتال
           </span>
           <button
             onClick={() => setDesignTheme('crextio')}
             className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer text-slate-300 hover:text-white"
           >
-            بازگشت به تم ۲ (کرکستیو)
+            تم ۲: کرکستیو
+          </button>
+          <button
+            onClick={() => setDesignTheme('minimal')}
+            className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer text-emerald-300 hover:text-white"
+          >
+            تم ۳: مینیمال
           </button>
         </div>
       )}

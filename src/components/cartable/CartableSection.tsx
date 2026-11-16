@@ -452,56 +452,138 @@ export const CartableSection: React.FC = () => {
   const selectedCategoryObj = categories.find(c => c.key === newCategoryKey) || categories[0];
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* 4 Metric Cards Overview conforming to Blueprint Section 9 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <ModernMetricCard
-          title="درخواست‌های جدید / باز"
-          value={pendingCount}
-          periodLabel="نیازمند بررسی مسئول"
-          unit="مورد"
-          icon={<Clock className="w-4 h-4 text-amber-500" />}
-          onClick={() => {
-            setViewMode('all_requests');
-            setStatusFilter('pending');
-          }}
-        />
-        <ModernMetricCard
-          title="در حال جریان"
-          value={inProgressCount}
-          periodLabel="پیگیری ارجاعات"
-          unit="مورد"
-          icon={<FolderKanban className="w-4 h-4 text-sky-500" />}
-          onClick={() => {
-            setViewMode('all_requests');
-            setStatusFilter('in_progress');
-          }}
-        />
-        <ModernMetricCard
-          title="اعلان‌ها / پیام جدید"
-          value={unreadCount}
-          periodLabel="پاسخ‌های جدید گفت‌وگو"
-          unit="پیام"
-          icon={<BadgeAlert className="w-4 h-4 text-rose-500" />}
-          onClick={() => {
-            setViewMode('all_requests');
-          }}
-        />
-        <ModernMetricCard
-          title="پرونده‌های مختومه‌شده"
-          value={archivedCount}
-          periodLabel="بایگانی نهایی"
-          unit="پرونده"
-          icon={<Archive className="w-4 h-4 text-emerald-500" />}
-          onClick={() => {
-            setViewMode('all_requests');
-            setStatusFilter('archived');
-          }}
-        />
-      </div>
+    <div className="space-y-4" dir="rtl">
+      {/* Compact Single-Row Summary & Filter Strip for Admin / Official, or 4 KPI Cards for Alumni */}
+      {isOfficial ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl px-4 py-2.5 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center flex-wrap gap-1.5 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('all_requests');
+                setStatusFilter('all');
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'all'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <span>همه پرونده‌ها</span>
+              <span className="font-mono tabular-nums opacity-80">{toPersianNumbers(myRequests.length)}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('all_requests');
+                setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending');
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'pending'
+                  ? 'bg-amber-500 text-stone-950 font-black'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>جدید / باز</span>
+              <span className="font-mono tabular-nums">{toPersianNumbers(pendingCount)}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('all_requests');
+                setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress');
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'in_progress'
+                  ? 'bg-sky-500 text-stone-950 font-black'
+                  : 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20'
+              }`}
+            >
+              <FolderKanban className="w-3.5 h-3.5" />
+              <span>در حال جریان</span>
+              <span className="font-mono tabular-nums">{toPersianNumbers(inProgressCount)}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('all_requests');
+                setStatusFilter(statusFilter === 'archived' ? 'all' : 'archived');
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'archived'
+                  ? 'bg-emerald-500 text-stone-950 font-black'
+                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
+              }`}
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span>مختومه / انجام‌شده</span>
+              <span className="font-mono tabular-nums">{toPersianNumbers(archivedCount)}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">
+              <BadgeAlert className="w-3.5 h-3.5" />
+              <span>پیام‌های نخوانده:</span>
+              <span className="font-mono tabular-nums font-black">{toPersianNumbers(unreadCount)}</span>
+            </span>
+          </div>
+        </div>
+      ) : (
+        /* 4 Metric Cards Overview for Alumni */
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <ModernMetricCard
+            title="درخواست‌های جدید / باز"
+            value={pendingCount}
+            periodLabel="نیازمند بررسی مسئول"
+            unit="مورد"
+            icon={<Clock className="w-4 h-4 text-amber-500" />}
+            onClick={() => {
+              setViewMode('all_requests');
+              setStatusFilter('pending');
+            }}
+          />
+          <ModernMetricCard
+            title="در حال جریان"
+            value={inProgressCount}
+            periodLabel="پیگیری ارجاعات"
+            unit="مورد"
+            icon={<FolderKanban className="w-4 h-4 text-sky-500" />}
+            onClick={() => {
+              setViewMode('all_requests');
+              setStatusFilter('in_progress');
+            }}
+          />
+          <ModernMetricCard
+            title="اعلان‌ها / پیام جدید"
+            value={unreadCount}
+            periodLabel="پاسخ‌های جدید گفت‌وگو"
+            unit="پیام"
+            icon={<BadgeAlert className="w-4 h-4 text-rose-500" />}
+            onClick={() => {
+              setViewMode('all_requests');
+            }}
+          />
+          <ModernMetricCard
+            title="پرونده‌های مختومه‌شده"
+            value={archivedCount}
+            periodLabel="بایگانی نهایی"
+            unit="پرونده"
+            icon={<Archive className="w-4 h-4 text-emerald-500" />}
+            onClick={() => {
+              setViewMode('all_requests');
+              setStatusFilter('archived');
+            }}
+          />
+        </div>
+      )}
 
       {/* Main Header Bar */}
-      <div className="glass-card rounded-3xl p-6 border border-slate-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
@@ -634,9 +716,9 @@ export const CartableSection: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* LEFT COLUMN: Applicants or Requests List (5 cols) */}
-        <div className="lg:col-span-5 glass-card rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col transition-colors shadow-lg">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors">
           {/* Header Controls inside Left Column */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50 dark:bg-slate-900/50">
             {selectedApplicantId && (
@@ -766,34 +848,33 @@ export const CartableSection: React.FC = () => {
                     <button
                       key={req.id}
                       onClick={() => setSelectedReqId(req.id)}
-                      className={`w-full p-4 text-right transition-all flex flex-col gap-2.5 ${
+                      className={`w-full p-3.5 text-right transition-colors flex flex-col gap-2 cursor-pointer ${
                         isSelected
-                          ? 'bg-slate-200/90 dark:bg-slate-800/90 border-r-4 border-emerald-500 shadow-xs'
-                          : 'hover:bg-slate-100/70 dark:hover:bg-slate-800/40'
+                          ? 'bg-emerald-50/70 dark:bg-emerald-950/30 ring-1 ring-inset ring-emerald-500/30'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       }`}
                     >
-                      {/* Zero Overlap Header: Clean Inline Flex Box */}
+                      {/* Clean Inline Header with Zero Pill Clutter */}
                       <div className="flex items-center justify-between text-xs gap-2">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-500 dark:text-slate-400">
-                          <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-bold">
-                            کد {cleanTrackingCode}
+                        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 min-w-0">
+                          <span className="text-[11px] font-mono tabular-nums text-emerald-700 dark:text-emerald-400 font-bold">
+                            #{cleanTrackingCode}
                           </span>
                           <span>·</span>
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium truncate">
                             {req.categoryTitle ? req.categoryTitle.split(' ')[0] : 'خدمات'}
                           </span>
                         </div>
 
-                        {/* Inline Badges Container (No Absolute Overlap) */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isUnread && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/40 text-[10px] font-black animate-pulse">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-black">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-                              <span>پاسخ جدید</span>
+                              <span>جدید</span>
                             </span>
                           )}
                           <span
-                            className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${statusMeta.color}`}
+                            className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${statusMeta.color}`}
                           >
                             {statusMeta.label}
                           </span>
@@ -804,8 +885,8 @@ export const CartableSection: React.FC = () => {
                         {req.title}
                       </h3>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 font-medium">
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
                           {req.applicantName}
                         </span>
                         <span className="font-mono tabular-nums">
@@ -821,30 +902,47 @@ export const CartableSection: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: Chat Canvas & Interactive Response Matrix (7 cols) */}
-        <div className="lg:col-span-7 glass-card rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col transition-colors shadow-xl min-h-[600px]">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors min-h-[620px]">
           {selectedRequest ? (
             <>
-              {/* Header Box */}
-              <div className="p-6 border-b border-slate-200 dark:border-slate-800 space-y-4 bg-slate-50 dark:bg-slate-900/60">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-bold">
-                      <span className="text-emerald-600 dark:text-emerald-400">
+              {/* Unified Case Inspector Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/70 dark:bg-slate-900/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                         {selectedRequest.categoryTitle}
                       </span>
                       <span>·</span>
+                      <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400">
+                        کد پیگیری: {toPersianNumbers(selectedRequest.trackingNumber)}
+                      </span>
+                      <span>·</span>
                       <span className="font-mono tabular-nums text-slate-400">
-                        شماره پیگیری: {toPersianNumbers(selectedRequest.trackingNumber)}
+                        {toPersianNumbers(selectedRequest.createdAt)}
                       </span>
                     </div>
 
-                    <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                    <h2 className="text-base font-black text-slate-900 dark:text-white leading-snug">
                       {selectedRequest.title}
                     </h2>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                      <span>
+                        متقاضی:{' '}
+                        <strong className="text-slate-900 dark:text-white font-bold">
+                          {selectedRequest.applicantName}
+                        </strong>
+                      </span>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {selectedRequest.applicantRoleTitle}
+                      </span>
+                    </div>
                   </div>
 
                   <span
-                    className={`text-xs font-black px-3 py-1.5 rounded-xl border shrink-0 ${
+                    className={`text-xs font-black px-2.5 py-1 rounded-lg border shrink-0 ${
                       getStatusText(selectedRequest.status).color
                     }`}
                   >
@@ -852,95 +950,41 @@ export const CartableSection: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800 font-medium">
-                  <span>
-                    متقاضی:{' '}
-                    <strong className="text-slate-900 dark:text-white font-bold">
-                      {selectedRequest.applicantName}
-                    </strong>
-                  </span>
-                  <span>·</span>
-                  <span>سمت: {selectedRequest.applicantRoleTitle}</span>
-                  <span>·</span>
-                  <span className="font-mono tabular-nums">
-                    ثبت: {toPersianNumbers(selectedRequest.createdAt)}
-                  </span>
-                  {(selectedRequest as any).referredDepartment && (
-                    <>
-                      <span>·</span>
-                      <span className="text-sky-600 dark:text-sky-400 font-bold bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20">
-                        ارجاع شده به: {(selectedRequest as any).referredDepartment}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* Supervisor Status Action Matrix (دکمه‌های تغییر وضعیت مسئول) */}
+                {/* Compact Inline Status Switcher for Officials */}
                 {isOfficial && (
-                  <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 block">
-                      اقدامات مدیریتی و تغییر وضعیت پرونده:
+                  <div className="pt-2.5 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      وضعیت پرونده:
                     </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => updateCartableStatus(selectedRequest.id, 'in_progress')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                          selectedRequest.status === 'in_progress'
-                            ? 'bg-sky-500 text-stone-950 border-sky-400 shadow-md font-black'
-                            : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30'
-                        }`}
-                      >
-                        در حال جریان
-                      </button>
-
-                      <button
-                        onClick={() => updateCartableStatus(selectedRequest.id, 'need_info')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                          selectedRequest.status === 'need_info'
-                            ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md font-black'
-                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                        }`}
-                      >
-                        نیازمند تکمیل مدارک
-                      </button>
-
-                      <button
-                        onClick={() => updateCartableStatus(selectedRequest.id, 'rejected')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                          selectedRequest.status === 'rejected'
-                            ? 'bg-rose-500 text-stone-950 border-rose-400 shadow-md font-black'
-                            : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30'
-                        }`}
-                      >
-                        رد درخواست
-                      </button>
-
-                      <button
-                        onClick={() => updateCartableStatus(selectedRequest.id, 'completed')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                          selectedRequest.status === 'completed'
-                            ? 'bg-emerald-500 text-stone-950 border-emerald-400 shadow-md font-black'
-                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                        }`}
-                      >
-                        انجام شد
-                      </button>
-
-                      <button
-                        onClick={() => updateCartableStatus(selectedRequest.id, 'archived')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                          selectedRequest.status === 'archived'
-                            ? 'bg-stone-700 text-white border-stone-600 shadow-md font-black'
-                            : 'bg-stone-500/10 hover:bg-stone-500/20 text-slate-700 dark:text-stone-300 border-stone-500/30'
-                        }`}
-                      >
-                        مختومه کردن درخواست
-                      </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[
+                        { key: 'in_progress' as RequestStatus, label: 'در حال جریان', activeClass: 'bg-sky-500 text-stone-950 border-sky-500 font-black' },
+                        { key: 'need_info' as RequestStatus, label: 'نیازمند مدارک', activeClass: 'bg-amber-500 text-stone-950 border-amber-500 font-black' },
+                        { key: 'completed' as RequestStatus, label: 'انجام شد', activeClass: 'bg-emerald-500 text-stone-950 border-emerald-500 font-black' },
+                        { key: 'rejected' as RequestStatus, label: 'رد درخواست', activeClass: 'bg-rose-500 text-white border-rose-500 font-black' },
+                        { key: 'archived' as RequestStatus, label: 'مختومه', activeClass: 'bg-stone-700 text-white border-stone-700 font-black' },
+                      ].map(st => {
+                        const isActive = selectedRequest.status === st.key;
+                        return (
+                          <button
+                            key={st.key}
+                            type="button"
+                            onClick={() => updateCartableStatus(selectedRequest.id, st.key)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                              isActive
+                                ? st.activeClass
+                                : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {/* مراحل پردازش (با گام «در حال پیگیری»)، شاخص زمان انتظار، پیوست در دیسک و ارجاع داخلی */}
+                {/* ابزارهای پرونده: برای ادمین فشرده (ارجاع + پیوست)، برای دانش‌آموخته شامل فرآیند ۴ مرحله‌ای */}
                 <CartableEnhancedTools
                   request={selectedRequest}
                   isOfficial={isOfficial}
@@ -951,14 +995,19 @@ export const CartableSection: React.FC = () => {
               </div>
 
               {/* Chat Message Timeline (محیط گفت‌وگوی چت دو طرفه) */}
-              <div className="p-6 flex-1 min-h-[350px] max-h-[460px] overflow-y-auto space-y-4 bg-slate-100/60 dark:bg-slate-950/60">
+              <div className={`p-5 flex-1 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/60 ${isOfficial ? 'min-h-[380px] max-h-[520px]' : 'min-h-[350px] max-h-[460px]'}`}>
                 {selectedRequest.messages.map(msg => {
                   const isFromMe = msg.senderId === currentUser?.id;
                   const isStaff =
                     msg.senderRole === 'admin' ||
                     msg.senderRole === 'supervisor' ||
+                    msg.senderRole === 'super_admin' ||
                     msg.senderRole === 'alumni_manager' ||
-                    msg.senderRole === 'admin_finance_officer';
+                    msg.senderRole === 'admin_finance_officer' ||
+                    msg.senderRole === 'education_deputy' ||
+                    msg.senderRole === 'cultural_educational_officer' ||
+                    msg.senderRole === 'research_deputy' ||
+                    msg.senderRole === 'general_observer';
 
                   return (
                     <div

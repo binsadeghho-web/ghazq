@@ -290,7 +290,11 @@ export interface CrextioDashboardConfig {
 
   dashboardSectionOrder?: string[];
   hiddenDashboardSections?: Record<string, boolean>;
+  dashboardSectionLayouts?: Record<string, { span?: 'full' | 'half'; density?: 'full' | 'minimal' }>;
+  defaultAlumniTheme?: 'crextio' | 'minimal';
 }
+
+export type DesignThemeType = 'portal' | 'crextio' | 'minimal';
 
 export interface MizanDashboardConfig {
   showHeroSeal: boolean;
@@ -428,6 +432,11 @@ export interface CartableRequest {
   messages: CartableMessage[];
   hasUnreadSupervisor?: boolean;
   hasUnreadApplicant?: boolean;
+  referredDepartment?: string;
+  internalReferralNote?: string;
+  slaDeadlineHours?: number;
+  attachments?: string[];
+  version?: number;
 }
 
 export interface CourseResource {

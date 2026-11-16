@@ -28,6 +28,7 @@ import {
   SecurityAlertItem,
   BlockedIpItem,
   OpsMaintenanceConfig,
+  DesignThemeType,
 } from '../types';
 import { api } from '../services/apiClient';
 
@@ -74,8 +75,8 @@ export interface AppContextType {
   securityConfig: SystemSecurityConfig;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  designTheme: 'portal' | 'crextio';
-  setDesignTheme: (theme: 'portal' | 'crextio') => void;
+  designTheme: DesignThemeType;
+  setDesignTheme: (theme: DesignThemeType) => void;
   toggleDesignTheme: () => void;
   serverSyncStatus: 'synced' | 'syncing' | 'offline';
   

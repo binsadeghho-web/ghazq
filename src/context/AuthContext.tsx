@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { User, UserRole, UserSectionPermissions, AuditLog } from '../types';
+import { User, UserRole, UserSectionPermissions, AuditLog, DesignThemeType } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
 import { api } from '../services/apiClient';
 import { clearAllDrafts } from '../utils/draftStorage';
@@ -37,7 +37,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 interface AuthProviderProps {
   children: React.ReactNode;
   addAuditLog?: (log: Omit<AuditLog, 'id' | 'timestamp'>) => void;
-  setDesignTheme?: (theme: 'portal' | 'crextio') => void;
+  setDesignTheme?: (theme: DesignThemeType) => void;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({

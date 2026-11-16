@@ -194,13 +194,22 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
               )}
 
               {isStaffMember && (
-                <button
-                  onClick={onToggleToPortalTheme}
-                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                >
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
-                  <span>تغییر به تم ۱ (پرتال)</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => setDesignTheme('minimal')}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>تم ۳ (مجمع مینیمال)</span>
+                  </button>
+                  <button
+                    onClick={onToggleToPortalTheme}
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                    <span>تم ۱ (پرتال)</span>
+                  </button>
+                </>
               )}
             </div>
           </div>

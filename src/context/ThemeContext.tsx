@@ -1,15 +1,51 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { CrextioDashboardConfig, MizanDashboardConfig } from '../types';
+import { CrextioDashboardConfig, MizanDashboardConfig, DesignThemeType } from '../types';
 import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../data/mockData';
 import { api } from '../services/apiClient';
 
 const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
 
+export const CANONICAL_DASHBOARD_SECTION_ORDER = [
+  'top_vip_row',
+  'rulings_showcase',
+  'research_promo',
+  'course_showcase',
+  'counseling_promo',
+  'welfare_showcase',
+  'multimedia_showcase',
+  'bento_grid',
+  'books_showcase',
+];
+
+/**
+ * Ensures new or accidentally dropped showcase sections (such as 'research_promo' or 'rulings_showcase')
+ * are automatically reconciled into saved sectionOrder arrays without clobbering admin's custom order.
+ */
+export function reconcileDashboardSectionOrder(savedOrder?: string[]): string[] {
+  if (!Array.isArray(savedOrder) || savedOrder.length === 0) {
+    return [...CANONICAL_DASHBOARD_SECTION_ORDER];
+  }
+  const merged = [...savedOrder];
+  CANONICAL_DASHBOARD_SECTION_ORDER.forEach((key, canonicalIdx) => {
+    if (!merged.includes(key)) {
+      // Insert right after the previous canonical item if present, or near its natural index
+      const prevCanonical = canonicalIdx > 0 ? CANONICAL_DASHBOARD_SECTION_ORDER[canonicalIdx - 1] : null;
+      const prevPos = prevCanonical ? merged.indexOf(prevCanonical) : -1;
+      if (prevPos !== -1) {
+        merged.splice(prevPos + 1, 0, key);
+      } else {
+        merged.splice(Math.min(canonicalIdx, merged.length), 0, key);
+      }
+    }
+  });
+  return merged;
+}
+
 export interface ThemeContextType {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  designTheme: 'portal' | 'crextio';
-  setDesignTheme: (theme: 'portal' | 'crextio') => void;
+  designTheme: DesignThemeType;
+  setDesignTheme: (theme: DesignThemeType) => void;
   toggleDesignTheme: () => void;
   crextioConfig: CrextioDashboardConfig;
   updateCrextioConfig: (updates: Partial<CrextioDashboardConfig>) => void;
@@ -44,12 +80,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [crextioConfig, setCrextioConfig] = useState<CrextioDashboardConfig>(DEFAULT_CREXTIO_CONFIG);
   const [mizanConfig, setMizanConfig] = useState<MizanDashboardConfig>(DEFAULT_MIZAN_CONFIG);
 
+  const applyCrextioConfigPayload = useCallback((incoming: Partial<CrextioDashboardConfig>, version?: number) => {
+    setCrextioConfig(prev => {
+      const reconciledOrder = reconcileDashboardSectionOrder(incoming.dashboardSectionOrder ?? prev.dashboardSectionOrder);
+      return {
+        ...prev,
+        ...incoming,
+        dashboardSectionOrder: reconciledOrder,
+        showResearchPromoShowcase: incoming.showResearchPromoShowcase !== undefined ? incoming.showResearchPromoShowcase : (prev.showResearchPromoShowcase ?? true),
+        ...(version ? { _baseVersion: version } : {}),
+      };
+    });
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     api.getThemeConfig().then(res => {
       if (!isMounted || !res) return;
       if (res.crextio) {
-        setCrextioConfig(prev => ({ ...prev, ...res.crextio, _baseVersion: res.version || 1 }));
+        applyCrextioConfigPayload(res.crextio, res.version || 1);
       }
       if (res.mizan) {
         setMizanConfig(prev => ({ ...prev, ...res.mizan }));
@@ -62,10 +111,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const config = payload?.config || payload;
         if (config) {
           if (config.crextio || config.mizan) {
-            if (config.crextio) setCrextioConfig(prev => ({ ...prev, ...config.crextio, _baseVersion: event.data?.data?.version || (prev as any)._baseVersion }));
+            if (config.crextio) applyCrextioConfigPayload(config.crextio, event.data?.data?.version);
             if (config.mizan) setMizanConfig(prev => ({ ...prev, ...config.mizan }));
           } else if (typeof config === 'object') {
-            setCrextioConfig(prev => ({ ...prev, ...config, _baseVersion: event.data?.data?.version || (prev as any)._baseVersion }));
+            applyCrextioConfigPayload(config, event.data?.data?.version);
           }
         }
       }
@@ -75,11 +124,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isMounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [applyCrextioConfigPayload]);
 
   const updateCrextioConfig = useCallback((updates: Partial<CrextioDashboardConfig>) => {
     setCrextioConfig(prev => {
-      const next = { ...prev, ...updates };
+      const next = {
+        ...prev,
+        ...updates,
+        dashboardSectionOrder: reconcileDashboardSectionOrder(updates.dashboardSectionOrder ?? prev.dashboardSectionOrder),
+      };
       api.saveThemeConfig({
         ...next,
         _baseVersion: (prev as any)._baseVersion || 1,
@@ -109,14 +162,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setMizanConfig(DEFAULT_MIZAN_CONFIG);
   }, []);
 
-  const [designTheme, setDesignThemeState] = useState<'portal' | 'crextio'>('crextio');
+  const [designTheme, setDesignThemeState] = useState<DesignThemeType>('crextio');
 
-  const setDesignTheme = useCallback((newTheme: 'portal' | 'crextio') => {
+  const setDesignTheme = useCallback((newTheme: DesignThemeType) => {
     setDesignThemeState(newTheme);
   }, []);
 
   const toggleDesignTheme = useCallback(() => {
-    setDesignThemeState(prev => (prev === 'crextio' ? 'portal' : 'crextio'));
+    setDesignThemeState(prev => {
+      if (prev === 'portal') return 'crextio';
+      if (prev === 'crextio') return 'minimal';
+      return 'portal';
+    });
   }, []);
 
   useEffect(() => {
