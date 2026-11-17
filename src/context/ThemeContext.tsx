@@ -87,11 +87,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [crextioConfig, setCrextioConfig] = useState<CrextioDashboardConfig>(DEFAULT_CREXTIO_CONFIG);
   const [mizanConfig, setMizanConfig] = useState<MizanDashboardConfig>(DEFAULT_MIZAN_CONFIG);
+  const crextioVersionRef = React.useRef<number>(1);
+  const mizanVersionRef = React.useRef<number>(1);
+  const crextioStateRef = React.useRef<CrextioDashboardConfig>(DEFAULT_CREXTIO_CONFIG);
+  const mizanStateRef = React.useRef<MizanDashboardConfig>(DEFAULT_MIZAN_CONFIG);
 
   const applyCrextioConfigPayload = useCallback((incoming: Partial<CrextioDashboardConfig>, version?: number) => {
     setCrextioConfig(prev => {
       const reconciledOrder = reconcileDashboardSectionOrder(incoming.dashboardSectionOrder ?? prev.dashboardSectionOrder);
-      return {
+      const next: CrextioDashboardConfig = {
         ...DEFAULT_CREXTIO_CONFIG,
         ...prev,
         ...incoming,
@@ -101,89 +105,163 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ...(incoming.theme3Config || {}),
         },
         dashboardSectionOrder: reconciledOrder,
-        showResearchPromoShowcase: incoming.showResearchPromoShowcase !== undefined ? incoming.showResearchPromoShowcase : (prev.showResearchPromoShowcase ?? true),
+        showResearchPromoShowcase:
+          incoming.showResearchPromoShowcase !== undefined
+            ? incoming.showResearchPromoShowcase
+            : (prev.showResearchPromoShowcase ?? true),
         ...(version ? { _baseVersion: version } : {}),
       };
+      crextioStateRef.current = next;
+      if (version) crextioVersionRef.current = Number(version);
+      return next;
     });
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    api.getThemeConfig().then(res => {
-      if (!isMounted || !res) return;
+  const applyMizanConfigPayload = useCallback((incoming: Partial<MizanDashboardConfig>, version?: number) => {
+    setMizanConfig(prev => {
+      const next: MizanDashboardConfig = {
+        ...DEFAULT_MIZAN_CONFIG,
+        ...prev,
+        ...incoming,
+      };
+      mizanStateRef.current = next;
+      if (version) mizanVersionRef.current = Number(version);
+      return next;
+    });
+  }, []);
+
+  const refreshDashboardConfig = useCallback(async () => {
+    try {
+      const res: any = await api.getThemeConfig();
+      if (!res) return;
       if (res.crextio) {
         applyCrextioConfigPayload(res.crextio, res.version || 1);
       }
       if (res.mizan) {
-        setMizanConfig(prev => ({ ...prev, ...res.mizan }));
+        applyMizanConfigPayload(res.mizan, res.mizanVersion || 1);
       }
-    }).catch(() => {});
+    } catch {}
+  }, [applyCrextioConfigPayload, applyMizanConfigPayload]);
+
+  useEffect(() => {
+    refreshDashboardConfig();
+
+    const handleAuthOrRoleSync = () => {
+      refreshDashboardConfig();
+    };
+    window.addEventListener('app:auth_changed', handleAuthOrRoleSync);
+    window.addEventListener('app:role_switched', handleAuthOrRoleSync);
 
     const unsubscribe = api.subscribeToEvents(event => {
       if (event.type === 'admin.theme_updated' || event.type === 'admin.dashboard_config_updated') {
-        const payload = event.data?.data?.updates || event.data?.data || event.data;
-        const config = payload?.config || payload;
-        if (config) {
-          if (config.crextio || config.mizan) {
-            if (config.crextio) applyCrextioConfigPayload(config.crextio, event.data?.data?.version);
-            if (config.mizan) setMizanConfig(prev => ({ ...prev, ...config.mizan }));
-          } else if (typeof config === 'object') {
-            applyCrextioConfigPayload(config, event.data?.data?.version);
+        const envelope = event.data?.data?.updates || event.data?.data || event.data;
+        const ver = event.data?.data?.version || envelope?.version;
+        const target = envelope?.target;
+        const config = envelope?.config || envelope;
+
+        if (config && typeof config === 'object') {
+          if (target === 'mizan' || (config.mizan && !config.crextio)) {
+            const mizanPayload = config.mizan || envelope?.mizan || config;
+            applyMizanConfigPayload(mizanPayload, ver);
+          } else if (config.crextio || config.mizan) {
+            if (config.crextio) applyCrextioConfigPayload(config.crextio, ver);
+            if (config.mizan) applyMizanConfigPayload(config.mizan, ver);
+          } else {
+            applyCrextioConfigPayload(config, ver);
           }
         }
       }
     });
 
     return () => {
-      isMounted = false;
+      window.removeEventListener('app:auth_changed', handleAuthOrRoleSync);
+      window.removeEventListener('app:role_switched', handleAuthOrRoleSync);
       unsubscribe();
     };
-  }, [applyCrextioConfigPayload]);
+  }, [refreshDashboardConfig, applyCrextioConfigPayload, applyMizanConfigPayload]);
 
   const updateCrextioConfig = useCallback((updates: Partial<CrextioDashboardConfig>) => {
-    setCrextioConfig(prev => {
-      const next = {
-        ...prev,
-        ...updates,
-        dashboardSectionOrder: reconcileDashboardSectionOrder(updates.dashboardSectionOrder ?? prev.dashboardSectionOrder),
-      };
-      api.saveThemeConfig({
-        ...next,
-        _baseVersion: (prev as any)._baseVersion || 1,
-      }).then(res => {
-        if (res && res.version) {
-          setCrextioConfig(curr => ({ ...curr, _baseVersion: res.version }));
-        }
-      }).catch(() => {});
-      return next;
-    });
+    const prev = crextioStateRef.current;
+    const next: CrextioDashboardConfig = {
+      ...prev,
+      ...updates,
+      dashboardSectionOrder: reconcileDashboardSectionOrder(updates.dashboardSectionOrder ?? prev.dashboardSectionOrder),
+    };
+    crextioStateRef.current = next;
+    setCrextioConfig(next);
+
+    const baseVer = crextioVersionRef.current || (prev as any)._baseVersion || 1;
+    api.saveThemeConfig({
+      _target: 'crextio',
+      _baseVersion: baseVer,
+      config: next,
+    }).then(res => {
+      if (res?.version) {
+        crextioVersionRef.current = Number(res.version);
+        setCrextioConfig(curr => {
+          const updated = { ...curr, _baseVersion: res.version };
+          crextioStateRef.current = updated;
+          return updated;
+        });
+      }
+    }).catch(() => {});
   }, []);
 
   const resetCrextioConfig = useCallback(() => {
-    setCrextioConfig(prev => {
-      const next = {
-        ...DEFAULT_CREXTIO_CONFIG,
-        _baseVersion: (prev as any)._baseVersion || 1,
-      };
-      api.saveThemeConfig(next).then(res => {
-        if (res && res.version) {
-          setCrextioConfig(curr => ({ ...curr, _baseVersion: res.version }));
-        }
-      }).catch(() => {});
-      return next;
-    });
+    const baseVer = crextioVersionRef.current || 1;
+    const next: CrextioDashboardConfig = {
+      ...DEFAULT_CREXTIO_CONFIG,
+      _baseVersion: baseVer,
+    };
+    crextioStateRef.current = next;
+    setCrextioConfig(next);
+    api.saveThemeConfig({
+      _target: 'crextio',
+      _baseVersion: baseVer,
+      config: DEFAULT_CREXTIO_CONFIG,
+    }).then(res => {
+      if (res?.version) {
+        crextioVersionRef.current = Number(res.version);
+        setCrextioConfig(curr => {
+          const updated = { ...curr, _baseVersion: res.version };
+          crextioStateRef.current = updated;
+          return updated;
+        });
+      }
+    }).catch(() => {});
   }, []);
 
   const updateMizanConfig = useCallback((updates: Partial<MizanDashboardConfig>) => {
-    setMizanConfig(prev => {
-      const next = { ...prev, ...updates };
-      api.saveThemeConfig(next).catch(() => {});
-      return next;
-    });
+    const prev = mizanStateRef.current;
+    const next: MizanDashboardConfig = { ...prev, ...updates };
+    mizanStateRef.current = next;
+    setMizanConfig(next);
+
+    const baseVer = mizanVersionRef.current || 1;
+    api.saveThemeConfig({
+      _target: 'mizan',
+      _baseVersion: baseVer,
+      config: next,
+    }).then(res => {
+      if (res?.version) {
+        mizanVersionRef.current = Number(res.version);
+      }
+    }).catch(() => {});
   }, []);
 
   const resetMizanConfig = useCallback(() => {
+    mizanStateRef.current = DEFAULT_MIZAN_CONFIG;
     setMizanConfig(DEFAULT_MIZAN_CONFIG);
+    const baseVer = mizanVersionRef.current || 1;
+    api.saveThemeConfig({
+      _target: 'mizan',
+      _baseVersion: baseVer,
+      config: DEFAULT_MIZAN_CONFIG,
+    }).then(res => {
+      if (res?.version) {
+        mizanVersionRef.current = Number(res.version);
+      }
+    }).catch(() => {});
   }, []);
 
   const [designTheme, setDesignThemeState] = useState<DesignThemeType>('crextio');

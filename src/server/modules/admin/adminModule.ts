@@ -6,7 +6,7 @@ import { db, generateUUIDv7 } from '../../platform/database';
 import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
-import { AuthorizationPolicy, AuthContext } from '../../platform/authorization';
+import { AuthorizationPolicy, AuthContext, isSuperAdminRole } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { User, UserRole, SystemSecurityConfig } from '../../../types';
 import { adminSettingsRepo } from './adminSettingsRepository';
@@ -14,6 +14,26 @@ import { userRepository } from '../user/userRepository';
 import { getPool, isDatabaseConnected } from '../../platform/mysqlDatabase';
 import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../../../data/mockData';
 import { normalizeDigits } from '../../platform/persianNormalizer';
+
+function assertCanManageTargetUser(
+  actor: AuthContext,
+  targetRole?: UserRole | string | null,
+  requestedNewRole?: UserRole | string | null
+): void {
+  if (isSuperAdminRole(actor.role)) {
+    return;
+  }
+  if (targetRole && isSuperAdminRole(targetRole)) {
+    throw AppError.forbidden(
+      'تنها سوپر ادمین مجاز به حذف، مسدودسازی یا تغییر مشخصات و دسترسی‌های مدیر کل سامانه است.'
+    );
+  }
+  if (requestedNewRole && isSuperAdminRole(requestedNewRole)) {
+    throw AppError.forbidden(
+      'شما مجاز به ایجاد یا ارتقای حساب کاربری به نقش مدیر کل سامانه (سوپر ادمین) نیستید.'
+    );
+  }
+}
 
 export function sanitizeUserForApi<T extends Record<string, any>>(user: T): T {
   if (!user) return user;
@@ -50,6 +70,7 @@ export class AdminService {
     province?: string;
   }): Promise<User> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    assertCanManageTargetUser(authCtx, undefined, data.role || 'alumni');
 
     const nationalId = (data.nationalId ? normalizeDigits(data.nationalId) : '').trim();
     const phone = (data.phone ? normalizeDigits(data.phone) : '09120000000').trim();
@@ -134,6 +155,7 @@ export class AdminService {
     if (!targetUser) {
       throw AppError.notFound('کاربر');
     }
+    assertCanManageTargetUser(authCtx, targetUser.role, updates.role);
 
     const resolvedVersion = (baseVersion !== undefined && baseVersion !== null && !isNaN(Number(baseVersion)))
       ? Number(baseVersion)
@@ -212,6 +234,7 @@ export class AdminService {
 
     const target = await userRepository.findById(targetUserId);
     if (!target) throw AppError.notFound('کاربر');
+    assertCanManageTargetUser(authCtx, target.role);
 
     const updatedUser = await userRepository.updateUserOptimistic(targetUserId, {
       isLocked: false,
@@ -235,6 +258,7 @@ export class AdminService {
 
     const target = await userRepository.findById(targetUserId);
     if (!target) throw AppError.notFound('کاربر');
+    assertCanManageTargetUser(authCtx, target.role);
 
     const curVersion = baseVersion !== undefined ? Number(baseVersion) : target.version;
 
@@ -260,6 +284,12 @@ export class AdminService {
     if (authCtx.userId === targetUserId) {
       throw AppError.badRequest('نمی‌توانید حساب کاربری فعال خود را حذف نمایید.');
     }
+    const target = await userRepository.findById(targetUserId);
+    if (!target) {
+      throw AppError.notFound('کاربر');
+    }
+    assertCanManageTargetUser(authCtx, target.role);
+
     await userRepository.deleteUser(targetUserId);
     auditChain.appendEntry({
       eventType: 'USER_DELETED',
@@ -267,7 +297,7 @@ export class AdminService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `حساب کاربری [${targetUserId}] توسط مدیر ارشد حذف گردید.`,
+      details: `حساب کاربری [${targetUserId}] توسط ${authCtx.fullName} حذف نرم گردید.`,
       severity: 'critical',
     });
     return { success: true, message: 'کاربر با موفقیت حذف شد.' };
@@ -277,6 +307,7 @@ export class AdminService {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     const target = await userRepository.findById(targetUserId);
     if (!target) throw AppError.notFound('کاربر');
+    assertCanManageTargetUser(authCtx, target.role);
 
     const updateFields: any = {
       tokenVersionIncrement: true,
@@ -357,6 +388,7 @@ export class AdminService {
     source: 'mysql' | 'default';
     isConnectedToMysql: boolean;
     version: number;
+    mizanVersion: number;
     lastModifiedBy: string;
     lastModifiedAt: string;
   }> {
@@ -365,66 +397,82 @@ export class AdminService {
     return {
       crextio: record?.value || DEFAULT_CREXTIO_CONFIG,
       mizan: mizanRecord?.value || DEFAULT_MIZAN_CONFIG,
-      source: record ? 'mysql' : 'default',
+      source: record || mizanRecord ? 'mysql' : 'default',
       isConnectedToMysql: isDatabaseConnected(),
       version: record?.version || 1,
-      lastModifiedBy: record?.lastModifiedBy || 'مدیر سیستم',
-      lastModifiedAt: record?.updatedAt || new Date().toISOString(),
+      mizanVersion: mizanRecord?.version || 1,
+      lastModifiedBy: record?.lastModifiedBy || mizanRecord?.lastModifiedBy || 'مدیر سیستم',
+      lastModifiedAt: record?.updatedAt || mizanRecord?.updatedAt || new Date().toISOString(),
     };
   }
 
   async saveDashboardConfig(
     authCtx: AuthContext,
-    config: any,
+    payload: any,
     baseVersion?: number
   ): Promise<{
     success: boolean;
     persistedToMysql: boolean;
+    target: 'crextio' | 'mizan';
     version: number;
     lastModifiedBy: string;
     lastModifiedAt: string;
   }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
 
-    const existingRecord = await adminSettingsRepo.getRecord<any>('crextio_dashboard_config');
+    const isMizanTarget =
+      payload?._target === 'mizan' ||
+      (payload && typeof payload === 'object' && !payload.welcomeBannerTitle && (payload.quickLinks || payload.announcementBarText) && !payload.config);
+    const target: 'crextio' | 'mizan' = isMizanTarget ? 'mizan' : 'crextio';
+    const settingKey = target === 'mizan' ? 'mizan_dashboard_config' : 'crextio_dashboard_config';
+    const description = target === 'mizan' ? 'Mizan Minimal Dashboard Config' : 'Crextio Dashboard Layout Config';
+
+    const rawConfig = payload && typeof payload === 'object' && payload.config ? payload.config : payload;
+    const cleanConfig = rawConfig && typeof rawConfig === 'object' ? { ...rawConfig } : rawConfig;
+    if (cleanConfig && typeof cleanConfig === 'object') {
+      delete cleanConfig._baseVersion;
+      delete cleanConfig._target;
+    }
+
+    const existingRecord = await adminSettingsRepo.getRecord<any>(settingKey);
     const currentVer = existingRecord?.version || 1;
-    const numericBaseVersion = baseVersion !== undefined && baseVersion !== null && !isNaN(Number(baseVersion)) 
-      ? Number(baseVersion) 
-      : currentVer;
+    const numericBaseVersion =
+      baseVersion !== undefined && baseVersion !== null && !isNaN(Number(baseVersion))
+        ? Number(baseVersion)
+        : currentVer;
 
     let newVersion = numericBaseVersion + 1;
     let persistedToMysql = false;
 
     if (existingRecord) {
       const updateResult = await adminSettingsRepo.updateOptimistic(
-        'crextio_dashboard_config',
-        config,
+        settingKey,
+        cleanConfig,
         numericBaseVersion,
         authCtx.fullName
       );
-      if (updateResult.success) {
-        persistedToMysql = true;
-        newVersion = updateResult.newVersion;
-      } else {
-        // Fallback upsert to guarantee persistence
-        persistedToMysql = await adminSettingsRepo.saveSetting('crextio_dashboard_config', config, 'Crextio Dashboard Layout Config');
-        newVersion = currentVer + 1;
-      }
+      persistedToMysql = updateResult.success;
+      newVersion = updateResult.newVersion;
     } else {
-      persistedToMysql = await adminSettingsRepo.saveSetting('crextio_dashboard_config', config, 'Crextio Dashboard Layout Config');
+      persistedToMysql = await adminSettingsRepo.saveSetting(
+        settingKey,
+        cleanConfig,
+        description,
+        authCtx.fullName
+      );
       newVersion = 1;
     }
 
-    outbox.enqueue('admin.dashboard_config_updated', {
+    const eventPayload = {
+      target,
       version: newVersion,
       lastModifiedBy: authCtx.fullName,
-      config,
-    });
-    outbox.enqueue('admin.theme_updated', {
-      version: newVersion,
-      lastModifiedBy: authCtx.fullName,
-      config,
-    });
+      config: target === 'mizan' ? { mizan: cleanConfig } : { crextio: cleanConfig },
+      ...(target === 'mizan' ? { mizan: cleanConfig } : { crextio: cleanConfig }),
+    };
+
+    outbox.enqueue('admin.dashboard_config_updated', eventPayload);
+    outbox.enqueue('admin.theme_updated', eventPayload);
 
     auditChain.appendEntry({
       eventType: 'SYSTEM_CONFIG_UPDATED',
@@ -432,13 +480,14 @@ export class AdminService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `چیدمان و متون ویترین‌های داشبورد ذخیره شد (نسخه جدید: ${newVersion}).`,
+      details: `چیدمان و متون ویترین‌های داشبورد (${target === 'mizan' ? 'تم مینیمال' : 'تم جامع'}) ذخیره شد (نسخه جدید: ${newVersion}).`,
       severity: 'info',
     });
 
     return {
       success: true,
       persistedToMysql,
+      target,
       version: newVersion,
       lastModifiedBy: authCtx.fullName,
       lastModifiedAt: new Date().toISOString(),

@@ -11,7 +11,16 @@ import { generateUUIDv7 } from './uuidv7';
  * - Non-blocking 5-second watchdog safeguard with category-level failure tolerance.
  */
 
-export type UploadCategory = 'avatar' | 'product' | 'course' | 'consultation' | 'research' | 'verdict' | 'misc';
+export type UploadCategory =
+  | 'avatar'
+  | 'product'
+  | 'course'
+  | 'consultation'
+  | 'research'
+  | 'verdict'
+  | 'cartable_alumni'
+  | 'cartable_officials'
+  | 'misc';
 
 export interface StorageConfig {
   rootPath: string;
@@ -47,6 +56,8 @@ export const storageConfig: StorageConfig = {
     consultation: { path: path.join(uploadsDir, 'consultations'), isPrivate: true, folderName: 'consultations' },
     research: { path: path.join(uploadsDir, 'research'), isPrivate: true, folderName: 'research' },
     verdict: { path: path.join(uploadsDir, 'verdicts'), isPrivate: false, folderName: 'verdicts' },
+    cartable_alumni: { path: path.join(uploadsDir, 'cartable_alumni'), isPrivate: true, folderName: 'cartable_alumni' },
+    cartable_officials: { path: path.join(uploadsDir, 'cartable_officials'), isPrivate: true, folderName: 'cartable_officials' },
     misc: { path: path.join(uploadsDir, 'misc'), isPrivate: false, folderName: 'misc' },
   },
   backupsDir: path.join(rootPath, 'backups'),
@@ -83,6 +94,8 @@ export async function initStorageDirectories(timeoutMs = 5000): Promise<boolean>
           storageConfig.categories.consultation.path,
           storageConfig.categories.research.path,
           storageConfig.categories.verdict.path,
+          storageConfig.categories.cartable_alumni.path,
+          storageConfig.categories.cartable_officials.path,
           storageConfig.categories.misc.path,
           // Legacy backwards compatibility folder
           path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE'),

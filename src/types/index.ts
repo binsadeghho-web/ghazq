@@ -170,6 +170,7 @@ export interface CrextioHeroStatItem {
 }
 
 export interface CrextioDashboardConfig {
+  _baseVersion?: number;
   showHeroBanner: boolean;
   showCourseShowcase: boolean;
   courseShowcaseMode: 'carousel' | 'grid' | 'compact';
@@ -575,9 +576,55 @@ export interface OpsMaintenanceConfig {
   estimatedReturnTime?: string;
 }
 
-export type CartableCategory = 'career' | 'administrative' | 'educational';
+export type CartableCategory = 'career' | 'administrative' | 'educational' | 'welfare' | 'research' | 'general' | string;
 export type RequestPriority = 'normal' | 'urgent' | 'instant';
 export type RequestStatus = 'pending' | 'in_progress' | 'need_info' | 'rejected' | 'completed' | 'archived';
+
+export interface CartableApplicantProfile {
+  id: string;
+  fullName: string;
+  phone: string;
+  nationalId: string;
+  roleTitle: string;
+  organization?: string;
+  province?: string;
+  graduationYear?: string;
+  academicDegree?: string;
+  currentJudicialPost?: string;
+  email?: string;
+  personnelId?: string;
+}
+
+export interface CartableCategoryConfigItem {
+  id: string;
+  key: string;
+  title: string;
+  assignedRole: string;
+  assignedOfficialTitle: string;
+  description: string;
+  isActive?: boolean;
+}
+
+export interface CartableFollowableTopic {
+  id: string;
+  title: string;
+  description: string;
+  categoryKey?: string;
+  departmentTitle?: string;
+  estimatedDays?: string;
+  isActive: boolean;
+  order: number;
+}
+
+export interface CartableFollowableTopicsConfig {
+  enabled?: boolean;
+  buttonLabel?: string;
+  title: string;
+  subtitle: string;
+  items: CartableFollowableTopic[];
+  updatedAt?: string;
+  updatedBy?: string;
+}
 
 export interface CartableMessage {
   id: string;
@@ -599,6 +646,7 @@ export interface CartableRequest {
   applicantId: string;
   applicantName: string;
   applicantRoleTitle: string;
+  applicantProfile?: CartableApplicantProfile;
   priority: RequestPriority;
   status: RequestStatus;
   createdAt: string;
@@ -607,6 +655,7 @@ export interface CartableRequest {
   hasUnreadSupervisor?: boolean;
   hasUnreadApplicant?: boolean;
   referredDepartment?: string;
+  assignedOfficialRole?: string;
   internalReferralNote?: string;
   slaDeadlineHours?: number;
   attachments?: string[];

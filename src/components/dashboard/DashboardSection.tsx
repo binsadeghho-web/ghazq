@@ -60,7 +60,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
     r => r.status === 'pending' || r.status === 'need_info'
   ).length;
 
-  const showAdminCard = (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') && !isAlumniPreview;
+  const showAdminCard = (currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'alumni_manager' || currentUser?.role === 'supervisor') && !isAlumniPreview;
 
   return (
     <div className="space-y-6">

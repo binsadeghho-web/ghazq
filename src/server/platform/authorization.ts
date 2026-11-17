@@ -7,7 +7,7 @@ export interface AuthContext {
   fullName: string;
 }
 
-const ORGANIZATIONAL_ROLES: UserRole[] = [
+export const ORGANIZATIONAL_ROLES: UserRole[] = [
   'admin',
   'super_admin',
   'general_observer',
@@ -18,6 +18,15 @@ const ORGANIZATIONAL_ROLES: UserRole[] = [
   'research_deputy',
   'supervisor',
 ];
+
+export function isOrganizationalUserRole(role?: UserRole | string | null): boolean {
+  if (!role) return false;
+  return ORGANIZATIONAL_ROLES.includes(role as UserRole);
+}
+
+export function isSuperAdminRole(role?: UserRole | string | null): boolean {
+  return role === 'admin' || role === 'super_admin';
+}
 
 const ELEVATED_ADMIN_ROLES: UserRole[] = [
   'admin',

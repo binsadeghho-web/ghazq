@@ -7,8 +7,6 @@ import {
   Clock,
   Paperclip,
   Upload,
-  FileText,
-  Download,
   Building2,
   ArrowLeftRight,
   Timer,
@@ -17,6 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { CARTABLE_FILE_ACCEPT, validateCartableClientFile } from './cartableTypes';
+import { CartableAttachmentList } from './CartableAttachmentList';
 
 interface CartableEnhancedToolsProps {
   request: CartableRequest;
@@ -92,15 +92,28 @@ export const CartableEnhancedTools: React.FC<CartableEnhancedToolsProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const validation = validateCartableClientFile(file);
+    if (!validation.ok) {
+      showToast(validation.error || 'فرمت فایل مجاز نیست.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
-      const uploaded = await api.uploadFile(file, 'misc');
+      const targetFolder = isOfficial ? 'cartable_officials' : 'cartable_alumni';
+      const uploaded = await api.uploadFile(file, targetFolder);
       if (uploaded?.url) {
         const expectedVersion = request.version || 1;
         const updated = await api.uploadCartableAttachment(request.id, uploaded.url, expectedVersion);
         onRequestUpdated(updated);
         setShowAttachmentsDrawer(true);
-        showToast('فایل پیوست با موفقیت در دیسک سرور ذخیره و به پرونده الصاق شد.');
+        showToast(
+          isOfficial
+            ? 'فایل / گواهی مسئول با موفقیت در پوشه امن مسئولین ذخیره و به پرونده الصاق شد.'
+            : 'مدرک پیوست با موفقیت در پوشه امن دانش‌آموختگان ذخیره و به پرونده الصاق شد.'
+        );
       }
     } catch (err: any) {
       showToast(`خطا در بارگذاری پیوست: ${err.message || 'خطای سرور'}`);
@@ -145,7 +158,7 @@ export const CartableEnhancedTools: React.FC<CartableEnhancedToolsProps> = ({
           type="file"
           onChange={handleFileUpload}
           className="hidden"
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.zip"
+          accept={CARTABLE_FILE_ACCEPT}
         />
 
         {feedbackMsg && (
@@ -227,26 +240,7 @@ export const CartableEnhancedTools: React.FC<CartableEnhancedToolsProps> = ({
                 هنوز فایل یا مدرکی به این پرونده پیوست نشده است.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {attachments.map((url, idx) => {
-                  const fileName = url.split('/').pop() || `پیوست-${idx + 1}`;
-                  return (
-                    <a
-                      key={idx}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-emerald-500/10 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <span className="truncate max-w-[160px]" dir="ltr">
-                        {fileName}
-                      </span>
-                      <Download className="w-3.5 h-3.5 text-slate-400" />
-                    </a>
-                  );
-                })}
-              </div>
+              <CartableAttachmentList attachments={attachments} compact />
             )}
           </div>
         )}
@@ -411,7 +405,7 @@ export const CartableEnhancedTools: React.FC<CartableEnhancedToolsProps> = ({
                 type="file"
                 onChange={handleFileUpload}
                 className="hidden"
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.zip"
+                accept={CARTABLE_FILE_ACCEPT}
               />
               <button
                 type="button"
@@ -432,29 +426,10 @@ export const CartableEnhancedTools: React.FC<CartableEnhancedToolsProps> = ({
 
         {attachments.length === 0 ? (
           <p className="text-[11px] text-slate-400">
-            هنوز فایل یا مدرکی به این درخواست پیوست نشده است.
+            هنوز فایل یا مدرکی به این درخواست پیوست نشده است. (فرمت‌های مجاز: تصویر، PDF و Word)
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {attachments.map((url, idx) => {
-              const fileName = url.split('/').pop() || `پیوست-${idx + 1}`;
-              return (
-                <a
-                  key={idx}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500/15 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
-                >
-                  <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate max-w-[160px]" dir="ltr">
-                    {fileName}
-                  </span>
-                  <Download className="w-3.5 h-3.5 text-slate-400" />
-                </a>
-              );
-            })}
-          </div>
+          <CartableAttachmentList attachments={attachments} />
         )}
       </div>
     </div>

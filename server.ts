@@ -42,8 +42,8 @@ async function bootstrap() {
     logger.warn('MySQL probe notice: ' + (err?.message || err));
   });
 
-  // Request body parsing with bounded size (Section 10)
-  app.use(express.json({ limit: '5mb' }));
+  // Request body parsing with bounded size (supports up to 8MB base64 attachments)
+  app.use(express.json({ limit: '15mb' }));
 
   // Item 9 & 11: Persian / Arabic character & digit normalization (skipping sensitive keys)
   app.use(persianNormalizerMiddleware);
@@ -145,12 +145,18 @@ async function bootstrap() {
     });
   });
 
-  // Block direct public URL access to private consultation and research directories
+  // Block direct public URL access to private consultation, research, and cartable directories
   app.use('/uploads/consultations', (_req: Request, res: Response) => {
     res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی مشاوره غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایند.' });
   });
   app.use('/uploads/research', (_req: Request, res: Response) => {
     res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی پژوهش غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایند.' });
+  });
+  app.use('/uploads/cartable_alumni', (_req: Request, res: Response) => {
+    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های پیوست دانش‌آموختگان غیرمجاز است.' });
+  });
+  app.use('/uploads/cartable_officials', (_req: Request, res: Response) => {
+    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های پیوست مسئولین غیرمجاز است.' });
   });
 
   // Public Persistent Uploads Static File Serving (avatars, products, courses, verdicts, misc)

@@ -6,6 +6,10 @@ import { outbox, OutboxMessage } from './platform/outbox';
 import { generateUUIDv7 } from './platform/database';
 import { storageConfig, UploadCategory } from './platform/storage';
 import { storageAdapter } from './platform/storageAdapter';
+import { validateSecureUploadBuffer } from './platform/uploadSecurity';
+import { isOrganizationalUserRole } from './platform/authorization';
+import { getPool, isDatabaseConnected } from './platform/mysqlDatabase';
+import { toIdBuffer, fromIdBuffer } from './platform/uuidv7';
 import { createAuthRouter } from './modules/auth/authModule';
 import { createCartableRouter } from './modules/cartable/cartableModule';
 import { createCoursesRouter } from './modules/courses/coursesModule';
@@ -47,42 +51,94 @@ export function createMasterRouter(): Router {
   router.use('/admin', createAdminRouter());
   router.use('/ops', createOpsRouter());
 
-  // Generic Categorized Upload Endpoint (avatars, products, courses, consultations, research, verdicts, misc)
-  router.post('/upload/:category', async (req: Request, res: Response) => {
+  // Generic Categorized Upload Endpoint with Magic-Byte Security & Private Cartable Disk Folders
+  router.post('/upload/:category', async (req: Request, res: Response, next) => {
     try {
-      const rawCategory = req.params.category as string;
-      const validCategories: UploadCategory[] = ['avatar', 'product', 'course', 'consultation', 'research', 'verdict', 'misc'];
-      
-      // Handle alias for profile-picture
-      const category: UploadCategory = (rawCategory === 'profile-picture' || rawCategory === 'avatars')
-        ? 'avatar'
-        : validCategories.includes(rawCategory as UploadCategory)
-          ? (rawCategory as UploadCategory)
-          : 'misc';
+      const rawCategory = (req.params.category as string || '').trim();
+      const validCategories: UploadCategory[] = [
+        'avatar',
+        'product',
+        'course',
+        'consultation',
+        'research',
+        'verdict',
+        'cartable_alumni',
+        'cartable_officials',
+        'misc',
+      ];
 
-      const { base64Data, filename: origName } = req.body || {};
-      if (!base64Data || typeof base64Data !== 'string') {
-        return res.status(400).json({ success: false, message: 'دیتا یا فایل نامعتبر است.' });
+      // Handle aliases safely
+      let category: UploadCategory = 'misc';
+      if (rawCategory === 'profile-picture' || rawCategory === 'avatars') {
+        category = 'avatar';
+      } else if (rawCategory === 'cartable_official') {
+        category = 'cartable_officials';
+      } else if (validCategories.includes(rawCategory as UploadCategory)) {
+        category = rawCategory as UploadCategory;
       }
 
-      // Parse base64 buffer
-      const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      const user = (req as any).user;
+      const isPrivateCat =
+        category === 'cartable_alumni' ||
+        category === 'cartable_officials' ||
+        category === 'consultation' ||
+        category === 'research';
+
+      if (isPrivateCat && !user) {
+        return res.status(401).json({
+          type: 'unauthorized',
+          title: 'عدم احراز هویت',
+          status: 401,
+          detail: 'بارگذاری فایل در بخش خصوصی نیازمند ورود به سامانه است.',
+          code: 'UNAUTHENTICATED',
+        });
+      }
+
+      if (category === 'cartable_officials' && !isOrganizationalUserRole(user?.role)) {
+        return res.status(403).json({
+          type: 'forbidden',
+          title: 'عدم دسترسی',
+          status: 403,
+          detail: 'ذخیره فایل در پوشه مسئولین صرفاً برای مدیران و مسئولین مجاز است.',
+          code: 'FORBIDDEN_UPLOAD_CATEGORY',
+        });
+      }
+
+      const body = req.body || {};
+      const base64Input = body.base64Data || body.dataUrl;
+      const origName = body.filename || body.fileName || 'upload';
+
+      if (!base64Input || typeof base64Input !== 'string') {
+        return res.status(400).json({
+          type: 'bad_request',
+          title: 'داده فایل نامعتبر است',
+          status: 400,
+          detail: 'محتوای باینری (base64) فایل ارسال نشده است.',
+          code: 'EMPTY_UPLOAD',
+        });
+      }
+
+      const matches = base64Input.match(/^data:([A-Za-z0-9.+\/-]+);base64,(.+)$/);
+      let declaredMime: string | undefined;
       let buffer: Buffer;
-      let extFromMime = '.jpg';
 
       if (matches && matches.length === 3) {
-        const mime = matches[1];
-        if (mime.includes('png')) extFromMime = '.png';
-        else if (mime.includes('webp')) extFromMime = '.webp';
-        else if (mime.includes('pdf')) extFromMime = '.pdf';
-        else if (mime.includes('word') || mime.includes('document')) extFromMime = '.docx';
+        declaredMime = matches[1];
         buffer = Buffer.from(matches[2], 'base64');
       } else {
-        buffer = Buffer.from(base64Data.replace(/^data:[^;]+;base64,/, ''), 'base64');
+        buffer = Buffer.from(base64Input.replace(/^data:[^;]+;base64,/, ''), 'base64');
       }
 
-      const originalFilename = origName || `file${extFromMime}`;
-      const result = await storageAdapter.saveCategorizedUpload(category, originalFilename, buffer);
+      // Security Hardening: Validate Magic Bytes, block malicious executables/scripts, force canonical extension
+      const validated = validateSecureUploadBuffer(category, origName, buffer, declaredMime);
+
+      const safeBaseOrig = path.basename(origName).replace(/\.[^.]+$/, '') || 'attachment';
+      const result = await storageAdapter.saveCategorizedUpload(
+        category,
+        `${safeBaseOrig}${validated.canonicalExt}`,
+        buffer,
+        validated.canonicalExt
+      );
 
       res.json({
         success: true,
@@ -90,15 +146,16 @@ export function createMasterRouter(): Router {
         url: result.url,
         category: result.category,
         isPrivate: result.isPrivate,
-        message: `فایل با موفقیت در پوشه اختصاصی ${result.category} بر روی دیسک ماندگار ذخیره گردید.`
+        mimeType: validated.mimeType,
+        message: `فایل با موفقیت پس از بررسی امنیتی در پوشه ${result.category} بر روی دیسک ذخیره گردید.`,
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: `خطا در آپلود فایل: ${err?.message || err}` });
+      next(err);
     }
   });
 
-  // Protected Private File Serving Endpoint (consultations & research)
-  router.get('/storage/private/:category/:filename', (req: Request, res: Response) => {
+  // Protected Private File Serving Endpoint (consultations, research, cartable_alumni, cartable_officials)
+  router.get('/storage/private/:category/:filename', async (req: Request, res: Response) => {
     try {
       const { category, filename } = req.params;
       const user = (req as any).user;
@@ -107,21 +164,71 @@ export function createMasterRouter(): Router {
         return res.status(401).json({ error: 'جهت دسترسی به فایل‌های خصوصی، ثبت ورود الزامی است.' });
       }
 
-      if (category !== 'consultations' && category !== 'research') {
+      const catMap: Record<string, UploadCategory> = {
+        consultations: 'consultation',
+        consultation: 'consultation',
+        research: 'research',
+        cartable_alumni: 'cartable_alumni',
+        cartable_officials: 'cartable_officials',
+      };
+
+      const storageKey = catMap[category];
+      if (!storageKey) {
         return res.status(400).json({ error: 'دسته‌بندی فایل خصوصی نامعتبر است.' });
       }
 
-      const catConfig = storageConfig.categories[category as UploadCategory];
+      const catConfig = storageConfig.categories[storageKey];
       if (!catConfig) {
         return res.status(404).json({ error: 'پوشه یافت نشد.' });
       }
 
       const safeFilename = path.basename(filename);
+      if (!safeFilename || safeFilename.includes('..') || safeFilename.includes('/') || safeFilename.includes('\\')) {
+        return res.status(400).json({ error: 'نام فایل نامعتبر است.' });
+      }
+
       const filePath = path.join(catConfig.path, safeFilename);
+      if (!filePath.startsWith(catConfig.path)) {
+        return res.status(403).json({ error: 'مسیر دسترسی غیرمجاز است.' });
+      }
+
+      // Strict BOLA / Ownership guard for cartable attachments: non-officials can only access their own request attachments
+      if (
+        (storageKey === 'cartable_alumni' || storageKey === 'cartable_officials') &&
+        !isOrganizationalUserRole(user.role)
+      ) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [rows]: any = await p.query(
+          `SELECT r.id, r.applicant_id
+           FROM cartable_requests r
+           LEFT JOIN cartable_messages m ON m.request_id = r.id
+           WHERE (CAST(r.attachments AS CHAR) LIKE ? OR CAST(m.attachments AS CHAR) LIKE ?)
+           LIMIT 5`,
+          [fileUrlSuffix, fileUrlSuffix]
+        );
+        const ownsFile = Array.isArray(rows) && rows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.applicant_id) ? fromIdBuffer(r.applicant_id) : String(r.applicant_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsFile) {
+          return res.status(403).json({ error: 'عدم دسترسی: این فایل متعلق به درخواست‌های شما نیست.' });
+        }
+      }
 
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'فایل درخواستی روی دیسک یافت نشد.' });
       }
+
+      // Harden response headers so uploaded content cannot execute scripts in browser context
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+      res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFilename)}"`);
 
       res.sendFile(filePath);
     } catch (err: any) {
@@ -135,7 +242,7 @@ export function createMasterRouter(): Router {
 
     // 1. Check real server-verified admin session
     const sessionUser = (req as any).user;
-    if (sessionUser && sessionUser.role === 'admin') {
+    if (sessionUser && (sessionUser.role === 'admin' || sessionUser.role === 'super_admin' || sessionUser.role === 'alumni_manager')) {
       isAuthorized = true;
     }
 
@@ -314,14 +421,14 @@ export function createMasterRouter(): Router {
         return;
       }
 
-      // Item 2: User events are strictly restricted to Admin/Supervisor/Staff (Information Leak Prevention)
-      if (msg.topic.startsWith('user.') && userRole !== 'admin' && userRole !== 'supervisor' && userRole !== 'staff') {
+      // Item 2: User events are strictly restricted to Organizational Roles (Information Leak Prevention)
+      if (msg.topic.startsWith('user.') && !isOrganizationalUserRole(userRole)) {
         return;
       }
 
-      // Authorization filtering: private items only go to owners or admins
+      // Authorization filtering: private items only go to owners or organizational officials
       const isPrivateTopic = msg.topic.startsWith('cartable.') || msg.topic.startsWith('private_msg.');
-      if (isPrivateTopic && userRole !== 'admin' && userRole !== 'supervisor') {
+      if (isPrivateTopic && !isOrganizationalUserRole(userRole)) {
         const ownerId = payload.applicantId || payload.recipientId || payload.userId;
         if (ownerId && ownerId !== userId) {
           return; // Suppress event; unauthorized recipient (Leak Prevention)

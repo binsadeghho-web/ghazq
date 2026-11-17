@@ -61,9 +61,19 @@ export class AdminSettingsRepository {
       );
 
       if (result.affectedRows === 0) {
-        // Upsert if not existing
-        await this.saveSetting(key, value, 'Auto-persisted setting');
-        return { success: true, conflict: false, newVersion: baseVersion + 1 };
+        const existing = await this.getRecord<T>(key);
+        if (!existing) {
+          await this.saveSetting(key, value, 'Auto-persisted setting', lastModifiedBy);
+          return { success: true, conflict: false, newVersion: 1 };
+        }
+        // Upsert latest if concurrent edit happened on settings UI while returning authoritative DB version
+        await p.query(
+          `UPDATE system_settings 
+           SET setting_value = ?, version = version + 1, last_modified_by = ?, updated_at = CURRENT_TIMESTAMP(3)
+           WHERE setting_key = ?`,
+          [JSON.stringify(value), lastModifiedBy, key]
+        );
+        return { success: true, conflict: false, newVersion: Number(existing.version || 1) + 1 };
       }
 
       return { success: true, conflict: false, newVersion: baseVersion + 1 };
@@ -76,15 +86,19 @@ export class AdminSettingsRepository {
   /**
    * Upsert system setting in MySQL
    */
-  async saveSetting<T>(key: string, value: T, description?: string): Promise<boolean> {
+  async saveSetting<T>(key: string, value: T, description?: string, lastModifiedBy?: string): Promise<boolean> {
     ensureDatabaseConnection();
     try {
       const p = getPool();
       await p.query(
-        `INSERT INTO system_settings (setting_key, setting_value, description)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP(3)`,
-        [key, JSON.stringify(value), description || null]
+        `INSERT INTO system_settings (setting_key, setting_value, description, version, last_modified_by)
+         VALUES (?, ?, ?, 1, ?)
+         ON DUPLICATE KEY UPDATE
+           setting_value = VALUES(setting_value),
+           version = version + 1,
+           last_modified_by = COALESCE(VALUES(last_modified_by), last_modified_by),
+           updated_at = CURRENT_TIMESTAMP(3)`,
+        [key, JSON.stringify(value), description || null, lastModifiedBy || null]
       );
       return true;
     } catch (err: any) {

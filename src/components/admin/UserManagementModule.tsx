@@ -490,51 +490,58 @@ export const UserManagementModule: React.FC = () => {
 
                     {/* COLUMN 6: تنظیم سطح دسترسی برای اون کاربر */}
                     <td className="p-4 pl-6 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openEditUser(u)}
-                          className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-300/80 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                          title="ویرایش تمامی اطلاعات و مشخصات این کاربر"
-                        >
-                          <Edit className="w-3.5 h-3.5 text-amber-700" />
-                          <span>ویرایش اطلاعات</span>
-                        </button>
-
-                        <button
-                          onClick={() => setPermissionModalUser(u)}
-                          className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-                          title="تنظیم تفصیلی دسترسی‌های این کاربر در تمام بخش‌های سامانه"
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>تنظیم سطح دسترسی</span>
-                        </button>
-
-                        <button
-                          onClick={() => toggleUserLock(u.id)}
-                          className={`p-2 rounded-xl transition-colors ${
-                            u.isLocked 
-                              ? 'bg-rose-100 text-rose-800 hover:bg-rose-200' 
-                              : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
-                          }`}
-                          title={u.isLocked ? 'حساب قفل است (برای رفع کلیک کنید)' : 'قفل کردن این حساب'}
-                        >
-                          {u.isLocked ? <Unlock className="w-4 h-4 text-rose-700" /> : <Lock className="w-4 h-4" />}
-                        </button>
-
-                        {!isCurrentActive && (
+                      {!isSuperAdminRole(currentUser?.role) && isSuperAdminRole(u.role) ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 text-[11px] font-bold">
+                          <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                          <span>محافظت‌شده (سوپر ادمین)</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => {
-                              if (confirm(`آیا از حذف حساب کاربری [${u.fullName}] اطمینان دارید؟`)) {
-                                deleteUser(u.id);
-                              }
-                            }}
-                            className="p-2 rounded-xl bg-stone-100 hover:bg-rose-100 text-stone-400 hover:text-rose-700 transition-colors"
-                            title="حذف حساب"
+                            onClick={() => openEditUser(u)}
+                            className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-300/80 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                            title="ویرایش تمامی اطلاعات و مشخصات این کاربر"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit className="w-3.5 h-3.5 text-amber-700" />
+                            <span>ویرایش اطلاعات</span>
                           </button>
-                        )}
-                      </div>
+
+                          <button
+                            onClick={() => setPermissionModalUser(u)}
+                            className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                            title="تنظیم تفصیلی دسترسی‌های این کاربر در تمام بخش‌های سامانه"
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-300" />
+                            <span>تنظیم سطح دسترسی</span>
+                          </button>
+
+                          <button
+                            onClick={() => toggleUserLock(u.id)}
+                            className={`p-2 rounded-xl transition-colors ${
+                              u.isLocked 
+                                ? 'bg-rose-100 text-rose-800 hover:bg-rose-200' 
+                                : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                            }`}
+                            title={u.isLocked ? 'حساب قفل است (برای رفع کلیک کنید)' : 'قفل کردن این حساب'}
+                          >
+                            {u.isLocked ? <Unlock className="w-4 h-4 text-rose-700" /> : <Lock className="w-4 h-4" />}
+                          </button>
+
+                          {!isCurrentActive && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`آیا از حذف حساب کاربری [${u.fullName}] اطمینان دارید؟`)) {
+                                  deleteUser(u.id);
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-stone-100 hover:bg-rose-100 text-stone-400 hover:text-rose-700 transition-colors"
+                              title="حذف حساب"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                   </tr>

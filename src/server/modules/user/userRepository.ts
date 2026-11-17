@@ -610,13 +610,14 @@ export class UserRepository {
     ensureDatabaseConnection();
     try {
       const pool = getPool();
+      const idBuf = toIdBuffer(id);
       await pool.query(
         `UPDATE users 
          SET failed_attempts = failed_attempts + 1,
              is_locked = IF(failed_attempts + 1 >= 10, TRUE, is_locked),
              locked_until = IF(failed_attempts + 1 >= 10, DATE_ADD(NOW(), INTERVAL 30 MINUTE), locked_until)
          WHERE id = ? AND deleted_at IS NULL`,
-        [id]
+        [idBuf]
       );
       const updated = await this.findById(id);
       const attempts = updated ? updated.failedAttempts || 0 : 0;
@@ -632,9 +633,10 @@ export class UserRepository {
     ensureDatabaseConnection();
     try {
       const pool = getPool();
+      const idBuf = toIdBuffer(id);
       await pool.query(
         `UPDATE users SET failed_attempts = 0, is_locked = FALSE, locked_until = NULL WHERE id = ? AND deleted_at IS NULL`,
-        [id]
+        [idBuf]
       );
     } catch (err: any) {
       logger.error(`MySQL resetFailedAttempts error: ${err.message}`);
@@ -645,6 +647,7 @@ export class UserRepository {
   async deleteUser(id: string): Promise<void> {
     ensureDatabaseConnection();
     try {
+      const idBuf = toIdBuffer(id);
       await withTx(async (conn) => {
         // 1. Soft Delete user
         const [res]: any = await conn.query(
@@ -655,7 +658,7 @@ export class UserRepository {
                token_version = token_version + 1,
                version = version + 1
            WHERE id = ? AND deleted_at IS NULL`,
-          [id]
+          [idBuf]
         );
         if (!res || res.affectedRows === 0) {
           throw AppError.notFound('کاربر مورد نظر یا یافت نشد یا قبلاً حذف نرم شده است.');
@@ -664,13 +667,13 @@ export class UserRepository {
         // 2. Revoke all active sessions
         await conn.query(
           `UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ?`,
-          [id]
+          [idBuf]
         );
 
         // 3. Revoke all refresh tokens
         await conn.query(
           `UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'USER_DELETED' WHERE user_id = ?`,
-          [id]
+          [idBuf]
         );
       });
     } catch (err: any) {

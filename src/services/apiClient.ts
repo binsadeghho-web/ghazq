@@ -302,7 +302,13 @@ class ApiClient {
   }
 
   async getCartableConfig() {
-    return this.request<{ categories: any[]; guide: any; officials: any[] }>('/api/cartable/config');
+    return this.request<{
+      categories: any[];
+      categoriesDisabled?: boolean;
+      guide: any;
+      followableTopics?: any;
+      officials: any[];
+    }>('/api/cartable/config');
   }
 
   async updateCartableGuide(guide: any) {
@@ -312,10 +318,23 @@ class ApiClient {
     });
   }
 
-  async updateCartableCategories(categories: any[]) {
-    return this.request<{ success: boolean; categories: any[] }>('/api/cartable/config/categories', {
+  async updateCartableCategories(categories: any[], categoriesDisabled?: boolean) {
+    return this.request<{ success: boolean; categories: any[]; categoriesDisabled?: boolean }>('/api/cartable/config/categories', {
       method: 'PUT',
-      body: JSON.stringify({ categories }),
+      body: JSON.stringify({ categories, categoriesDisabled }),
+    });
+  }
+
+  async updateCartableFollowableTopics(followableTopics: {
+    enabled?: boolean;
+    buttonLabel?: string;
+    title: string;
+    subtitle?: string;
+    items: any[];
+  }) {
+    return this.request<{ success: boolean; followableTopics: any }>('/api/cartable/config/followable-topics', {
+      method: 'PUT',
+      body: JSON.stringify({ followableTopics }),
     });
   }
 
@@ -840,19 +859,61 @@ class ApiClient {
     });
   }
 
-  // Cartable Attachments & Referral helpers
-  async uploadFile(file: File, folder = 'misc'): Promise<{ url: string }> {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
+  // Cartable Attachments & Secure Private File helpers
+  async uploadFile(file: File, category = 'misc'): Promise<{ url: string; filename?: string; originalName?: string }> {
+    const base64Data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
       reader.onerror = () => reject(new Error('خطا در خواندن فایل'));
       reader.readAsDataURL(file);
     });
-    const res = await this.request<{ success: boolean; url: string }>(`/api/upload/${folder}`, {
+    const res = await this.request<{ success: boolean; url: string; filename?: string; originalName?: string }>(`/api/upload/${category}`, {
       method: 'POST',
-      body: JSON.stringify({ fileName: file.name, dataUrl }),
+      body: JSON.stringify({ filename: file.name, base64Data }),
     });
-    return { url: res.url };
+    return { url: res.url, filename: res.filename, originalName: res.originalName };
+  }
+
+  async fetchPrivateFileBlob(fileUrl: string): Promise<{ blob: Blob; contentType: string; filename: string }> {
+    const headers: Record<string, string> = {};
+    if (this.sessionToken) {
+      headers['Authorization'] = `Bearer ${this.sessionToken}`;
+    }
+    const response = await fetch(fileUrl, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      let detail = 'عدم امکان دریافت فایل از سرور.';
+      try {
+        const errBody = await response.json();
+        detail = errBody.detail || errBody.error || detail;
+      } catch {}
+      throw new ApiError({
+        type: 'download_failed',
+        title: 'خطا در دریافت فایل',
+        status: response.status,
+        detail,
+        code: `HTTP_${response.status}`,
+      });
+    }
+    const blob = await response.blob();
+    const contentType = response.headers.get('content-type') || blob.type || 'application/octet-stream';
+    const rawName = decodeURIComponent(fileUrl.split('/').pop() || 'attachment');
+    return { blob, contentType, filename: rawName };
+  }
+
+  async downloadPrivateFile(fileUrl: string, suggestedName?: string): Promise<void> {
+    const { blob, filename } = await this.fetchPrivateFileBlob(fileUrl);
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = suggestedName || filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
   }
 
   // Course Attendance, Waitlist & Certificates

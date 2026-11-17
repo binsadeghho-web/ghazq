@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS `refresh_tokens` (
 CREATE TABLE IF NOT EXISTS `cartable_requests` (
   `id` BINARY(16) NOT NULL PRIMARY KEY,
   `tracking_number` VARCHAR(32) NOT NULL UNIQUE,
-  `category` ENUM('career', 'administrative', 'educational') NOT NULL,
+  `category` VARCHAR(64) NOT NULL DEFAULT 'general',
   `category_title` VARCHAR(128) NOT NULL,
   `title` VARCHAR(255) NOT NULL,
   `description` TEXT NOT NULL,
@@ -194,11 +194,17 @@ CREATE TABLE IF NOT EXISTS `cartable_requests` (
   `status` ENUM('pending', 'in_progress', 'need_info', 'rejected', 'completed', 'archived') NOT NULL DEFAULT 'pending',
   `has_unread_supervisor` BOOLEAN NOT NULL DEFAULT FALSE,
   `has_unread_applicant` BOOLEAN NOT NULL DEFAULT FALSE,
+  `attachments` JSON NULL,
+  `referred_department` VARCHAR(128) NULL,
+  `assigned_official_role` VARCHAR(64) NULL,
+  `internal_referral_note` TEXT NULL,
+  `sla_deadline_hours` INT NOT NULL DEFAULT 48,
   `version` INT NOT NULL DEFAULT 1,
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   INDEX `idx_applicant_status` (`applicant_id`, `status`),
   INDEX `idx_status_created` (`status`, `created_at`),
+  INDEX `idx_cartable_assigned_role` (`assigned_official_role`, `status`, `created_at`),
   CONSTRAINT `fk_cartable_applicant` FOREIGN KEY (`applicant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

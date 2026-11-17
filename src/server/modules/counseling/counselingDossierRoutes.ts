@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getPool, selectWithTimeout, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { AppError } from '../../platform/errors';
-import { AuthorizationPolicy } from '../../platform/authorization';
+import { AuthorizationPolicy, isOrganizationalUserRole } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
@@ -15,7 +15,7 @@ export function registerCounselingDossierRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      const isStaff = user.role === 'admin' || user.role === 'supervisor';
+      const isStaff = isOrganizationalUserRole(user.role);
 
       let sql = `SELECT * FROM counseling_session_dossiers WHERE 1=1`;
       const params: any[] = [];

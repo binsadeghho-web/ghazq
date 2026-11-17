@@ -104,10 +104,12 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       }
     }
 
-    // 2. Cartable Domain Enhancements: attachments, referred_department, internal_referral_note, sla_deadline_hours
+    // 2. Cartable Domain Enhancements: dynamic category, assigned_official_role, attachments, referred_department, internal_referral_note, sla_deadline_hours
+    try { await p.query(`ALTER TABLE cartable_requests MODIFY COLUMN category VARCHAR(64) NOT NULL DEFAULT 'general';`); } catch {}
     const cartableAlters = [
       `ADD COLUMN attachments JSON NULL`,
       `ADD COLUMN referred_department VARCHAR(128) NULL`,
+      `ADD COLUMN assigned_official_role VARCHAR(64) NULL`,
       `ADD COLUMN internal_referral_note TEXT NULL`,
       `ADD COLUMN sla_deadline_hours INT NOT NULL DEFAULT 48`
     ];
@@ -116,6 +118,7 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
     }
     try { await p.query(`ALTER TABLE cartable_messages ADD COLUMN attachments JSON NULL;`); } catch {}
     try { await p.query(`CREATE INDEX idx_cartable_dept_status ON cartable_requests (referred_department, status, created_at);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_cartable_assigned_role ON cartable_requests (assigned_official_role, status, created_at);`); } catch {}
 
     // 3. Courses Domain Enhancements: sessions_count, waitlist_enabled + course_attendance, course_waitlist, course_certificates tables
     const courseAlters = [

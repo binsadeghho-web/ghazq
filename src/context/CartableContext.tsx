@@ -31,7 +31,21 @@ export const CartableProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     refreshCartable();
+    const handleSync = () => refreshCartable();
+    window.addEventListener('app:auth_changed', handleSync);
+    window.addEventListener('app:role_switched', handleSync);
+
     const unsubscribe = api.subscribeToEvents(event => {
+      if (
+        event.type === 'cartable.config_updated' ||
+        event.type === 'cartable.guide_updated' ||
+        event.type === 'cartable.categories_updated' ||
+        event.type === 'cartable.followable_topics_updated'
+      ) {
+        window.dispatchEvent(new CustomEvent('app:cartable_config_updated', { detail: event.data }));
+        return;
+      }
+
       if (event.type.startsWith('cartable.')) {
         const payload = event.data ?? (event as any).payload;
         const delta = payload?.data ?? payload;
@@ -55,7 +69,11 @@ export const CartableProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
     });
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener('app:auth_changed', handleSync);
+      window.removeEventListener('app:role_switched', handleSync);
+      unsubscribe();
+    };
   }, [refreshCartable]);
 
   const createCartableRequest = useCallback(async (

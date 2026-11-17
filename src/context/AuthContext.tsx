@@ -146,6 +146,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         api.setAuthContext(res.user.id, res.user.role, res.user.fullName, res.token || (res as any).accessToken);
         if (setDesignTheme) setDesignTheme('crextio');
         refreshUsers();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('app:auth_changed', { detail: { user: res.user } }));
+        }
         return { success: true };
       }
       return { success: false, message: 'اطلاعات ورود نامعتبر است.' };

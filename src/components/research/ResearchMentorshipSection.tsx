@@ -39,7 +39,12 @@ export const ResearchMentorshipSection: React.FC = () => {
     deleteResearchProject
   } = useApp();
 
-  const isOfficial = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isOfficial =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'research_deputy' ||
+    currentUser?.role === 'supervisor';
 
   // Admin visibility & display controls (simulated persistent settings)
   const [showPublicStats, setShowPublicStats] = useState(true);

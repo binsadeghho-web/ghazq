@@ -9,8 +9,8 @@ import { Request, Response, NextFunction } from 'express';
 const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
 
-// Fields that must NEVER be altered (passwords, cryptographic tokens, hashes, binary content)
-const SENSITIVE_KEY_REGEX = /^(password|pass|token|secret|otp|totp|recovery_code|file|content_base64|checksum|signature|hash|auth)/i;
+// Fields that must NEVER be altered (passwords, cryptographic tokens, hashes, binary/base64 content)
+const SENSITIVE_KEY_REGEX = /^(password|pass|token|secret|otp|totp|recovery_code|file|filename|fileName|content_base64|base64Data|dataUrl|checksum|signature|hash|auth|url|imageUrl|coverImage)/i;
 
 /**
  * Converts Persian and Arabic numerals to standard Latin digits (0-9)

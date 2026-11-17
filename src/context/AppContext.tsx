@@ -94,7 +94,7 @@ export interface AppContextType {
   
   // Cartable methods
   createCartableRequest: (data: Omit<CartableRequest, 'id' | 'trackingNumber' | 'createdAt' | 'updatedAt' | 'messages'>, initialMessageText: string) => Promise<void>;
-  replyCartableRequest: (requestId: string, text: string) => Promise<void>;
+  replyCartableRequest: (requestId: string, text: string, attachments?: string[]) => Promise<void>;
   updateCartableStatus: (requestId: string, status: CartableRequest['status']) => Promise<void>;
   markCartableAsRead: (requestId: string) => Promise<void>;
 

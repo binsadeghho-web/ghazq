@@ -27,7 +27,7 @@ export interface IStorageAdapter {
   isUploadEnabled(): boolean;
   getUploadDir(): string;
   saveUpload(originalName: string, buffer: Buffer, category?: UploadCategory): Promise<SavedUploadResult>;
-  saveCategorizedUpload(category: UploadCategory, originalName: string, buffer: Buffer): Promise<SavedUploadResult>;
+  saveCategorizedUpload(category: UploadCategory, originalName: string, buffer: Buffer, forcedExt?: string): Promise<SavedUploadResult>;
   deleteUpload(category: UploadCategory, filename: string): Promise<boolean>;
   initialize(timeoutMs?: number): Promise<boolean>;
 }
@@ -119,7 +119,12 @@ export class StorageAdapter implements IStorageAdapter {
    * Saves uploaded file into its designated category directory with UUIDv7 randomized filename.
    * Strictly enforces MySQL database connectivity (Fail-Fast 503) to prevent orphan files or local JSON fallbacks.
    */
-  async saveCategorizedUpload(category: UploadCategory, originalName: string, buffer: Buffer): Promise<SavedUploadResult> {
+  async saveCategorizedUpload(
+    category: UploadCategory,
+    originalName: string,
+    buffer: Buffer,
+    forcedExt?: string
+  ): Promise<SavedUploadResult> {
     // Strict Fail-Fast 503 if MySQL database is not connected
     ensureDatabaseConnection();
 
@@ -138,7 +143,8 @@ export class StorageAdapter implements IStorageAdapter {
       await fs.promises.mkdir(targetDir, { recursive: true, mode: 0o755 });
     } catch {}
 
-    const ext = path.extname(originalName).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.bin';
+    const rawExt = forcedExt || path.extname(originalName).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.bin';
+    const ext = rawExt.startsWith('.') ? rawExt : `.${rawExt}`;
     const safeFilename = `${category}_${Date.now()}_${generateUUIDv7().slice(0, 10)}${ext}`;
     const filePath = path.join(targetDir, safeFilename);
 

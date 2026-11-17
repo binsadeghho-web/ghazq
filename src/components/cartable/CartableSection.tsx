@@ -1,129 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { CartableCategory, CartableRequest, RequestPriority, RequestStatus } from '../../types';
-import { ModernMetricCard } from '../common/ModernMetricCard';
-import { CartableEnhancedTools } from './CartableEnhancedTools';
+import { RequestStatus } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { api } from '../../services/apiClient';
+import { CartableEnhancedTools } from './CartableEnhancedTools';
+import { CartableStatsCards } from './CartableStatsCards';
+import { CartableApplicantInfoPanel } from './CartableApplicantInfoPanel';
+import { CartableAttachmentList } from './CartableAttachmentList';
+import { CartableFollowableTopicsModal } from './CartableFollowableTopicsModal';
+import { CartableNewRequestModal } from './CartableNewRequestModal';
+import { CartableCategoriesModal } from './CartableCategoriesModal';
+import { CartableGuideModal } from './CartableGuideModal';
+import {
+  CARTABLE_FILE_ACCEPT,
+  CartableCategoryItem,
+  CartableFollowableTopic,
+  CartableFollowableTopicsConfig,
+  CartableGuide,
+  DEFAULT_CATEGORIES,
+  DEFAULT_FOLLOWABLE_TOPICS,
+  DEFAULT_GUIDE,
+  OFFICIAL_ROLES_LIST,
+  isStaffRole,
+  validateCartableClientFile,
+} from './cartableTypes';
 import {
   Inbox,
   Plus,
   Send,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  FileText,
   User,
   Shield,
-  Briefcase,
-  GraduationCap,
-  Building,
-  CheckCheck,
   Search,
-  Filter,
   X,
-  MessageSquare,
-  FolderCheck,
   FolderKanban,
-  Archive,
-  XCircle,
   ChevronLeft,
-  Sparkles,
-  UserCheck,
-  BadgeAlert,
-  ArrowRight,
-  ChevronDown,
-  ShieldAlert,
-  FileCheck2,
-  Lock,
   HelpCircle,
   BookOpen,
   Sliders,
-  Edit3,
-  Trash2,
-  PlusCircle,
+  Lock,
   Check,
-  Info,
-  Layers,
-  ArrowUpRight,
+  Paperclip,
+  Loader2,
+  ClipboardList,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
-
-interface CartableCategoryItem {
-  id: string;
-  key: string;
-  title: string;
-  assignedRole: string;
-  assignedOfficialTitle: string;
-  description: string;
-}
-
-interface CartableGuide {
-  id?: string;
-  title: string;
-  content: string;
-  steps: string[];
-  tips: string[];
-  updatedAt?: string;
-  updatedBy?: string;
-  enabled?: boolean;
-}
-
-const DEFAULT_CATEGORIES: CartableCategoryItem[] = [
-  {
-    id: 'cat_admin',
-    key: 'administrative',
-    title: 'خدمات اداری (صدور گواهی، ریزنمرات و احکام)',
-    assignedRole: 'admin_finance_officer',
-    assignedOfficialTitle: 'مسئول اداری و مالی',
-    description: 'صدور انواع گواهی اشتغال، احکام، تسویه‌حساب و مدارک رسمی اداری',
-  },
-  {
-    id: 'cat_edu',
-    key: 'educational',
-    title: 'خدمات آموزشی (تطبیق واحدهای حوزوی و دانشگاهی)',
-    assignedRole: 'education_deputy',
-    assignedOfficialTitle: 'معاونت آموزش',
-    description: 'ارزیابی پرونده تحصیلی، صدور معرفی‌نامه امتحانات و تطبیق دروس',
-  },
-  {
-    id: 'cat_career',
-    key: 'career',
-    title: 'خدمات شغلی (جابه‌جایی، ارتقای رتبه و تسریع پرونده)',
-    assignedRole: 'alumni_manager',
-    assignedOfficialTitle: 'مدیر دانش‌آموختگان',
-    description: 'تسریع فرایند استخدامی، معرفی‌نامه شغلی، ارتقای پایه و انتقال سازمانی',
-  },
-];
-
-const DEFAULT_GUIDE: CartableGuide = {
-  id: 'guide_default',
-  title: 'راهنمای جامع ثبت درخواست در کارتابل خدمات',
-  content:
-    'دانش‌آموختگان گرامی می‌توانند انواع درخواست‌های اداری، آموزشی، رفاهی و استعلامات رسمی خود را از این درگاه ثبت نمایند. بر اساس دسته‌بندی انتخابی، هر پرونده به صورت خودکار به مسئول مربوطه در سازمان ارجاع داده شده و کد رهگیری یکتا دریافت می‌کند.',
-  steps: [
-    'انتخاب دقیق دسته‌بندی موضوعی جهت ارجاع مستقیم به کارتابل مسئول مربوطه',
-    'درج عنوان گویا و مستند همراه با شرح تفصیلی در متن درخواست',
-    'تعیین اولویت رسیدگی (عادی یا فوری؛ درخواست‌های فوری شامل مواعد اداری حساس هستند)',
-    'پیوست مدارک، اسناد، فیش‌ها و سوابق مورد نیاز جهت تسریع در فرآیند',
-  ],
-  tips: [
-    'درخواست‌های عادی با دقت کامل توسط کارشناس رسیدگی و در موعد مقرر پاسخ داده می‌شوند.',
-    'پس از ثبت، امکان گفت‌وگوی تعاملی و ارسال مدارک تکمیلی در طول رسیدگی پرونده فراهم است.',
-    'تغییر وضعیت پرونده به صورت بلادرنگ در کارتابل شما منعکس و اطلاع‌رسانی می‌گردد.',
-  ],
-  enabled: true,
-};
-
-const OFFICIAL_ROLES_LIST = [
-  { role: 'admin', title: 'مدیر ارشد سامانه' },
-  { role: 'general_observer', title: 'ناظر کل سامانه' },
-  { role: 'alumni_manager', title: 'مدیر دانش‌آموختگان' },
-  { role: 'admin_finance_officer', title: 'مسئول اداری و مالی' },
-  { role: 'education_deputy', title: 'معاونت آموزش' },
-  { role: 'cultural_educational_officer', title: 'معاونت فرهنگی و رفاهی' },
-  { role: 'research_deputy', title: 'معاونت اجرایی و پژوهش' },
-];
 
 export const CartableSection: React.FC = () => {
   const {
@@ -136,115 +58,118 @@ export const CartableSection: React.FC = () => {
     markCartableAsRead,
   } = useApp();
 
-  const isOfficial =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'supervisor' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'admin_finance_officer' ||
-    currentUser?.role === 'education_deputy' ||
-    currentUser?.role === 'cultural_educational_officer' ||
-    currentUser?.role === 'research_deputy' ||
-    currentUser?.role === 'general_observer';
-
+  const isOfficial = isStaffRole(currentUser?.role);
   const isAdminOrAlumniManager =
     currentUser?.role === 'admin' ||
     currentUser?.role === 'super_admin' ||
     currentUser?.role === 'alumni_manager';
 
-  // Config State (Categories, Guide, Officials from Database)
+  // Server-backed Cartable Config State
   const [categories, setCategories] = useState<CartableCategoryItem[]>(DEFAULT_CATEGORIES);
+  const [categoriesDisabled, setCategoriesDisabled] = useState<boolean>(false);
   const [guide, setGuide] = useState<CartableGuide>(DEFAULT_GUIDE);
+  const [followableTopics, setFollowableTopics] = useState<CartableFollowableTopicsConfig>(
+    DEFAULT_FOLLOWABLE_TOPICS
+  );
   const [officials, setOfficials] = useState(OFFICIAL_ROLES_LIST);
 
-  // Guide UI States
+  // Modals State
   const [guideHovered, setGuideHovered] = useState(false);
   const [guideModalOpen, setGuideModalOpen] = useState(false);
-  const [isEditingGuide, setIsEditingGuide] = useState(false);
-  const [guideEditForm, setGuideEditForm] = useState<CartableGuide>(DEFAULT_GUIDE);
-  const [savingGuide, setSavingGuide] = useState(false);
-
-  // Category & Auto-referral Matrix Modal State
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
-  const [categoryListEdit, setCategoryListEdit] = useState<CartableCategoryItem[]>(DEFAULT_CATEGORIES);
-  const [savingCategories, setSavingCategories] = useState(false);
-  const [newCatTitle, setNewCatTitle] = useState('');
-  const [newCatKey, setNewCatKey] = useState('');
-  const [newCatDescription, setNewCatDescription] = useState('');
-  const [newCatOfficialRole, setNewCatOfficialRole] = useState(OFFICIAL_ROLES_LIST[2].role);
+  const [followableModalOpen, setFollowableModalOpen] = useState(false);
+  const [newRequestModalOpen, setNewRequestModalOpen] = useState(false);
+  const [prefillTopic, setPrefillTopic] = useState<{ title?: string; categoryKey?: string }>({});
 
-  // Fetch Cartable Config from MySQL on Mount
+  const fetchCartableConfig = async () => {
+    try {
+      const cfg = await api.getCartableConfig();
+      if (!cfg) return;
+      if (Array.isArray(cfg.categories) && cfg.categories.length > 0) {
+        setCategories(cfg.categories);
+      }
+      if (typeof cfg.categoriesDisabled === 'boolean') {
+        setCategoriesDisabled(cfg.categoriesDisabled);
+      }
+      if (cfg.guide) {
+        setGuide(cfg.guide);
+      }
+      if (cfg.followableTopics) {
+        setFollowableTopics(cfg.followableTopics);
+      }
+      if (Array.isArray(cfg.officials) && cfg.officials.length > 0) {
+        setOfficials(cfg.officials);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
-    let isMounted = true;
-    api
-      .getCartableConfig()
-      .then(cfg => {
-        if (!isMounted || !cfg) return;
-        if (Array.isArray(cfg.categories) && cfg.categories.length > 0) {
-          setCategories(cfg.categories);
-          setCategoryListEdit(cfg.categories);
-        }
-        if (cfg.guide) {
-          setGuide(cfg.guide);
-          setGuideEditForm(cfg.guide);
-        }
-        if (Array.isArray(cfg.officials) && cfg.officials.length > 0) {
-          setOfficials(cfg.officials);
-        }
-      })
-      .catch(() => {});
+    fetchCartableConfig();
+    const handleConfigUpdate = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      const data = detail?.data || detail;
+      if (data?.categories) setCategories(data.categories);
+      if (typeof data?.categoriesDisabled === 'boolean') {
+        setCategoriesDisabled(data.categoriesDisabled);
+      }
+      if (data?.guide) setGuide(data.guide);
+      if (data?.followableTopics) setFollowableTopics(data.followableTopics);
+      if (!data?.categories && !data?.guide && !data?.followableTopics) {
+        fetchCartableConfig();
+      }
+    };
+    window.addEventListener('app:cartable_config_updated', handleConfigUpdate);
     return () => {
-      isMounted = false;
+      window.removeEventListener('app:cartable_config_updated', handleConfigUpdate);
     };
   }, []);
 
   // Selection & Navigation State
   const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
   const [selectedApplicantId, setSelectedApplicantId] = useState<string | null>(null);
-
-  // Supervisor View Mode: 'applicants' (گروه‌بندی متقاضیان) or 'all_requests' (کل درخواست‌ها)
   const [viewMode, setViewMode] = useState<'applicants' | 'all_requests'>(
     isOfficial ? 'applicants' : 'all_requests'
   );
+
+  useEffect(() => {
+    setViewMode(isOfficial ? 'applicants' : 'all_requests');
+    setSelectedApplicantId(null);
+  }, [isOfficial]);
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal State
-  const [newRequestModalOpen, setNewRequestModalOpen] = useState(false);
-
-  // New Request Form State (defaults to first available category)
-  const [newCategoryKey, setNewCategoryKey] = useState<string>(
-    DEFAULT_CATEGORIES[0].key
-  );
-  const [newTitle, setNewTitle] = useState('');
-  const [newPriority, setNewPriority] = useState<RequestPriority>('normal');
-  const [newDescription, setNewDescription] = useState('');
-
-  // Reply Box State
+  // Chat Reply & Reply Attachment State
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
   const [replyText, setReplyText] = useState('');
+  const [replyAttachments, setReplyAttachments] = useState<Array<{ url: string; name: string }>>([]);
+  const [uploadingReplyFile, setUploadingReplyFile] = useState(false);
+  const [replyFileError, setReplyFileError] = useState<string | null>(null);
+  const [sendingReply, setSendingReply] = useState(false);
 
   // BOLA & Role-based Visibility Filter
   const myRequests = cartableRequests.filter(req => {
     if (!isOfficial && req.applicantId !== currentUser?.id) {
-      return false; // BOLA Check
+      return false;
     }
     return true;
   });
 
-  // Automatically select initial request
   useEffect(() => {
     if (!selectedReqId && myRequests.length > 0) {
       setSelectedReqId(myRequests[0].id);
     }
   }, [myRequests, selectedReqId]);
 
-  // Selected Request details
   const selectedRequest = cartableRequests.find(r => r.id === selectedReqId);
 
-  // Mark request as read when selected
+  useEffect(() => {
+    setReplyAttachments([]);
+    setReplyFileError(null);
+  }, [selectedReqId]);
+
   useEffect(() => {
     if (selectedReqId && selectedRequest) {
       const needsRead = isOfficial
@@ -256,97 +181,92 @@ export const CartableSection: React.FC = () => {
     }
   }, [selectedReqId, selectedRequest, isOfficial, markCartableAsRead]);
 
-  // Handle Form submission: Create new request
-  const handleCreateRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser || !newTitle.trim() || !newDescription.trim()) return;
+  // Attach file directly inside chat reply (saved into separate folder: cartable_officials vs cartable_alumni)
+  const handleSelectReplyFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    const matchedCategory = categories.find(c => c.key === newCategoryKey) || categories[0];
-
+    setReplyFileError(null);
+    setUploadingReplyFile(true);
     try {
-      await createCartableRequest(
-        {
-          category: matchedCategory.key as CartableCategory,
-          categoryTitle: matchedCategory.title,
-          title: newTitle.trim(),
-          description: newDescription.trim(),
-          applicantId: currentUser.id,
-          applicantName: currentUser.fullName,
-          applicantRoleTitle: currentUser.roleTitle,
-          priority: newPriority,
-          status: 'pending',
-        },
-        newDescription.trim()
-      );
-
-      setNewTitle('');
-      setNewDescription('');
-      setNewRequestModalOpen(false);
-    } catch {
-      // Handled in AppContext
+      const targetCategory = isOfficial ? 'cartable_officials' : 'cartable_alumni';
+      for (const file of files) {
+        const validation = validateCartableClientFile(file);
+        if (!validation.ok) {
+          setReplyFileError(validation.error || 'فرمت فایل مجاز نیست.');
+          continue;
+        }
+        const uploaded = await api.uploadFile(file, targetCategory);
+        if (uploaded?.url) {
+          setReplyAttachments(prev => [
+            ...prev,
+            { url: uploaded.url, name: uploaded.originalName || file.name },
+          ]);
+        }
+      }
+    } catch (err: any) {
+      setReplyFileError(err?.message || 'خطا در بارگذاری فایل پیوست.');
+    } finally {
+      setUploadingReplyFile(false);
+      if (replyFileInputRef.current) replyFileInputRef.current.value = '';
     }
   };
 
-  // Form submission: Send reply
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim() || !selectedRequest) return;
-    if (selectedRequest.status === 'archived') return;
+    if (!selectedRequest || selectedRequest.status === 'archived' || sendingReply) return;
+    if (!replyText.trim() && replyAttachments.length === 0) return;
 
+    setSendingReply(true);
     try {
-      await replyCartableRequest(selectedRequest.id, replyText.trim());
+      const finalText =
+        replyText.trim() ||
+        (isOfficial ? 'ارسال فایل / گواهی رسمی از سوی مسئول' : 'ارسال مدرک پیوست توسط متقاضی');
+      const urls = replyAttachments.map(a => a.url);
+      await replyCartableRequest(
+        selectedRequest.id,
+        finalText,
+        urls.length > 0 ? urls : undefined
+      );
       setReplyText('');
-    } catch {
-      // Handled in AppContext
+      setReplyAttachments([]);
+      setReplyFileError(null);
+    } finally {
+      setSendingReply(false);
     }
   };
 
-  // Guide Management: Save edits to Database
+  // Config Saves
   const handleSaveGuide = async (updatedGuide: CartableGuide) => {
-    setSavingGuide(true);
-    try {
-      const res = await api.updateCartableGuide(updatedGuide);
-      if (res?.guide) {
-        setGuide(res.guide);
-        setGuideEditForm(res.guide);
-      } else {
-        setGuide(updatedGuide);
-      }
-      setIsEditingGuide(false);
-    } catch (err: any) {
-      alert(`خطا در ذخیره راهنما در دیتابیس: ${err.message || 'خطای سرور'}`);
-    } finally {
-      setSavingGuide(false);
-    }
+    const res = await api.updateCartableGuide(updatedGuide);
+    setGuide(res?.guide || updatedGuide);
   };
 
-  // Guide Management: Delete/Hide Guide
-  const handleDeleteGuide = async () => {
-    if (!confirm('آیا از حذف/غیرفعال‌سازی راهنمای ثبت درخواست اطمینان دارید؟')) return;
-    const disabledGuide = { ...guide, enabled: false };
-    await handleSaveGuide(disabledGuide);
+  const handleSaveCategories = async (
+    nextList: CartableCategoryItem[],
+    nextDisabled: boolean
+  ) => {
+    const res = await api.updateCartableCategories(nextList, nextDisabled);
+    setCategories(res?.categories || nextList);
+    setCategoriesDisabled(
+      typeof res?.categoriesDisabled === 'boolean' ? res.categoriesDisabled : nextDisabled
+    );
   };
 
-  // Category Matrix Management: Save to Database
-  const handleSaveCategories = async (newList: CartableCategoryItem[]) => {
-    setSavingCategories(true);
-    try {
-      const res = await api.updateCartableCategories(newList);
-      if (res?.categories) {
-        setCategories(res.categories);
-        setCategoryListEdit(res.categories);
-      } else {
-        setCategories(newList);
-      }
-      setCategoriesModalOpen(false);
-    } catch (err: any) {
-      alert(`خطا در ذخیره دسته‌بندی‌ها در دیتابیس: ${err.message || 'خطای سرور'}`);
-    } finally {
-      setSavingCategories(false);
-    }
+  const handleSaveFollowableTopics = async (nextConfig: CartableFollowableTopicsConfig) => {
+    const res = await api.updateCartableFollowableTopics(nextConfig);
+    setFollowableTopics(res?.followableTopics || nextConfig);
   };
 
-  // Helper for status badge styling and Persian label
+  const handleSelectTopicForNewRequest = (topic: CartableFollowableTopic) => {
+    setFollowableModalOpen(false);
+    setPrefillTopic({
+      title: topic.title,
+      categoryKey: topic.categoryKey,
+    });
+    setNewRequestModalOpen(true);
+  };
+
   const getStatusText = (status: RequestStatus) => {
     switch (status) {
       case 'pending':
@@ -397,47 +317,37 @@ export const CartableSection: React.FC = () => {
   ).length;
 
   // Group requests by applicant for Supervisor People-First View
-  const applicantGroups = Array.from(new Set(myRequests.map(r => r.applicantId))).map(
-    appId => {
-      const appReqs = myRequests.filter(r => r.applicantId === appId);
-      const applicantObj = users.find(u => u.id === appId) || {
-        fullName: appReqs[0]?.applicantName || 'متقاضی محترم',
-        roleTitle: appReqs[0]?.applicantRoleTitle || 'دانش‌آموخته',
-      };
+  const applicantGroups = Array.from(new Set(myRequests.map(r => r.applicantId))).map(appId => {
+    const appReqs = myRequests.filter(r => r.applicantId === appId);
+    const applicantObj = users.find(u => u.id === appId) || {
+      fullName: appReqs[0]?.applicantName || 'متقاضی محترم',
+      roleTitle: appReqs[0]?.applicantRoleTitle || 'دانش‌آموخته',
+    };
+    const activeReqs = appReqs.filter(
+      r => r.status !== 'archived' && r.status !== 'completed'
+    );
+    const closedReqs = appReqs.filter(
+      r => r.status === 'archived' || r.status === 'completed'
+    );
+    const hasUnread = appReqs.some(r =>
+      isOfficial ? r.hasUnreadSupervisor : r.hasUnreadApplicant
+    );
 
-      const activeReqs = appReqs.filter(
-        r => r.status !== 'archived' && r.status !== 'completed'
-      );
-      const closedReqs = appReqs.filter(
-        r => r.status === 'archived' || r.status === 'completed'
-      );
-      const hasUnread = appReqs.some(r =>
-        isOfficial ? r.hasUnreadSupervisor : r.hasUnreadApplicant
-      );
+    return {
+      applicantId: appId,
+      fullName: applicantObj.fullName,
+      roleTitle: applicantObj.roleTitle,
+      totalCount: appReqs.length,
+      activeRequests: activeReqs,
+      closedRequests: closedReqs,
+      hasUnread,
+    };
+  });
 
-      return {
-        applicantId: appId,
-        fullName: applicantObj.fullName,
-        roleTitle: applicantObj.roleTitle,
-        totalCount: appReqs.length,
-        activeRequests: activeReqs,
-        closedRequests: closedReqs,
-        hasUnread,
-      };
-    }
-  );
-
-  // Filter visible requests for list
   const filteredRequestsList = myRequests.filter(req => {
-    if (selectedApplicantId && req.applicantId !== selectedApplicantId) {
-      return false;
-    }
-    if (categoryFilter !== 'all' && req.category !== categoryFilter) {
-      return false;
-    }
-    if (statusFilter !== 'all' && req.status !== statusFilter) {
-      return false;
-    }
+    if (selectedApplicantId && req.applicantId !== selectedApplicantId) return false;
+    if (categoryFilter !== 'all' && req.category !== categoryFilter) return false;
+    if (statusFilter !== 'all' && req.status !== statusFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -449,167 +359,52 @@ export const CartableSection: React.FC = () => {
     return true;
   });
 
-  const selectedCategoryObj = categories.find(c => c.key === newCategoryKey) || categories[0];
+  const activeCategories = categories.filter(c => c.isActive !== false);
 
   return (
     <div className="space-y-4" dir="rtl">
-      {/* Compact Single-Row Summary & Filter Strip for Admin / Official, or 4 KPI Cards for Alumni */}
-      {isOfficial ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl px-4 py-2.5 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center flex-wrap gap-1.5 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('all_requests');
-                setStatusFilter('all');
-              }}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                statusFilter === 'all'
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              <span>همه پرونده‌ها</span>
-              <span className="font-mono tabular-nums opacity-80">{toPersianNumbers(myRequests.length)}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('all_requests');
-                setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending');
-              }}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                statusFilter === 'pending'
-                  ? 'bg-amber-500 text-stone-950 font-black'
-                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>جدید / باز</span>
-              <span className="font-mono tabular-nums">{toPersianNumbers(pendingCount)}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('all_requests');
-                setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress');
-              }}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                statusFilter === 'in_progress'
-                  ? 'bg-sky-500 text-stone-950 font-black'
-                  : 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20'
-              }`}
-            >
-              <FolderKanban className="w-3.5 h-3.5" />
-              <span>در حال جریان</span>
-              <span className="font-mono tabular-nums">{toPersianNumbers(inProgressCount)}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('all_requests');
-                setStatusFilter(statusFilter === 'archived' ? 'all' : 'archived');
-              }}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                statusFilter === 'archived'
-                  ? 'bg-emerald-500 text-stone-950 font-black'
-                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
-              }`}
-            >
-              <Archive className="w-3.5 h-3.5" />
-              <span>مختومه / انجام‌شده</span>
-              <span className="font-mono tabular-nums">{toPersianNumbers(archivedCount)}</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">
-              <BadgeAlert className="w-3.5 h-3.5" />
-              <span>پیام‌های نخوانده:</span>
-              <span className="font-mono tabular-nums font-black">{toPersianNumbers(unreadCount)}</span>
-            </span>
-          </div>
-        </div>
-      ) : (
-        /* 4 Metric Cards Overview for Alumni */
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <ModernMetricCard
-            title="درخواست‌های جدید / باز"
-            value={pendingCount}
-            periodLabel="نیازمند بررسی مسئول"
-            unit="مورد"
-            icon={<Clock className="w-4 h-4 text-amber-500" />}
-            onClick={() => {
-              setViewMode('all_requests');
-              setStatusFilter('pending');
-            }}
-          />
-          <ModernMetricCard
-            title="در حال جریان"
-            value={inProgressCount}
-            periodLabel="پیگیری ارجاعات"
-            unit="مورد"
-            icon={<FolderKanban className="w-4 h-4 text-sky-500" />}
-            onClick={() => {
-              setViewMode('all_requests');
-              setStatusFilter('in_progress');
-            }}
-          />
-          <ModernMetricCard
-            title="اعلان‌ها / پیام جدید"
-            value={unreadCount}
-            periodLabel="پاسخ‌های جدید گفت‌وگو"
-            unit="پیام"
-            icon={<BadgeAlert className="w-4 h-4 text-rose-500" />}
-            onClick={() => {
-              setViewMode('all_requests');
-            }}
-          />
-          <ModernMetricCard
-            title="پرونده‌های مختومه‌شده"
-            value={archivedCount}
-            periodLabel="بایگانی نهایی"
-            unit="پرونده"
-            icon={<Archive className="w-4 h-4 text-emerald-500" />}
-            onClick={() => {
-              setViewMode('all_requests');
-              setStatusFilter('archived');
-            }}
-          />
-        </div>
-      )}
+      {/* Stats Strip / Redesigned Alumni KPI Cards (اصلاح ۵) */}
+      <CartableStatsCards
+        isOfficial={isOfficial}
+        totalCount={myRequests.length}
+        pendingCount={pendingCount}
+        inProgressCount={inProgressCount}
+        unreadCount={unreadCount}
+        archivedCount={archivedCount}
+        statusFilter={statusFilter}
+        onSelectFilter={(status, switchToAll) => {
+          if (switchToAll) setViewMode('all_requests');
+          setStatusFilter(status);
+        }}
+      />
 
       {/* Main Header Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-              <Inbox className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                کارتابل خدمات اداری و آموزشی
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                درگاه ثبت درخواست‌های رسمی، استعلامات و گفت‌وگوی دوطرفه اعضا و مسئولین مرکز
-              </p>
-            </div>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+            <Inbox className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              کارتابل خدمات اداری و آموزشی
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              درگاه ثبت درخواست‌های رسمی، استعلامات و گفت‌وگوی دوطرفه اعضا و مسئولین مرکز
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center flex-wrap gap-2.5 w-full md:w-auto justify-between md:justify-end">
-          {/* Switch View Mode for Supervisor */}
+        <div className="flex items-center flex-wrap gap-2 w-full xl:w-auto justify-start xl:justify-end">
+          {/* Switch View Mode for Officials */}
           {isOfficial && (
             <div className="flex items-center gap-1 p-1 bg-slate-200/80 dark:bg-slate-800/80 rounded-2xl text-xs font-bold border border-slate-300/60 dark:border-slate-700/60">
               <button
+                type="button"
                 onClick={() => {
                   setViewMode('applicants');
                   setSelectedApplicantId(null);
                 }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${
                   viewMode === 'applicants'
                     ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -619,11 +414,12 @@ export const CartableSection: React.FC = () => {
                 <span>به تفکیک متقاضیان</span>
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setViewMode('all_requests');
                   setSelectedApplicantId(null);
                 }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${
                   viewMode === 'all_requests'
                     ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -635,24 +431,40 @@ export const CartableSection: React.FC = () => {
             </div>
           )}
 
-          {/* Admin & Alumni Manager: Dynamic Categories & Routing Matrix Button */}
+          {/* Admin & Alumni Manager: Categories & Routing Matrix */}
           {isAdminOrAlumniManager && (
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setCategoryListEdit([...categories]);
-                setCategoriesModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-3.5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300/70 dark:border-slate-700/70 text-xs font-black transition-all cursor-pointer shadow-sm"
+              type="button"
+              onClick={() => setCategoriesModalOpen(true)}
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border text-xs font-black transition-all cursor-pointer shadow-sm ${
+                categoriesDisabled
+                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-200'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-300/70 dark:border-slate-700/70'
+              }`}
               title="مدیریت دسته‌بندی‌ها و ارجاع خودکار"
             >
               <Sliders className="w-4 h-4 text-emerald-500" />
-              <span className="hidden sm:inline">دسته‌بندی‌ها و ارجاع</span>
+              <span>{categoriesDisabled ? 'دسته‌بندی‌ها (خاموش)' : 'دسته‌بندی‌ها و ارجاع'}</span>
             </motion.button>
           )}
 
-          {/* Guide Button with Hover Popover & Click Modal (اصلاح ۵) */}
+          {/* Followable Topics Button (اصلاحیه ۴: موارد قابل پیگیری از مرکز فقه و حقوق اسلامی) */}
+          {(followableTopics.enabled !== false || isAdminOrAlumniManager) && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="button"
+              onClick={() => setFollowableModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-sky-500/12 hover:bg-sky-500/22 text-sky-700 dark:text-sky-300 border border-sky-500/30 rounded-2xl text-xs font-black shadow-sm transition-all cursor-pointer"
+            >
+              <ClipboardList className="w-4 h-4 text-sky-500 shrink-0" />
+              <span>{followableTopics.buttonLabel || 'موارد قابل پیگیری از مرکز فقه و حقوق اسلامی'}</span>
+            </motion.button>
+          )}
+
+          {/* Guide Button with Hover Preview */}
           <div
             className="relative"
             onMouseEnter={() => setGuideHovered(true)}
@@ -661,21 +473,21 @@ export const CartableSection: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              type="button"
               onClick={() => setGuideModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500/15 to-amber-500/25 hover:from-amber-500/25 hover:to-amber-500/35 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-2xl text-xs font-black shadow-sm transition-all cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-amber-500/15 to-amber-500/25 hover:from-amber-500/25 hover:to-amber-500/35 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-2xl text-xs font-black shadow-sm transition-all cursor-pointer"
             >
               <HelpCircle className="w-4 h-4 text-amber-500 shrink-0" />
               <span>راهنمای ثبت درخواست</span>
             </motion.button>
 
-            {/* Quick Preview Hover Popover */}
             <AnimatePresence>
               {guideHovered && !guideModalOpen && guide.enabled !== false && (
                 <motion.div
                   initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  className="absolute left-0 top-full mt-2 w-80 p-4 bg-slate-950/95 text-white backdrop-blur-xl border border-amber-500/40 rounded-2xl shadow-2xl z-50 text-right pointer-events-none"
+                  className="hidden sm:block absolute left-0 top-full mt-2 w-80 p-4 bg-slate-950/95 text-white backdrop-blur-xl border border-amber-500/40 rounded-2xl shadow-2xl z-50 text-right pointer-events-none"
                 >
                   <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
                     <BookOpen className="w-4 h-4 text-amber-400" />
@@ -694,9 +506,6 @@ export const CartableSection: React.FC = () => {
                       <span>پیگیری بلادرنگ و گفت‌وگوی دوطرفه</span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-amber-400/80 mt-2.5 pt-2 border-t border-white/10 text-center font-bold">
-                    برای مشاهده راهنمای تفصیلی کلیک کنید
-                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -706,8 +515,12 @@ export const CartableSection: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setNewRequestModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-2xl text-xs font-black shadow-lg shadow-emerald-500/20 transition-all shrink-0 cursor-pointer"
+            type="button"
+            onClick={() => {
+              setPrefillTopic({});
+              setNewRequestModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-2xl text-xs font-black shadow-lg shadow-emerald-500/20 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>ثبت درخواست جدید</span>
@@ -717,16 +530,16 @@ export const CartableSection: React.FC = () => {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* LEFT COLUMN: Applicants or Requests List (5 cols) */}
+        {/* LEFT COLUMN: Applicants or Requests List */}
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors">
-          {/* Header Controls inside Left Column */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50 dark:bg-slate-900/50">
             {selectedApplicantId && (
               <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 mb-1 font-bold">
                 <span>درخواست‌های متقاضی انتخاب‌شده</span>
                 <button
+                  type="button"
                   onClick={() => setSelectedApplicantId(null)}
-                  className="p-1 hover:bg-emerald-500/20 rounded-lg transition-colors text-slate-500 dark:text-slate-300"
+                  className="p-1 hover:bg-emerald-500/20 rounded-lg transition-colors text-slate-500 dark:text-slate-300 cursor-pointer"
                   title="نمایش همه متقاضیان"
                 >
                   <X className="w-4 h-4" />
@@ -745,35 +558,37 @@ export const CartableSection: React.FC = () => {
               <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
             </div>
 
-            {/* Category Filter Tabs (Dynamic from Categories List) */}
-            <div className="flex items-center gap-1 p-1 bg-slate-200/80 dark:bg-slate-800/80 rounded-xl text-xs overflow-x-auto scrollbar-none">
-              <button
-                onClick={() => setCategoryFilter('all')}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold transition-all ${
-                  categoryFilter === 'all'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                همه
-              </button>
-              {categories.map(cat => (
+            {!categoriesDisabled && activeCategories.length > 0 && (
+              <div className="flex items-center gap-1 p-1 bg-slate-200/80 dark:bg-slate-800/80 rounded-xl text-xs overflow-x-auto scrollbar-none">
                 <button
-                  key={cat.id || cat.key}
-                  onClick={() => setCategoryFilter(cat.key)}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold transition-all ${
-                    categoryFilter === cat.key
+                  type="button"
+                  onClick={() => setCategoryFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold transition-all cursor-pointer ${
+                    categoryFilter === 'all'
                       ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  {cat.title.split(' ')[0]}
+                  همه
                 </button>
-              ))}
-            </div>
+                {activeCategories.map(cat => (
+                  <button
+                    type="button"
+                    key={cat.id || cat.key}
+                    onClick={() => setCategoryFilter(cat.key)}
+                    className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-bold transition-all cursor-pointer ${
+                      categoryFilter === cat.key
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {cat.title.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Render APPLICANTS GROUPED VIEW for Supervisors */}
           {isOfficial && viewMode === 'applicants' && !selectedApplicantId ? (
             <div className="divide-y divide-slate-200/60 dark:divide-slate-800 max-h-[600px] overflow-y-auto">
               <div className="p-3 bg-slate-100 dark:bg-slate-900/80 text-[11px] text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
@@ -787,9 +602,10 @@ export const CartableSection: React.FC = () => {
               ) : (
                 applicantGroups.map(group => (
                   <button
+                    type="button"
                     key={group.applicantId}
                     onClick={() => setSelectedApplicantId(group.applicantId)}
-                    className="w-full p-4 text-right hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors flex items-center justify-between gap-3 group"
+                    className="w-full p-4 text-right hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-xs">
@@ -826,7 +642,6 @@ export const CartableSection: React.FC = () => {
               )}
             </div>
           ) : (
-            /* ALL REQUESTS LIST VIEW (Zero Overlap Layout) */
             <div className="divide-y divide-slate-200/60 dark:divide-slate-800 max-h-[600px] overflow-y-auto">
               {filteredRequestsList.length === 0 ? (
                 <div className="p-12 text-center text-xs text-slate-400 space-y-2">
@@ -837,15 +652,14 @@ export const CartableSection: React.FC = () => {
                 filteredRequestsList.map(req => {
                   const isSelected = selectedReqId === req.id;
                   const statusMeta = getStatusText(req.status);
-                  const isUnread = isOfficial
-                    ? req.hasUnreadSupervisor
-                    : req.hasUnreadApplicant;
+                  const isUnread = isOfficial ? req.hasUnreadSupervisor : req.hasUnreadApplicant;
                   const cleanTrackingCode = toPersianNumbers(
                     req.trackingNumber.replace('TRK-1403-', '').replace('TRK-', '')
                   );
 
                   return (
                     <button
+                      type="button"
                       key={req.id}
                       onClick={() => setSelectedReqId(req.id)}
                       className={`w-full p-3.5 text-right transition-colors flex flex-col gap-2 cursor-pointer ${
@@ -854,7 +668,6 @@ export const CartableSection: React.FC = () => {
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       }`}
                     >
-                      {/* Clean Inline Header with Zero Pill Clutter */}
                       <div className="flex items-center justify-between text-xs gap-2">
                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 min-w-0">
                           <span className="text-[11px] font-mono tabular-nums text-emerald-700 dark:text-emerald-400 font-bold">
@@ -901,11 +714,10 @@ export const CartableSection: React.FC = () => {
           )}
         </div>
 
-        {/* RIGHT COLUMN: Chat Canvas & Interactive Response Matrix (7 cols) */}
+        {/* RIGHT COLUMN: Case Inspector & Interactive Chat Canvas */}
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors min-h-[620px]">
           {selectedRequest ? (
             <>
-              {/* Unified Case Inspector Header */}
               <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/70 dark:bg-slate-900/60">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
@@ -950,6 +762,11 @@ export const CartableSection: React.FC = () => {
                   </span>
                 </div>
 
+                {/* Applicant Details Inspector (اصلاح ۲: ویژه مسئول پاسخ‌دهنده) */}
+                {isOfficial && (
+                  <CartableApplicantInfoPanel request={selectedRequest} users={users} />
+                )}
+
                 {/* Compact Inline Status Switcher for Officials */}
                 {isOfficial && (
                   <div className="pt-2.5 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
@@ -984,37 +801,28 @@ export const CartableSection: React.FC = () => {
                   </div>
                 )}
 
-                {/* ابزارهای پرونده: برای ادمین فشرده (ارجاع + پیوست)، برای دانش‌آموخته شامل فرآیند ۴ مرحله‌ای */}
                 <CartableEnhancedTools
                   request={selectedRequest}
                   isOfficial={isOfficial}
-                  onRequestUpdated={() => {
-                    // Handled automatically via SSE and app state
-                  }}
+                  onRequestUpdated={() => {}}
                 />
               </div>
 
-              {/* Chat Message Timeline (محیط گفت‌وگوی چت دو طرفه) */}
-              <div className={`p-5 flex-1 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/60 ${isOfficial ? 'min-h-[380px] max-h-[520px]' : 'min-h-[350px] max-h-[460px]'}`}>
+              {/* Chat Message Timeline */}
+              <div
+                className={`p-5 flex-1 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/60 ${
+                  isOfficial ? 'min-h-[380px] max-h-[520px]' : 'min-h-[350px] max-h-[460px]'
+                }`}
+              >
                 {selectedRequest.messages.map(msg => {
                   const isFromMe = msg.senderId === currentUser?.id;
-                  const isStaff =
-                    msg.senderRole === 'admin' ||
-                    msg.senderRole === 'supervisor' ||
-                    msg.senderRole === 'super_admin' ||
-                    msg.senderRole === 'alumni_manager' ||
-                    msg.senderRole === 'admin_finance_officer' ||
-                    msg.senderRole === 'education_deputy' ||
-                    msg.senderRole === 'cultural_educational_officer' ||
-                    msg.senderRole === 'research_deputy' ||
-                    msg.senderRole === 'general_observer';
+                  const isStaff = isStaffRole(msg.senderRole);
 
                   return (
                     <div
                       key={msg.id}
                       className={`flex flex-col ${isFromMe ? 'items-start' : 'items-end'}`}
                     >
-                      {/* Message Sender Header */}
                       <div className="flex items-center gap-2 mb-1.5 px-1 text-[11px] text-slate-500 dark:text-slate-400 font-bold">
                         <div className="flex items-center gap-1.5">
                           {isStaff ? (
@@ -1037,9 +845,8 @@ export const CartableSection: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Chat Bubble */}
                       <div
-                        className={`max-w-[85%] p-4 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap shadow-sm transition-all ${
+                        className={`max-w-[85%] p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm transition-all space-y-2.5 ${
                           isStaff
                             ? 'bg-amber-500/10 dark:bg-amber-950/25 text-slate-900 dark:text-amber-100 border border-amber-500/30 rounded-tl-none shadow-amber-500/5'
                             : isFromMe
@@ -1047,13 +854,17 @@ export const CartableSection: React.FC = () => {
                             : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-tl-none shadow-sm'
                         }`}
                       >
-                        {msg.text}
+                        <div className="whitespace-pre-wrap">{msg.text}</div>
+                        {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                          <div className="pt-2 border-t border-black/10 dark:border-white/10">
+                            <CartableAttachmentList attachments={msg.attachments} compact />
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
 
-                {/* Banner when request is Archived */}
                 {selectedRequest.status === 'archived' && (
                   <div className="p-4 rounded-2xl bg-stone-500/15 border border-stone-500/30 text-slate-700 dark:text-stone-300 text-xs text-center flex items-center justify-center gap-2.5 font-bold my-4 shadow-xs">
                     <Lock className="w-5 h-5 text-stone-500 shrink-0" />
@@ -1064,28 +875,96 @@ export const CartableSection: React.FC = () => {
                 )}
               </div>
 
-              {/* Reply Box or Closed Lock */}
+              {/* Reply Box with Secure Attachment Uploader (اصلاح ۱: پیوست گواهی/فایل در پاسخ مسئول و دانش‌آموخته) */}
               {selectedRequest.status !== 'archived' ? (
                 <form
                   onSubmit={handleSendReply}
-                  className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                  className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5"
                 >
-                  <div className="flex gap-2 items-center">
+                  <input
+                    ref={replyFileInputRef}
+                    type="file"
+                    multiple
+                    accept={CARTABLE_FILE_ACCEPT}
+                    onChange={handleSelectReplyFiles}
+                    className="hidden"
+                  />
+
+                  {replyFileError && (
+                    <div className="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>{replyFileError}</span>
+                    </div>
+                  )}
+
+                  {replyAttachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {replyAttachments.map((att, idx) => (
+                        <div
+                          key={`${att.url}-${idx}`}
+                          className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-300"
+                        >
+                          <span className="truncate max-w-[160px]" dir="ltr">
+                            {att.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReplyAttachments(prev => prev.filter((_, i) => i !== idx))
+                            }
+                            className="text-rose-500 hover:text-rose-600 cursor-pointer"
+                            title="حذف پیوست"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 items-end">
+                    <button
+                      type="button"
+                      disabled={uploadingReplyFile}
+                      onClick={() => replyFileInputRef.current?.click()}
+                      className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                      title={
+                        isOfficial
+                          ? 'پیوست گواهی یا نامه رسمی (تصویر، PDF، Word)'
+                          : 'پیوست مدرک (تصویر، PDF، Word)'
+                      }
+                    >
+                      {uploadingReplyFile ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                      ) : (
+                        <Paperclip className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      )}
+                    </button>
+
                     <textarea
                       rows={2}
                       value={replyText}
                       onChange={e => setReplyText(e.target.value)}
-                      placeholder="متن پاسخ یا توضیحات جدید خود را بنویسید..."
-                      className="flex-1 p-3.5 text-xs sm:text-sm rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none transition-all"
+                      placeholder={
+                        isOfficial
+                          ? 'متن پاسخ مسئول را بنویسید یا فایل گواهی/نامه را پیوست کنید...'
+                          : 'متن پاسخ یا توضیحات جدید خود را بنویسید...'
+                      }
+                      className="flex-1 p-3 text-xs sm:text-sm rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none transition-all"
                     />
+
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       type="submit"
-                      disabled={!replyText.trim()}
-                      className="px-5 py-4 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 shrink-0 cursor-pointer shadow-md shadow-emerald-500/20"
+                      disabled={
+                        sendingReply ||
+                        uploadingReplyFile ||
+                        (!replyText.trim() && replyAttachments.length === 0)
+                      }
+                      className="px-4 sm:px-5 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 shrink-0 cursor-pointer shadow-md shadow-emerald-500/20"
                     >
-                      <span>ثبت پاسخ</span>
+                      <span>{sendingReply ? 'ارسال...' : 'ثبت پاسخ'}</span>
                       <Send className="w-4 h-4 rotate-180" />
                     </motion.button>
                   </div>
@@ -1108,598 +987,70 @@ export const CartableSection: React.FC = () => {
         </div>
       </div>
 
-      {/* NEW REQUEST MODAL (With Dynamic Categories & Auto-Referral Routing Info & Clean Priority) */}
+      {/* Modular Modals */}
       <AnimatePresence>
         {newRequestModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-                <div>
-                  <h3 className="text-base sm:text-lg font-black text-white">
-                    ثبت درخواست جدید در کارتابل خدمات
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-1">
-                    درخواست شما مستقیماً به مسئول مربوطه ارجاع داده شده و کد پیگیری یکتا دریافت می‌کنید.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setNewRequestModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateRequest} className="p-6 space-y-4">
-                {/* Dynamic Category Dropdown (اصلاح ۸ و ۹) */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    دسته‌بندی موضوعی درخواست
-                  </label>
-                  <select
-                    value={newCategoryKey}
-                    onChange={e => setNewCategoryKey(e.target.value)}
-                    className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {categories.map(cat => (
-                      <option key={cat.id || cat.key} value={cat.key}>
-                        {cat.title}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Auto-referral indicator badge */}
-                  {selectedCategoryObj && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs flex items-center justify-between text-sky-700 dark:text-sky-300 font-medium">
-                      <span>{selectedCategoryObj.description}</span>
-                      <span className="font-bold text-[11px] bg-sky-500/20 px-2 py-0.5 rounded-md text-sky-800 dark:text-sky-200 shrink-0">
-                        ارجاع خودکار به: {selectedCategoryObj.assignedOfficialTitle}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    عنوان درخواست
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newTitle}
-                    onChange={e => setNewTitle(e.target.value)}
-                    placeholder="عنوان دقیق درخواست خود را بنویسید (مثال: تقاضای صدور گواهی فارغ‌التحصیلی)"
-                    className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                {/* Priority Selection (اصلاح ۷: تبدیل به «عادی» خالص و حفظ عبارت پرانتزی «فوری») */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    اولویّت پاسخگویی
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setNewPriority('normal')}
-                      className={`p-3 rounded-2xl text-xs font-black border transition-all text-center ${
-                        newPriority === 'normal'
-                          ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 shadow-xs'
-                          : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-800'
-                      }`}
-                    >
-                      عادی
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewPriority('urgent')}
-                      className={`p-3 rounded-2xl text-xs font-black border transition-all text-center ${
-                        newPriority === 'urgent'
-                          ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-500/50 shadow-xs'
-                          : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-800'
-                      }`}
-                    >
-                      فوری (نیازمند اقدام سریع / بررسی ظرف ۲۴ ساعت)
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    شرح درخواست و توضیحات کامل
-                  </label>
-                  <textarea
-                    rows={4}
-                    required
-                    value={newDescription}
-                    onChange={e => setNewDescription(e.target.value)}
-                    placeholder="مشخصات کامل، دلایل و توضیحات درخواست خود را بنویسید..."
-                    className="w-full p-4 text-xs sm:text-sm rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setNewRequestModalOpen(false)}
-                    className="px-5 py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-                  >
-                    ارسال درخواست
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
+          <CartableNewRequestModal
+            isOpen={newRequestModalOpen}
+            currentUser={currentUser}
+            categories={categories}
+            categoriesDisabled={categoriesDisabled}
+            followableButtonLabel={
+              followableTopics.buttonLabel || 'موارد قابل پیگیری از مرکز فقه و حقوق اسلامی'
+            }
+            followableEnabled={followableTopics.enabled !== false}
+            initialCategoryKey={prefillTopic.categoryKey}
+            initialTitle={prefillTopic.title}
+            onClose={() => setNewRequestModalOpen(false)}
+            onOpenFollowableTopics={() => {
+              setNewRequestModalOpen(false);
+              setFollowableModalOpen(true);
+            }}
+            onSubmitRequest={createCartableRequest}
+          />
         )}
       </AnimatePresence>
 
-      {/* GUIDE MODAL (اصلاح ۵: نمایش کامل، ویرایش و حذف توسط ادمین و مدیر دانش‌آموختگان) */}
+      <AnimatePresence>
+        {followableModalOpen && (
+          <CartableFollowableTopicsModal
+            isOpen={followableModalOpen}
+            config={followableTopics}
+            categories={categories}
+            canEdit={isAdminOrAlumniManager}
+            onClose={() => setFollowableModalOpen(false)}
+            onSaveConfig={handleSaveFollowableTopics}
+            onSelectTopicForNewRequest={handleSelectTopicForNewRequest}
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {guideModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[90vh] flex flex-col"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-white">
-                      {isEditingGuide ? 'ویرایش راهنمای ثبت درخواست' : guide.title}
-                    </h3>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      راهنمای رسمی مراحل، ضوابط و رهگیری در کارتابل خدمات
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {isAdminOrAlumniManager && !isEditingGuide && (
-                    <button
-                      onClick={() => setIsEditingGuide(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold transition-colors cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>ویرایش راهنما</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setGuideModalOpen(false);
-                      setIsEditingGuide(false);
-                    }}
-                    className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
-                {isEditingGuide ? (
-                  /* EDITING FORM FOR ADMIN & ALUMNI MANAGER */
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                        عنوان راهنما
-                      </label>
-                      <input
-                        type="text"
-                        value={guideEditForm.title}
-                        onChange={e =>
-                          setGuideEditForm({ ...guideEditForm, title: e.target.value })
-                        }
-                        className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                        متن اصلی راهنما
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={guideEditForm.content}
-                        onChange={e =>
-                          setGuideEditForm({ ...guideEditForm, content: e.target.value })
-                        }
-                        className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 resize-none leading-relaxed"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                        مراحل انجام کار (هر خط یک مرحله)
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={guideEditForm.steps.join('\n')}
-                        onChange={e =>
-                          setGuideEditForm({
-                            ...guideEditForm,
-                            steps: e.target.value.split('\n').filter(s => s.trim().length > 0),
-                          })
-                        }
-                        className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 resize-none leading-relaxed font-mono text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                        نکات مهم و الزامات رسیدگی (هر خط یک نکته)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={guideEditForm.tips.join('\n')}
-                        onChange={e =>
-                          setGuideEditForm({
-                            ...guideEditForm,
-                            tips: e.target.value.split('\n').filter(t => t.trim().length > 0),
-                          })
-                        }
-                        className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 resize-none leading-relaxed font-mono text-xs"
-                      />
-                    </div>
-
-                    {/* Actions in Edit Mode */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={handleDeleteGuide}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>حذف / غیرفعال‌سازی راهنما</span>
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingGuide(false)}
-                          className="px-4 py-2.5 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors"
-                        >
-                          انصراف
-                        </button>
-                        <button
-                          type="button"
-                          disabled={savingGuide}
-                          onClick={() => handleSaveGuide(guideEditForm)}
-                          className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50"
-                        >
-                          {savingGuide ? 'در حال ذخیره...' : 'ذخیره در پایگاه داده'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* READ VIEW OF GUIDE */
-                  <div className="space-y-6">
-                    {/* Content */}
-                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-slate-800 dark:text-amber-100 leading-relaxed font-medium">
-                      {guide.content}
-                    </div>
-
-                    {/* Steps */}
-                    <div>
-                      <h4 className="text-xs font-black text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span>مراحل ثبت و پیگیری درخواست</span>
-                      </h4>
-                      <div className="space-y-2.5">
-                        {guide.steps.map((st, i) => (
-                          <div
-                            key={i}
-                            className="flex items-start gap-3 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800"
-                          >
-                            <span className="w-6 h-6 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
-                              {toPersianNumbers(i + 1)}
-                            </span>
-                            <span className="text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
-                              {st}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Tips */}
-                    <div>
-                      <h4 className="text-xs font-black text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span>نکات کلیدی و راهکارهای تسریع رسیدگی</span>
-                      </h4>
-                      <div className="space-y-2">
-                        {guide.tips.map((tp, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 text-xs font-medium text-slate-600 dark:text-slate-300"
-                          >
-                            <Info className="w-4 h-4 text-amber-500 shrink-0" />
-                            <span>{tp}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              {!isEditingGuide && (
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {guide.updatedBy ? `آخرین بروزرسانی توسط: ${guide.updatedBy}` : 'مرکز خدمات اداری و دانش‌آموختگان'}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setGuideModalOpen(false);
-                      setNewRequestModalOpen(true);
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-                  >
-                    <span>شروع ثبت درخواست</span>
-                    <ArrowRight className="w-4 h-4 rotate-180" />
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
+          <CartableGuideModal
+            isOpen={guideModalOpen}
+            guide={guide}
+            canEdit={isAdminOrAlumniManager}
+            onClose={() => setGuideModalOpen(false)}
+            onSaveGuide={handleSaveGuide}
+            onStartNewRequest={() => {
+              setGuideModalOpen(false);
+              setNewRequestModalOpen(true);
+            }}
+          />
         )}
       </AnimatePresence>
 
-      {/* CATEGORIES & AUTO-REFERRAL ROUTING MODAL (اصلاح ۸ و ۹: مدیریت دسته‌بندی‌ها و ارجاع خودکار) */}
       <AnimatePresence>
         {categoriesModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[90vh] flex flex-col"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                    <Sliders className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-white">
-                      مدیریت دسته‌بندی‌ها و ماتریس ارجاع خودکار
-                    </h3>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      تعریف دسته‌ها، ویرایش عناوین و تعیین مسئول پیش‌فرض رسیدگی‌کننده
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setCategoriesModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
-                {/* Form to Add New Category */}
-                <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/80 space-y-3">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <PlusCircle className="w-4 h-4 text-emerald-500" />
-                    <span>افزودن دسته‌بندی جدید به کارتابل</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        عنوان فارسی دسته‌بندی
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="مثال: خدمات رفاهی و تسهیلات قرض‌الحسنه"
-                        value={newCatTitle}
-                        onChange={e => setNewCatTitle(e.target.value)}
-                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        کلید سیستمی (انگلیسی یکتا)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="مثال: welfare"
-                        value={newCatKey}
-                        onChange={e =>
-                          setNewCatKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
-                        }
-                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        مسئول پیش‌فرض رسیدگی (ارجاع خودکار)
-                      </label>
-                      <select
-                        value={newCatOfficialRole}
-                        onChange={e => setNewCatOfficialRole(e.target.value)}
-                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-bold"
-                      >
-                        {officials.map(off => (
-                          <option key={off.role} value={off.role}>
-                            {off.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                        شرح مختصر دسته
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="توضیح جهت راهنمایی دانش‌آموخته هنگام انتخاب"
-                        value={newCatDescription}
-                        onChange={e => setNewCatDescription(e.target.value)}
-                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!newCatTitle.trim() || !newCatKey.trim()) {
-                          alert('لطفاً عنوان و کلید سیستمی را وارد کنید.');
-                          return;
-                        }
-                        const offObj = officials.find(o => o.role === newCatOfficialRole);
-                        const newCatItem: CartableCategoryItem = {
-                          id: `cat_${Date.now()}`,
-                          key: newCatKey.trim(),
-                          title: newCatTitle.trim(),
-                          assignedRole: newCatOfficialRole,
-                          assignedOfficialTitle: offObj?.title || 'مدیر دانش‌آموختگان',
-                          description: newCatDescription.trim() || newCatTitle.trim(),
-                        };
-                        setCategoryListEdit([...categoryListEdit, newCatItem]);
-                        setNewCatTitle('');
-                        setNewCatKey('');
-                        setNewCatDescription('');
-                      }}
-                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-xl font-black text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>افزودن به لیست دسته‌ها</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* List of Existing Categories */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-sky-500" />
-                    <span>فهرست دسته‌بندی‌های فعال و ماتریس ارجاع ({toPersianNumbers(categoryListEdit.length)} دسته)</span>
-                  </h4>
-
-                  <div className="space-y-2.5">
-                    {categoryListEdit.map((cat, idx) => (
-                      <div
-                        key={cat.id || cat.key || idx}
-                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
-                      >
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-slate-900 dark:text-white text-xs">
-                              {cat.title}
-                            </span>
-                            <span className="font-mono text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                              {cat.key}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                            {cat.description}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0 w-full md:w-auto justify-between md:justify-end">
-                          <div className="flex flex-col items-start md:items-end">
-                            <span className="text-[10px] text-slate-400 font-bold">مسئول پیش‌فرض:</span>
-                            <select
-                              value={cat.assignedRole}
-                              onChange={e => {
-                                const newRole = e.target.value;
-                                const off = officials.find(o => o.role === newRole);
-                                const updated = categoryListEdit.map((item, i) =>
-                                  i === idx
-                                    ? {
-                                        ...item,
-                                        assignedRole: newRole,
-                                        assignedOfficialTitle: off?.title || item.assignedOfficialTitle,
-                                      }
-                                    : item
-                                );
-                                setCategoryListEdit(updated);
-                              }}
-                              className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-sky-700 dark:text-sky-300"
-                            >
-                              {officials.map(off => (
-                                <option key={off.role} value={off.role}>
-                                  {off.title}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (categoryListEdit.length <= 1) {
-                                alert('حداقل یک دسته‌بندی باید در کارتابل باقی بماند.');
-                                return;
-                              }
-                              setCategoryListEdit(categoryListEdit.filter((_, i) => i !== idx));
-                            }}
-                            className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
-                            title="حذف دسته‌بندی"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCategoriesModalOpen(false)}
-                  className="px-4 py-2.5 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="button"
-                  disabled={savingCategories}
-                  onClick={() => handleSaveCategories(categoryListEdit)}
-                  className="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
-                >
-                  {savingCategories ? 'در حال ثبت در دیتابیس...' : 'ذخیره تنظیمات در پایگاه داده'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
+          <CartableCategoriesModal
+            isOpen={categoriesModalOpen}
+            categories={categories}
+            categoriesDisabled={categoriesDisabled}
+            officials={officials}
+            onClose={() => setCategoriesModalOpen(false)}
+            onSave={handleSaveCategories}
+          />
         )}
       </AnimatePresence>
     </div>

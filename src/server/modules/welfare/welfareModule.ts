@@ -9,6 +9,7 @@ import { adminSettingsRepo } from '../admin/adminSettingsRepository';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
 import { extractExpectedVersion } from '../../platform/httpUtils';
+import { isOrganizationalUserRole } from '../../platform/authorization';
 
 export const welfareRouter = Router();
 export function createWelfareRouter(): Router {
@@ -464,7 +465,7 @@ welfareRouter.post('/consumables', async (req: Request, res: Response, next) => 
   try {
     ensureDatabaseConnection();
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('فقط ادمین می‌تواند کالای جدید تعریف کند.');
     }
 
@@ -507,7 +508,7 @@ welfareRouter.put('/consumables/:id', async (req: Request, res: Response, next) 
   try {
     ensureDatabaseConnection();
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را ویرایش کند.');
     }
 
@@ -568,7 +569,7 @@ welfareRouter.delete('/consumables/:id', async (req: Request, res: Response, nex
   try {
     ensureDatabaseConnection();
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('فقط ادمین می‌تواند کالای تعاونی را حذف کند.');
     }
 
@@ -597,7 +598,7 @@ welfareRouter.patch('/orders/:id/status', async (req: Request, res: Response, ne
   try {
     ensureDatabaseConnection();
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('فقط ادمین می‌تواند وضعیت سفارش را تغییر دهد.');
     }
 
@@ -649,7 +650,7 @@ welfareRouter.get('/sections-config', async (_req: Request, res: Response, next)
 welfareRouter.put('/sections-config', async (req: Request, res: Response, next) => {
   try {
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('تنها مدیر می‌تواند دسته‌بندی‌ها و بخش‌های رفاهیات را ویرایش کند.');
     }
     const configs = req.body;
@@ -676,7 +677,7 @@ welfareRouter.get('/loan-rules', async (_req: Request, res: Response, next) => {
 welfareRouter.put('/loan-rules', async (req: Request, res: Response, next) => {
   try {
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('تنها مدیر سامانه مجاز به ویرایش اساسنامه و شرایط تسهیلات است.');
     }
     const rules = req.body;
@@ -703,7 +704,7 @@ welfareRouter.get('/cooperative-info', async (_req: Request, res: Response, next
 welfareRouter.put('/cooperative-info', async (req: Request, res: Response, next) => {
   try {
     const currentUser = getCurrentUser(req);
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (!isOrganizationalUserRole(currentUser.role)) {
       throw AppError.forbidden('تنها مدیر سامانه مجاز به تغییر اطلاعات ویترین تعاونی است.');
     }
     const info = req.body;
