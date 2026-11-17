@@ -341,6 +341,17 @@ export interface CrextioDashboardConfig {
   // ویترین تالار نقد و مناظره آراء قضایی
   showRulingsShowcase?: boolean;
   rulingsShowcaseMode?: 'summary_carousel' | 'expanded' | 'compact';
+  rulingsShowcaseContentMode?: 'title_only' | 'title_summary' | 'tabbed';
+  rulingsShowcaseVisibleTabs?: Array<'summary' | 'principles' | 'fullText' | 'discussions'>;
+  rulingsShowcaseTabLabels?: {
+    summary?: string;
+    principles?: string;
+    fullText?: string;
+    discussions?: string;
+  };
+  rulingsShowLikesInShowcase?: boolean;
+  rulingsShowDislikesInShowcase?: boolean;
+  rulingsShowCommentsInShowcase?: boolean;
   rulingsShowcaseIntervalSeconds?: number;
   rulingsSummaryAutoplay?: boolean;
   rulingsSelectedIds?: string[];
@@ -477,6 +488,10 @@ export interface MizanDashboardConfig {
   showStoriesSlider: boolean;
   showRulingsShelf?: boolean;
   showRulingsPicks?: boolean;
+  rulingsShelfContentMode?: 'title_only' | 'title_summary' | 'tabbed';
+  rulingsShowLikesInShowcase?: boolean;
+  rulingsShowDislikesInShowcase?: boolean;
+  rulingsShowCommentsInShowcase?: boolean;
   showSynergyHighlights?: boolean;
   showImpactSection: boolean;
   showPublicationsShelf?: boolean;
@@ -901,6 +916,41 @@ export interface ResearchMentorship {
   createdAt: string;
 }
 
+export interface RulingTagDefinition {
+  id: string;
+  label: string;
+  colorScheme: 'emerald' | 'amber' | 'rose' | 'indigo' | 'sky' | 'slate' | 'purple';
+  styleVariant: 'solid' | 'soft' | 'outline';
+  scope: 'internal' | 'public';
+}
+
+export interface RulingDiscussionItem {
+  id: string;
+  authorId?: string;
+  authorName: string;
+  authorRoleTitle: string;
+  comment: string;
+  timestamp: string;
+  isFeatured?: boolean;
+  editedAt?: string;
+}
+
+export interface RulingsPortalConfig {
+  layoutMode: 'editorial_split' | 'magazine_grid' | 'archive_list';
+  globalCommentsEnabled: boolean;
+  showCreatedAt: boolean;
+  showReviewedAt: boolean;
+  showKeywords: boolean;
+  showPrinciples: boolean;
+  showSummary: boolean;
+  showAttachments: boolean;
+  portalTitle: string;
+  portalSubtitle: string;
+  internalTagDefinitions: RulingTagDefinition[];
+  publicLabelDefinitions: RulingTagDefinition[];
+  version?: number;
+}
+
 export interface JudicialRuling {
   id: string;
   title: string;
@@ -911,19 +961,30 @@ export interface JudicialRuling {
   caseTypeTitle: string;
   summary: string;
   legalPrinciples: string[];
+  keywords?: string[];
+  attachments?: string[];
+  adminTags?: string[];
+  publicLabels?: string[];
+  isSystemPick?: boolean;
+  isVisibleToAlumni?: boolean;
+  commentsEnabled?: boolean;
+  displayOrder?: number;
   fullRulingText: string;
   status: 'pending_review' | 'selected';
   submittedById: string;
   submittedByName: string;
   likesCount: number;
   likedBy: string[];
-  discussions: {
-    id: string;
-    authorName: string;
-    authorRoleTitle: string;
-    comment: string;
-    timestamp: string;
-  }[];
+  dislikesCount: number;
+  dislikedBy: string[];
+  internalReviewNote?: string;
+  createdAt?: string;
+  reviewedAt?: string;
+  reviewedByName?: string;
+  updatedAt?: string;
+  highlights?: any[];
+  version?: number;
+  discussions: RulingDiscussionItem[];
 }
 
 export interface WelfareRequest {

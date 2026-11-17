@@ -77,6 +77,12 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
     return ALL_UNIFIED_SHOWCASE_KEYS;
   }, [crextioConfig.unifiedShowcaseIncludedKeys]);
 
+  const visibleRulings = useMemo(() => {
+    const sorted = [...rulings].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+    if (isAdmin) return sorted;
+    return sorted.filter(r => r.status === 'selected' && r.isVisibleToAlumni !== false);
+  }, [rulings, isAdmin]);
+
   const catalog: ShowcaseMetaItem[] = useMemo(
     () => [
       {
@@ -88,7 +94,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
           crextioConfig.rulingsShowcaseSubtitle ||
           'تحلیل مستند رویه‌های قضایی، دادنامه‌های منتخب دیوان عالی و تبادل استدلال فقهی-حقوقی اعضا.',
         highlights: [
-          rulings[0]?.title || 'نقد آراء وحدت رویه و پرونده‌های چالشی',
+          visibleRulings[0]?.title || 'نقد آراء وحدت رویه و پرونده‌های چالشی',
           'ثبت استدلال فقهی و رأی مشورتی قضات عضو',
           'دسته‌بندی تخصصی حقوقی، کیفری، خانواده و تجاری',
         ],
@@ -96,7 +102,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
         ctaLabel: 'ورود به تالار آراء',
         icon: Scale,
         toneClass: 'text-amber-600 dark:text-amber-400',
-        statLabel: `${toPersianNumbers(rulings.length)} دادنامه فعال`,
+        statLabel: `${toPersianNumbers(visibleRulings.length)} دادنامه فعال`,
       },
       {
         key: 'research_promo',
@@ -225,7 +231,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
         statLabel: `${toPersianNumbers(products.length)} اثر تخصصی`,
       },
     ],
-    [crextioConfig, rulings, researchMentorships, courses, consultants, products]
+    [crextioConfig, visibleRulings, researchMentorships, courses, consultants, products]
   );
 
   const activeItems = useMemo(

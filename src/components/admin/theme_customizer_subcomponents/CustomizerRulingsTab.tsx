@@ -213,6 +213,67 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
           </div>
         </div>
 
+        {/* Showcase Content Mode & Reaction Controls (Reforms 16 & 19) */}
+        <div className="p-4 rounded-2xl bg-white border border-amber-200 space-y-3 text-xs">
+          <label className="font-black text-stone-800 block">
+            محتوای نمایش‌داده‌شده از هر رأی در ویترین داشبورد:
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              { id: 'title_only' as const, label: 'فقط عنوان رأی' },
+              { id: 'title_summary' as const, label: 'عنوان + چکیده رأی' },
+              { id: 'tabbed' as const, label: 'چندسربرگی کامل (چکیده، مستندات، نقد، متن)' },
+            ].map(opt => {
+              const active = (crextioConfig.rulingsShowcaseContentMode || 'tabbed') === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    updateCrextioConfig({ rulingsShowcaseContentMode: opt.id });
+                    triggerSuccess();
+                  }}
+                  className={`p-2.5 rounded-xl border text-right font-bold cursor-pointer ${
+                    active
+                      ? 'bg-emerald-800 text-white border-emerald-900'
+                      : 'bg-stone-50 text-stone-700 border-stone-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-stone-100">
+            {[
+              { key: 'rulingsShowLikesInShowcase' as const, label: 'نمایش تعداد و دکمه پسند' },
+              { key: 'rulingsShowDislikesInShowcase' as const, label: 'نمایش تعداد و دکمه عدم پسند' },
+              { key: 'rulingsShowCommentsInShowcase' as const, label: 'نمایش تعداد دیدگاه‌ها' },
+            ].map(item => {
+              const enabled = crextioConfig[item.key] !== false;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    updateCrextioConfig({ [item.key]: !enabled });
+                    triggerSuccess();
+                  }}
+                  className={`p-2.5 rounded-xl border flex items-center justify-between font-bold cursor-pointer ${
+                    enabled
+                      ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                      : 'bg-stone-50 border-stone-200 text-stone-500'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className="text-[10px]">{enabled ? 'فعال' : 'مخفی'}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Select Featured Rulings */}
         <div className="p-4 rounded-2xl bg-white border border-amber-200 space-y-2">
           <div className="flex items-center justify-between">
@@ -365,6 +426,8 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                     submittedByName: 'مدیر سامانه',
                     likesCount: 12,
                     likedBy: [],
+                    dislikesCount: 0,
+                    dislikedBy: [],
                     discussions: []
                   };
                   updateCrextioConfig({ rulingsCustomList: [newRulingItem, ...currentList] });

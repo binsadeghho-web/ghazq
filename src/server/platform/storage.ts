@@ -55,7 +55,7 @@ export const storageConfig: StorageConfig = {
     course: { path: path.join(uploadsDir, 'courses'), isPrivate: false, folderName: 'courses' },
     consultation: { path: path.join(uploadsDir, 'consultations'), isPrivate: true, folderName: 'consultations' },
     research: { path: path.join(uploadsDir, 'research'), isPrivate: true, folderName: 'research' },
-    verdict: { path: path.join(uploadsDir, 'verdicts'), isPrivate: false, folderName: 'verdicts' },
+    verdict: { path: path.join(uploadsDir, 'verdicts'), isPrivate: true, folderName: 'verdicts' },
     cartable_alumni: { path: path.join(uploadsDir, 'cartable_alumni'), isPrivate: true, folderName: 'cartable_alumni' },
     cartable_officials: { path: path.join(uploadsDir, 'cartable_officials'), isPrivate: true, folderName: 'cartable_officials' },
     misc: { path: path.join(uploadsDir, 'misc'), isPrivate: false, folderName: 'misc' },

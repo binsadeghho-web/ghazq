@@ -54,20 +54,20 @@ export function registerRulingHighlightsAndPinRoutes(router: Router): void {
     }
   });
 
-  // Pin / Unpin Featured Critique ("نقد برگزیده") (Admin/Supervisor Only)
+  // Pin / Unpin Featured Critique ("نقد برگزیده") (Officials Only)
   router.patch('/:id/discussions/:discussionId/feature', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.assertRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
 
       const dBuf = toIdBuffer(req.params.discussionId);
       const isFeatured = Boolean(req.body.isFeatured);
       const p = getPool();
 
       await p.query(
-        `UPDATE ruling_discussions SET is_featured = ? WHERE id = ? OR id = ?`,
+        `UPDATE ruling_discussions SET is_featured = ? WHERE (id = ? OR id = ?) AND deleted_at IS NULL`,
         [isFeatured ? 1 : 0, dBuf, req.params.discussionId]
       );
 

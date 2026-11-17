@@ -367,20 +367,37 @@ CREATE TABLE IF NOT EXISTS `counseling_requests` (
 CREATE TABLE IF NOT EXISTS `judicial_rulings` (
   `id` BINARY(16) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
-  `court_branch` VARCHAR(255) NOT NULL,
-  `judge_name` VARCHAR(255) NOT NULL,
-  `ruling_date` VARCHAR(32) NOT NULL,
-  `case_type` ENUM('criminal', 'civil', 'commercial', 'family') NOT NULL,
-  `case_type_title` VARCHAR(64) NOT NULL,
+  `court_branch` VARCHAR(255) NOT NULL DEFAULT '',
+  `judge_name` VARCHAR(255) NOT NULL DEFAULT '',
+  `ruling_date` VARCHAR(32) NOT NULL DEFAULT '',
+  `case_type` ENUM('criminal', 'civil', 'commercial', 'family') NOT NULL DEFAULT 'commercial',
+  `case_type_title` VARCHAR(64) NOT NULL DEFAULT 'حقوقی و تجاری',
   `summary` TEXT NOT NULL,
   `legal_principles` JSON NULL,
+  `keywords` JSON NULL,
+  `attachments` JSON NULL,
+  `admin_tags` JSON NULL,
+  `public_labels` JSON NULL,
+  `is_system_pick` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_visible_to_alumni` TINYINT(1) NOT NULL DEFAULT 0,
+  `comments_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `display_order` INT NOT NULL DEFAULT 0,
   `full_ruling_text` MEDIUMTEXT NOT NULL,
-  `status` ENUM('pending_review', 'selected') NOT NULL DEFAULT 'selected',
+  `status` ENUM('pending_review', 'selected') NOT NULL DEFAULT 'pending_review',
   `submitted_by_id` BINARY(16) NOT NULL,
   `submitted_by_name` VARCHAR(255) NOT NULL,
   `likes_count` INT NOT NULL DEFAULT 0,
+  `liked_by` JSON NULL,
+  `dislikes_count` INT NOT NULL DEFAULT 0,
+  `disliked_by` JSON NULL,
+  `highlights` JSON NULL,
+  `internal_review_note` TEXT NULL,
+  `reviewed_at` DATETIME(3) NULL,
+  `reviewed_by_name` VARCHAR(255) NULL,
   `version` INT NOT NULL DEFAULT 1,
-  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_rulings_vis_status_order` (`is_visible_to_alumni`, `status`, `display_order`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -389,10 +406,15 @@ CREATE TABLE IF NOT EXISTS `judicial_rulings` (
 CREATE TABLE IF NOT EXISTS `ruling_discussions` (
   `id` BINARY(16) NOT NULL PRIMARY KEY,
   `ruling_id` BINARY(16) NOT NULL,
+  `author_id` BINARY(16) NULL,
   `author_name` VARCHAR(255) NOT NULL,
   `author_role_title` VARCHAR(128) NOT NULL,
   `comment` TEXT NOT NULL,
+  `is_featured` TINYINT(1) NOT NULL DEFAULT 0,
+  `edited_at` DATETIME(3) NULL,
+  `deleted_at` DATETIME(3) NULL,
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX `idx_disc_ruling_del_created` (`ruling_id`, `deleted_at`, `created_at`),
   CONSTRAINT `fk_disc_ruling` FOREIGN KEY (`ruling_id`) REFERENCES `judicial_rulings` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

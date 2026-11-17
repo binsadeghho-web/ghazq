@@ -82,7 +82,8 @@ export function createMasterRouter(): Router {
         category === 'cartable_alumni' ||
         category === 'cartable_officials' ||
         category === 'consultation' ||
-        category === 'research';
+        category === 'research' ||
+        category === 'verdict';
 
       if (isPrivateCat && !user) {
         return res.status(401).json({
@@ -168,6 +169,8 @@ export function createMasterRouter(): Router {
         consultations: 'consultation',
         consultation: 'consultation',
         research: 'research',
+        verdict: 'verdict',
+        verdicts: 'verdict',
         cartable_alumni: 'cartable_alumni',
         cartable_officials: 'cartable_officials',
       };
@@ -217,6 +220,33 @@ export function createMasterRouter(): Router {
         });
         if (!ownsFile) {
           return res.status(403).json({ error: 'عدم دسترسی: این فایل متعلق به درخواست‌های شما نیست.' });
+        }
+      }
+
+      // Strict BOLA / Visibility guard for verdict attachments: non-officials can only view attachments
+      // attached to rulings they submitted OR rulings explicitly marked visible & published to alumni
+      if (storageKey === 'verdict' && !isOrganizationalUserRole(user.role)) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [rows]: any = await p.query(
+          `SELECT id, status, is_visible_to_alumni, submitted_by_id
+           FROM judicial_rulings
+           WHERE CAST(attachments AS CHAR) LIKE ?
+           LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const canAccessVerdictFile = Array.isArray(rows) && rows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.submitted_by_id) ? fromIdBuffer(r.submitted_by_id) : String(r.submitted_by_id);
+          const isOwner = ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+          const isPublishedVisible = r.status === 'selected' && Boolean(r.is_visible_to_alumni);
+          return isOwner || isPublishedVisible;
+        });
+        if (!canAccessVerdictFile) {
+          return res.status(403).json({ error: 'عدم دسترسی: این پیوست مربوط به رأی منتشرنشده است.' });
         }
       }
 
@@ -435,6 +465,33 @@ export function createMasterRouter(): Router {
         }
       }
 
+      // Privacy guard for Judicial Rulings SSE events (Reforms 14 & 17):
+      // Never leak adminTags, internalReviewNote, internalTagDefinitions, or unpublished rulings to non-officials!
+      let sanitizedUpdates = payload.updates || payload.config || payload;
+      if (msg.topic.startsWith('rulings.') && !isOrganizationalUserRole(userRole)) {
+        if (msg.topic === 'rulings.portal_config_updated' && sanitizedUpdates) {
+          sanitizedUpdates = { ...sanitizedUpdates, internalTagDefinitions: [] };
+        } else {
+          const rulingCandidate = sanitizedUpdates?.ruling || (sanitizedUpdates?.id && sanitizedUpdates?.title ? sanitizedUpdates : null);
+          if (rulingCandidate) {
+            const isPublicVisible = rulingCandidate.status === 'selected' && Boolean(rulingCandidate.isVisibleToAlumni);
+            if (!isPublicVisible) {
+              // Emit lightweight removal signal if an existing published ruling was hidden; otherwise suppress unpublished creation
+              if (msg.topic === 'rulings.updated') {
+                sanitizedUpdates = { removedRulingId: rulingCandidate.id };
+              } else {
+                return;
+              }
+            } else {
+              const { adminTags: _a, internalReviewNote: _n, ...safeRuling } = rulingCandidate;
+              sanitizedUpdates = sanitizedUpdates?.ruling
+                ? { ...sanitizedUpdates, ruling: safeRuling }
+                : safeRuling;
+            }
+          }
+        }
+      }
+
       // Delta-Payload Construction for Real-Time Direct State Patching
       const resourceId = payload.id || payload.requestId || payload.courseId || payload.productId || payload.userId || payload.orderId || null;
       const version = payload.version || payload.newVersion || 1;
@@ -442,7 +499,7 @@ export function createMasterRouter(): Router {
         ? { id: payload.actorId || payload.actor?.id, name: payload.actorName || payload.actor?.name }
         : undefined;
 
-      const updates = payload.updates || payload.config || payload;
+      const updates = sanitizedUpdates;
 
       const deltaPayload = {
         id: msg.id,

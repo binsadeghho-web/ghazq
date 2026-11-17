@@ -181,10 +181,46 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // 4. Judicial Rulings Domain Enhancements: highlights on judicial_rulings, is_featured on ruling_discussions
-    try { await p.query(`ALTER TABLE judicial_rulings ADD COLUMN highlights JSON NULL;`); } catch {}
-    try { await p.query(`ALTER TABLE ruling_discussions ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0;`); } catch {}
+    // 4. Judicial Rulings Domain Enhancements (Reforms 11–22): keywords, attachments, admin_tags, public_labels,
+    // is_system_pick, is_visible_to_alumni, comments_enabled, display_order, dislikes, review audit, soft-delete discussions
+    const rulingAlters = [
+      `ADD COLUMN liked_by JSON NULL`,
+      `ADD COLUMN highlights JSON NULL`,
+      `ADD COLUMN keywords JSON NULL`,
+      `ADD COLUMN attachments JSON NULL`,
+      `ADD COLUMN admin_tags JSON NULL`,
+      `ADD COLUMN public_labels JSON NULL`,
+      `ADD COLUMN is_system_pick TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN is_visible_to_alumni TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN comments_enabled TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN display_order INT NOT NULL DEFAULT 0`,
+      `ADD COLUMN dislikes_count INT NOT NULL DEFAULT 0`,
+      `ADD COLUMN disliked_by JSON NULL`,
+      `ADD COLUMN internal_review_note TEXT NULL`,
+      `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+      `ADD COLUMN reviewed_by_name VARCHAR(255) NULL`,
+      `ADD COLUMN updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)`
+    ];
+    for (const clause of rulingAlters) {
+      try { await p.query(`ALTER TABLE judicial_rulings ${clause};`); } catch {}
+    }
+    // Note: Keep legacy approved ('selected') rows visible unless explicitly toggled; newly submitted pending rulings default to hidden
+    try { await p.query(`ALTER TABLE judicial_rulings MODIFY COLUMN is_visible_to_alumni TINYINT(1) NOT NULL DEFAULT 0;`); } catch {}
+    try { await p.query(`ALTER TABLE judicial_rulings MODIFY COLUMN status ENUM('pending_review', 'selected') NOT NULL DEFAULT 'pending_review';`); } catch {}
+    try { await p.query(`CREATE INDEX idx_rulings_vis_status_order ON judicial_rulings (is_visible_to_alumni, status, display_order, created_at);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_rulings_pick ON judicial_rulings (is_system_pick, is_visible_to_alumni);`); } catch {}
+
+    const discAlters = [
+      `ADD COLUMN author_id BINARY(16) NULL`,
+      `ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN edited_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL`
+    ];
+    for (const clause of discAlters) {
+      try { await p.query(`ALTER TABLE ruling_discussions ${clause};`); } catch {}
+    }
     try { await p.query(`CREATE INDEX idx_disc_ruling_featured ON ruling_discussions (ruling_id, is_featured, created_at);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_disc_ruling_del_created ON ruling_discussions (ruling_id, deleted_at, created_at);`); } catch {}
 
     // 5. Counseling Domain Enhancements: schedule_slots on consultants, hide_identity on counseling_requests, counseling_session_dossiers table
     try { await p.query(`ALTER TABLE consultants ADD COLUMN schedule_slots JSON NULL;`); } catch {}

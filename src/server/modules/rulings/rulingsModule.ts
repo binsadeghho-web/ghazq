@@ -1,96 +1,76 @@
 import { Router, Request, Response } from 'express';
 import { getPool, selectWithTimeout, ensureDatabaseConnection, withTx } from '../../platform/mysqlDatabase';
+import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { AppError } from '../../platform/errors';
 import { idempotencyMiddleware } from '../../platform/idempotency';
-import { AuthorizationPolicy } from '../../platform/authorization';
-import { User, JudicialRuling } from '../../../types';
+import { AuthorizationPolicy, isOrganizationalUserRole } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
 import { extractExpectedVersion } from '../../platform/httpUtils';
+import {
+  loadRulingsPortalConfig,
+  mapDiscussionRow,
+  mapRulingRow,
+  parseJsonArray,
+} from './rulingHelpers';
+import { registerRulingAdminAndInteractionsRoutes } from './rulingAdminAndInteractionsRoutes';
+import { registerRulingHighlightsAndPinRoutes } from './rulingHighlightsAndPinRoutes';
 
 export const rulingsRouter = Router();
 export function createRulingsRouter(): Router {
   return rulingsRouter;
 }
 
-function mapRulingRow(row: any, discussions: any[] = []): JudicialRuling & { version: number } {
-  let legalPrinciples: string[] = [];
-  try {
-    if (typeof row.legal_principles === 'string') legalPrinciples = JSON.parse(row.legal_principles);
-    else if (Array.isArray(row.legal_principles)) legalPrinciples = row.legal_principles;
-  } catch {}
+// Mount static-segment routes FIRST (/portal-config, /reorder) so /:id never shadows them
+registerRulingAdminAndInteractionsRoutes(rulingsRouter);
 
-  let likedBy: string[] = [];
-  try {
-    if (typeof row.liked_by === 'string') likedBy = JSON.parse(row.liked_by);
-    else if (Array.isArray(row.liked_by)) likedBy = row.liked_by;
-  } catch {}
-
-  let highlights: any[] = [];
-  try {
-    if (typeof row.highlights === 'string') highlights = JSON.parse(row.highlights);
-    else if (Array.isArray(row.highlights)) highlights = row.highlights;
-  } catch {}
-
-  return {
-    id: fromIdBuffer(row.id),
-    title: row.title,
-    courtBranch: row.court_branch,
-    judgeName: row.judge_name,
-    rulingDate: row.ruling_date,
-    caseType: row.case_type,
-    caseTypeTitle: row.case_type_title,
-    summary: row.summary,
-    legalPrinciples: legalPrinciples.length > 0 ? legalPrinciples : ['اصل صحت قراردادها'],
-    fullRulingText: row.full_ruling_text,
-    status: row.status,
-    submittedById: fromIdBuffer(row.submitted_by_id),
-    submittedByName: row.submitted_by_name,
-    likesCount: Number(row.likes_count || 0),
-    likedBy,
-    highlights,
-    discussions,
-    version: Number(row.version || 1),
-  } as any;
-}
-
-function mapDiscussionRow(row: any) {
-  return {
-    id: fromIdBuffer(row.id),
-    authorName: row.author_name,
-    authorRoleTitle: row.author_role_title,
-    comment: row.comment,
-    isFeatured: Boolean(row.is_featured),
-    timestamp: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-  };
-}
-
-rulingsRouter.get('/', async (_req: Request, res: Response, next) => {
+// GET /api/rulings — Officials see all rulings + adminTags; Alumni ONLY see visible published rulings without adminTags
+rulingsRouter.get('/', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
-    const p = getPool();
-    const rows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings ORDER BY created_at DESC`, [], 4000);
-    const rulings: Array<JudicialRuling & { version: number }> = [];
+    await ensureDomainTablesAndIndexes();
+    const currentUser = (req as any).user;
+    const isOfficial = isOrganizationalUserRole(currentUser?.role);
 
+    const p = getPool();
+    const whereClause = isOfficial
+      ? ''
+      : `WHERE status = 'selected' AND is_visible_to_alumni = 1`;
+
+    const rows = await selectWithTimeout<any>(
+      `SELECT * FROM judicial_rulings ${whereClause} ORDER BY display_order ASC, created_at DESC`,
+      [],
+      5000
+    );
+
+    const rulings = [];
     for (const r of rows || []) {
       const rIdBuf = toIdBuffer(r.id);
-      const [discRows] = await p.query<any[]>(
-        `SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ? ORDER BY created_at ASC`,
+      const [discRows]: any = await p.query(
+        `SELECT * FROM ruling_discussions
+         WHERE (ruling_id = ? OR ruling_id = ?) AND deleted_at IS NULL
+         ORDER BY created_at ASC`,
         [rIdBuf, fromIdBuffer(r.id)]
       );
-      rulings.push(mapRulingRow(r, (discRows || []).map(mapDiscussionRow)));
+      rulings.push(mapRulingRow(r, (discRows || []).map(mapDiscussionRow), isOfficial));
     }
+
     res.json(rulings);
   } catch (err) {
     next(err);
   }
 });
 
+// GET /api/rulings/:id
 rulingsRouter.get('/:id', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
+    const currentUser = (req as any).user;
+    const isOfficial = isOrganizationalUserRole(currentUser?.role);
+
     const p = getPool();
     const idBuf = toIdBuffer(req.params.id);
     const rows = await selectWithTimeout<any>(
@@ -100,20 +80,35 @@ rulingsRouter.get('/:id', async (req: Request, res: Response, next) => {
     );
     if (!rows || rows.length === 0) throw AppError.notFound('دادنامه');
 
-    const [discRows] = await p.query<any[]>(
-      `SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ? ORDER BY created_at ASC`,
+    const row = rows[0];
+    const isVisible = row.status === 'selected' && Boolean(row.is_visible_to_alumni);
+    if (!isOfficial && !isVisible) {
+      throw AppError.forbidden('این دادنامه هنوز برای نمایش عمومی به دانش‌آموختگان منتشر نشده است.');
+    }
+
+    const [discRows]: any = await p.query(
+      `SELECT * FROM ruling_discussions
+       WHERE (ruling_id = ? OR ruling_id = ?) AND deleted_at IS NULL
+       ORDER BY created_at ASC`,
       [idBuf, req.params.id]
     );
-    res.json(mapRulingRow(rows[0], (discRows || []).map(mapDiscussionRow)));
+    res.json(mapRulingRow(row, (discRows || []).map(mapDiscussionRow), isOfficial));
   } catch (err) {
     next(err);
   }
 });
 
+// PUT /api/rulings/:id — Comprehensive Official Review, Completion, Curation & Strict OCC
 rulingsRouter.put('/:id', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
-    const { title, courtBranch, judgeName, summary, fullRulingText } = req.body;
+    await ensureDomainTablesAndIndexes();
+    const currentUser = getCurrentUser(req);
+    AuthorizationPolicy.assertRole(
+      { userId: currentUser.id, role: currentUser.role, fullName: currentUser.fullName },
+      ['admin', 'supervisor']
+    );
+
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
 
@@ -123,74 +118,226 @@ rulingsRouter.put('/:id', async (req: Request, res: Response, next) => {
       3000
     );
     if (!existingRows || existingRows.length === 0) throw AppError.notFound('دادنامه');
-    const existing = mapRulingRow(existingRows[0]);
-
-    const newTitle = title !== undefined ? title.trim() : existing.title;
-    const newCourt = courtBranch !== undefined ? courtBranch.trim() : existing.courtBranch;
-    const newJudge = judgeName !== undefined ? judgeName.trim() : existing.judgeName;
-    const newSummary = summary !== undefined ? summary.trim() : existing.summary;
-    const newFullText = fullRulingText !== undefined ? fullRulingText.trim() : existing.fullRulingText;
+    const existing = mapRulingRow(existingRows[0], [], true);
 
     const expVer = extractExpectedVersion(req, true);
+    const body = req.body || {};
 
-    const [res]: any = await p.query(
+    const newTitle = body.title !== undefined ? String(body.title).trim() : existing.title;
+    const newCourt = body.courtBranch !== undefined ? String(body.courtBranch).trim() : existing.courtBranch;
+    const newJudge = body.judgeName !== undefined ? String(body.judgeName).trim() : existing.judgeName;
+    const newRulingDate = body.rulingDate !== undefined ? String(body.rulingDate).trim() : existing.rulingDate;
+    const newCaseType = body.caseType !== undefined ? body.caseType : existing.caseType;
+    const newCaseTypeTitle = body.caseTypeTitle !== undefined ? String(body.caseTypeTitle).trim() : existing.caseTypeTitle;
+    const newSummary = body.summary !== undefined ? String(body.summary).trim() : existing.summary;
+    const newFullText = body.fullRulingText !== undefined ? String(body.fullRulingText).trim() : existing.fullRulingText;
+
+    const newPrinciples = body.legalPrinciples !== undefined
+      ? (Array.isArray(body.legalPrinciples) ? body.legalPrinciples.map((s: any) => String(s).trim()).filter(Boolean) : [])
+      : existing.legalPrinciples;
+
+    const newKeywords = body.keywords !== undefined
+      ? (Array.isArray(body.keywords) ? body.keywords.map((s: any) => String(s).trim()).filter(Boolean) : [])
+      : (existing.keywords || []);
+
+    const newAttachments = body.attachments !== undefined
+      ? (Array.isArray(body.attachments) ? body.attachments.map((s: any) => String(s).trim()).filter(Boolean) : [])
+      : (existing.attachments || []);
+
+    const newAdminTags = body.adminTags !== undefined
+      ? (Array.isArray(body.adminTags) ? body.adminTags.map((s: any) => String(s).trim()).filter(Boolean) : [])
+      : (existing.adminTags || []);
+
+    const newPublicLabels = body.publicLabels !== undefined
+      ? (Array.isArray(body.publicLabels) ? body.publicLabels.map((s: any) => String(s).trim()).filter(Boolean) : [])
+      : (existing.publicLabels || []);
+
+    const newIsSystemPick = body.isSystemPick !== undefined ? Boolean(body.isSystemPick) : Boolean(existing.isSystemPick);
+    const newIsVisible = body.isVisibleToAlumni !== undefined
+      ? Boolean(body.isVisibleToAlumni)
+      : Boolean(existing.isVisibleToAlumni);
+    const newCommentsEnabled = body.commentsEnabled !== undefined
+      ? Boolean(body.commentsEnabled)
+      : (existing.commentsEnabled !== false);
+    const newDisplayOrder = body.displayOrder !== undefined
+      ? Number(body.displayOrder)
+      : Number(existing.displayOrder || 0);
+    const newStatus = body.status !== undefined
+      ? body.status
+      : (newIsVisible ? 'selected' : existing.status);
+    const newInternalNote = body.internalReviewNote !== undefined
+      ? (body.internalReviewNote ? String(body.internalReviewNote).trim() : null)
+      : (existing.internalReviewNote || null);
+
+    const [updRes]: any = await p.query(
       `UPDATE judicial_rulings
-       SET title = ?, court_branch = ?, judge_name = ?, summary = ?, full_ruling_text = ?, version = version + 1
+       SET title = ?, court_branch = ?, judge_name = ?, ruling_date = ?,
+           case_type = ?, case_type_title = ?, summary = ?, legal_principles = ?,
+           keywords = ?, attachments = ?, admin_tags = ?, public_labels = ?,
+           is_system_pick = ?, is_visible_to_alumni = ?, comments_enabled = ?,
+           display_order = ?, status = ?, full_ruling_text = ?, internal_review_note = ?,
+           reviewed_at = CURRENT_TIMESTAMP(3), reviewed_by_name = ?,
+           version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
        WHERE (id = ? OR id = ?) AND version = ?`,
-      [newTitle, newCourt, newJudge, newSummary, newFullText, idBuf, req.params.id, expVer]
+      [
+        newTitle,
+        newCourt,
+        newJudge,
+        newRulingDate,
+        newCaseType,
+        newCaseTypeTitle,
+        newSummary,
+        JSON.stringify(newPrinciples),
+        JSON.stringify(newKeywords),
+        JSON.stringify(newAttachments),
+        JSON.stringify(newAdminTags),
+        JSON.stringify(newPublicLabels),
+        newIsSystemPick ? 1 : 0,
+        newIsVisible ? 1 : 0,
+        newCommentsEnabled ? 1 : 0,
+        newDisplayOrder,
+        newStatus,
+        newFullText,
+        newInternalNote,
+        currentUser.fullName,
+        idBuf,
+        req.params.id,
+        expVer,
+      ]
     );
 
-    if (res && res.affectedRows === 0) {
-      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+    if (updRes && updRes.affectedRows === 0) {
+      throw AppError.conflict(
+        'اطلاعات این دادنامه توسط مدیر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
     }
 
-    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ?`, [idBuf, req.params.id]);
-    res.json(mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow)));
+    const updatedRows = await selectWithTimeout<any>(
+      `SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`,
+      [idBuf, req.params.id]
+    );
+    const [discRows]: any = await p.query(
+      `SELECT * FROM ruling_discussions WHERE (ruling_id = ? OR ruling_id = ?) AND deleted_at IS NULL ORDER BY created_at ASC`,
+      [idBuf, req.params.id]
+    );
+    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow), true);
+
+    auditChain.appendEntry({
+      eventType: 'RULING_APPROVED',
+      actorId: currentUser.id,
+      actorName: currentUser.fullName,
+      actorRole: currentUser.role,
+      ip: req.ip || '127.0.0.1',
+      details: `بررسی و تکمیل اطلاعات دادنامه در تالار رأی: ${newTitle} (نمایش به دانش‌آموختگان: ${newIsVisible ? 'فعال' : 'غیرفعال'})`,
+      severity: 'info',
+    });
+
+    outbox.enqueue('rulings.updated', {
+      id: finalRuling.id,
+      resourceId: finalRuling.id,
+      rulingId: finalRuling.id,
+      version: finalRuling.version,
+      ruling: finalRuling,
+      updates: finalRuling,
+    });
+
+    res.json(finalRuling);
   } catch (err) {
     next(err);
   }
 });
 
+// POST /api/rulings — Reform 11: Minimal alumni upload (title + fullRulingText + optional attachments + optional keywords)
+// Officials may also supply full fields directly if desired.
 rulingsRouter.post('/', idempotencyMiddleware, async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const currentUser = getCurrentUser(req);
-    const { title, courtBranch, judgeName, rulingDate, caseType, caseTypeTitle, summary, legalPrinciples, fullRulingText } = req.body;
+    const isOfficial = isOrganizationalUserRole(currentUser.role);
+    const body = req.body || {};
 
-    if (!title || !courtBranch || !summary || !fullRulingText) {
-      throw AppError.badRequest('عنوان، شعبه صادرکننده، چکیده و متن کامل دادنامه الزامی است.');
+    const title = String(body.title || '').trim();
+    const fullRulingText = String(body.fullRulingText || '').trim();
+
+    if (!title || !fullRulingText) {
+      throw AppError.badRequest('عنوان رأی و متن کامل دادنامه الزامی است.');
     }
 
     const id = generateUUIDv7();
     const idBuf = toIdBuffer(id);
     const uBuf = toIdBuffer(currentUser.id);
     const p = getPool();
-    const status = currentUser.role === 'admin' ? 'selected' : 'pending_review';
 
-    const principles = legalPrinciples && legalPrinciples.length > 0 ? legalPrinciples : ['اصل صحت قراردادها', 'قاعده لاضرر'];
+    const keywords: string[] = Array.isArray(body.keywords)
+      ? body.keywords.map((k: any) => String(k).trim()).filter(Boolean)
+      : [];
+    const attachments: string[] = Array.isArray(body.attachments)
+      ? body.attachments.map((a: any) => String(a).trim()).filter(Boolean)
+      : [];
+
+    // Alumni submissions strictly start in pending_review and hidden from public alumni view until approved/selected
+    const status = isOfficial && body.status === 'selected' ? 'selected' : 'pending_review';
+    const isVisibleToAlumni = isOfficial && body.isVisibleToAlumni === true ? 1 : 0;
+
+    const courtBranch = isOfficial && body.courtBranch ? String(body.courtBranch).trim() : 'در انتظار تکمیل دبیرخانه';
+    const judgeName = isOfficial && body.judgeName ? String(body.judgeName).trim() : 'ثبت‌نشده (در انتظار بررسی)';
+    const rulingDate = isOfficial && body.rulingDate ? String(body.rulingDate).trim() : new Date().toLocaleDateString('fa-IR');
+    const caseType = body.caseType || 'commercial';
+    const caseTypeTitle = body.caseTypeTitle || 'حقوقی و تجاری';
+    const summary = isOfficial && body.summary ? String(body.summary).trim() : '';
+    const legalPrinciples =
+      isOfficial && Array.isArray(body.legalPrinciples)
+        ? body.legalPrinciples.map((s: any) => String(s).trim()).filter(Boolean)
+        : [];
+    const adminTags = isOfficial && Array.isArray(body.adminTags) ? body.adminTags : [];
+    const publicLabels = isOfficial && Array.isArray(body.publicLabels) ? body.publicLabels : [];
+    const isSystemPick = isOfficial && Boolean(body.isSystemPick) ? 1 : 0;
+    const commentsEnabled = body.commentsEnabled === false && isOfficial ? 0 : 1;
 
     await p.query(
       `INSERT INTO judicial_rulings (
-        id, title, court_branch, judge_name, ruling_date, case_type, case_type_title, summary, legal_principles,
-        full_ruling_text, status, submitted_by_id, submitted_by_name, likes_count, liked_by, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '[]', 1)`,
+        id, title, court_branch, judge_name, ruling_date, case_type, case_type_title,
+        summary, legal_principles, keywords, attachments, admin_tags, public_labels,
+        is_system_pick, is_visible_to_alumni, comments_enabled, display_order,
+        full_ruling_text, status, submitted_by_id, submitted_by_name,
+        likes_count, liked_by, dislikes_count, disliked_by,
+        reviewed_at, reviewed_by_name, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0, '[]', 0, '[]', ?, ?, 1)`,
       [
         idBuf,
         title,
         courtBranch,
-        judgeName || currentUser.fullName,
-        rulingDate || '۱۴۰۳/۰۷/۰۱',
-        caseType || 'commercial',
-        caseTypeTitle || 'حقوقی و تجاری',
+        judgeName,
+        rulingDate,
+        caseType,
+        caseTypeTitle,
         summary,
-        JSON.stringify(principles),
+        JSON.stringify(legalPrinciples),
+        JSON.stringify(keywords),
+        JSON.stringify(attachments),
+        JSON.stringify(adminTags),
+        JSON.stringify(publicLabels),
+        isSystemPick,
+        isVisibleToAlumni,
+        commentsEnabled,
         fullRulingText,
         status,
         uBuf,
         currentUser.fullName,
+        isOfficial && status === 'selected' ? new Date() : null,
+        isOfficial && status === 'selected' ? currentUser.fullName : null,
       ]
     );
+
+    const insertedRows = await selectWithTimeout<any>(
+      `SELECT * FROM judicial_rulings WHERE id = ? LIMIT 1`,
+      [idBuf],
+      3000
+    );
+    const createdForStaff = mapRulingRow(insertedRows[0], [], true);
+    const createdForClient = mapRulingRow(insertedRows[0], [], isOfficial);
 
     auditChain.appendEntry({
       eventType: 'CARTABLE_STATUS_CHANGE',
@@ -198,29 +345,9 @@ rulingsRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
       actorName: currentUser.fullName,
       actorRole: currentUser.role,
       ip: req.ip || '127.0.0.1',
-      details: `ثبت دادنامه جدید در تالار رأی قضایی: ${title}`,
+      details: `بارگذاری رأی جدید در تالار رأی قضایی: ${title}`,
       severity: 'info',
     });
-
-    const createdRuling = {
-      id,
-      title,
-      courtBranch,
-      judgeName: judgeName || currentUser.fullName,
-      rulingDate: rulingDate || '۱۴۰۳/۰۷/۰۱',
-      caseType: caseType || 'commercial',
-      caseTypeTitle: caseTypeTitle || 'حقوقی و تجاری',
-      summary,
-      legalPrinciples: principles,
-      fullRulingText,
-      status,
-      submittedById: currentUser.id,
-      submittedByName: currentUser.fullName,
-      likesCount: 0,
-      likedBy: [],
-      discussions: [],
-      version: 1,
-    };
 
     outbox.enqueue('rulings.created', {
       id,
@@ -228,20 +355,26 @@ rulingsRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respons
       rulingId: id,
       submittedById: currentUser.id,
       version: 1,
-      updates: createdRuling,
+      ruling: createdForStaff,
+      updates: createdForStaff,
     });
 
-    res.status(201).json(createdRuling);
+    res.status(201).json(createdForClient);
   } catch (err) {
     next(err);
   }
 });
 
+// POST /api/rulings/:id/approve — Approve & mark visible to alumni with review timestamp
 rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const currentUser = getCurrentUser(req);
-    AuthorizationPolicy.assertRole({ userId: currentUser.id, role: currentUser.role, fullName: currentUser.fullName }, ['admin', 'supervisor']);
+    AuthorizationPolicy.assertRole(
+      { userId: currentUser.id, role: currentUser.role, fullName: currentUser.fullName },
+      ['admin', 'supervisor']
+    );
 
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
@@ -252,12 +385,19 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
     const expVer = extractExpectedVersion(req, true);
 
     const [updateRes]: any = await p.query(
-      `UPDATE judicial_rulings SET status = 'selected', version = version + 1 WHERE (id = ? OR id = ?) AND version = ?`,
-      [idBuf, req.params.id, expVer]
+      `UPDATE judicial_rulings
+       SET status = 'selected', is_visible_to_alumni = 1,
+           reviewed_at = CURRENT_TIMESTAMP(3), reviewed_by_name = ?,
+           version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE (id = ? OR id = ?) AND version = ?`,
+      [currentUser.fullName, idBuf, req.params.id, expVer]
     );
 
     if (updateRes && updateRes.affectedRows === 0) {
-      throw AppError.conflict('اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+      throw AppError.conflict(
+        'اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
     }
 
     auditChain.appendEntry({
@@ -271,14 +411,18 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
     });
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ?`, [idBuf, req.params.id]);
-    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow));
+    const [discRows]: any = await p.query(
+      `SELECT * FROM ruling_discussions WHERE (ruling_id = ? OR ruling_id = ?) AND deleted_at IS NULL ORDER BY created_at ASC`,
+      [idBuf, req.params.id]
+    );
+    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow), true);
 
     outbox.enqueue('rulings.approved', {
       id: finalRuling.id,
       resourceId: finalRuling.id,
       rulingId: finalRuling.id,
       version: finalRuling.version,
+      ruling: finalRuling,
       updates: finalRuling,
     });
 
@@ -288,14 +432,22 @@ rulingsRouter.post('/:id/approve', async (req: Request, res: Response, next) => 
   }
 });
 
+// POST /api/rulings/:id/discussion & /critique — Enforces global & per-ruling commentsEnabled!
 const handleAddDiscussion = async (req: Request, res: Response, next: any) => {
   try {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const currentUser = getCurrentUser(req);
+    const isOfficial = isOrganizationalUserRole(currentUser.role);
     const { comment } = req.body;
 
-    if (!comment || !comment.trim()) {
+    if (!comment || !String(comment).trim()) {
       throw AppError.badRequest('متن نقد یا تحلیل فقهی-حقوقی الزامی است.');
+    }
+
+    const portalCfg = await loadRulingsPortalConfig();
+    if (!portalCfg.globalCommentsEnabled && !isOfficial) {
+      throw AppError.forbidden('امکان ثبت دیدگاه و کامنت در حال حاضر توسط مدیریت تالار غیرفعال شده است.');
     }
 
     const idBuf = toIdBuffer(req.params.id);
@@ -306,30 +458,59 @@ const handleAddDiscussion = async (req: Request, res: Response, next: any) => {
 
     const rows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
     if (!rows || rows.length === 0) throw AppError.notFound('دادنامه');
+    const row = rows[0];
+
+    const isVisible = row.status === 'selected' && Boolean(row.is_visible_to_alumni);
+    if (!isOfficial && !isVisible) {
+      throw AppError.forbidden('امکان ثبت دیدگاه برای دادنامه منتشرنشده وجود ندارد.');
+    }
+
+    const rulingCommentsEnabled =
+      row.comments_enabled === undefined || row.comments_enabled === null
+        ? true
+        : Boolean(row.comments_enabled);
+
+    if ((!portalCfg.globalCommentsEnabled || !rulingCommentsEnabled) && !isOfficial) {
+      throw AppError.forbidden('ثبت دیدگاه برای این رأی توسط مدیریت بسته شده است.');
+    }
+
+    const roleTitleMap: Record<string, string> = {
+      super_admin: 'مدیرکل سیستم',
+      admin: 'مدیر کل سامانه',
+      alumni_manager: 'مدیر دانش‌آموختگان',
+      supervisor: 'ناظر علمی و پژوهشی',
+      alumni: 'دانش‌آموخته نخبه',
+    };
+    const roleTitle = roleTitleMap[currentUser.role] || (isOfficial ? 'عضو هیئت ممیزی و مدیریت' : 'دانش‌آموخته نخبه');
 
     await p.query(
       `INSERT INTO ruling_discussions (id, ruling_id, author_id, author_name, author_role_title, comment)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [commentBuf, idBuf, uBuf, currentUser.fullName, currentUser.role === 'admin' ? 'مدیر سامانه' : 'دانش‌آموخته نخبه', comment.trim()]
+      [commentBuf, idBuf, uBuf, currentUser.fullName, roleTitle, String(comment).trim()]
     );
 
     await p.query(`UPDATE judicial_rulings SET version = version + 1 WHERE id = ? OR id = ?`, [idBuf, req.params.id]);
 
     const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ? ORDER BY created_at ASC`, [idBuf, req.params.id]);
-    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow));
+    const [discRows]: any = await p.query(
+      `SELECT * FROM ruling_discussions WHERE (ruling_id = ? OR ruling_id = ?) AND deleted_at IS NULL ORDER BY created_at ASC`,
+      [idBuf, req.params.id]
+    );
+    const finalForStaff = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow), true);
+    const finalForClient = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow), isOfficial);
 
     outbox.enqueue('rulings.critique_added', {
-      id: finalRuling.id,
-      resourceId: finalRuling.id,
-      rulingId: finalRuling.id,
+      id: finalForStaff.id,
+      resourceId: finalForStaff.id,
+      rulingId: finalForStaff.id,
       commentId,
       authorId: currentUser.id,
-      version: finalRuling.version,
-      updates: finalRuling,
+      version: finalForStaff.version,
+      ruling: finalForStaff,
+      updates: finalForStaff,
     });
 
-    res.json({ success: true, ruling: finalRuling });
+    res.json({ success: true, ruling: finalForClient });
   } catch (err) {
     next(err);
   }
@@ -338,53 +519,76 @@ const handleAddDiscussion = async (req: Request, res: Response, next: any) => {
 rulingsRouter.post('/:id/discussion', handleAddDiscussion);
 rulingsRouter.post('/:id/critique', handleAddDiscussion);
 
+// POST /api/rulings/:id/like — Mutually exclusive with dislikedBy inside transaction + post-commit read
 rulingsRouter.post('/:id/like', async (req: Request, res: Response, next) => {
   try {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const currentUser = getCurrentUser(req);
+    const isOfficial = isOrganizationalUserRole(currentUser.role);
     const idBuf = toIdBuffer(req.params.id);
     const p = getPool();
 
-    const rows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    if (!rows || rows.length === 0) throw AppError.notFound('دادنامه');
+    await withTx(async (conn) => {
+      const [rows]: any = await conn.query(
+        `SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1 FOR UPDATE`,
+        [idBuf, req.params.id]
+      );
+      if (!rows || rows.length === 0) throw AppError.notFound('دادنامه');
+      const row = rows[0];
 
-    let likedBy: string[] = [];
-    try {
-      if (typeof rows[0].liked_by === 'string') likedBy = JSON.parse(rows[0].liked_by);
-      else if (Array.isArray(rows[0].liked_by)) likedBy = rows[0].liked_by;
-    } catch {}
+      const isVisible = row.status === 'selected' && Boolean(row.is_visible_to_alumni);
+      if (!isOfficial && !isVisible) {
+        throw AppError.forbidden('امکان واکنش به دادنامه‌های منتشرنشده وجود ندارد.');
+      }
 
-    const alreadyLiked = likedBy.includes(currentUser.id);
-    if (alreadyLiked) {
-      likedBy = likedBy.filter(id => id !== currentUser.id);
-    } else {
-      likedBy.push(currentUser.id);
-    }
+      let likedBy = parseJsonArray<string>(row.liked_by, []);
+      let dislikedBy = parseJsonArray<string>(row.disliked_by, []);
 
-    await p.query(
-      `UPDATE judicial_rulings
-       SET liked_by = ?, likes_count = ?, version = version + 1
-       WHERE id = ? OR id = ?`,
-      [JSON.stringify(likedBy), likedBy.length, idBuf, req.params.id]
-    );
+      const alreadyLiked = likedBy.includes(currentUser.id);
+      if (alreadyLiked) {
+        likedBy = likedBy.filter(id => id !== currentUser.id);
+      } else {
+        likedBy.push(currentUser.id);
+        dislikedBy = dislikedBy.filter(id => id !== currentUser.id);
+      }
 
-    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
-    const [discRows] = await p.query<any[]>(`SELECT * FROM ruling_discussions WHERE ruling_id = ? OR ruling_id = ?`, [idBuf, req.params.id]);
-    const finalRuling = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow));
-
-    outbox.enqueue('rulings.liked', {
-      id: finalRuling.id,
-      resourceId: finalRuling.id,
-      rulingId: finalRuling.id,
-      version: finalRuling.version,
-      updates: finalRuling,
+      await conn.query(
+        `UPDATE judicial_rulings
+         SET liked_by = ?, likes_count = ?, disliked_by = ?, dislikes_count = ?, version = version + 1
+         WHERE id = ? OR id = ?`,
+        [
+          JSON.stringify(likedBy),
+          likedBy.length,
+          JSON.stringify(dislikedBy),
+          dislikedBy.length,
+          idBuf,
+          req.params.id,
+        ]
+      );
     });
 
-    res.json({ success: true, ruling: finalRuling });
+    const updatedRows = await selectWithTimeout<any>(`SELECT * FROM judicial_rulings WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id]);
+    const [discRows]: any = await p.query(
+      `SELECT * FROM ruling_discussions WHERE (ruling_id = ? OR ruling_id = ?) AND deleted_at IS NULL ORDER BY created_at ASC`,
+      [idBuf, req.params.id]
+    );
+    const finalForStaff = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow), true);
+    const finalForClient = mapRulingRow(updatedRows[0], (discRows || []).map(mapDiscussionRow), isOfficial);
+
+    outbox.enqueue('rulings.liked', {
+      id: finalForStaff.id,
+      resourceId: finalForStaff.id,
+      rulingId: finalForStaff.id,
+      version: finalForStaff.version,
+      ruling: finalForStaff,
+      updates: finalForStaff,
+    });
+
+    res.json({ success: true, ruling: finalForClient });
   } catch (err) {
     next(err);
   }
 });
 
-import { registerRulingHighlightsAndPinRoutes } from './rulingHighlightsAndPinRoutes';
 registerRulingHighlightsAndPinRoutes(rulingsRouter);

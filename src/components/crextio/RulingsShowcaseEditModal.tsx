@@ -87,6 +87,8 @@ export const RulingsShowcaseEditModal: React.FC<RulingsShowcaseEditModalProps> =
       submittedByName: 'دبیرخانه تالار آراء',
       likesCount: 14,
       likedBy: [],
+      dislikesCount: 0,
+      dislikedBy: [],
       discussions: [],
     };
     const nextList = [newItem, ...baseList];
@@ -247,6 +249,133 @@ export const RulingsShowcaseEditModal: React.FC<RulingsShowcaseEditModalProps> =
                     <span>آپلود تصویر جدید روی سرور</span>
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Reform 16 & 19: Showcase Content Depth, Visible Tabs & Reactions Controls */}
+          <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 text-xs">
+            <div className="space-y-2">
+              <label className="font-black text-stone-900 block">
+                بخش‌های قابل نمایش از هر رأی درون ویترین داشبورد (اصلاح ۱۶):
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'title_only', label: 'فقط عنوان رأی' },
+                  { id: 'title_summary', label: 'عنوان + چکیده رأی' },
+                  { id: 'tabbed', label: 'چندسربرگی کامل (تب‌های قابل انتخاب)' },
+                ].map(opt => {
+                  const active = (crextioConfig.rulingsShowcaseContentMode || 'tabbed') === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => updateCrextioConfig({ rulingsShowcaseContentMode: opt.id as any })}
+                      className={`p-2.5 rounded-xl border font-bold text-right cursor-pointer transition-colors ${
+                        active
+                          ? 'bg-emerald-800 text-white border-emerald-900'
+                          : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tabs selector & custom labels */}
+            {(crextioConfig.rulingsShowcaseContentMode || 'tabbed') === 'tabbed' && (
+              <div className="space-y-2 pt-2 border-t border-stone-200">
+                <label className="font-bold text-stone-700 block">
+                  سربرگ‌های فعال و عنوان دلخواه هر سربرگ در ویترین:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(
+                    [
+                      { key: 'summary', defLabel: 'چکیده استنباط' },
+                      { key: 'principles', defLabel: 'مستندات و قواعد فقهی' },
+                      { key: 'discussions', defLabel: 'نقدها و مباحثات' },
+                      { key: 'fullText', defLabel: 'متن دادنامه' },
+                    ] as const
+                  ).map(t => {
+                    const activeTabs = crextioConfig.rulingsShowcaseVisibleTabs || [
+                      'summary',
+                      'principles',
+                      'discussions',
+                      'fullText',
+                    ];
+                    const isEnabled = activeTabs.includes(t.key);
+                    const customLabels = crextioConfig.rulingsShowcaseTabLabels || {};
+                    return (
+                      <div
+                        key={t.key}
+                        className="flex items-center gap-2 p-2 rounded-xl bg-white border border-stone-200"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = isEnabled
+                              ? activeTabs.length > 1
+                                ? activeTabs.filter(x => x !== t.key)
+                                : activeTabs
+                              : [...activeTabs, t.key];
+                            updateCrextioConfig({ rulingsShowcaseVisibleTabs: next });
+                          }}
+                          className={`w-5 h-5 rounded flex items-center justify-center border shrink-0 cursor-pointer ${
+                            isEnabled ? 'bg-amber-700 text-white border-amber-800' : 'bg-stone-100 border-stone-300'
+                          }`}
+                        >
+                          {isEnabled && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                        <input
+                          type="text"
+                          value={customLabels[t.key] ?? t.defLabel}
+                          onChange={e =>
+                            updateCrextioConfig({
+                              rulingsShowcaseTabLabels: {
+                                ...customLabels,
+                                [t.key]: e.target.value,
+                              },
+                            })
+                          }
+                          className="flex-1 px-2 py-1 rounded-lg border border-stone-200 text-xs font-bold"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Likes / Dislikes / Comments visibility toggles */}
+            <div className="space-y-2 pt-2 border-t border-stone-200">
+              <label className="font-bold text-stone-700 block">
+                تنظیم نمایش دکمه‌ها و آمار تعامل در ویترین داشبورد (اصلاح ۱۹):
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { key: 'rulingsShowLikesInShowcase' as const, label: 'نمایش تعداد و دکمه پسند' },
+                  { key: 'rulingsShowDislikesInShowcase' as const, label: 'نمایش تعداد و دکمه عدم پسند' },
+                  { key: 'rulingsShowCommentsInShowcase' as const, label: 'نمایش تعداد دیدگاه‌ها' },
+                ].map(item => {
+                  const enabled = crextioConfig[item.key] !== false;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => updateCrextioConfig({ [item.key]: !enabled })}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between font-bold cursor-pointer ${
+                        enabled
+                          ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                          : 'bg-white border-stone-200 text-stone-500'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-[10px]">{enabled ? 'روشن' : 'مخفی'}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

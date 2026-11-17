@@ -493,6 +493,17 @@ class ApiClient {
     return this.request<any[]>('/api/rulings');
   }
 
+  async getRulingsPortalConfig() {
+    return this.request<any>('/api/rulings/portal-config');
+  }
+
+  async updateRulingsPortalConfig(config: any) {
+    return this.request<{ success: boolean; config: any }>('/api/rulings/portal-config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  }
+
   async submitRuling(data: any) {
     return this.request<any>('/api/rulings', {
       method: 'POST',
@@ -500,10 +511,37 @@ class ApiClient {
     });
   }
 
+  async updateRuling(rulingId: string, data: any) {
+    return this.request<any>(`/api/rulings/${rulingId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async reorderRulings(orderedIds: string[]) {
+    return this.request<{ success: boolean; orderedIds: string[] }>('/api/rulings/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ orderedIds }),
+    });
+  }
+
   async addRulingCritique(rulingId: string, comment: string) {
     return this.request<any>(`/api/rulings/${rulingId}/critique`, {
       method: 'POST',
       body: JSON.stringify({ comment }),
+    });
+  }
+
+  async editRulingDiscussion(rulingId: string, discussionId: string, comment: string) {
+    return this.request<any>(`/api/rulings/${rulingId}/discussions/${discussionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ comment }),
+    });
+  }
+
+  async deleteRulingDiscussion(rulingId: string, discussionId: string) {
+    return this.request<any>(`/api/rulings/${rulingId}/discussions/${discussionId}`, {
+      method: 'DELETE',
     });
   }
 
@@ -516,6 +554,12 @@ class ApiClient {
 
   async toggleRulingLike(rulingId: string) {
     return this.request<any>(`/api/rulings/${rulingId}/like`, {
+      method: 'POST',
+    });
+  }
+
+  async toggleRulingDislike(rulingId: string) {
+    return this.request<any>(`/api/rulings/${rulingId}/dislike`, {
       method: 'POST',
     });
   }

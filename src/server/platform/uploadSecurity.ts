@@ -117,7 +117,8 @@ export function validateSecureUploadBuffer(
   }
 
   const isCartable = category === 'cartable_alumni' || category === 'cartable_officials';
-  const maxBytes = isCartable ? MAX_CARTABLE_UPLOAD_BYTES : MAX_GENERAL_UPLOAD_BYTES;
+  const isStrictDocOrImage = isCartable || category === 'verdict';
+  const maxBytes = isStrictDocOrImage ? MAX_CARTABLE_UPLOAD_BYTES : MAX_GENERAL_UPLOAD_BYTES;
   if (buffer.length > maxBytes) {
     const maxMb = Math.round(maxBytes / (1024 * 1024));
     throw AppError.badRequest(
@@ -149,12 +150,14 @@ export function validateSecureUploadBuffer(
     );
   }
 
-  // Strict Cartable validation (Images + PDF + Word ONLY, verified by Magic Bytes)
-  if (isCartable) {
+  // Strict validation (Images + PDF + Word ONLY, verified by Magic Bytes) for Cartable & Verdicts
+  if (isStrictDocOrImage) {
     if (origExt && !CARTABLE_ALLOWED_EXTS.has(origExt)) {
       throw AppError.badRequest(
-        'در کارتابل صرفاً ارسال تصویر (JPG, PNG, WEBP)، فایل PDF و سند Word (DOC, DOCX) مجاز است.',
-        'INVALID_CARTABLE_FILE_TYPE'
+        category === 'verdict'
+          ? 'در تالار رأی صرفاً ارسال تصویر (JPG, PNG, WEBP)، فایل PDF و سند Word (DOC, DOCX) مجاز است.'
+          : 'در کارتابل صرفاً ارسال تصویر (JPG, PNG, WEBP)، فایل PDF و سند Word (DOC, DOCX) مجاز است.',
+        category === 'verdict' ? 'INVALID_VERDICT_FILE_TYPE' : 'INVALID_CARTABLE_FILE_TYPE'
       );
     }
 
@@ -239,4 +242,8 @@ export function isCartableAllowedClientFile(file: File): { ok: boolean; error?: 
     };
   }
   return { ok: true };
+}
+
+export function isVerdictAllowedClientFile(file: File): { ok: boolean; error?: string } {
+  return isCartableAllowedClientFile(file);
 }

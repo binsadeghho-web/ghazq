@@ -11,6 +11,7 @@ import {
   CounselingRequest,
   ResearchMentorship,
   JudicialRuling,
+  RulingsPortalConfig,
   WelfareRequest,
   ConsumableItem,
   ConsumableOrder,
@@ -139,10 +140,17 @@ export interface AppContextType {
   deleteResearchProject: (projectId: string) => void;
 
   // Judicial Rulings methods
-  submitRuling: (data: Omit<JudicialRuling, 'id' | 'status' | 'likesCount' | 'likedBy' | 'discussions'>) => void;
+  rulingsPortalConfig: RulingsPortalConfig;
+  updateRulingsPortalConfig: (updates: Partial<RulingsPortalConfig>) => Promise<void>;
+  submitRuling: (data: Partial<JudicialRuling> & { title: string; fullRulingText: string }) => Promise<JudicialRuling | null>;
+  updateRuling: (rulingId: string, updates: Partial<JudicialRuling>) => Promise<JudicialRuling | null>;
+  reorderRulings: (orderedIds: string[]) => Promise<void>;
   approveRuling: (rulingId: string) => Promise<void>;
   addRulingDiscussion: (rulingId: string, comment: string) => Promise<void>;
-  toggleRulingLike: (rulingId: string) => void;
+  editRulingDiscussion: (rulingId: string, discussionId: string, comment: string) => Promise<void>;
+  deleteRulingDiscussion: (rulingId: string, discussionId: string) => Promise<void>;
+  toggleRulingLike: (rulingId: string) => Promise<void>;
+  toggleRulingDislike: (rulingId: string) => Promise<void>;
 
   // Welfare & Consumables methods
   submitWelfareRequest: (data: Omit<WelfareRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
@@ -420,10 +428,17 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     updateResearchProject: research.updateResearchProject,
     deleteResearchProject: research.deleteResearchProject,
     rulings: research.rulings,
+    rulingsPortalConfig: research.rulingsPortalConfig,
+    updateRulingsPortalConfig: research.updateRulingsPortalConfig,
     submitRuling: research.submitRuling,
+    updateRuling: research.updateRuling,
+    reorderRulings: research.reorderRulings,
     approveRuling: research.approveRuling,
     addRulingDiscussion: research.addRulingDiscussion,
+    editRulingDiscussion: research.editRulingDiscussion,
+    deleteRulingDiscussion: research.deleteRulingDiscussion,
     toggleRulingLike: research.toggleRulingLike,
+    toggleRulingDislike: research.toggleRulingDislike,
     synergyPosts: research.synergyPosts,
     createSynergyPost: research.createSynergyPost,
     respondToSynergyPost: research.respondToSynergyPost,

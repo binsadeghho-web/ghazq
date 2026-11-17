@@ -306,6 +306,58 @@ export const MizanStudioModal: React.FC<MizanStudioModalProps> = ({ isOpen, onCl
                   </div>
                 );
               })}
+
+              {/* تنظیمات ویترین آراء قضایی در تم ۳ */}
+              <div className="p-4 rounded-2xl border border-[#D5E5DE] bg-[#F2F8F5] space-y-3 mt-2">
+                <div className="text-xs font-bold text-[#0D3829]">
+                  تنظیمات نحوه نمایش آراء در ویترین تم ۳ (اصلاح ۱۶ و ۱۹)
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'title_only', label: 'فقط عنوان' },
+                    { id: 'title_summary', label: 'عنوان + چکیده' },
+                    { id: 'tabbed', label: 'چندسربرگی' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleUpdate('rulingsShelfContentMode', opt.id)}
+                      className={`py-2 px-2 rounded-xl border text-[11px] font-bold cursor-pointer ${
+                        (mizanConfig.rulingsShelfContentMode || 'title_summary') === opt.id
+                          ? 'bg-[#158561] text-white border-[#158561]'
+                          : 'bg-white text-[#2C5747] border-[#CADBD3]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: 'rulingsShowLikesInShowcase' as const, label: 'نمایش پسند' },
+                    { key: 'rulingsShowDislikesInShowcase' as const, label: 'نمایش عدم پسند' },
+                    { key: 'rulingsShowCommentsInShowcase' as const, label: 'نمایش دیدگاه‌ها' },
+                  ].map(item => {
+                    const enabled = mizanConfig[item.key] !== false;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => handleUpdate(item.key, !enabled)}
+                        className={`py-2 px-2 rounded-xl border text-[11px] font-bold cursor-pointer ${
+                          enabled
+                            ? 'bg-white border-[#158561] text-[#0D3829]'
+                            : 'bg-[#EEF5F1] border-[#CADBD3] text-[#698F81]'
+                        }`}
+                      >
+                        {item.label}: {enabled ? 'روشن' : 'مخفی'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>
