@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import {
   Compass,
   GraduationCap,
@@ -151,8 +152,12 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
         {/* Background Atmosphere Image with Scrim (Configurable Background) */}
         <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
           <img
-            src={crextioConfig.researchPromoBgImage || '/src/assets/images/scholarly_research_chamber_1793830009917.jpg'}
+            src={
+              crextioConfig.researchPromoBgImage ||
+              resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides)
+            }
             alt="باشگاه نخبگانی راهبری رساله‌ها و اساتید فقه و حقوق"
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0A1D16] via-[#0A1D16]/80 to-transparent" />

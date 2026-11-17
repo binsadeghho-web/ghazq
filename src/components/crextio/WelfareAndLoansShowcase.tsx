@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { toPersianNumbers } from '../../utils/persianNumbers';
+import { api } from '../../services/apiClient';
+import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import {
   Gift,
   ArrowUpRight,
@@ -10,7 +11,6 @@ import {
   X,
   Plus,
   Trash2,
-  Sparkles,
   ShoppingBag,
   CreditCard,
   Building2,
@@ -18,15 +18,15 @@ import {
   Briefcase,
   ShieldCheck,
   Award,
-  Scale,
   Car,
   Home,
   Flame,
   Coins,
   Coffee,
   GraduationCap,
-  Compass,
-  BookOpen
+  Upload,
+  Loader2,
+  Camera,
 } from 'lucide-react';
 
 interface WelfareAndLoansShowcaseProps {
@@ -59,15 +59,21 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
   onNavigateToWelfare
 }) => {
   const { consumables, currentUser, crextioConfig, updateCrextioConfig } = useApp();
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'supervisor';
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   const title = crextioConfig.welfareShowcaseTitle || 'ویترین خدمات رفاهی، تسهیلات و مساعدت‌های اعضا';
   const subtitle = crextioConfig.welfareShowcaseSubtitle || 'اعطای وام‌های قرض‌الحسنه، اسکان در اقامتگاه‌های مشهد و قم، کمک‌هزینه درمان و اقلام تعاونی اعضا';
-
-  const [editTitle, setEditTitle] = useState(title);
-  const [editSubtitle, setEditSubtitle] = useState(subtitle);
+  const showcaseBannerUrl = resolveShowcaseImageUrl(
+    'welfare_showcase',
+    crextioConfig.showcaseImageOverrides
+  );
 
   const defaultWelfareCards = [
     {
@@ -78,7 +84,8 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       tag: 'تسهیلات مالی',
       iconId: 'CreditCard',
       accent: '#059669',
-      bgClass: 'bg-emerald-50/60 border-emerald-200'
+      bgClass: 'bg-emerald-50/60 border-emerald-200',
+      imageUrl: '',
     },
     {
       id: 'welf-2',
@@ -88,7 +95,8 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       tag: 'سفر و اقامت',
       iconId: 'Building2',
       accent: '#D97706',
-      bgClass: 'bg-amber-50/60 border-amber-200'
+      bgClass: 'bg-amber-50/60 border-amber-200',
+      imageUrl: '',
     },
     {
       id: 'welf-3',
@@ -98,7 +106,8 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       tag: 'سلامت',
       iconId: 'Heart',
       accent: '#E11D48',
-      bgClass: 'bg-rose-50/60 border-rose-200'
+      bgClass: 'bg-rose-50/60 border-rose-200',
+      imageUrl: '',
     },
     {
       id: 'welf-4',
@@ -108,14 +117,76 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       tag: 'تعاونی اعضا',
       iconId: 'ShoppingBag',
       accent: '#2563EB',
-      bgClass: 'bg-blue-50/60 border-blue-200'
+      bgClass: 'bg-blue-50/60 border-blue-200',
+      imageUrl: '',
     }
   ];
 
-  const [welfareCards, setWelfareCards] = useState(defaultWelfareCards);
+  const normalizedSavedCards =
+    crextioConfig.welfareShowcaseCards && crextioConfig.welfareShowcaseCards.length > 0
+      ? crextioConfig.welfareShowcaseCards.map(c => ({
+          id: c.id,
+          title: c.title,
+          amount: c.amount || '',
+          subtext: c.subtext || c.subtitle || '',
+          tag: c.tag || c.badge || 'رفاهیات',
+          iconId: c.iconId || c.icon || 'Gift',
+          accent: c.accent || '#059669',
+          bgClass: c.bgClass || 'bg-emerald-50/60 border-emerald-200',
+          imageUrl: c.imageUrl || '',
+        }))
+      : defaultWelfareCards;
+
+  const [editTitle, setEditTitle] = useState(title);
+  const [editSubtitle, setEditSubtitle] = useState(subtitle);
+  const [welfareCards, setWelfareCards] = useState(normalizedSavedCards);
+
+  useEffect(() => {
+    setEditTitle(title);
+    setEditSubtitle(subtitle);
+    if (crextioConfig.welfareShowcaseCards && crextioConfig.welfareShowcaseCards.length > 0) {
+      setWelfareCards(
+        crextioConfig.welfareShowcaseCards.map(c => ({
+          id: c.id,
+          title: c.title,
+          amount: c.amount || '',
+          subtext: c.subtext || c.subtitle || '',
+          tag: c.tag || c.badge || 'رفاهیات',
+          iconId: c.iconId || c.icon || 'Gift',
+          accent: c.accent || '#059669',
+          bgClass: c.bgClass || 'bg-emerald-50/60 border-emerald-200',
+          imageUrl: c.imageUrl || '',
+        }))
+      );
+    }
+  }, [title, subtitle, crextioConfig.welfareShowcaseCards]);
 
   const handleUpdateCard = (id: string, field: string, val: any) => {
     setWelfareCards(prev => prev.map(c => c.id === id ? { ...c, [field]: val } : c));
+  };
+
+  const handleUploadImage = async (id: string, file: File) => {
+    if (!file) return;
+    setUploadingId(id);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        if (id === '__showcase_banner__') {
+          updateCrextioConfig({
+            showcaseImageOverrides: {
+              ...(crextioConfig.showcaseImageOverrides || {}),
+              welfare_showcase: res.url,
+            },
+          });
+        } else {
+          handleUpdateCard(id, 'imageUrl', res.url);
+        }
+      }
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const handleAddCard = () => {
@@ -127,7 +198,8 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       tag: 'تسهیلات ویژه',
       iconId: 'Gift',
       accent: '#0D9488',
-      bgClass: 'bg-teal-50/60 border-teal-200'
+      bgClass: 'bg-teal-50/60 border-teal-200',
+      imageUrl: '',
     };
     setWelfareCards(prev => [...prev, newCard]);
   };
@@ -140,7 +212,8 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
   const handleSave = () => {
     updateCrextioConfig({
       welfareShowcaseTitle: editTitle,
-      welfareShowcaseSubtitle: editSubtitle
+      welfareShowcaseSubtitle: editSubtitle,
+      welfareShowcaseCards: welfareCards,
     });
     setIsEditModalOpen(false);
   };
@@ -154,7 +227,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
             <Gift className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base sm:text-lg font-black text-stone-900">{title}</h3>
               <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 border border-teal-200 text-[10px] font-extrabold">
                 رفاهیات و وام‌ها
@@ -164,14 +237,14 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
-              <span>ویرایش ویترین و استیکرها</span>
+              <span>ویرایش ویترین و تصاویر</span>
             </button>
           )}
 
@@ -197,7 +270,18 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
               onClick={onNavigateToWelfare}
               className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${item.bgClass}`}
             >
-              <div className="space-y-2">
+              <div className="space-y-2.5">
+                {item.imageUrl && (
+                  <div className="h-24 rounded-xl overflow-hidden border border-stone-200/80">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center shadow-2xs"
@@ -230,7 +314,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
         })}
       </div>
 
-      {/* Admin Edit Modal with Icon / Sticker Selector & Card Add/Delete */}
+      {/* Admin Edit Modal */}
       <AnimatePresence>
         {isEditModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir="rtl">
@@ -244,12 +328,40 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-teal-700" />
                   <h4 className="font-black text-sm text-stone-900">
-                    ویرایش ویترین رفاهیات، تغییر نمادها (استیکرها) و افزودن/حذف کارت‌ها
+                    ویرایش ویترین رفاهیات، تصاویر و کارت‌ها (ذخیره در پایگاه داده)
                   </h4>
                 </div>
-                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700">
+                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Showcase Banner Image Override */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {showcaseBannerUrl && (
+                    <img
+                      src={showcaseBannerUrl}
+                      alt="تصویر ویترین رفاهیات"
+                      referrerPolicy="no-referrer"
+                      className="w-14 h-12 rounded-xl object-cover border border-stone-300 shrink-0"
+                    />
+                  )}
+                  <div>
+                    <div className="text-xs font-black text-stone-800">تصویر اختصاصی ویترین رفاهیات (نمایشگاه جامع و باکس ساده)</div>
+                    <div className="text-[10px] text-stone-500">آپلود مستقیم روی سرور</div>
+                  </div>
+                </div>
+                <label className="px-3 py-1.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
+                  {uploadingId === '__showcase_banner__' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>آپلود تصویر باکس</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => e.target.files?.[0] && handleUploadImage('__showcase_banner__', e.target.files[0])}
+                  />
+                </label>
               </div>
 
               {/* Title & Subtitle */}
@@ -278,7 +390,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
               <div className="space-y-3 pt-2 border-t border-stone-200 text-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h5 className="font-black text-xs text-stone-900">مدیریت کارت‌های ویترین رفاهی:</h5>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <select
                       onChange={(e) => {
                         const selectedItem = consumables.find(c => c.id === e.target.value);
@@ -293,7 +405,8 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                               tag: selectedItem.category || 'کالای تعاونی',
                               iconId: 'ShoppingBag',
                               accent: '#2563EB',
-                              bgClass: 'bg-blue-50/60 border-blue-200'
+                              bgClass: 'bg-blue-50/60 border-blue-200',
+                              imageUrl: '',
                             }
                           ]);
                         }
@@ -348,7 +461,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                           </div>
 
                           <div>
-                            <label className="text-[10px] text-stone-500 block">انتخاب نماد / استیکر آیکون:</label>
+                            <label className="text-[10px] text-stone-500 block">انتخاب نماد / آیکون:</label>
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-lg bg-teal-800 text-white flex items-center justify-center shrink-0">
                                 <CurrentIcon className="w-4 h-4" />
@@ -389,7 +502,32 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                           </div>
                         </div>
 
-                        <div className="flex justify-end pt-1">
+                        <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            {item.imageUrl && (
+                              <img src={item.imageUrl} alt={item.title} referrerPolicy="no-referrer" className="w-9 h-7 rounded object-cover border" />
+                            )}
+                            <label className="px-2.5 py-1 rounded-lg bg-teal-800 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer">
+                              {uploadingId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                              <span>{item.imageUrl ? 'تغییر عکس کارت' : 'آپلود عکس کارت (اختیاری)'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={e => e.target.files?.[0] && handleUploadImage(item.id, e.target.files[0])}
+                              />
+                            </label>
+                            {item.imageUrl && (
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCard(item.id, 'imageUrl', '')}
+                                className="text-[10px] text-stone-500 hover:text-stone-800 cursor-pointer"
+                              >
+                                حذف عکس
+                              </button>
+                            )}
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => handleRemoveCard(item.id)}
@@ -416,7 +554,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                   onClick={handleSave}
                   className="px-5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-black shadow-md cursor-pointer"
                 >
-                  ذخیره تغییرات و نمادها
+                  ذخیره دائمی تغییرات
                 </button>
               </div>
             </motion.div>

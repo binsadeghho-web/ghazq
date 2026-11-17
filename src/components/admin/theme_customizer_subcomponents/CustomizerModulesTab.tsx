@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Sliders,
   RotateCcw,
@@ -14,10 +14,17 @@ import {
   Columns2,
   Maximize2,
   Minimize2,
+  Image as ImageIcon,
+  Upload,
+  Loader2,
+  Award,
+  Layers,
 } from 'lucide-react';
 import { CrextioDashboardConfig } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
-import { CANONICAL_DASHBOARD_SECTION_ORDER } from '../../../context/ThemeContext';
+import { CANONICAL_DASHBOARD_SECTION_ORDER, reconcileDashboardSectionOrder } from '../../../context/ThemeContext';
+import { api } from '../../../services/apiClient';
+import { ShowcaseImagesStudioPanel } from './ShowcaseImagesStudioPanel';
 
 interface CustomizerModulesTabProps {
   crextioConfig: CrextioDashboardConfig;
@@ -26,24 +33,37 @@ interface CustomizerModulesTabProps {
   triggerSuccess: () => void;
 }
 
+const CLASSIC_MINIMAL_KEYS = new Set([
+  'rulings_showcase',
+  'research_promo',
+  'course_showcase',
+  'counseling_promo',
+  'welfare_showcase',
+  'multimedia_showcase',
+  'books_showcase',
+]);
+
 export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
   crextioConfig,
   updateCrextioConfig,
   handleToggle,
   triggerSuccess,
 }) => {
-  const sectionOrder =
-    crextioConfig.dashboardSectionOrder && crextioConfig.dashboardSectionOrder.length > 0
-      ? crextioConfig.dashboardSectionOrder
-      : CANONICAL_DASHBOARD_SECTION_ORDER;
+  const sectionOrder = reconcileDashboardSectionOrder(crextioConfig.dashboardSectionOrder);
   const hiddenMap = crextioConfig.hiddenDashboardSections || {};
   const layoutsMap = crextioConfig.dashboardSectionLayouts || {};
+  const globalShowMinimalImages = crextioConfig.showShowcaseImagesInMinimal !== false;
 
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetKeyRef = useRef<string | null>(null);
 
   const sectionMeta: Record<string, { title: string; desc: string }> = {
     top_vip_row: { title: 'بنر خوش‌آمدگویی بالای صفحه و پرتره', desc: 'کادر خوش‌آمدگویی هوشمند و آمار کلیدی' },
+    honors_showcase: { title: 'ویترین افتخارات، انتصابات و دستاوردها', desc: 'گالری عکس و تبریک انتصابات با پشتیبانی تمام‌صفحه و نیم‌صفحه' },
+    unified_showcase: { title: 'ویترین جامع یکپارچه (همه ویترین‌ها)', desc: 'کادر ترکیبی از ویترین‌های پژوهش، دوره، آراء و... با قابلیت انتخاب زیرمجموعه' },
     rulings_showcase: { title: 'ویترین تالار نقد و مناظره آراء قضایی', desc: 'باکس دادنامه‌ها، استدلال‌ها و ثبت نقد و رأی' },
     research_promo: { title: 'ویترین باشگاه راهبری پژوهش و رساله‌ها', desc: 'حمایت علمی، استاد راهنما و اسکان پژوهشی' },
     course_showcase: { title: 'ویترین دوره‌های علمی و کارگاه‌ها', desc: 'معرفی دوره‌های توانمندسازی علمی فقه القضا' },
@@ -56,9 +76,14 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
 
   const handleUpdateSectionLayout = (
     key: string,
-    patch: Partial<{ span: 'full' | 'half'; density: 'full' | 'minimal' }>
+    patch: Partial<{
+      span: 'full' | 'half';
+      density: 'full' | 'minimal';
+      scale: 'micro' | 'compact' | 'normal' | 'expanded';
+      showImage: boolean;
+    }>
   ) => {
-    const current = layoutsMap[key] || { span: 'full', density: 'full' };
+    const current = layoutsMap[key] || { span: 'full', density: 'full', scale: 'normal', showImage: true };
     updateCrextioConfig({
       dashboardSectionLayouts: {
         ...layoutsMap,
@@ -66,6 +91,31 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
       },
     });
     triggerSuccess();
+  };
+
+  const handleCustomBoxImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetKey = uploadTargetKeyRef.current;
+    if (!file || !targetKey) return;
+    setUploadingKey(targetKey);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        updateCrextioConfig({
+          showcaseImageOverrides: {
+            ...(crextioConfig.showcaseImageOverrides || {}),
+            [targetKey]: res.url,
+          },
+        });
+        triggerSuccess();
+      }
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingKey(null);
+      uploadTargetKeyRef.current = null;
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleDropReorder = (targetIdx: number) => {
@@ -100,6 +150,43 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
 
   return (
     <div className="space-y-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCustomBoxImageUpload}
+        className="hidden"
+      />
+
+      {/* Global Showcase Photography Toggle (Minimal / Simple boxes) */}
+      <div className="p-4 rounded-3xl bg-sky-50/70 border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <ImageIcon className="w-5 h-5 text-sky-800 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-extrabold text-xs sm:text-sm text-stone-900">
+              استفاده از تصاویر اختصاصی در باکس‌های طراحی ساده (مینیمال)
+            </h4>
+            <p className="text-[11px] text-stone-600 mt-0.5">
+              می‌توانید نمایش عکس در پیش‌زمینه باکس‌های ساده را برای کل داشبورد (در تم ۲ و تم ۳) یا برای هر ویترین به‌صورت جداگانه روشن/خاموش کنید.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            updateCrextioConfig({ showShowcaseImagesInMinimal: !globalShowMinimalImages });
+            triggerSuccess();
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-black shrink-0 cursor-pointer transition-colors ${
+            globalShowMinimalImages
+              ? 'bg-emerald-800 text-white shadow-xs'
+              : 'bg-white border border-stone-300 text-stone-700'
+          }`}
+        >
+          {globalShowMinimalImages ? 'عکس‌های باکس‌های ساده: فعال' : 'عکس‌های باکس‌های ساده: غیرفعال'}
+        </button>
+      </div>
+
       {/* Default Alumni Theme Choice (Theme 2 vs Theme 3) */}
       <div className="p-4 rounded-3xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -186,10 +273,17 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
           {sectionOrder.map((key, idx) => {
             const isHidden = hiddenMap[key] === true;
             const meta = sectionMeta[key] || { title: key, desc: 'بخش داشبورد' };
-            const layout = layoutsMap[key] || { span: 'full', density: 'full' };
+            const layout = layoutsMap[key] || { span: 'full', density: 'full', scale: 'normal', showImage: true };
             const isHalf = layout.span === 'half';
             const isMinimal = layout.density === 'minimal';
+            const boxScale =
+              key === 'top_vip_row'
+                ? crextioConfig.heroBannerScale || layout.scale || 'normal'
+                : layout.scale || 'normal';
+            const boxShowImg = layout.showImage !== false;
             const canResize = key !== 'top_vip_row' && key !== 'bento_grid';
+            const canScale = key !== 'bento_grid';
+            const hasClassicMinimal = CLASSIC_MINIMAL_KEYS.has(key);
 
             return (
               <div
@@ -227,25 +321,58 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
 
                 <div className="flex items-center gap-1.5 flex-wrap shrink-0 justify-end">
                   {canResize && (
-                    <>
-                      {/* Half vs Full Width */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateSectionLayout(key, { span: isHalf ? 'full' : 'half' })
-                        }
-                        title={isHalf ? 'تبدیل به تمام‌عرض' : 'نصف کردن عرض (۲ ویترین در یک خط)'}
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1 cursor-pointer transition-colors ${
-                          isHalf
-                            ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                            : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <Columns2 className="w-3 h-3" />
-                        <span>{isHalf ? 'نصف‌عرض (۱/۲)' : 'تمام‌عرض'}</span>
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateSectionLayout(key, { span: isHalf ? 'full' : 'half' })
+                      }
+                      title={isHalf ? 'تبدیل به تمام‌عرض' : 'نصف کردن عرض (۲ ویترین در یک خط)'}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1 cursor-pointer transition-colors ${
+                        isHalf
+                          ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      <Columns2 className="w-3 h-3" />
+                      <span>{isHalf ? 'کوچک (۱/۲)' : 'بزرگ (تمام‌عرض)'}</span>
+                    </button>
+                  )}
 
-                      {/* Minimal vs Standard Density */}
+                  {canScale && (
+                    <select
+                      value={boxScale}
+                      onChange={e => {
+                        const nextScale = e.target.value as 'micro' | 'compact' | 'normal' | 'expanded';
+                        if (key === 'top_vip_row') {
+                          updateCrextioConfig({
+                            heroBannerScale: nextScale,
+                            dashboardSectionLayouts: {
+                              ...layoutsMap,
+                              [key]: { ...(layoutsMap[key] || {}), scale: nextScale },
+                            },
+                            theme3Config: {
+                              ...(crextioConfig.theme3Config || {}),
+                              heroScale: nextScale,
+                            },
+                          });
+                          triggerSuccess();
+                        } else {
+                          handleUpdateSectionLayout(key, { scale: nextScale });
+                        }
+                      }}
+                      className="px-2 py-1 rounded-xl text-[10px] font-bold border border-stone-200 bg-stone-50 text-stone-700 cursor-pointer"
+                      title="اندازه و ارتفاع باکس"
+                    >
+                      <option value="micro">سایز: خیلی کوچک (مینی)</option>
+                      <option value="compact">سایز: کوچک</option>
+                      <option value="normal">سایز: استاندارد</option>
+                      <option value="expanded">سایز: بزرگ</option>
+                    </select>
+                  )}
+
+                  {hasClassicMinimal && (
+                    <>
+                      {/* Classic vs Simple Design */}
                       <button
                         type="button"
                         onClick={() =>
@@ -253,15 +380,47 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
                             density: isMinimal ? 'full' : 'minimal',
                           })
                         }
-                        title={isMinimal ? 'تغییر به نمای کامل' : 'تغییر به طراحی مینیمال'}
+                        title={isMinimal ? 'تغییر به طراحی کلاسیک قبلی' : 'تغییر به طراحی ساده (مینیمال)'}
                         className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1 cursor-pointer transition-colors ${
                           isMinimal
                             ? 'bg-teal-50 text-teal-800 border-teal-200'
-                            : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                            : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
                         }`}
                       >
                         {isMinimal ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
-                        <span>{isMinimal ? 'مینیمال' : 'نمای کامل'}</span>
+                        <span>{isMinimal ? 'طراحی ساده' : 'طراحی کلاسیک'}</span>
+                      </button>
+
+                      {/* Per-box Image toggle & Upload */}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateSectionLayout(key, { showImage: !boxShowImg })}
+                        className={`px-2 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1 cursor-pointer ${
+                          boxShowImg
+                            ? 'bg-sky-50 text-sky-800 border-sky-200'
+                            : 'bg-stone-100 text-stone-500 border-stone-200'
+                        }`}
+                        title="نمایش یا مخفی‌سازی عکس باکس در نمای ساده"
+                      >
+                        <ImageIcon className="w-3 h-3" />
+                        <span>{boxShowImg ? 'عکس روشن' : 'بی‌عکس'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={uploadingKey === key}
+                        onClick={() => {
+                          uploadTargetKeyRef.current = key;
+                          fileInputRef.current?.click();
+                        }}
+                        className="px-2 py-1 rounded-xl text-[10px] font-bold border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 flex items-center gap-1 cursor-pointer"
+                        title="آپلود تصویر دلخواه برای این باکس"
+                      >
+                        {uploadingKey === key ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Upload className="w-3 h-3" />
+                        )}
                       </button>
                     </>
                   )}
@@ -323,11 +482,20 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
         </div>
       </div>
 
+      {/* Centralized All-Site Showcase Image Gallery */}
+      <ShowcaseImagesStudioPanel
+        crextioConfig={crextioConfig}
+        updateCrextioConfig={updateCrextioConfig}
+        triggerSuccess={triggerSuccess}
+      />
+
       {/* Sub-module Toggles */}
       <div className="space-y-3">
         <h4 className="font-extrabold text-xs text-stone-900">تنظیمات فعال‌سازی ماژول‌های ویترین و تم پیش‌فرض:</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {[
+            { key: 'showHonorsShowcase' as const, title: 'ویترین افتخارات و انتصابات (مشترک)', desc: 'نمایش گالری عکس و تبریک انتصابات و رتبه‌های برتر', icon: Award },
+            { key: 'showUnifiedShowcase' as const, title: 'ویترین جامع یکپارچه (همه ویترین‌ها)', desc: 'کادر جامع نمایش همزمان ویترین‌های منتخب در تم ۲ و تم ۳', icon: Layers },
             { key: 'showRulingsShowcase' as const, title: 'ویترین تالار نقد و مناظره آراء قضایی', desc: 'نمایش دادنامه‌های منتخب و امکان ثبت نقد مستقیم', icon: Scale },
             { key: 'showResearchPromoShowcase' as const, title: 'ویترین باشگاه راهبری پژوهش و رساله‌ها', desc: 'هدایت رساله، استاد راهنما و اسکان پژوهشی', icon: Sparkles },
             { key: 'showHeroBanner' as const, title: 'بنر خوش‌آمدگویی بالای صفحه (Hero)', desc: 'کادر معرفی و دسترسی سریع خدمات', icon: Sparkles },

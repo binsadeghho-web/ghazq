@@ -1,7 +1,9 @@
-import React from 'react';
-import { Home, Sliders, RotateCcw, Eye, EyeOff, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Home, Sliders, RotateCcw, Eye, EyeOff, X, Upload, Loader2 } from 'lucide-react';
 import { CrextioDashboardConfig, CrextioHeroStatItem } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
+import { api } from '../../../services/apiClient';
+import { resolveShowcaseImageUrl } from '../../../data/showcaseImages';
 
 interface CustomizerHeroStatsTabProps {
   activeTab: 'hero' | 'stats';
@@ -32,21 +34,57 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
   handleStatFieldChange,
   defaultHeroStats,
 }) => {
+  const [uploadingPortrait, setUploadingPortrait] = useState(false);
+  const portraitInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePortraitUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPortrait(true);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        updateCrextioConfig({
+          showcaseImageOverrides: {
+            ...(crextioConfig.showcaseImageOverrides || {}),
+            hero_portrait: res.url,
+          },
+        });
+        triggerSuccess();
+      }
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingPortrait(false);
+      if (portraitInputRef.current) portraitInputRef.current.value = '';
+    }
+  };
+
   if (activeTab === 'hero') {
+    const portraitUrl = resolveShowcaseImageUrl('hero_portrait', crextioConfig.showcaseImageOverrides);
+
     return (
       <div className="space-y-5">
+        <input
+          ref={portraitInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePortraitUpload}
+          className="hidden"
+        />
+
         <div className="p-5 rounded-3xl bg-amber-50/80 border border-amber-200 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="w-9 h-9 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center font-bold">
                 <Home className="w-5 h-5 text-amber-800" />
               </span>
               <div>
                 <h4 className="font-extrabold text-sm text-amber-950">
-                  تنظیمات و محتوای ۱۰۰٪ بنر هیرو و خوش‌آمدگویی
+                  تنظیمات سایز، تصویر و محتوای بنر خوش‌آمدگویی (Hero)
                 </h4>
                 <p className="text-[11px] text-amber-800/80 mt-0.5">
-                  ویرایش کامل تیتر خوش‌آمد، زیرعنوان، نشان هیرو، و سوئیچ نمایش کارت پروفایل و آمار
+                  تنظیم سایز بنر (از مینی تا بزرگ)، آپلود تصویر پرتره، تیتر، زیرعنوان و دکمه‌ها
                 </p>
               </div>
             </div>
@@ -64,7 +102,63 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
             </button>
           </div>
 
-          <div className="space-y-3 pt-2">
+          {/* Hero Size & Portrait Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-white border border-amber-200">
+            <div>
+              <label className="font-bold text-stone-800 block mb-1.5 text-xs">
+                سایز و ارتفاع بنر خوش‌آمدگویی (مشترک در تم ۲ و تم ۳):
+              </label>
+              <select
+                value={crextioConfig.heroBannerScale || 'normal'}
+                onChange={e => {
+                  const val = e.target.value as 'micro' | 'compact' | 'normal' | 'expanded';
+                  updateCrextioConfig({
+                    heroBannerScale: val,
+                    theme3Config: {
+                      ...(crextioConfig.theme3Config || {}),
+                      heroScale: val,
+                    },
+                  });
+                  triggerSuccess();
+                }}
+                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-xs font-black text-stone-900"
+              >
+                <option value="micro">خیلی کوچک / نوار فشرده (Micro)</option>
+                <option value="compact">کوچک و جمع‌وجور (Compact)</option>
+                <option value="normal">استاندارد (Normal)</option>
+                <option value="expanded">بزرگ و شاخص (Expanded)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {portraitUrl && (
+                  <img
+                    src={portraitUrl}
+                    alt="تصویر بنر خوش‌آمد"
+                    referrerPolicy="no-referrer"
+                    className="w-12 h-12 rounded-xl object-cover object-top border border-amber-300 shrink-0"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-stone-800 truncate">تصویر کنار بنر خوش‌آمد</div>
+                  <div className="text-[10px] text-stone-500">آپلود روی سرور</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={uploadingPortrait}
+                onClick={() => portraitInputRef.current?.click()}
+                className="px-3 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                {uploadingPortrait ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                <span>آپلود تصویر</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-1">
             <div>
               <label className="font-bold text-stone-700 block mb-1 text-xs">نشان بالای هیرو (Badge):</label>
               <input
@@ -107,7 +201,20 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <label className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-stone-200 cursor-pointer hover:bg-amber-100/50 transition-colors">
+                <span className="text-xs font-bold text-stone-800">نمایش تصویر بنر</span>
+                <input
+                  type="checkbox"
+                  checked={crextioConfig.showHeroPortrait !== false}
+                  onChange={() => {
+                    updateCrextioConfig({ showHeroPortrait: crextioConfig.showHeroPortrait === false });
+                    triggerSuccess();
+                  }}
+                  className="w-4 h-4 accent-amber-800 rounded cursor-pointer"
+                />
+              </label>
+
               <label className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-stone-200 cursor-pointer hover:bg-amber-100/50 transition-colors">
                 <span className="text-xs font-bold text-stone-800">کارت پروفایل کاربر</span>
                 <input

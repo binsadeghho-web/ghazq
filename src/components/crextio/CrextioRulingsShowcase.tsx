@@ -1,21 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { JudicialRuling } from '../../types';
+import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import { RulingsShowcaseEditModal } from './RulingsShowcaseEditModal';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   Scale,
   ArrowUpRight,
   ThumbsUp,
   MessageSquare,
-  Sparkles,
-  ChevronLeft,
   X,
-  FileText,
   Send,
   Eye,
   Flame,
-  Award
+  Edit3,
+  Pause,
+  Play,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface CrextioRulingsShowcaseProps {
@@ -31,16 +35,58 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
   const [newComment, setNewComment] = useState('');
   const [commentSuccess, setCommentSuccess] = useState(false);
   const [fullModalRuling, setFullModalRuling] = useState<JudicialRuling | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [carouselIdx, setCarouselIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
-  // Active showcase rulings list (custom or default)
-  const showcaseRulings = (crextioConfig.rulingsCustomList && crextioConfig.rulingsCustomList.length > 0)
-    ? crextioConfig.rulingsCustomList
-    : (rulings.length > 0 ? rulings : []);
+  const isAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'supervisor';
 
-  const currentActive = selectedRuling || showcaseRulings[0];
+  // Active showcase rulings list (custom or default), filtered by admin's selected IDs
+  const baseRulings = useMemo(
+    () =>
+      crextioConfig.rulingsCustomList && crextioConfig.rulingsCustomList.length > 0
+        ? crextioConfig.rulingsCustomList
+        : rulings.length > 0
+        ? rulings
+        : [],
+    [crextioConfig.rulingsCustomList, rulings]
+  );
 
-  // Mode: expanded (full dossier & debate) or compact (clean ticker cards strip)
-  const isCompact = crextioConfig.rulingsShowcaseMode === 'compact';
+  const showcaseRulings = useMemo(() => {
+    const selectedIds = crextioConfig.rulingsSelectedIds;
+    if (Array.isArray(selectedIds) && selectedIds.length > 0) {
+      const filtered = baseRulings.filter(r => selectedIds.includes(r.id));
+      if (filtered.length > 0) return filtered;
+    }
+    return baseRulings;
+  }, [baseRulings, crextioConfig.rulingsSelectedIds]);
+
+  const currentActive =
+    (selectedRuling && showcaseRulings.find(r => r.id === selectedRuling.id)) || showcaseRulings[0];
+
+  const mode = crextioConfig.rulingsShowcaseMode || 'expanded';
+  const isCompact = mode === 'compact';
+  const isSummaryCarousel = mode === 'summary_carousel';
+  const intervalSeconds = Math.max(2, Number(crextioConfig.rulingsShowcaseIntervalSeconds) || 5);
+  const summaryAutoplay = crextioConfig.rulingsSummaryAutoplay !== false;
+  const coverImage =
+    crextioConfig.rulingsShowcaseBgImage ||
+    resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides);
+
+  useEffect(() => {
+    if (!isSummaryCarousel || !summaryAutoplay || isPaused || showcaseRulings.length <= 1) return;
+    const timer = setInterval(() => {
+      setCarouselIdx(prev => (prev + 1) % showcaseRulings.length);
+    }, intervalSeconds * 1000);
+    return () => clearInterval(timer);
+  }, [isSummaryCarousel, summaryAutoplay, isPaused, showcaseRulings.length, intervalSeconds]);
+
+  const safeCarouselIdx = carouselIdx >= showcaseRulings.length ? 0 : carouselIdx;
+  const currentCarouselRuling = showcaseRulings[safeCarouselIdx] || showcaseRulings[0];
 
   // Font sizes from config
   const titleFontSize = crextioConfig.fontSizes?.rulingsTitle || 'text-lg';
@@ -56,7 +102,11 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
   };
 
   return (
-    <div className="w-full space-y-4">
+    <div
+      className="w-full space-y-4"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       {/* Showcase Master Container */}
       <div className="relative rounded-[32px] overflow-hidden border border-[#E5E0D0] bg-[#FCFBF8] shadow-md">
         {/* Subtle Ambient Background Gradient Glows */}
@@ -66,7 +116,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
         {/* Top Header Row with Domain Badge, Mode Switcher, and CTA */}
         <div className="relative z-10 px-6 py-5 border-b border-[#ECE7DA] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-amber-50/60 via-white/80 to-emerald-50/40 backdrop-blur-md">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center shadow-xs">
                 <Scale className="w-4 h-4 stroke-[2.3]" />
               </span>
@@ -75,7 +125,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
               </span>
               <span className="text-[11px] text-stone-500 font-bold hidden sm:inline-flex items-center gap-1">
                 <Flame className="w-3.5 h-3.5 text-amber-600" />
-                {toPersianNumbers(showcaseRulings.length)} دادنامه چالش‌برانگیز در جریان بحث
+                {toPersianNumbers(showcaseRulings.length)} دادنامه منتخب در ویترین
               </span>
             </div>
             <h3 className={`${titleFontSize} font-black text-stone-900 tracking-tight`}>
@@ -86,7 +136,18 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                <span>ویرایش و حالت نمایش آراء</span>
+              </button>
+            )}
+
             <button
               onClick={onNavigateToRulings}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer"
@@ -97,8 +158,123 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           </div>
         </div>
 
-        {/* -------------------- MODE 1: COMPACT MODE -------------------- */}
-        {isCompact ? (
+        {/* -------------------- MODE 1: SUMMARY CAROUSEL MODE -------------------- */}
+        {isSummaryCarousel && currentCarouselRuling ? (
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white/95">
+            {coverImage && (
+              <div className="lg:col-span-4 relative min-h-[210px] overflow-hidden bg-stone-900">
+                <img
+                  src={coverImage}
+                  alt={currentCarouselRuling.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                <div className="absolute bottom-4 right-4 left-4 text-white space-y-1">
+                  <span className="text-[11px] font-bold text-amber-300 block">
+                    {currentCarouselRuling.caseTypeTitle} · {currentCarouselRuling.rulingDate}
+                  </span>
+                  <div className="text-xs font-black line-clamp-1">{currentCarouselRuling.courtBranch}</div>
+                  <div className="text-[11px] text-stone-300">انشاء: {currentCarouselRuling.judgeName}</div>
+                </div>
+              </div>
+            )}
+
+            <div className={`${coverImage ? 'lg:col-span-8' : 'lg:col-span-12'} p-5 sm:p-6 flex flex-col justify-between gap-4`}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentCarouselRuling.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.28 }}
+                  className="space-y-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-stone-500">
+                    <span>
+                      گزیده رأی {toPersianNumbers(safeCarouselIdx + 1)} از {toPersianNumbers(showcaseRulings.length)} · هر {toPersianNumbers(intervalSeconds)} ثانیه
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-800">{toPersianNumbers(currentCarouselRuling.likesCount)} تایید</span>
+                      <span>·</span>
+                      <span className="text-emerald-800">{toPersianNumbers(currentCarouselRuling.discussions?.length || 0)} نقد ثبت‌شده</span>
+                    </div>
+                  </div>
+
+                  <h4 className="text-base sm:text-xl font-black text-stone-900 leading-snug">
+                    {currentCarouselRuling.title}
+                  </h4>
+
+                  <p className="text-xs sm:text-sm text-stone-700 leading-relaxed bg-amber-50/60 border border-amber-200/80 p-3.5 rounded-2xl">
+                    {currentCarouselRuling.summary}
+                  </p>
+
+                  {currentCarouselRuling.legalPrinciples && currentCarouselRuling.legalPrinciples.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {currentCarouselRuling.legalPrinciples.slice(0, 3).map((pr, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-700"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <span>{pr}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              <div className="pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFullModalRuling(currentCarouselRuling)}
+                    className="px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>مشاهده متن کامل و ثبت نقد</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleRulingLike(currentCarouselRuling.id)}
+                    className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-amber-100 text-stone-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <ThumbsUp className="w-3.5 h-3.5 text-amber-700" />
+                    <span>تایید ({toPersianNumbers(currentCarouselRuling.likesCount)})</span>
+                  </button>
+                </div>
+
+                {showcaseRulings.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsPaused(p => !p)}
+                      className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-100 cursor-pointer"
+                      title={isPaused ? 'ادامه پخش خودکار' : 'توقف'}
+                    >
+                      {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCarouselIdx(p => (p - 1 + showcaseRulings.length) % showcaseRulings.length)}
+                      className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCarouselIdx(p => (p + 1) % showcaseRulings.length)}
+                      className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : isCompact ? (
           <div className="relative z-10 p-5 sm:p-6 bg-white/95">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {showcaseRulings.map(ruling => {
@@ -464,6 +640,14 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           </div>
         )}
       </AnimatePresence>
+      {/* Admin In-place Edit Modal */}
+      <RulingsShowcaseEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        crextioConfig={crextioConfig}
+        updateCrextioConfig={updateCrextioConfig}
+        allRulings={rulings}
+      />
     </div>
   );
 };

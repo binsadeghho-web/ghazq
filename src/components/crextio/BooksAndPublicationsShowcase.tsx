@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
+import { DEFAULT_SHOWCASE_IMAGES, resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
-  BookOpen,
   ArrowUpRight,
   ChevronLeft,
-  Download,
   Edit3,
   X,
   Plus,
   Trash2,
-  Sparkles,
-  CheckCircle2,
-  RotateCcw,
-  BookMarked
+  BookMarked,
+  Upload,
+  Loader2,
+  Camera,
 } from 'lucide-react';
 
 interface BooksAndPublicationsShowcaseProps {
@@ -25,32 +25,78 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
   onNavigateToProducts
 }) => {
   const { products, currentUser, crextioConfig, updateCrextioConfig } = useApp();
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'supervisor';
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  // Editable config state
   const title = crextioConfig.booksShowcaseTitle || 'ویترین جامع کتب، انتشارات و منشورات تخصصی فقه و قضا';
   const subtitle = crextioConfig.booksShowcaseSubtitle || 'مجموعه کتب مرجع، موسوعه‌ها، درس‌گفتارهای تحلیلی و منشورات علمی کانون دانش‌آموختگان نخبگانی';
 
-  const [editTitle, setEditTitle] = useState(title);
-  const [editSubtitle, setEditSubtitle] = useState(subtitle);
+  const showcaseBannerUrl = resolveShowcaseImageUrl(
+    'books_showcase',
+    crextioConfig.showcaseImageOverrides
+  );
 
-  // Admin custom items list fallback to top 4 products
   const defaultItems = products.slice(0, 4).map(p => ({
     id: p.id,
     title: p.title,
     author: p.authorOrPresenter,
     price: p.price,
     discountPercent: 20,
-    coverImage: p.coverImage || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80',
-    tag: p.formatTitle || 'کتاب تخصصی'
+    coverImage: p.coverImage || DEFAULT_SHOWCASE_IMAGES.books_showcase,
+    tag: p.formatTitle || 'کتاب تخصصی',
   }));
 
-  const [customItems, setCustomItems] = useState(defaultItems);
+  const savedItems =
+    crextioConfig.booksCustomItems && crextioConfig.booksCustomItems.length > 0
+      ? crextioConfig.booksCustomItems
+      : defaultItems;
+
+  const [editTitle, setEditTitle] = useState(title);
+  const [editSubtitle, setEditSubtitle] = useState(subtitle);
+  const [customItems, setCustomItems] = useState(savedItems);
+
+  useEffect(() => {
+    setEditTitle(title);
+    setEditSubtitle(subtitle);
+    setCustomItems(
+      crextioConfig.booksCustomItems && crextioConfig.booksCustomItems.length > 0
+        ? crextioConfig.booksCustomItems
+        : defaultItems
+    );
+  }, [title, subtitle, crextioConfig.booksCustomItems, products.length]);
 
   const handleUpdateItem = (id: string, field: string, value: any) => {
     setCustomItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const handleUploadImage = async (id: string, file: File) => {
+    if (!file) return;
+    setUploadingId(id);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        if (id === '__showcase_banner__') {
+          updateCrextioConfig({
+            showcaseImageOverrides: {
+              ...(crextioConfig.showcaseImageOverrides || {}),
+              books_showcase: res.url,
+            },
+          });
+        } else {
+          handleUpdateItem(id, 'coverImage', res.url);
+        }
+      }
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const handleAddItem = () => {
@@ -60,7 +106,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
       author: 'استاد موسوی',
       price: 150000,
       discountPercent: 25,
-      coverImage: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80',
+      coverImage: showcaseBannerUrl || DEFAULT_SHOWCASE_IMAGES.books_showcase,
       tag: 'کتاب مرجع'
     };
     setCustomItems(prev => [...prev, newItem]);
@@ -73,7 +119,8 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
   const handleSave = () => {
     updateCrextioConfig({
       booksShowcaseTitle: editTitle,
-      booksShowcaseSubtitle: editSubtitle
+      booksShowcaseSubtitle: editSubtitle,
+      booksCustomItems: customItems,
     });
     setIsEditModalOpen(false);
   };
@@ -87,7 +134,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
             <BookMarked className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base sm:text-lg font-black text-stone-900">{title}</h3>
               <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200 text-[10px] font-extrabold">
                 ویترین انتشارات
@@ -97,7 +144,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
@@ -133,8 +180,9 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
               <div className="space-y-3">
                 <div className="relative h-36 rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
                   <img
-                    src={item.coverImage}
+                    src={item.coverImage || showcaseBannerUrl || DEFAULT_SHOWCASE_IMAGES.books_showcase}
                     alt={item.title}
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <span className="absolute top-2 right-2 px-2.5 py-0.5 rounded-md bg-purple-900/90 text-white text-[10px] font-black shadow-2xs">
@@ -185,7 +233,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
       {/* Admin Edit Modal */}
       <AnimatePresence>
         {isEditModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -195,11 +243,39 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
               <div className="flex items-center justify-between border-b border-stone-200 pb-3">
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-purple-700" />
-                  <h4 className="font-black text-sm text-stone-900">ویرایش ویترین منشورات و کتب تخصصی</h4>
+                  <h4 className="font-black text-sm text-stone-900">ویرایش ویترین منشورات و کتب تخصصی (ذخیره در دیتابیس)</h4>
                 </div>
-                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700">
+                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Showcase General Banner Upload */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {showcaseBannerUrl && (
+                    <img
+                      src={showcaseBannerUrl}
+                      alt="کاور ویترین کتاب"
+                      referrerPolicy="no-referrer"
+                      className="w-14 h-12 rounded-xl object-cover border border-stone-300 shrink-0"
+                    />
+                  )}
+                  <div>
+                    <div className="text-xs font-black text-stone-800">تصویر کاور ویترین کتب (نمایشگاه جامع و باکس ساده)</div>
+                    <div className="text-[10px] text-stone-500">آپلود مستقیم روی سرور</div>
+                  </div>
+                </div>
+                <label className="px-3 py-1.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
+                  {uploadingId === '__showcase_banner__' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>آپلود تصویر باکس</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => e.target.files?.[0] && handleUploadImage('__showcase_banner__', e.target.files[0])}
+                  />
+                </label>
               </div>
 
               <div className="space-y-3 text-xs">
@@ -239,7 +315,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                               author: selectedP.authorOrPresenter,
                               price: selectedP.price,
                               discountPercent: 15,
-                              coverImage: selectedP.coverImage || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80',
+                              coverImage: selectedP.coverImage || DEFAULT_SHOWCASE_IMAGES.books_showcase,
                               tag: selectedP.formatTitle || 'کتاب انتشارات'
                             }
                           ]);
@@ -256,7 +332,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                       ))}
                     </select>
 
-                    <button onClick={handleAddItem} className="flex items-center gap-1 text-xs font-bold text-purple-700 hover:underline">
+                    <button onClick={handleAddItem} className="flex items-center gap-1 text-xs font-bold text-purple-700 hover:underline cursor-pointer">
                       <Plus className="w-4 h-4" /> افزودن دستی
                     </button>
                   </div>
@@ -286,7 +362,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="text-[10px] text-stone-500 block">قیمت (تومان):</label>
                           <input
@@ -306,18 +382,46 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] text-stone-500 block">آدرس عکس جلد:</label>
+                          <label className="text-[10px] text-stone-500 block">برچسب:</label>
                           <input
                             type="text"
-                            value={item.coverImage}
-                            onChange={e => handleUpdateItem(item.id, 'coverImage', e.target.value)}
-                            className="w-full p-1.5 text-[10px] font-mono bg-white rounded-lg border border-stone-300"
+                            value={item.tag}
+                            onChange={e => handleUpdateItem(item.id, 'tag', e.target.value)}
+                            className="w-full p-1.5 text-xs bg-white rounded-lg border border-stone-300"
                           />
                         </div>
                       </div>
 
+                      <div>
+                        <label className="text-[10px] text-stone-500 block mb-1">تصویر جلد کتاب (آپلود روی سرور یا آدرس):</label>
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={item.coverImage}
+                            alt={item.title}
+                            referrerPolicy="no-referrer"
+                            className="w-10 h-10 rounded-lg object-cover border border-purple-200 shrink-0"
+                          />
+                          <input
+                            type="text"
+                            value={item.coverImage}
+                            onChange={e => handleUpdateItem(item.id, 'coverImage', e.target.value)}
+                            className="w-full p-1.5 text-[10px] font-mono bg-white rounded-lg border border-stone-300 min-w-0"
+                          />
+                          <label className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-900 text-white font-bold text-[10px] cursor-pointer shrink-0">
+                            {uploadingId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                            <span>آپلود جلد</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={e => e.target.files?.[0] && handleUploadImage(item.id, e.target.files[0])}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
                       <div className="flex justify-end pt-1">
-                        <button onClick={() => handleRemoveItem(item.id)} className="text-red-600 hover:text-red-800 text-[11px] font-bold flex items-center gap-1">
+                        <button onClick={() => handleRemoveItem(item.id)} className="text-red-600 hover:text-red-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer">
                           <Trash2 className="w-3.5 h-3.5" /> حذف اثر
                         </button>
                       </div>
@@ -329,15 +433,15 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold"
+                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md cursor-pointer"
                 >
-                  ذخیره تغییرات
+                  ذخیره دائمی تغییرات
                 </button>
               </div>
             </motion.div>

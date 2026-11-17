@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { toPersianNumbers } from '../../utils/persianNumbers';
+import { api } from '../../services/apiClient';
+import { DEFAULT_SHOWCASE_IMAGES, resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import {
-  GraduationCap,
   ArrowUpRight,
   ChevronLeft,
   Edit3,
@@ -12,10 +12,9 @@ import {
   Trash2,
   PlayCircle,
   Video,
-  Mic,
-  Sparkles,
-  BookOpen,
-  Camera
+  Camera,
+  Loader2,
+  Upload,
 } from 'lucide-react';
 
 interface MultimediaAndCoursesShowcaseProps {
@@ -26,15 +25,17 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
   onNavigateToCourses
 }) => {
   const { courses, currentUser, crextioConfig, updateCrextioConfig } = useApp();
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'supervisor';
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   const title = crextioConfig.multimediaShowcaseTitle || 'ویترین محصولات چندرسانه‌ای، درس‌گفتارها و کارگاه‌های تخصصی';
   const subtitle = crextioConfig.multimediaShowcaseSubtitle || 'دسترسی آنلاین به آرشیو صوت و ویدیوی جلسات خارج فقه القضا، کارگاه‌های مهارتی دادگاه و آیین دادرسی';
-
-  const [editTitle, setEditTitle] = useState(title);
-  const [editSubtitle, setEditSubtitle] = useState(subtitle);
 
   const defaultMediaCards = [
     {
@@ -45,7 +46,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
       type: 'صوتی MP3',
       tag: 'صوتی',
       accent: '#0891B2',
-      cover: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=400&q=80'
+      cover: DEFAULT_SHOWCASE_IMAGES.multimedia_showcase,
     },
     {
       id: 'media-2',
@@ -55,7 +56,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
       type: 'ویدیویی 1080p',
       tag: 'ویدیویی',
       accent: '#2563EB',
-      cover: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=400&q=80'
+      cover: DEFAULT_SHOWCASE_IMAGES.course_showcase,
     },
     {
       id: 'media-3',
@@ -65,7 +66,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
       type: 'چندرسانه‌ای',
       tag: 'دوره تخصصی',
       accent: '#D97706',
-      cover: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=400&q=80'
+      cover: DEFAULT_SHOWCASE_IMAGES.rulings_showcase,
     },
     {
       id: 'media-4',
@@ -75,25 +76,60 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
       type: 'پادکست',
       tag: 'پادکست علمی',
       accent: '#7C3AED',
-      cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&w=400&q=80'
+      cover: DEFAULT_SHOWCASE_IMAGES.books_showcase,
     }
   ];
 
-  const [mediaCards, setMediaCards] = useState(defaultMediaCards);
+  const savedCards =
+    crextioConfig.multimediaCustomCards && crextioConfig.multimediaCustomCards.length > 0
+      ? crextioConfig.multimediaCustomCards
+      : defaultMediaCards;
+
+  const [editTitle, setEditTitle] = useState(title);
+  const [editSubtitle, setEditSubtitle] = useState(subtitle);
+  const [mediaCards, setMediaCards] = useState(savedCards);
+
+  useEffect(() => {
+    setEditTitle(title);
+    setEditSubtitle(subtitle);
+    setMediaCards(
+      crextioConfig.multimediaCustomCards && crextioConfig.multimediaCustomCards.length > 0
+        ? crextioConfig.multimediaCustomCards
+        : defaultMediaCards
+    );
+  }, [title, subtitle, crextioConfig.multimediaCustomCards]);
+
+  const showcaseBannerUrl = resolveShowcaseImageUrl(
+    'multimedia_showcase',
+    crextioConfig.showcaseImageOverrides
+  );
 
   const handleUpdateCard = (id: string, field: string, val: any) => {
     setMediaCards(prev => prev.map(c => c.id === id ? { ...c, [field]: val } : c));
   };
 
-  const handleFileUpload = (id: string, file: File) => {
+  const handleFileUpload = async (id: string, file: File) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        handleUpdateCard(id, 'cover', e.target.result as string);
+    setUploadingId(id);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        if (id === '__showcase_banner__') {
+          updateCrextioConfig({
+            showcaseImageOverrides: {
+              ...(crextioConfig.showcaseImageOverrides || {}),
+              multimedia_showcase: res.url,
+            },
+          });
+        } else {
+          handleUpdateCard(id, 'cover', res.url);
+        }
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const handleAddCard = () => {
@@ -105,7 +141,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
       type: 'چندرسانه‌ای',
       tag: 'جدید',
       accent: '#0891B2',
-      cover: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=400&q=80'
+      cover: showcaseBannerUrl || DEFAULT_SHOWCASE_IMAGES.multimedia_showcase,
     };
     setMediaCards(prev => [...prev, newCard]);
   };
@@ -118,7 +154,8 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
   const handleSave = () => {
     updateCrextioConfig({
       multimediaShowcaseTitle: editTitle,
-      multimediaShowcaseSubtitle: editSubtitle
+      multimediaShowcaseSubtitle: editSubtitle,
+      multimediaCustomCards: mediaCards,
     });
     setIsEditModalOpen(false);
   };
@@ -132,7 +169,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
             <Video className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base sm:text-lg font-black text-stone-900">{title}</h3>
               <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 border border-cyan-200 text-[10px] font-extrabold">
                 چندرسانه‌ای
@@ -142,7 +179,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
@@ -175,8 +212,9 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
             <div className="space-y-3">
               <div className="relative h-36 rounded-xl overflow-hidden bg-stone-900 border border-stone-200">
                 <img
-                  src={item.cover}
+                  src={item.cover || showcaseBannerUrl || DEFAULT_SHOWCASE_IMAGES.multimedia_showcase}
                   alt={item.title}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-center justify-center">
@@ -210,7 +248,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
         ))}
       </div>
 
-      {/* Admin Edit Modal with Banner/Photo Upload and Add/Delete */}
+      {/* Admin Edit Modal with Server Upload and MySQL Persistence */}
       <AnimatePresence>
         {isEditModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir="rtl">
@@ -224,12 +262,40 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-cyan-700" />
                   <h4 className="font-black text-sm text-stone-900">
-                    ویرایش ویترین چندرسانه‌ای، تغییر پوستر/بنر و افزودن/حذف کارت‌ها
+                    ویرایش ویترین چندرسانه‌ای، تغییر پوستر و ذخیره در دیتابیس
                   </h4>
                 </div>
-                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700">
+                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Showcase General Banner Override */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {showcaseBannerUrl && (
+                    <img
+                      src={showcaseBannerUrl}
+                      alt="تصویر باکس"
+                      referrerPolicy="no-referrer"
+                      className="w-14 h-12 rounded-xl object-cover border border-stone-300 shrink-0"
+                    />
+                  )}
+                  <div>
+                    <div className="text-xs font-black text-stone-800">تصویر کاور ویترین چندرسانه‌ای (در نمایشگاه جامع و باکس ساده)</div>
+                    <div className="text-[10px] text-stone-500">آپلود مستقیم روی سرور</div>
+                  </div>
+                </div>
+                <label className="px-3 py-1.5 rounded-xl bg-cyan-800 hover:bg-cyan-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
+                  {uploadingId === '__showcase_banner__' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>آپلود تصویر باکس</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => e.target.files?.[0] && handleFileUpload('__showcase_banner__', e.target.files[0])}
+                  />
+                </label>
               </div>
 
               {/* Title & Subtitle */}
@@ -258,7 +324,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
               <div className="space-y-3 pt-2 border-t border-stone-200 text-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h5 className="font-black text-xs text-stone-900">مدیریت کارت‌های چندرسانه‌ای و دوره‌ها:</h5>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <select
                       onChange={(e) => {
                         const selectedCourse = courses.find(c => c.id === e.target.value);
@@ -273,7 +339,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
                               type: selectedCourse.holdingFormat === 'online' ? 'برخط' : 'دوره تخصصی',
                               tag: selectedCourse.level || 'دوره علمی',
                               accent: '#0891B2',
-                              cover: selectedCourse.coverImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=400&q=80'
+                              cover: selectedCourse.coverImage || DEFAULT_SHOWCASE_IMAGES.course_showcase,
                             }
                           ]);
                         }
@@ -347,13 +413,14 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
                         </div>
                       </div>
 
-                      {/* Photo / Banner Upload */}
+                      {/* Photo / Banner Upload to Server */}
                       <div>
-                        <label className="text-[10px] text-stone-500 block mb-1">پوستر / بنر تصویر کاور:</label>
+                        <label className="text-[10px] text-stone-500 block mb-1">پوستر / تصویر کاور (ذخیره روی سرور):</label>
                         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                           <img
                             src={item.cover}
                             alt={item.title}
+                            referrerPolicy="no-referrer"
                             className="w-12 h-10 rounded-lg object-cover border border-cyan-300 shrink-0"
                           />
                           <input
@@ -362,9 +429,9 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
                             onChange={e => handleUpdateCard(item.id, 'cover', e.target.value)}
                             className="w-full p-1.5 text-[10px] font-mono bg-white rounded-lg border border-stone-300 min-w-0"
                           />
-                          <label className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-900 font-bold text-[10px] cursor-pointer shrink-0">
-                            <Camera className="w-3.5 h-3.5 text-cyan-800" />
-                            <span>انتخاب عکس از دستگاه</span>
+                          <label className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-900 text-white font-bold text-[10px] cursor-pointer shrink-0">
+                            {uploadingId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                            <span>آپلود عکس</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -401,7 +468,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
                   onClick={handleSave}
                   className="px-5 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-black shadow-md cursor-pointer"
                 >
-                  ذخیره تغییرات و پوسترها
+                  ذخیره دائمی تغییرات در پایگاه داده
                 </button>
               </div>
             </motion.div>

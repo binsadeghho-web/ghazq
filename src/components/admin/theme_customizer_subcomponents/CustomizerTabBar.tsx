@@ -37,7 +37,31 @@ export const CustomizerTabBar: React.FC<CustomizerTabBarProps> = ({
         }`}
       >
         <Layers className="w-4 h-4" />
-        <span>ماژول‌ها و بخش‌های فعال</span>
+        <span>ماژول‌ها، سایز و تصاویر باکس‌ها</span>
+      </button>
+
+      <button
+        onClick={() => onSelectTab('honors')}
+        className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+          activeTab === 'honors'
+            ? 'border-amber-600 text-amber-900'
+            : 'border-transparent text-stone-500 hover:text-stone-900'
+        }`}
+      >
+        <Award className="w-4 h-4 text-amber-600" />
+        <span>ویترین افتخارات و انتصابات</span>
+      </button>
+
+      <button
+        onClick={() => onSelectTab('unified')}
+        className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+          activeTab === 'unified'
+            ? 'border-emerald-700 text-emerald-900'
+            : 'border-transparent text-stone-500 hover:text-stone-900'
+        }`}
+      >
+        <Sparkles className="w-4 h-4 text-emerald-700" />
+        <span>ویترین جامع (همه ویترین‌ها)</span>
       </button>
 
       <button

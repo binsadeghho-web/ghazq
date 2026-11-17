@@ -1,7 +1,9 @@
-import React from 'react';
-import { GraduationCap, HeartHandshake, Scale, Gift, BookOpen, Video } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { GraduationCap, HeartHandshake, Scale, Gift, BookOpen, Video, Upload, Loader2, RotateCcw } from 'lucide-react';
 import { CrextioDashboardConfig } from '../../../types';
 import { CustomizerTab } from '../ThemeCustomizerModal';
+import { api } from '../../../services/apiClient';
+import { resolveShowcaseImageUrl } from '../../../data/showcaseImages';
 
 interface CustomizerShowcaseTabsProps {
   activeTab: CustomizerTab;
@@ -10,6 +12,87 @@ interface CustomizerShowcaseTabsProps {
   triggerSuccess: () => void;
   handleToggle: (key: keyof CrextioDashboardConfig) => void;
 }
+
+const ShowcaseCoverUploadBar: React.FC<{
+  sectionKey: string;
+  label: string;
+  crextioConfig: CrextioDashboardConfig;
+  updateCrextioConfig: (updates: Partial<CrextioDashboardConfig>) => void;
+  triggerSuccess: () => void;
+}> = ({ sectionKey, label, crextioConfig, updateCrextioConfig, triggerSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const overrides = crextioConfig.showcaseImageOverrides || {};
+  const preview = resolveShowcaseImageUrl(sectionKey, overrides);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        updateCrextioConfig({
+          showcaseImageOverrides: { ...overrides, [sectionKey]: res.url },
+        });
+        triggerSuccess();
+      }
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="p-3 rounded-2xl bg-white border border-stone-200 flex items-center justify-between gap-3">
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+      <div className="flex items-center gap-2.5 min-w-0">
+        {preview && (
+          <img
+            src={preview}
+            alt={label}
+            referrerPolicy="no-referrer"
+            className="w-12 h-10 rounded-xl object-cover border border-stone-200 shrink-0"
+          />
+        )}
+        <div className="min-w-0">
+          <div className="text-xs font-black text-stone-900 truncate">{label}</div>
+          <div className="text-[10px] text-stone-500">آپلود مستقیم روی سرور برای نمایش در ویترین و نمای ساده</div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+        >
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          <span>آپلود تصویر</span>
+        </button>
+
+        {overrides[sectionKey] && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = { ...overrides };
+              delete next[sectionKey];
+              updateCrextioConfig({ showcaseImageOverrides: next });
+              triggerSuccess();
+            }}
+            className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+            title="بازگشت به عکس پیش‌فرض"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
   activeTab,
@@ -120,7 +203,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-stone-700 block mb-1 text-xs">
-                  حالت نمایش دوره‌ها:
+                  حالت نمایش دوره‌ها (دو حالت مجزا):
                 </label>
                 <select
                   value={crextioConfig.courseShowcaseMode || 'carousel'}
@@ -130,9 +213,9 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                   }}
                   className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none"
                 >
-                  <option value="carousel">اسلایدر متحرک چرخشی (Carousel)</option>
-                  <option value="grid">شبکه‌ای ۳ ستونه (Grid)</option>
-                  <option value="compact">ردیف فشرده و افقی (Compact)</option>
+                  <option value="carousel">حالت اول: اسلایدر معرفی چرخشی (Carousel)</option>
+                  <option value="grid">حالت دوم: شبکه‌ای ۳ ستونه (Grid)</option>
+                  <option value="compact">حالت سوم: ردیف فشرده و افقی (Compact)</option>
                 </select>
               </div>
 
@@ -142,17 +225,61 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={3}
-                  max={15}
+                  min={2}
+                  max={60}
                   value={crextioConfig.courseShowcaseInterval || 5}
                   onChange={e => {
-                    updateCrextioConfig({ courseShowcaseInterval: Number(e.target.value) });
+                    updateCrextioConfig({ courseShowcaseInterval: Math.max(2, Number(e.target.value) || 5) });
                     triggerSuccess();
                   }}
                   className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900"
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  updateCrextioConfig({
+                    courseShowcaseAutoplay: crextioConfig.courseShowcaseAutoplay === false,
+                  });
+                  triggerSuccess();
+                }}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-bold border cursor-pointer ${
+                  crextioConfig.courseShowcaseAutoplay !== false
+                    ? 'bg-cyan-800 text-white border-cyan-800'
+                    : 'bg-white text-stone-700 border-stone-200'
+                }`}
+              >
+                {crextioConfig.courseShowcaseAutoplay !== false ? 'تعویض خودکار اسلایدر دوره‌ها: روشن' : 'تعویض خودکار اسلایدر دوره‌ها: خاموش'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateCrextioConfig({
+                    courseShowcaseShowPrice: crextioConfig.courseShowcaseShowPrice === false,
+                  });
+                  triggerSuccess();
+                }}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-bold border cursor-pointer ${
+                  crextioConfig.courseShowcaseShowPrice !== false
+                    ? 'bg-emerald-800 text-white border-emerald-800'
+                    : 'bg-white text-stone-700 border-stone-200'
+                }`}
+              >
+                {crextioConfig.courseShowcaseShowPrice !== false ? 'نمایش شهریه در ویترین: فعال' : 'نمایش شهریه در ویترین: مخفی'}
+              </button>
+            </div>
+
+            <ShowcaseCoverUploadBar
+              sectionKey="course_showcase"
+              label="تصویر اختصاصی ویترین دوره‌های علمی"
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
+            />
           </div>
         </div>
       </div>
@@ -224,6 +351,14 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                 />
               </div>
             </div>
+
+            <ShowcaseCoverUploadBar
+              sectionKey="counseling_promo"
+              label="تصویر اختصاصی ویترین خدمات مشاوره"
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
+            />
 
             <div>
               <label className="font-bold text-stone-700 block mb-1 text-xs">
@@ -473,6 +608,14 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                 className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-teal-800"
               />
             </div>
+
+            <ShowcaseCoverUploadBar
+              sectionKey="welfare_showcase"
+              label="تصویر اختصاصی ویترین خدمات رفاهی"
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
+            />
           </div>
         </div>
       </div>
@@ -582,6 +725,14 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                 className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-purple-900"
               />
             </div>
+
+            <ShowcaseCoverUploadBar
+              sectionKey="books_showcase"
+              label="تصویر اختصاصی ویترین کتب و منشورات"
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
+            />
           </div>
         </div>
       </div>
@@ -691,6 +842,14 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                 className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-blue-900"
               />
             </div>
+
+            <ShowcaseCoverUploadBar
+              sectionKey="multimedia_showcase"
+              label="تصویر اختصاصی ویترین چندرسانه‌ای"
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
+            />
           </div>
         </div>
       </div>

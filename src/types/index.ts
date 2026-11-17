@@ -199,6 +199,10 @@ export interface CrextioDashboardConfig {
   courseShowcaseBadge?: string;
   courseShowcaseCtaText?: string;
   courseShowcaseInterval?: number;
+  courseShowcaseAutoplay?: boolean;
+  courseShowcaseShowPrice?: boolean;
+  courseShowcaseSelectedIds?: string[];
+  courseShowcaseCustomData?: Record<string, Partial<Course>>;
 
   // ویترین خدمات مشاوره نخبگان
   showCounselingPromo?: boolean;
@@ -213,6 +217,27 @@ export interface CrextioDashboardConfig {
   counselingPromoGeneralDesc?: string;
   counselingPromoGeneralBadge?: string;
   counselingPromoGeneralBtnText?: string;
+  counselingPromoCustomData?: {
+    specBadge?: string;
+    specHeading?: string;
+    specDesc?: string;
+    specBullets?: string[];
+    genBadge?: string;
+    genHeading?: string;
+    genDesc?: string;
+    genBullets?: string[];
+    consultantOverrides?: Record<
+      string,
+      {
+        name?: string;
+        title?: string;
+        specialty?: string;
+        experienceYears?: number;
+        avatarUrl?: string;
+      }
+    >;
+    coverImage?: string;
+  };
 
   // ویترین خدمات رفاهی و تسهیلات
   showWelfareShowcase?: boolean;
@@ -221,7 +246,20 @@ export interface CrextioDashboardConfig {
   welfareShowcaseBadge?: string;
   welfareShowcaseCtaText?: string;
   welfareShowcaseLoanAmount?: string;
-  welfareShowcaseCards?: Array<{ id: string; title: string; subtitle: string; tag: string; icon: string; badge: string }>;
+  welfareShowcaseCards?: Array<{
+    id: string;
+    title: string;
+    amount?: string;
+    subtitle?: string;
+    subtext?: string;
+    tag: string;
+    icon?: string;
+    iconId?: string;
+    badge?: string;
+    accent?: string;
+    bgClass?: string;
+    imageUrl?: string;
+  }>;
 
   // ویترین کتب و انتشارات
   showProductsMiniPromo?: boolean;
@@ -230,6 +268,15 @@ export interface CrextioDashboardConfig {
   booksShowcaseBadge?: string;
   booksShowcaseCtaText?: string;
   booksShowcaseDiscountNotice?: string;
+  booksCustomItems?: Array<{
+    id: string;
+    title: string;
+    author: string;
+    price: number;
+    discountPercent: number;
+    coverImage: string;
+    tag: string;
+  }>;
 
   // ویترین درس‌گفتارها و چندرسانه‌ای
   showMultimediaShowcase?: boolean;
@@ -238,14 +285,30 @@ export interface CrextioDashboardConfig {
   multimediaShowcaseBadge?: string;
   multimediaShowcaseCtaText?: string;
   multimediaLecturesCount?: string;
+  multimediaCustomCards?: Array<{
+    id: string;
+    title: string;
+    instructor: string;
+    sessions: string;
+    type: string;
+    tag: string;
+    accent: string;
+    cover: string;
+  }>;
 
   // ویترین هیرو و بنر خوش‌آمدگویی
   heroBadgeText?: string;
   showHeroStats?: boolean;
+  heroBannerScale?: 'micro' | 'compact' | 'normal' | 'expanded';
+  showHeroPortrait?: boolean;
 
   // ویترین تالار نقد و مناظره آراء قضایی
   showRulingsShowcase?: boolean;
-  rulingsShowcaseMode?: 'expanded' | 'compact';
+  rulingsShowcaseMode?: 'summary_carousel' | 'expanded' | 'compact';
+  rulingsShowcaseIntervalSeconds?: number;
+  rulingsSummaryAutoplay?: boolean;
+  rulingsSelectedIds?: string[];
+  rulingsShowcaseBgImage?: string;
   rulingsShowcaseTitle?: string;
   rulingsShowcaseSubtitle?: string;
   rulingsShowcaseBadge?: string;
@@ -290,8 +353,84 @@ export interface CrextioDashboardConfig {
 
   dashboardSectionOrder?: string[];
   hiddenDashboardSections?: Record<string, boolean>;
-  dashboardSectionLayouts?: Record<string, { span?: 'full' | 'half'; density?: 'full' | 'minimal' }>;
+  dashboardSectionLayouts?: Record<
+    string,
+    {
+      span?: 'full' | 'half';
+      density?: 'full' | 'minimal';
+      scale?: 'micro' | 'compact' | 'normal' | 'expanded';
+      showImage?: boolean;
+    }
+  >;
   defaultAlumniTheme?: 'crextio' | 'minimal';
+
+  // تنظیمات تصاویر باکس‌های ساده/مینیمال و کلیه ویترین‌ها
+  showShowcaseImagesInMinimal?: boolean;
+  showcaseImageOverrides?: Record<string, string>;
+
+  // ویترین افتخارات و انتصابات (مشترک در تم ۲ و تم ۳ - تمام‌عرض و نصف‌عرض)
+  showHonorsShowcase?: boolean;
+  honorsShowcaseTitle?: string;
+  honorsShowcaseSubtitle?: string;
+  honorsAutoplaySeconds?: number;
+  honorsItems?: HonorAppointmentItem[];
+
+  // ویترین جامع یکپارچه (شامل ویترین‌های منتخب تم ۲ - مشترک در تم ۲ و تم ۳)
+  showUnifiedShowcase?: boolean;
+  unifiedShowcaseTitle?: string;
+  unifiedShowcaseSubtitle?: string;
+  unifiedShowcaseIncludedKeys?: string[];
+  unifiedShowcaseStyle?: 'cinematic' | 'tabbed_grid';
+  unifiedShowcaseAutoplay?: boolean;
+  unifiedShowcaseAutoplaySeconds?: number;
+
+  // ویرایشگر جامع تم ۳ (مجمع مینیمال و هم‌افزایی)
+  theme3Config?: Theme3CustomizationConfig;
+}
+
+export interface HonorAppointmentItem {
+  id: string;
+  category: string;
+  title: string;
+  honoreeName: string;
+  positionOrAchievement: string;
+  description?: string;
+  dateOrLocation?: string;
+  imageUrl: string;
+  textPosition?: 'bottom_right' | 'center' | 'bottom_bar';
+  scrimStrength?: 'soft' | 'medium' | 'strong';
+  ctaLabel?: string;
+  ctaAction?: 'none' | 'navigate_alumni' | 'navigate_rulings' | 'navigate_research' | 'external_link';
+  ctaUrl?: string;
+}
+
+export interface Theme3CustomizationConfig {
+  palette?: 'emerald_ivory' | 'lapis_parchment' | 'bronze_graphite' | 'obsidian_emerald';
+  accentColorHex?: string;
+  cardSurface?: 'glass' | 'hairline' | 'elevated';
+  borderRadius?: 'sharp' | 'balanced' | 'pill_modern';
+  motionLevel?: 'cinematic' | 'gentle' | 'minimal';
+  headlineSize?: 'compact' | 'normal' | 'large';
+  heroScale?: 'micro' | 'compact' | 'normal' | 'expanded';
+  brandTitle?: string;
+  heroGreetingPrefix?: string;
+  heroSubtitle?: string;
+  heroBadgeText?: string;
+  showHero?: boolean;
+  showWidgets?: boolean;
+  showOperationsSplit?: boolean;
+  showIndividualShowcases?: boolean;
+  cartableSectionTitle?: string;
+  synergySectionTitle?: string;
+  individualShowcasesHeading?: string;
+  quickButtons?: Array<{
+    id: string;
+    label: string;
+    targetNav: string;
+    visible: boolean;
+  }>;
+  blockOrder?: string[];
+  blockSpans?: Record<string, 'full' | 'half'>;
 }
 
 export type DesignThemeType = 'portal' | 'crextio' | 'minimal';

@@ -7,6 +7,8 @@ const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
 
 export const CANONICAL_DASHBOARD_SECTION_ORDER = [
   'top_vip_row',
+  'honors_showcase',
+  'unified_showcase',
   'rulings_showcase',
   'research_promo',
   'course_showcase',
@@ -84,8 +86,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCrextioConfig(prev => {
       const reconciledOrder = reconcileDashboardSectionOrder(incoming.dashboardSectionOrder ?? prev.dashboardSectionOrder);
       return {
+        ...DEFAULT_CREXTIO_CONFIG,
         ...prev,
         ...incoming,
+        theme3Config: {
+          ...(DEFAULT_CREXTIO_CONFIG.theme3Config || {}),
+          ...(prev.theme3Config || {}),
+          ...(incoming.theme3Config || {}),
+        },
         dashboardSectionOrder: reconciledOrder,
         showResearchPromoShowcase: incoming.showResearchPromoShowcase !== undefined ? incoming.showResearchPromoShowcase : (prev.showResearchPromoShowcase ?? true),
         ...(version ? { _baseVersion: version } : {}),
@@ -146,8 +154,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const resetCrextioConfig = useCallback(() => {
-    setCrextioConfig(DEFAULT_CREXTIO_CONFIG);
-    api.saveThemeConfig(DEFAULT_CREXTIO_CONFIG).catch(() => {});
+    setCrextioConfig(prev => {
+      const next = {
+        ...DEFAULT_CREXTIO_CONFIG,
+        _baseVersion: (prev as any)._baseVersion || 1,
+      };
+      api.saveThemeConfig(next).then(res => {
+        if (res && res.version) {
+          setCrextioConfig(curr => ({ ...curr, _baseVersion: res.version }));
+        }
+      }).catch(() => {});
+      return next;
+    });
   }, []);
 
   const updateMizanConfig = useCallback((updates: Partial<MizanDashboardConfig>) => {

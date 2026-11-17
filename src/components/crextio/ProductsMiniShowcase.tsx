@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import {
   BookOpen,
   ShoppingBag,
@@ -19,7 +20,8 @@ interface ProductsMiniShowcaseProps {
 export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
   onNavigateToProducts
 }) => {
-  const { products, consumables } = useApp();
+  const { products, consumables, crextioConfig } = useApp();
+  const defaultBookCover = resolveShowcaseImageUrl('books_showcase', crextioConfig.showcaseImageOverrides);
 
   // Combine first 2 scientific books and first 2 cooperative consumables for a vibrant mix
   const featuredBooks = products.slice(0, 2);
@@ -71,7 +73,7 @@ export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
             <div className="space-y-2">
               <div className="relative h-28 rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
                 <img
-                  src={book.coverImage || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80'}
+                  src={book.coverImage || defaultBookCover}
                   alt={book.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />

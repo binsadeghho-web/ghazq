@@ -17,6 +17,7 @@ import { CustomizerHeroStatsTab } from './theme_customizer_subcomponents/Customi
 import { CustomizerFontsTab } from './theme_customizer_subcomponents/CustomizerFontsTab';
 import { CustomizerBentoCardsTab } from './theme_customizer_subcomponents/CustomizerBentoCardsTab';
 import { CustomizerStylingModesTab } from './theme_customizer_subcomponents/CustomizerStylingModesTab';
+import { HonorsManagerEditor, UnifiedShowcaseManagerEditor } from './theme_customizer_subcomponents/CustomizerHonorsUnifiedTab';
 
 interface ThemeCustomizerModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ interface ThemeCustomizerModalProps {
 
 export type CustomizerTab =
   | 'modules'
+  | 'honors'
+  | 'unified'
   | 'rulings'
   | 'research'
   | 'courses'
@@ -193,6 +196,22 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
               updateCrextioConfig={updateCrextioConfig}
               triggerSuccess={triggerSuccess}
               handleToggle={handleToggle}
+            />
+          )}
+
+          {activeTab === 'honors' && (
+            <HonorsManagerEditor
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
+            />
+          )}
+
+          {activeTab === 'unified' && (
+            <UnifiedShowcaseManagerEditor
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
             />
           )}
 

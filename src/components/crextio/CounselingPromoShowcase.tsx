@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { Consultant } from '../../types';
-import { toPersianNumbers } from '../../utils/persianNumbers';
+import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import {
   HeartHandshake,
   Compass,
@@ -15,11 +16,10 @@ import {
   Lock,
   Edit3,
   X,
-  RotateCcw,
   Camera,
-  Plus,
-  Trash2,
-  Pause
+  Pause,
+  Loader2,
+  Upload,
 } from 'lucide-react';
 
 interface CounselingPromoShowcaseProps {
@@ -27,31 +27,48 @@ interface CounselingPromoShowcaseProps {
   onNavigateToSpecialized?: () => void;
 }
 
+const DEFAULT_SPEC_BULLETS = [
+  'برنامه‌ریزی دقیق ترفیع پایه قضایی',
+  'تحلیل نقاط قوت و رفع ضعف در اختبار علمی',
+  'مشاوره جامع موضوع‌یابی و تدوین پروپوزال دکتری',
+  'جلسات شبیه‌سازی مصاحبه‌های ارتقاء مدیریتی',
+];
+
+const DEFAULT_GEN_BULLETS = [
+  'مشاوره پیش از ازدواج و آزمون‌های شخصیت',
+  'زوج‌درمانی و بهبود روابط عاطفی همسران',
+  'تکنیک‌های مدیریت استرس حاد و پیشگیری از فرسودگی شغلی',
+  'مشاوره تحصیلی و تربیتی نوجوانان و فرزندان',
+];
+
 export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = ({
   onNavigateToGeneral,
   onNavigateToSpecialized
 }) => {
   const { currentUser, consultants, crextioConfig, updateCrextioConfig } = useApp();
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'supervisor';
 
   const [activeTab, setActiveTab] = useState<'specialized' | 'general'>('general');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  const pauseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pause shifting on hover/click for 30 seconds, or resume on scroll
   const handleUserInteraction = () => {
     setIsPaused(true);
     if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
     pauseTimerRef.current = setTimeout(() => {
       setIsPaused(false);
-    }, 30000); // 30 seconds pause
+    }, 30000);
   };
 
   useEffect(() => {
     const handleScroll = () => {
-      // Resume regular auto-shift on scroll if user is no longer holding
       if (isPaused) {
         setIsPaused(false);
         if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
@@ -66,72 +83,147 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
     if (isPaused) return;
     const interval = setInterval(() => {
       setActiveTab(prev => (prev === 'general' ? 'specialized' : 'general'));
-    }, 4000); // 4 seconds interval
+    }, 4500);
     return () => clearInterval(interval);
   }, [isPaused]);
 
-  // Showcase Header Titles
+  const savedCustom = crextioConfig.counselingPromoCustomData || {};
   const promoTitle = crextioConfig.counselingPromoTitle || 'درگاه جامع خدمات مشاوره نخبگان فقه و قضا';
-  const promoSubtitle = crextioConfig.counselingPromoSubtitle || 'ارائه خدمات مشاوره تخصصی شغلی-تحصیلی قضایی و مشاوره‌های روان‌شناختی، خانواده و فردی با حفظ کامل محرمانگی';
+  const promoSubtitle =
+    crextioConfig.counselingPromoSubtitle ||
+    'ارائه خدمات مشاوره تخصصی شغلی-تحصیلی قضایی و مشاوره‌های روان‌شناختی، خانواده و فردی با حفظ کامل محرمانگی';
 
+  const showcaseBannerUrl = resolveShowcaseImageUrl(
+    'counseling_promo',
+    crextioConfig.showcaseImageOverrides
+  );
+  const fallbackAvatarUrl = resolveShowcaseImageUrl(
+    'hero_portrait',
+    crextioConfig.showcaseImageOverrides
+  );
+
+  // Merge MySQL persisted consultant overrides with system consultants
+  const consultantOverrides = savedCustom.consultantOverrides || {};
+  const displaySpecialized = consultants
+    .filter(c => c.counselingType === 'specialized_career')
+    .map(c => ({ ...c, ...(consultantOverrides[c.id] || {}) }));
+  const displayGeneral = consultants
+    .filter(c => c.counselingType !== 'specialized_career')
+    .map(c => ({ ...c, ...(consultantOverrides[c.id] || {}) }));
+
+  // Local form state for editing modal
   const [editTitle, setEditTitle] = useState(promoTitle);
   const [editSubtitle, setEditSubtitle] = useState(promoSubtitle);
+  const [specBadge, setSpecBadge] = useState(
+    savedCustom.specBadge || 'برنامه راهبردی ارتقاء قضایی و نخبگانی'
+  );
+  const [specHeading, setSpecHeading] = useState(
+    savedCustom.specHeading || 'هدایت مسیر نخبگی، ارتقاء پایه قضایی و آماده‌سازی اختبار محاکم تجدیدنظر'
+  );
+  const [specDesc, setSpecDesc] = useState(
+    savedCustom.specDesc ||
+      'اگر به دنبال ارتقاء به شعب دادگاه تجدیدنظر، دیوان عالی کشور، پذیرش در مقاطع دکتری حقوق، یا تدوین رساله‌های بنیادین فقهی هستید، مستشاران ارشد شما را قدم‌به‌قدم همراهی می‌کنند.'
+  );
+  const [specBullets, setSpecBullets] = useState<string[]>(
+    savedCustom.specBullets && savedCustom.specBullets.length > 0
+      ? savedCustom.specBullets
+      : DEFAULT_SPEC_BULLETS
+  );
 
-  // Specialized Counseling Editable Details
-  const [specBadge, setSpecBadge] = useState('برنامه راهبردی ارتقاء قضایی و نخبگانی');
-  const [specHeading, setSpecHeading] = useState('هدایت مسیر نخبگی، ارتقاء پایه قضایی و آماده‌سازی اختبار محاکم تجدیدنظر');
-  const [specDesc, setSpecDesc] = useState('اگر به دنبال ارتقاء به شعب دادگاه تجدیدنظر، دیوان عالی کشور، پذیرش در مقاطع دکتری حقوق، یا تدوین رساله‌های بنیادین فقهی هستید، مستشاران ارشد شما را قدم‌به‌قدم همراهی می‌کنند.');
-  const [specBullets, setSpecBullets] = useState<string[]>([
-    'برنامه‌ریزی دقیق ترفیع پایه قضایی',
-    'تحلیل نقاط قوت و رفع ضعف در اختبار علمی',
-    'مشاوره جامع موضوع‌یابی و تدوین پروپوزال دکتری',
-    'جلسات شبیه‌سازی مصاحبه‌های ارتقاء مدیریتی'
-  ]);
+  const [genBadge, setGenBadge] = useState(
+    savedCustom.genBadge || 'آرامش روانی، سلامت خانواده و تاب‌آوری شغلی'
+  );
+  const [genHeading, setGenHeading] = useState(
+    savedCustom.genHeading || 'خدمات روان‌شناختی، زوج‌درمانی، فرزندپروری و تخلیه فشارهای روانی شغل قضاوت'
+  );
+  const [genDesc, setGenDesc] = useState(
+    savedCustom.genDesc ||
+      'قضاوت و اشتغال در مراجع پرتنش نیازمند حفظ سلامت روان و نشاط خانواده است. کلینیک مشاوره فقه و قضا با حضور مجرب‌ترین روان‌شناسان و مشاوران خانواده محیطی کاملاً امن فراهم نموده است.'
+  );
+  const [genBullets, setGenBullets] = useState<string[]>(
+    savedCustom.genBullets && savedCustom.genBullets.length > 0
+      ? savedCustom.genBullets
+      : DEFAULT_GEN_BULLETS
+  );
 
-  // General Counseling Editable Details
-  const [genBadge, setGenBadge] = useState('آرامش روانی، سلامت خانواده و تاب‌آوری شغلی');
-  const [genHeading, setGenHeading] = useState('خدمات روان‌شناختی، زوج‌درمانی، فرزندپروری و تخلیه فشارهای روانی شغل قضاوت');
-  const [genDesc, setGenDesc] = useState('قضاوت و اشتغال در مراجع پرتنش نیازمند حفظ سلامت روان و نشاط خانواده است. کلینیک مشاوره فقه و قضا با حضور مجرب‌ترین روان‌شناسان و مشاوران خانواده محیطی کاملاً امن فراهم نموده است.');
-  const [genBullets, setGenBullets] = useState<string[]>([
-    'مشاوره پیش از ازدواج و آزمون‌های شخصیت',
-    'زوج‌درمانی و بهبود روابط عاطفی همسران',
-    'تکنیک‌های مدیریت استرس حاد و پیشگیری از فرسودگی شغلی',
-    'مشاوره تحصیلی و تربیتی نوجوانان و فرزندان'
-  ]);
+  const [editOverrides, setEditOverrides] = useState<Record<string, Partial<Consultant>>>(consultantOverrides);
 
-  // Editable Consultants Lists
-  const defaultSpecialized = consultants.filter(c => c.counselingType === 'specialized_career');
-  const defaultGeneral = consultants.filter(c => c.counselingType !== 'specialized_career');
+  useEffect(() => {
+    setEditTitle(promoTitle);
+    setEditSubtitle(promoSubtitle);
+    if (savedCustom.specBadge) setSpecBadge(savedCustom.specBadge);
+    if (savedCustom.specHeading) setSpecHeading(savedCustom.specHeading);
+    if (savedCustom.specDesc) setSpecDesc(savedCustom.specDesc);
+    if (savedCustom.specBullets?.length) setSpecBullets(savedCustom.specBullets);
+    if (savedCustom.genBadge) setGenBadge(savedCustom.genBadge);
+    if (savedCustom.genHeading) setGenHeading(savedCustom.genHeading);
+    if (savedCustom.genDesc) setGenDesc(savedCustom.genDesc);
+    if (savedCustom.genBullets?.length) setGenBullets(savedCustom.genBullets);
+    setEditOverrides(savedCustom.consultantOverrides || {});
+  }, [promoTitle, promoSubtitle, crextioConfig.counselingPromoCustomData]);
 
-  const [specializedList, setSpecializedList] = useState<Consultant[]>(defaultSpecialized);
-  const [generalList, setGeneralList] = useState<Consultant[]>(defaultGeneral);
-
-  const handleUpdateConsultant = (listType: 'spec' | 'gen', id: string, field: keyof Consultant, val: any) => {
-    if (listType === 'spec') {
-      setSpecializedList(prev => prev.map(c => c.id === id ? { ...c, [field]: val } : c));
-    } else {
-      setGeneralList(prev => prev.map(c => c.id === id ? { ...c, [field]: val } : c));
-    }
+  const handleUpdateConsultantOverride = (c: Consultant, field: keyof Consultant, val: any) => {
+    setEditOverrides(prev => ({
+      ...prev,
+      [c.id]: {
+        ...(prev[c.id] || {}),
+        [field]: val,
+      },
+    }));
   };
 
-  const handleFileUpload = (listType: 'spec' | 'gen', id: string, file: File) => {
+  const handleFileUpload = async (targetKey: string, file: File, consultantObj?: Consultant) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        handleUpdateConsultant(listType, id, 'avatarUrl', e.target.result as string);
+    setUploadingId(targetKey);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        if (targetKey === '__showcase_banner__') {
+          updateCrextioConfig({
+            showcaseImageOverrides: {
+              ...(crextioConfig.showcaseImageOverrides || {}),
+              counseling_promo: res.url,
+            },
+          });
+        } else if (consultantObj) {
+          handleUpdateConsultantOverride(consultantObj, 'avatarUrl', res.url);
+        }
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const handleSavePromo = () => {
     updateCrextioConfig({
       counselingPromoTitle: editTitle,
-      counselingPromoSubtitle: editSubtitle
+      counselingPromoSubtitle: editSubtitle,
+      counselingPromoCustomData: {
+        specBadge,
+        specHeading,
+        specDesc,
+        specBullets,
+        genBadge,
+        genHeading,
+        genDesc,
+        genBullets,
+        consultantOverrides: editOverrides,
+      },
     });
     setIsEditModalOpen(false);
   };
+
+  const shownSpecBadge = savedCustom.specBadge || specBadge;
+  const shownSpecHeading = savedCustom.specHeading || specHeading;
+  const shownSpecDesc = savedCustom.specDesc || specDesc;
+  const shownSpecBullets = savedCustom.specBullets?.length ? savedCustom.specBullets : specBullets;
+
+  const shownGenBadge = savedCustom.genBadge || genBadge;
+  const shownGenHeading = savedCustom.genHeading || genHeading;
+  const shownGenDesc = savedCustom.genDesc || genDesc;
+  const shownGenBullets = savedCustom.genBullets?.length ? savedCustom.genBullets : genBullets;
 
   return (
     <div
@@ -152,7 +244,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             </span>
             {isPaused && (
               <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-900 text-[10px] font-bold flex items-center gap-1">
-                <Pause className="w-3 h-3 text-amber-700" /> چرخش خودکار به مدت ۳۰ ثانیه متوقف شد
+                <Pause className="w-3 h-3 text-amber-700" /> چرخش خودکار موقتاً متوقف شد
               </span>
             )}
           </div>
@@ -224,10 +316,10 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             {/* Feature Card 1 (Specialized) */}
             <div className="lg:col-span-2 rounded-2xl bg-[#FFFDF7] p-5 border border-amber-200/90 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black border border-amber-300 flex items-center gap-1.5">
                     <Award className="w-3.5 h-3.5 text-amber-700" />
-                    <span>{specBadge}</span>
+                    <span>{shownSpecBadge}</span>
                   </span>
                   <span className="text-[11px] text-amber-800 font-bold">
                     نوبت‌دهی آنلاین با اساتید طراز اول
@@ -235,15 +327,15 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 </div>
 
                 <h4 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
-                  {specHeading}
+                  {shownSpecHeading}
                 </h4>
 
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  {specDesc}
+                  {shownSpecDesc}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {specBullets.map((item, idx) => (
+                  {shownSpecBullets.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-xs text-stone-700 font-medium">
                       <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
                       <span>{item}</span>
@@ -274,11 +366,12 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                   مشاوران برگزیده هدایت شغلی:
                 </span>
                 <div className="space-y-2">
-                  {specializedList.slice(0, 2).map(c => (
+                  {displaySpecialized.slice(0, 2).map(c => (
                     <div key={c.id} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2.5">
                       <img
-                        src={c.avatarUrl || '/assets/cleric_portrait.jpg'}
+                        src={c.avatarUrl || fallbackAvatarUrl}
                         alt={c.name}
+                        referrerPolicy="no-referrer"
                         className="w-11 h-11 rounded-xl object-cover object-top border border-amber-300 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
@@ -311,10 +404,10 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             {/* Feature Card 2 (General) */}
             <div className="lg:col-span-2 rounded-2xl bg-[#FFF9FA] p-5 border border-rose-200/90 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-900 text-xs font-black border border-rose-300 flex items-center gap-1.5">
                     <HeartHandshake className="w-3.5 h-3.5 text-rose-700" />
-                    <span>{genBadge}</span>
+                    <span>{shownGenBadge}</span>
                   </span>
                   <span className="text-[11px] text-rose-800 font-bold">
                     یارانه ویژه ۷۰ درصدی کانون نخبگان
@@ -322,15 +415,15 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 </div>
 
                 <h4 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
-                  {genHeading}
+                  {shownGenHeading}
                 </h4>
 
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  {genDesc}
+                  {shownGenDesc}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {genBullets.map((item, idx) => (
+                  {shownGenBullets.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-xs text-stone-700 font-medium">
                       <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
                       <span>{item}</span>
@@ -361,11 +454,12 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                   مشاوران و درمانگران برگزیده:
                 </span>
                 <div className="space-y-2">
-                  {generalList.slice(0, 2).map(c => (
+                  {displayGeneral.slice(0, 2).map(c => (
                     <div key={c.id} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2.5">
                       <img
-                        src={c.avatarUrl || '/assets/cleric_portrait.jpg'}
+                        src={c.avatarUrl || fallbackAvatarUrl}
                         alt={c.name}
+                        referrerPolicy="no-referrer"
                         className="w-11 h-11 rounded-xl object-cover object-top border border-rose-300 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
@@ -389,7 +483,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
         )}
       </AnimatePresence>
 
-      {/* Admin Promo & Consultant Full Edit Modal */}
+      {/* Admin Promo & Consultant Full Edit Modal (Persisted in MySQL) */}
       <AnimatePresence>
         {isEditModalOpen && (
           <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5" dir="rtl">
@@ -403,15 +497,43 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-amber-700" />
                   <h4 className="font-black text-sm text-stone-900">
-                    ویرایش ۱۰۰٪ محتوای هردو بخش مشاوره تخصصی و عمومی
+                    ویرایش ۱۰۰٪ محتوای مشاوره و تصاویر (ذخیره دائم در پایگاه داده)
                   </h4>
                 </div>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700"
+                  className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Showcase General Banner Upload */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {showcaseBannerUrl && (
+                    <img
+                      src={showcaseBannerUrl}
+                      alt="تصویر ویترین مشاوره"
+                      referrerPolicy="no-referrer"
+                      className="w-14 h-12 rounded-xl object-cover border border-stone-300 shrink-0"
+                    />
+                  )}
+                  <div>
+                    <div className="text-xs font-black text-stone-800">تصویر اختصاصی ویترین مشاوره (نمایشگاه جامع و باکس ساده)</div>
+                    <div className="text-[10px] text-stone-500">آپلود مستقیم روی سرور</div>
+                  </div>
+                </div>
+                <label className="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
+                  {uploadingId === '__showcase_banner__' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>آپلود تصویر باکس</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => e.target.files?.[0] && handleFileUpload('__showcase_banner__', e.target.files[0])}
+                  />
+                </label>
               </div>
 
               {/* Title & Subtitle */}
@@ -533,131 +655,112 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 </div>
               </div>
 
-              {/* Edit Consultants Photos & Details */}
+              {/* Edit Consultants Photos & Details via Server Upload */}
               <div className="space-y-3 pt-2 border-t border-stone-200 text-xs">
                 <h5 className="font-black text-xs text-stone-900">
-                  ویرایش اسامی، سمت و آپلود عکس مشاوران شغلی و عمومی:
+                  ویرایش اسامی، سمت و آپلود عکس مشاوران شغلی و عمومی (ذخیره روی سرور):
                 </h5>
                 <div className="space-y-2">
-                  {specializedList.map(c => (
-                    <div key={c.id} className="p-3 rounded-xl bg-amber-50/50 border border-amber-200 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={c.avatarUrl || '/assets/cleric_portrait.jpg'}
-                          alt={c.name}
-                          className="w-9 h-9 rounded-lg object-cover border border-amber-300 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <label className="text-[10px] text-stone-500 block">مشاور شغلی:</label>
+                  {[...displaySpecialized, ...displayGeneral].map(c => {
+                    const ov = editOverrides[c.id] || {};
+                    const currentName = ov.name ?? c.name;
+                    const currentTitle = ov.title ?? c.title;
+                    const currentSpecialty = ov.specialty ?? c.specialty;
+                    const currentYears = ov.experienceYears ?? c.experienceYears;
+                    const currentAvatar = ov.avatarUrl ?? c.avatarUrl ?? fallbackAvatarUrl;
+                    const isSpec = c.counselingType === 'specialized_career';
+
+                    return (
+                      <div
+                        key={c.id}
+                        className={`p-3 rounded-xl border grid grid-cols-1 sm:grid-cols-4 gap-2 items-center ${
+                          isSpec ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50/50 border-rose-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={currentAvatar}
+                            alt={currentName}
+                            referrerPolicy="no-referrer"
+                            className="w-9 h-9 rounded-lg object-cover border border-stone-300 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <label className="text-[10px] text-stone-500 block">
+                              {isSpec ? 'مشاور شغلی:' : 'مشاور خانواده:'}
+                            </label>
+                            <input
+                              type="text"
+                              value={currentName}
+                              onChange={e => handleUpdateConsultantOverride(c, 'name', e.target.value)}
+                              className="w-full p-1 text-xs font-bold bg-white rounded border border-stone-300"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-stone-500 block">سمت:</label>
                           <input
                             type="text"
-                            value={c.name}
-                            onChange={e => handleUpdateConsultant('spec', c.id, 'name', e.target.value)}
-                            className="w-full p-1 text-xs font-bold bg-white rounded border border-stone-300"
+                            value={currentTitle}
+                            onChange={e => handleUpdateConsultantOverride(c, 'title', e.target.value)}
+                            className="w-full p-1 text-xs bg-white rounded border border-stone-300"
                           />
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="text-[10px] text-stone-500 block">سمت:</label>
-                        <input
-                          type="text"
-                          value={c.title}
-                          onChange={e => handleUpdateConsultant('spec', c.id, 'title', e.target.value)}
-                          className="w-full p-1 text-xs bg-white rounded border border-stone-300"
-                        />
-                      </div>
+                        <div>
+                          <label className="text-[10px] text-stone-500 block">
+                            {isSpec ? 'سابقه (سال):' : 'تخصص:'}
+                          </label>
+                          {isSpec ? (
+                            <input
+                              type="number"
+                              value={currentYears}
+                              onChange={e => handleUpdateConsultantOverride(c, 'experienceYears', parseInt(e.target.value) || 0)}
+                              className="w-full p-1 text-xs bg-white rounded border border-stone-300"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={currentSpecialty}
+                              onChange={e => handleUpdateConsultantOverride(c, 'specialty', e.target.value)}
+                              className="w-full p-1 text-xs bg-white rounded border border-stone-300"
+                            />
+                          )}
+                        </div>
 
-                      <div>
-                        <label className="text-[10px] text-stone-500 block">سابقه (سال):</label>
-                        <input
-                          type="number"
-                          value={c.experienceYears}
-                          onChange={e => handleUpdateConsultant('spec', c.id, 'experienceYears', parseInt(e.target.value) || 0)}
-                          className="w-full p-1 text-xs bg-white rounded border border-stone-300"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] text-stone-500 block">آپلود عکس:</label>
-                        <label className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded cursor-pointer w-fit">
-                          <Camera className="w-3 h-3 text-amber-700" />
-                          <span>انتخاب فایل عکس</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={e => e.target.files?.[0] && handleFileUpload('spec', c.id, e.target.files[0])}
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-
-                  {generalList.map(c => (
-                    <div key={c.id} className="p-3 rounded-xl bg-rose-50/50 border border-rose-200 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={c.avatarUrl || '/assets/cleric_portrait.jpg'}
-                          alt={c.name}
-                          className="w-9 h-9 rounded-lg object-cover border border-rose-300 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <label className="text-[10px] text-stone-500 block">مشاور خانواده:</label>
-                          <input
-                            type="text"
-                            value={c.name}
-                            onChange={e => handleUpdateConsultant('gen', c.id, 'name', e.target.value)}
-                            className="w-full p-1 text-xs font-bold bg-white rounded border border-stone-300"
-                          />
+                        <div>
+                          <label className="text-[10px] text-stone-500 block">آپلود عکس:</label>
+                          <label className="flex items-center gap-1 text-[10px] font-bold text-stone-800 bg-white border border-stone-300 hover:bg-stone-100 px-2.5 py-1.5 rounded-lg cursor-pointer w-fit">
+                            {uploadingId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                            <span>انتخاب و آپلود</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={e => e.target.files?.[0] && handleFileUpload(c.id, e.target.files[0], c)}
+                            />
+                          </label>
                         </div>
                       </div>
-
-                      <div>
-                        <label className="text-[10px] text-stone-500 block">تخصص:</label>
-                        <input
-                          type="text"
-                          value={c.specialty}
-                          onChange={e => handleUpdateConsultant('gen', c.id, 'specialty', e.target.value)}
-                          className="w-full p-1 text-xs bg-white rounded border border-stone-300"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] text-stone-500 block">عنوان:</label>
-                        <input
-                          type="text"
-                          value={c.title}
-                          onChange={e => handleUpdateConsultant('gen', c.id, 'title', e.target.value)}
-                          className="w-full p-1 text-xs bg-white rounded border border-stone-300"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] text-stone-500 block">آپلود عکس:</label>
-                        <label className="flex items-center gap-1 text-[10px] font-bold text-rose-800 bg-rose-100 hover:bg-rose-200 px-2 py-1 rounded cursor-pointer w-fit">
-                          <Camera className="w-3 h-3 text-rose-700" />
-                          <span>انتخاب فایل عکس</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={e => e.target.files?.[0] && handleFileUpload('gen', c.id, e.target.files[0])}
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-stone-200">
                 <button
                   type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs cursor-pointer"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
                   onClick={handleSavePromo}
                   className="px-6 py-2 rounded-full bg-amber-700 hover:bg-amber-800 text-white font-black text-xs shadow-md cursor-pointer"
                 >
-                  ذخیره تغییرات ۱۰۰٪ محتوا
+                  ذخیره دائمی تغییرات در پایگاه داده
                 </button>
               </div>
             </motion.div>

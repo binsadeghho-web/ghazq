@@ -1,5 +1,6 @@
-import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import React, { useRef, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
 
 interface MinimalShowcaseStat {
   label: string;
@@ -20,37 +21,63 @@ interface MinimalShowcaseCardProps {
   accentTone?: 'emerald' | 'amber' | 'sky' | 'indigo' | 'stone';
   stats?: MinimalShowcaseStat[];
   actions: MinimalShowcaseAction[];
+  imageUrl?: string;
+  showImage?: boolean;
+  scale?: 'micro' | 'compact' | 'normal' | 'expanded';
+  darkSurface?: boolean;
+  motionEnabled?: boolean;
 }
 
-const ACCENT_MAP: Record<NonNullable<MinimalShowcaseCardProps['accentTone']>, {
-  iconBox: string;
-  kickerText: string;
-  primaryBtn: string;
-}> = {
+const ACCENT_MAP: Record<
+  NonNullable<MinimalShowcaseCardProps['accentTone']>,
+  {
+    iconBox: string;
+    iconBoxDark: string;
+    kickerText: string;
+    kickerTextDark: string;
+    primaryBtn: string;
+    spotlight: string;
+  }
+> = {
   emerald: {
-    iconBox: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-    kickerText: 'text-emerald-700',
+    iconBox: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
+    iconBoxDark: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    kickerText: 'text-emerald-800',
+    kickerTextDark: 'text-emerald-300',
     primaryBtn: 'bg-emerald-800 hover:bg-emerald-900 text-white',
+    spotlight: 'rgba(16, 185, 129, 0.14)',
   },
   amber: {
     iconBox: 'bg-amber-50 text-amber-800 border-amber-200/80',
+    iconBoxDark: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
     kickerText: 'text-amber-800',
+    kickerTextDark: 'text-amber-300',
     primaryBtn: 'bg-amber-600 hover:bg-amber-700 text-white',
+    spotlight: 'rgba(245, 158, 11, 0.14)',
   },
   sky: {
     iconBox: 'bg-sky-50 text-sky-800 border-sky-200/80',
+    iconBoxDark: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
     kickerText: 'text-sky-800',
+    kickerTextDark: 'text-sky-300',
     primaryBtn: 'bg-sky-800 hover:bg-sky-900 text-white',
+    spotlight: 'rgba(14, 165, 233, 0.14)',
   },
   indigo: {
     iconBox: 'bg-indigo-50 text-indigo-800 border-indigo-200/80',
+    iconBoxDark: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
     kickerText: 'text-indigo-800',
+    kickerTextDark: 'text-indigo-300',
     primaryBtn: 'bg-indigo-800 hover:bg-indigo-900 text-white',
+    spotlight: 'rgba(99, 102, 241, 0.14)',
   },
   stone: {
     iconBox: 'bg-stone-100 text-stone-800 border-stone-200',
+    iconBoxDark: 'bg-stone-700/40 text-stone-200 border-stone-600/40',
     kickerText: 'text-stone-600',
+    kickerTextDark: 'text-stone-300',
     primaryBtn: 'bg-stone-900 hover:bg-black text-white',
+    spotlight: 'rgba(120, 113, 108, 0.14)',
   },
 };
 
@@ -62,73 +89,210 @@ export const MinimalShowcaseCard: React.FC<MinimalShowcaseCardProps> = ({
   accentTone = 'emerald',
   stats = [],
   actions,
+  imageUrl,
+  showImage = false,
+  scale = 'normal',
+  darkSurface = false,
+  motionEnabled = true,
 }) => {
   const tone = ACCENT_MAP[accentTone];
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [mousePos, setMousePos] = useState({ x: -500, y: -500 });
+  const [hovered, setHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!motionEnabled || !cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    },
+    [motionEnabled]
+  );
+
+  const hasValidImage = Boolean(showImage && imageUrl && !imgError);
+
+  const paddingClass =
+    scale === 'micro'
+      ? 'p-3 gap-2'
+      : scale === 'compact'
+      ? 'p-4 gap-3'
+      : scale === 'expanded'
+      ? 'p-6 gap-5'
+      : 'p-5 gap-4';
+  const imgHeightClass =
+    scale === 'micro'
+      ? 'h-24'
+      : scale === 'compact'
+      ? 'h-32'
+      : scale === 'expanded'
+      ? 'h-48'
+      : 'h-40';
 
   return (
-    <div
-      className="h-full rounded-2xl bg-white border border-stone-200/90 p-5 flex flex-col justify-between gap-4 transition-colors hover:border-stone-300"
+    <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      whileHover={motionEnabled ? { y: -3, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } } : undefined}
+      className={`group relative h-full rounded-2xl border overflow-hidden flex flex-col justify-between transition-colors ${
+        darkSurface
+          ? 'bg-[#13221D] border-[#253E35] hover:border-[#34584C] text-stone-100'
+          : 'bg-white border-stone-200/90 hover:border-stone-300 text-stone-900 shadow-2xs hover:shadow-md'
+      }`}
       dir="rtl"
     >
-      {/* Top Info */}
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${tone.iconBox}`}>
+      {/* Subtle Cursor Spotlight */}
+      {motionEnabled && (
+        <div
+          className="pointer-events-none absolute -inset-px transition-opacity duration-300 z-0"
+          style={{
+            opacity: hovered ? 1 : 0,
+            background: `radial-gradient(220px circle at ${mousePos.x}px ${mousePos.y}px, ${tone.spotlight}, transparent 75%)`,
+          }}
+        />
+      )}
+
+      {/* Optional Bespoke Photographic Header (Admin-Togglable) */}
+      {hasValidImage && (
+        <div className={`relative w-full ${imgHeightClass} overflow-hidden shrink-0 bg-stone-200`}>
+          <img
+            src={imageUrl}
+            alt={title}
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+          <div className="absolute bottom-3 right-4 left-4 flex items-end justify-between gap-2 text-white">
+            <span className="text-[11px] font-bold text-amber-200/95 tracking-wide">
+              {kicker}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 text-white">
               {icon}
             </div>
-            <div className="min-w-0">
-              <span className={`text-[11px] font-bold block ${tone.kickerText}`}>
-                {kicker}
-              </span>
-              <h3 className="text-sm sm:text-base font-extrabold text-stone-900 truncate mt-0.5">
-                {title}
-              </h3>
-            </div>
           </div>
         </div>
+      )}
 
-        <p className="text-xs text-stone-600 leading-relaxed line-clamp-2">
-          {description}
-        </p>
-      </div>
+      {/* Fallback gradient ribbon when image fails to load */}
+      {showImage && imageUrl && imgError && (
+        <div className="h-24 w-full bg-gradient-to-l from-emerald-950 via-stone-900 to-stone-800 flex items-center justify-between px-4 text-white/80">
+          <span className="text-[11px] font-bold text-amber-300">{kicker}</span>
+          <ImageIcon className="w-5 h-5 opacity-60" />
+        </div>
+      )}
 
-      {/* Inline Stats + Actions Footer */}
-      <div className="pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3">
-        {stats.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-500 font-medium">
-            {stats.map((st, idx) => (
-              <React.Fragment key={idx}>
-                {idx > 0 && <span aria-hidden="true" className="text-stone-300">·</span>}
-                <span>
-                  {st.label}:{' '}
-                  <strong className="text-stone-900 font-extrabold tabular-nums">{st.value}</strong>
-                </span>
-              </React.Fragment>
-            ))}
-          </div>
-        ) : (
-          <span />
-        )}
+      {/* Card Body */}
+      <div className={`relative z-10 flex-1 flex flex-col justify-between ${paddingClass}`}>
+        <div className="space-y-2.5">
+          {!hasValidImage && (
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+                    darkSurface ? tone.iconBoxDark : tone.iconBox
+                  }`}
+                >
+                  {icon}
+                </div>
+                <div className="min-w-0">
+                  <span
+                    className={`text-[11px] font-bold block ${
+                      darkSurface ? tone.kickerTextDark : tone.kickerText
+                    }`}
+                  >
+                    {kicker}
+                  </span>
+                  <h3
+                    className={`font-extrabold truncate mt-0.5 ${
+                      scale === 'expanded' ? 'text-base sm:text-lg' : 'text-sm sm:text-base'
+                    } ${darkSurface ? 'text-white' : 'text-stone-900'}`}
+                  >
+                    {title}
+                  </h3>
+                </div>
+              </div>
+            </div>
+          )}
 
-        <div className="flex items-center gap-2 shrink-0">
-          {actions.map((act, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={act.onClick}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
-                act.primary
-                  ? tone.primaryBtn
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/80'
+          {hasValidImage && (
+            <h3
+              className={`font-extrabold leading-snug line-clamp-1 ${
+                scale === 'expanded' ? 'text-base sm:text-lg' : 'text-sm sm:text-base'
+              } ${darkSurface ? 'text-white' : 'text-stone-900'}`}
+            >
+              {title}
+            </h3>
+          )}
+
+          <p
+            className={`text-xs leading-relaxed ${
+              scale === 'micro' || scale === 'compact' ? 'line-clamp-1' : 'line-clamp-2'
+            } ${darkSurface ? 'text-stone-300' : 'text-stone-600'}`}
+          >
+            {description}
+          </p>
+        </div>
+
+        {/* Inline Stats + Actions Footer */}
+        <div
+          className={`pt-3 border-t flex flex-wrap items-center justify-between gap-3 ${
+            darkSurface ? 'border-white/10' : 'border-stone-100'
+          }`}
+        >
+          {stats.length > 0 ? (
+            <div
+              className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-medium ${
+                darkSurface ? 'text-stone-400' : 'text-stone-500'
               }`}
             >
-              <span>{act.label}</span>
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </button>
-          ))}
+              {stats.map((st, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && (
+                    <span aria-hidden="true" className="opacity-40">
+                      ·
+                    </span>
+                  )}
+                  <span>
+                    {st.label}:{' '}
+                    <strong
+                      className={`font-extrabold tabular-nums ${
+                        darkSurface ? 'text-white' : 'text-stone-900'
+                      }`}
+                    >
+                      {st.value}
+                    </strong>
+                  </span>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <span />
+          )}
+
+          <div className="flex items-center gap-2 shrink-0">
+            {actions.map((act, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={act.onClick}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                  act.primary
+                    ? tone.primaryBtn
+                    : darkSurface
+                    ? 'bg-white/10 hover:bg-white/15 text-stone-100 border border-white/15'
+                    : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/80'
+                }`}
+              >
+                <span>{act.label}</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

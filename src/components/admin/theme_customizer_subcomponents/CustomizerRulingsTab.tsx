@@ -1,7 +1,9 @@
-import React from 'react';
-import { Scale } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Scale, Upload, Loader2, Check } from 'lucide-react';
 import { CrextioDashboardConfig, JudicialRuling } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
+import { api } from '../../../services/apiClient';
+import { resolveShowcaseImageUrl } from '../../../data/showcaseImages';
 
 interface CustomizerRulingsTabProps {
   crextioConfig: CrextioDashboardConfig;
@@ -18,10 +20,67 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
   rulings,
   handleToggle,
 }) => {
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+
+  const currentList: JudicialRuling[] =
+    crextioConfig.rulingsCustomList && crextioConfig.rulingsCustomList.length > 0
+      ? crextioConfig.rulingsCustomList
+      : rulings;
+
+  const selectedIds = crextioConfig.rulingsSelectedIds || [];
+  const bgImageUrl =
+    crextioConfig.rulingsShowcaseBgImage ||
+    resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides);
+
+  const updateRulingField = (id: string, patch: Partial<JudicialRuling>) => {
+    const nextList = currentList.map(item => (item.id === id ? { ...item, ...patch } : item));
+    updateCrextioConfig({ rulingsCustomList: nextList });
+  };
+
+  const toggleSelectRuling = (id: string) => {
+    const exists = selectedIds.includes(id);
+    const next = exists ? selectedIds.filter(x => x !== id) : [...selectedIds, id];
+    updateCrextioConfig({ rulingsSelectedIds: next });
+    triggerSuccess();
+  };
+
+  const handleUploadBg = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBg(true);
+    try {
+      const res = await api.uploadFile(file, 'misc');
+      if (res?.url) {
+        updateCrextioConfig({
+          rulingsShowcaseBgImage: res.url,
+          showcaseImageOverrides: {
+            ...(crextioConfig.showcaseImageOverrides || {}),
+            rulings_showcase: res.url,
+          },
+        });
+        triggerSuccess();
+      }
+    } catch (err: any) {
+      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingBg(false);
+      if (bgFileRef.current) bgFileRef.current.value = '';
+    }
+  };
+
   return (
     <div className="space-y-5">
+      <input
+        ref={bgFileRef}
+        type="file"
+        accept="image/*"
+        onChange={handleUploadBg}
+        className="hidden"
+      />
+
       <div className="p-5 rounded-3xl bg-amber-50/80 border border-amber-200 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
             <span className="w-9 h-9 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center font-bold">
               <Scale className="w-5 h-5" />
@@ -31,7 +90,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                 تنظیمات و محتوای ۱۰۰٪ ویترین تالار نقد آراء قضایی
               </h4>
               <p className="text-[11px] text-amber-800/80 mt-0.5">
-                ویرایش کامل تیتر، زیرعنوان، نشان، دکمه اقدام، آراء و شعب قضایی
+                انتخاب حالت نمایش (خلاصه چرخشی یا تفصیلی فعلی)، تایمر تعویض، انتخاب آراء منتخب و آپلود عکس
               </p>
             </div>
           </div>
@@ -47,6 +106,155 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
           >
             {crextioConfig.showRulingsShowcase !== false ? 'نمایش ویترین: فعال' : 'نمایش ویترین: مخفی'}
           </button>
+        </div>
+
+        {/* Display Mode (3 modes including summary_carousel) & Rotation Interval */}
+        <div className="p-4 rounded-2xl bg-white border border-amber-200 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {[
+              {
+                id: 'summary_carousel' as const,
+                title: 'حالت اول: گزیده چرخشی آراء',
+                desc: 'نمایش خلاصه و نکات کلیدی یک یا چند رأی منتخب به صورت اسلایدر با زمان‌بندی',
+              },
+              {
+                id: 'expanded' as const,
+                title: 'حالت دوم: تفصیلی دو ستونه',
+                desc: 'فهرست آراء در کنار پیش‌نمایش کامل متن و نظرات',
+              },
+              {
+                id: 'compact' as const,
+                title: 'حالت سوم: شبکه‌ای فشرده',
+                desc: 'نمایش کارت‌های آراء کنار هم به صورت مینیمال',
+              },
+            ].map(modeOpt => {
+              const active = (crextioConfig.rulingsShowcaseMode || 'expanded') === modeOpt.id;
+              return (
+                <button
+                  key={modeOpt.id}
+                  type="button"
+                  onClick={() => {
+                    updateCrextioConfig({ rulingsShowcaseMode: modeOpt.id });
+                    triggerSuccess();
+                  }}
+                  className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
+                    active
+                      ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
+                      : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                  }`}
+                >
+                  <span className="block font-black text-xs">{modeOpt.title}</span>
+                  <span className="block text-[10px] text-stone-600 font-normal mt-1 leading-snug">
+                    {modeOpt.desc}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-stone-100">
+            <div>
+              <label className="font-bold text-stone-700 block mb-1 text-xs">
+                زمان تعویض خودکار آراء در حالت اول (ثانیه):
+              </label>
+              <input
+                type="number"
+                min={2}
+                max={60}
+                value={crextioConfig.rulingsShowcaseIntervalSeconds ?? 5}
+                onChange={e => {
+                  updateCrextioConfig({
+                    rulingsShowcaseIntervalSeconds: Math.max(2, Number(e.target.value) || 5),
+                  });
+                  triggerSuccess();
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-mono font-bold"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => {
+                  updateCrextioConfig({
+                    rulingsSummaryAutoplay: crextioConfig.rulingsSummaryAutoplay === false,
+                  });
+                  triggerSuccess();
+                }}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer ${
+                  crextioConfig.rulingsSummaryAutoplay !== false
+                    ? 'bg-emerald-800 text-white border-emerald-800'
+                    : 'bg-stone-100 text-stone-700 border-stone-300'
+                }`}
+              >
+                {crextioConfig.rulingsSummaryAutoplay !== false ? 'تعویض خودکار: روشن' : 'تعویض خودکار: خاموش'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200">
+              {bgImageUrl && (
+                <img
+                  src={bgImageUrl}
+                  alt="عکس آراء"
+                  referrerPolicy="no-referrer"
+                  className="w-10 h-10 rounded-lg object-cover border shrink-0"
+                />
+              )}
+              <button
+                type="button"
+                disabled={uploadingBg}
+                onClick={() => bgFileRef.current?.click()}
+                className="flex-1 px-2.5 py-1.5 rounded-lg bg-amber-800 hover:bg-amber-900 text-white text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                {uploadingBg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                <span>آپلود تصویر کاور آراء</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Select Featured Rulings */}
+        <div className="p-4 rounded-2xl bg-white border border-amber-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-black text-stone-800">
+              انتخاب آراء نمایش‌داده‌شده در ویترین (خالی = نمایش همه):
+            </label>
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  updateCrextioConfig({ rulingsSelectedIds: [] });
+                  triggerSuccess();
+                }}
+                className="text-[11px] font-bold text-amber-800 hover:underline cursor-pointer"
+              >
+                نمایش همه ({toPersianNumbers(currentList.length)})
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+            {currentList.map(r => {
+              const checked = selectedIds.length === 0 || selectedIds.includes(r.id);
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => toggleSelectRuling(r.id)}
+                  className={`p-2.5 rounded-xl border text-right flex items-center justify-between gap-2 text-xs cursor-pointer ${
+                    checked
+                      ? 'bg-amber-50 border-amber-400 text-amber-950 font-bold'
+                      : 'bg-stone-50 border-stone-200 text-stone-500'
+                  }`}
+                >
+                  <span className="truncate">{r.title}</span>
+                  <span className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${checked ? 'bg-amber-700 text-white' : 'bg-stone-200'}`}>
+                    {checked && <Check className="w-3 h-3" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="space-y-3 pt-2">
@@ -116,62 +324,23 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="font-bold text-stone-700 block mb-1 text-xs">
-                عنوان بالای ستون فهرست آراء (در حالت کامل):
-              </label>
-              <input
-                type="text"
-                value={crextioConfig.rulingsShowcaseSectionTitle || ''}
-                onChange={e => {
-                  updateCrextioConfig({ rulingsShowcaseSectionTitle: e.target.value });
-                  triggerSuccess();
-                }}
-                placeholder="مثال: دادنامه‌های داغ و برگزیده این هفته"
-                className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-stone-700 block mb-1 text-xs">
-                حالت پیش‌فرض نمایش ویترین آراء (مدیریت انحصاری ادمین):
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateCrextioConfig({ rulingsShowcaseMode: 'expanded' });
-                    triggerSuccess();
-                  }}
-                  className={`p-2 rounded-xl border text-right transition-all cursor-pointer ${
-                    crextioConfig.rulingsShowcaseMode !== 'compact'
-                      ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <span className="block font-black text-xs">۱. حالت تفصیلی (کامل)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateCrextioConfig({ rulingsShowcaseMode: 'compact' });
-                    triggerSuccess();
-                  }}
-                  className={`p-2 rounded-xl border text-right transition-all cursor-pointer ${
-                    crextioConfig.rulingsShowcaseMode === 'compact'
-                      ? 'bg-amber-100 text-amber-950 border-amber-400 font-black shadow-xs'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <span className="block font-black text-xs">۲. حالت مختصر (فشرده)</span>
-                </button>
-              </div>
-            </div>
+          <div>
+            <label className="font-bold text-stone-700 block mb-1 text-xs">
+              عنوان بالای ستون فهرست آراء (در حالت تفصیلی):
+            </label>
+            <input
+              type="text"
+              value={crextioConfig.rulingsShowcaseSectionTitle || ''}
+              onChange={e => {
+                updateCrextioConfig({ rulingsShowcaseSectionTitle: e.target.value });
+                triggerSuccess();
+              }}
+              placeholder="مثال: دادنامه‌های داغ و برگزیده این هفته"
+              className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+            />
           </div>
 
-          {/* آرای قضایی قابل ویرایش ۱۰۰ درصدی */}
+          {/* آرای قضایی قابل ویرایش ۱۰۰ درصدی با بروزرسانی تغییرناپذیر */}
           <div className="pt-3 border-t border-amber-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <label className="font-extrabold text-xs text-amber-950 block">
@@ -180,7 +349,6 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const currentList = crextioConfig.rulingsCustomList || rulings;
                   const newRulingItem: JudicialRuling = {
                     id: `rul_${Date.now()}`,
                     title: 'دادنامه جدید: عدم نفوذ شرط وجه التزام گزاف در قراردادهای الحاقی',
@@ -209,7 +377,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
             </div>
 
             <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
-              {(crextioConfig.rulingsCustomList || rulings).map((r: JudicialRuling, idx: number) => (
+              {currentList.map((r: JudicialRuling, idx: number) => (
                 <div key={r.id} className="p-4 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-black text-xs">
@@ -218,8 +386,9 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        const currentList = (crextioConfig.rulingsCustomList || rulings).filter((item: JudicialRuling) => item.id !== r.id);
-                        updateCrextioConfig({ rulingsCustomList: currentList });
+                        updateCrextioConfig({
+                          rulingsCustomList: currentList.filter(item => item.id !== r.id),
+                        });
                         triggerSuccess();
                       }}
                       className="text-[11px] text-red-600 hover:text-red-800 font-bold cursor-pointer"
@@ -234,14 +403,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                       <input
                         type="text"
                         value={r.title}
-                        onChange={e => {
-                          const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                          const target = currentList.find(item => item.id === r.id);
-                          if (target) {
-                            target.title = e.target.value;
-                            updateCrextioConfig({ rulingsCustomList: currentList });
-                          }
-                        }}
+                        onChange={e => updateRulingField(r.id, { title: e.target.value })}
                         className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-bold text-stone-900"
                       />
                     </div>
@@ -251,14 +413,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                       <input
                         type="text"
                         value={r.caseTypeTitle}
-                        onChange={e => {
-                          const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                          const target = currentList.find(item => item.id === r.id);
-                          if (target) {
-                            target.caseTypeTitle = e.target.value;
-                            updateCrextioConfig({ rulingsCustomList: currentList });
-                          }
-                        }}
+                        onChange={e => updateRulingField(r.id, { caseTypeTitle: e.target.value })}
                         className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-bold text-amber-900"
                       />
                     </div>
@@ -270,14 +425,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                       <input
                         type="text"
                         value={r.courtBranch}
-                        onChange={e => {
-                          const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                          const target = currentList.find(item => item.id === r.id);
-                          if (target) {
-                            target.courtBranch = e.target.value;
-                            updateCrextioConfig({ rulingsCustomList: currentList });
-                          }
-                        }}
+                        onChange={e => updateRulingField(r.id, { courtBranch: e.target.value })}
                         className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-900"
                       />
                     </div>
@@ -287,14 +435,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                       <input
                         type="text"
                         value={r.judgeName || ''}
-                        onChange={e => {
-                          const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                          const target = currentList.find(item => item.id === r.id);
-                          if (target) {
-                            target.judgeName = e.target.value;
-                            updateCrextioConfig({ rulingsCustomList: currentList });
-                          }
-                        }}
+                        onChange={e => updateRulingField(r.id, { judgeName: e.target.value })}
                         className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-900"
                       />
                     </div>
@@ -304,14 +445,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                       <input
                         type="text"
                         value={r.rulingDate || ''}
-                        onChange={e => {
-                          const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                          const target = currentList.find(item => item.id === r.id);
-                          if (target) {
-                            target.rulingDate = e.target.value;
-                            updateCrextioConfig({ rulingsCustomList: currentList });
-                          }
-                        }}
+                        onChange={e => updateRulingField(r.id, { rulingDate: e.target.value })}
                         className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-900"
                       />
                     </div>
@@ -322,14 +456,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                     <textarea
                       rows={2}
                       value={r.summary}
-                      onChange={e => {
-                        const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                        const target = currentList.find(item => item.id === r.id);
-                        if (target) {
-                          target.summary = e.target.value;
-                          updateCrextioConfig({ rulingsCustomList: currentList });
-                        }
-                      }}
+                      onChange={e => updateRulingField(r.id, { summary: e.target.value })}
                       className="w-full p-2.5 rounded-xl border border-stone-200 text-xs text-stone-800 leading-relaxed"
                     />
                   </div>
@@ -339,14 +466,7 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                     <textarea
                       rows={3}
                       value={r.fullRulingText || ''}
-                      onChange={e => {
-                        const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                        const target = currentList.find(item => item.id === r.id);
-                        if (target) {
-                          target.fullRulingText = e.target.value;
-                          updateCrextioConfig({ rulingsCustomList: currentList });
-                        }
-                      }}
+                      onChange={e => updateRulingField(r.id, { fullRulingText: e.target.value })}
                       placeholder="متن تفصیلی رأی..."
                       className="w-full p-2.5 rounded-xl border border-stone-200 text-xs text-stone-800 font-serif leading-relaxed"
                     />
@@ -357,14 +477,14 @@ export const CustomizerRulingsTab: React.FC<CustomizerRulingsTabProps> = ({
                     <input
                       type="text"
                       value={r.legalPrinciples?.join('، ') || ''}
-                      onChange={e => {
-                        const currentList = [...(crextioConfig.rulingsCustomList || rulings)];
-                        const target = currentList.find(item => item.id === r.id);
-                        if (target) {
-                          target.legalPrinciples = e.target.value.split('،').map(s => s.trim()).filter(Boolean);
-                          updateCrextioConfig({ rulingsCustomList: currentList });
-                        }
-                      }}
+                      onChange={e =>
+                        updateRulingField(r.id, {
+                          legalPrinciples: e.target.value
+                            .split('،')
+                            .map(s => s.trim())
+                            .filter(Boolean),
+                        })
+                      }
                       placeholder="قاعده لاضرر، ماده ۹۷۵ قانون مدنی"
                       className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-medium text-emerald-900"
                     />
