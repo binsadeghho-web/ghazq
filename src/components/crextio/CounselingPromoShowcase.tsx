@@ -45,12 +45,13 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
   onNavigateToGeneral,
   onNavigateToSpecialized
 }) => {
-  const { currentUser, consultants, crextioConfig, updateCrextioConfig } = useApp();
+  const { currentUser, consultants, crextioConfig, updateCrextioConfig, isAlumniPreview } = useApp();
   const isAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'supervisor';
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
 
   const [activeTab, setActiveTab] = useState<'specialized' | 'general'>('general');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

@@ -827,6 +827,13 @@ class ApiClient {
     });
   }
 
+  async updateDashboardEvent(id: string, data: any) {
+    return this.request<any>(`/api/dashboard/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async deleteDashboardEvent(id: string) {
     return this.request<any>(`/api/dashboard/events/${id}`, {
       method: 'DELETE',

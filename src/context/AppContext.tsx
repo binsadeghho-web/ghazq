@@ -78,6 +78,9 @@ export interface AppContextType {
   designTheme: DesignThemeType;
   setDesignTheme: (theme: DesignThemeType) => void;
   toggleDesignTheme: () => void;
+  isAlumniPreview: boolean;
+  setIsAlumniPreview: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleAlumniPreview: () => void;
   serverSyncStatus: 'synced' | 'syncing' | 'offline';
   
   // Auth & Session methods
@@ -343,6 +346,9 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     designTheme: theme.designTheme,
     setDesignTheme: theme.setDesignTheme,
     toggleDesignTheme: theme.toggleDesignTheme,
+    isAlumniPreview: theme.isAlumniPreview,
+    setIsAlumniPreview: theme.setIsAlumniPreview,
+    toggleAlumniPreview: theme.toggleAlumniPreview,
     crextioConfig: theme.crextioConfig,
     updateCrextioConfig: theme.updateCrextioConfig,
     resetCrextioConfig: theme.resetCrextioConfig,

@@ -107,7 +107,7 @@ export function createDashboardRouter(): Router {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
       const expVer = extractExpectedVersion(req, true);
       const { showStatusSummaryWidget, showEventsCalendarWidget } = req.body;
@@ -142,7 +142,7 @@ export function createDashboardRouter(): Router {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
       const { title, message, bannerType, actionLabel, actionTab, expiresAt, isActive, priority } = req.body;
       if (!title || !message) {
@@ -188,7 +188,7 @@ export function createDashboardRouter(): Router {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
       const expVer = extractExpectedVersion(req, true);
       const idBuf = toIdBuffer(req.params.id);
@@ -246,7 +246,7 @@ export function createDashboardRouter(): Router {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
       const idBuf = toIdBuffer(req.params.id);
       const p = getPool();
@@ -269,7 +269,7 @@ export function createDashboardRouter(): Router {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
       const { title, eventDate, eventTime, category, categoryTitle, description } = req.body;
       if (!title || !eventDate) {
@@ -309,11 +309,75 @@ export function createDashboardRouter(): Router {
     }
   });
 
+  router.put('/events/:id', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      const user = getCurrentUser(req);
+      AuthorizationPolicy.requireRole(
+        { userId: user.id, role: user.role, fullName: user.fullName },
+        ['admin', 'super_admin', 'alumni_manager', 'supervisor']
+      );
+
+      const expVer = extractExpectedVersion(req, true);
+      const idBuf = toIdBuffer(req.params.id);
+      const p = getPool();
+
+      const existingRows = await selectWithTimeout<any>(
+        `SELECT * FROM dashboard_events WHERE id = ? OR id = ? LIMIT 1`,
+        [idBuf, req.params.id],
+        3000
+      );
+      if (!existingRows || existingRows.length === 0) throw AppError.notFound('رویداد تقویم');
+      const existing = mapEventRow(existingRows[0]);
+
+      const { title, eventDate, eventTime, category, categoryTitle, description, isActive } = req.body;
+
+      const [upd]: any = await p.query(
+        `UPDATE dashboard_events
+         SET title = ?, event_date = ?, event_time = ?, category = ?, category_title = ?, description = ?, is_active = ?, version = version + 1
+         WHERE (id = ? OR id = ?) AND version = ?`,
+        [
+          title !== undefined ? title.trim() : existing.title,
+          eventDate !== undefined ? eventDate.trim() : existing.eventDate,
+          eventTime !== undefined ? (eventTime || null) : (existing.eventTime || null),
+          category !== undefined ? category : existing.category,
+          categoryTitle !== undefined ? categoryTitle : existing.categoryTitle,
+          description !== undefined ? (description || null) : (existing.description || null),
+          isActive !== undefined ? (isActive ? 1 : 0) : (existing.isActive ? 1 : 0),
+          idBuf,
+          req.params.id,
+          expVer,
+        ]
+      );
+
+      if (upd && upd.affectedRows === 0) {
+        throw AppError.conflict('این رویداد توسط مدیر دیگری تغییر یافته است. لطفاً دوباره تلاش کنید.', 'CONCURRENT_MODIFICATION_CONFLICT');
+      }
+
+      const updatedRows = await selectWithTimeout<any>(
+        `SELECT * FROM dashboard_events WHERE id = ? OR id = ? LIMIT 1`,
+        [idBuf, req.params.id],
+        3000
+      );
+      const updated = mapEventRow(updatedRows[0]);
+
+      outbox.enqueue('dashboard.event_updated', {
+        id: updated.id,
+        eventItem: updated,
+        version: updated.version,
+      });
+
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.delete('/events/:id', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
       const idBuf = toIdBuffer(req.params.id);
       const p = getPool();

@@ -177,12 +177,13 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
     products,
     crextioConfig,
     updateCrextioConfig,
+    isAlumniPreview,
+    setIsAlumniPreview,
   } = useApp();
   const { rolePolicies } = useRbacPolicies();
 
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const [isAlumniPreview, setIsAlumniPreview] = useState(false);
   const [isEditLayout, setIsEditLayout] = useState(false);
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);

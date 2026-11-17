@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Home, Sliders, RotateCcw, Eye, EyeOff, X, Upload, Loader2 } from 'lucide-react';
+import { Home, Sliders, RotateCcw, Eye, EyeOff, X, Upload, Loader2, Plus, Trash2 } from 'lucide-react';
 import { CrextioDashboardConfig, CrextioHeroStatItem } from '../../../types';
+import { DEFAULT_CREXTIO_CONFIG } from '../../../data/mockData';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { api } from '../../../services/apiClient';
 import { resolveShowcaseImageUrl } from '../../../data/showcaseImages';
@@ -62,6 +63,10 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
 
   if (activeTab === 'hero') {
     const portraitUrl = resolveShowcaseImageUrl('hero_portrait', crextioConfig.showcaseImageOverrides);
+    const quickButtons =
+      crextioConfig.heroQuickButtons && crextioConfig.heroQuickButtons.length > 0
+        ? crextioConfig.heroQuickButtons
+        : DEFAULT_CREXTIO_CONFIG.heroQuickButtons || [];
 
     return (
       <div className="space-y-5">
@@ -81,10 +86,10 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
               </span>
               <div>
                 <h4 className="font-extrabold text-sm text-amber-950">
-                  تنظیمات سایز، تصویر و محتوای بنر خوش‌آمدگویی (Hero)
+                  تنظیمات سایز، تصویر، آمار/دسترسی سریع و محتوای بنر خوش‌آمدگویی (Hero)
                 </h4>
                 <p className="text-[11px] text-amber-800/80 mt-0.5">
-                  تنظیم سایز بنر (از مینی تا بزرگ)، آپلود تصویر پرتره، تیتر، زیرعنوان و دکمه‌ها
+                  تنظیم سایز بنر، آپلود تصویر پرتره، انتخاب نمایش آمار یا دسترسی‌های سریع و ویرایش تمامی متون
                 </p>
               </div>
             </div>
@@ -158,7 +163,128 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
             </div>
           </div>
 
+          {/* Right Slot Mode (Stats vs Quick Actions) */}
+          <div className="p-3.5 rounded-2xl bg-white border border-amber-200 space-y-2">
+            <label className="font-black text-stone-800 block text-xs">
+              نوع محتوای سمت مقابل بنر در تم ۲ (آمار زنده یا دسترسی‌های سریع):
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'both', label: 'هر دو (آمار + دسترسی)' },
+                { id: 'quick_actions', label: 'فقط دسترسی‌های سریع' },
+                { id: 'stats', label: 'فقط آمار زنده' },
+                { id: 'none', label: 'هیچ‌کدام' },
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    updateCrextioConfig({ heroRightSlotMode: opt.id as any });
+                    triggerSuccess();
+                  }}
+                  className={`p-2 rounded-xl border text-[11px] font-bold cursor-pointer ${
+                    (crextioConfig.heroRightSlotMode || 'both') === opt.id
+                      ? 'bg-emerald-800 text-white border-emerald-800'
+                      : 'bg-stone-50 text-stone-700 border-stone-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Buttons Manager */}
+          <div className="p-3.5 rounded-2xl bg-white border border-amber-200 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-black text-stone-800 text-xs">دکمه‌های دسترسی سریع بالای صفحه (تم ۲):</span>
+              <button
+                type="button"
+                onClick={() => {
+                  updateCrextioConfig({
+                    heroQuickButtons: [
+                      ...quickButtons,
+                      { id: `hqb_${Date.now()}`, label: 'دکمه جدید', targetNav: 'People', visible: true },
+                    ],
+                  });
+                  triggerSuccess();
+                }}
+                className="px-2.5 py-1 rounded-lg bg-stone-900 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3 h-3" />
+                <span>افزودن دکمه</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {quickButtons.map((qb, i) => (
+                <div key={qb.id} className="p-2 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={qb.label}
+                    onChange={e => {
+                      const next = quickButtons.map((b, idx) => (idx === i ? { ...b, label: e.target.value } : b));
+                      updateCrextioConfig({ heroQuickButtons: next });
+                      triggerSuccess();
+                    }}
+                    className="flex-1 px-2 py-1 rounded-lg bg-white border border-stone-300 text-xs font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = quickButtons.map((b, idx) => (idx === i ? { ...b, visible: !b.visible } : b));
+                      updateCrextioConfig({ heroQuickButtons: next });
+                      triggerSuccess();
+                    }}
+                    className={`p-1.5 rounded-lg cursor-pointer ${qb.visible ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-500'}`}
+                  >
+                    {qb.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = quickButtons.filter((_, idx) => idx !== i);
+                      updateCrextioConfig({ heroQuickButtons: next });
+                      triggerSuccess();
+                    }}
+                    className="p-1.5 rounded-lg bg-rose-50 text-rose-700 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-stone-700 block mb-1 text-xs">عنوان برند در نوار بالا:</label>
+                <input
+                  type="text"
+                  value={crextioConfig.brandMainTitle || ''}
+                  onChange={e => {
+                    updateCrextioConfig({ brandMainTitle: e.target.value });
+                    triggerSuccess();
+                  }}
+                  placeholder="سامانه فقه و قضا"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-stone-700 block mb-1 text-xs">برچسب بالای کارت پرتره:</label>
+                <input
+                  type="text"
+                  value={crextioConfig.heroPortraitBadgeText || ''}
+                  onChange={e => {
+                    updateCrextioConfig({ heroPortraitBadgeText: e.target.value });
+                    triggerSuccess();
+                  }}
+                  placeholder="عضو رسمی مجمع"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="font-bold text-stone-700 block mb-1 text-xs">نشان بالای هیرو (Badge):</label>
               <input

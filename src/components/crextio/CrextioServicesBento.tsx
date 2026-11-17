@@ -45,11 +45,16 @@ const SIZE_CLASS_MAP: Record<string, string> = {
 };
 
 export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNavigateTab }) => {
-  const { crextioConfig, currentUser, cartableRequests } = useApp();
+  const { crextioConfig, currentUser, cartableRequests, isAlumniPreview } = useApp();
   const [hoveredTile, setHoveredTile] = useState<string | null>(null);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isAdmin =
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
   const pendingCartable = cartableRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length;
 
   const rawCards: CrextioBentoCardConfig[] = crextioConfig.bentoCardsConfig || DEFAULT_BENTO_CARDS;
@@ -69,13 +74,15 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-stone-900">ویترین جامع خدمات سامانه (طرح میزان)</span>
+              <span className="text-sm font-black text-stone-900">
+                {crextioConfig.bentoSectionTitle || 'ویترین جامع خدمات سامانه (طرح میزان)'}
+              </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                 {toPersianNumbers(sortedCards.length)} درگاه فعال
               </span>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              دسترسی آنی به کارتابل، آموزش، مشاوره شغلی، تالار آراء و رفاهیات با هاور تعاملی
+              {crextioConfig.bentoSectionSubtitle || 'دسترسی آنی به کارتابل، آموزش، مشاوره شغلی، تالار آراء و رفاهیات با هاور تعاملی'}
             </p>
           </div>
         </div>
@@ -95,7 +102,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
 
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-emerald-800 font-semibold px-2 py-1">
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>هاور روی هر کارت = مشاهده زیرخدمات</span>
+            <span>{crextioConfig.bentoHoverHintText || 'هاور روی هر کارت = مشاهده زیرخدمات'}</span>
           </div>
         </div>
       </div>
@@ -202,12 +209,12 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
                   className="flex items-center gap-1 group-hover:underline"
                   style={{ color: accentColor }}
                 >
-                  <span>ورود به سامانه</span>
+                  <span>{crextioConfig.bentoCardCtaText || 'ورود به سامانه'}</span>
                   <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
                 </span>
 
                 <span className="text-[10px] font-mono text-stone-400 flex items-center gap-1">
-                  <span>طرح میزان</span>
+                  <span>{crextioConfig.bentoCardSchemeText || 'طرح میزان'}</span>
                   <Sparkles className="w-3 h-3 text-amber-500" />
                 </span>
               </div>

@@ -56,7 +56,7 @@ interface CrextioLayoutProps {
 }
 
 export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTheme }) => {
-  const { currentUser, users, switchUserRole, logout, crextioConfig, setDesignTheme } = useApp();
+  const { currentUser, users, switchUserRole, logout, crextioConfig, setDesignTheme, isAlumniPreview, setIsAlumniPreview } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -171,48 +171,64 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
         {/* TOP BAR: THEME SWITCHER BANNER & ROLE INDICATOR (Shown for Organizational Roles) */}
         {!currentUser || isStaffMember ? (
-          <div className="w-full bg-white/90 backdrop-blur-xl rounded-2xl px-4 sm:px-5 py-2.5 border border-stone-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
-                <Scale className="w-3.5 h-3.5 text-amber-600" />
-                تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان (طرح میزان)
-              </span>
-              <span className={`px-3 py-1 rounded-full border text-xs font-extrabold ${currentRoleMeta.badgeColor}`}>
-                نقش فعلی: {currentRoleMeta.title}
-              </span>
+          isAlumniPreview ? (
+            <div className="w-full bg-amber-50/95 border border-amber-300 rounded-2xl px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-amber-950">
+                <Scale className="w-4 h-4 text-amber-700" />
+                <span>پیش‌نمایش نمای دانش‌آموخته فعال است (تمامی دکمه‌های ویرایش و مدیریتی مخفی شده‌اند)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAlumniPreview(false)}
+                className="px-3.5 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black transition-colors cursor-pointer"
+              >
+                خروج از پیش‌نمایش دانش‌آموخته
+              </button>
             </div>
+          ) : (
+            <div className="w-full bg-white/90 backdrop-blur-xl rounded-2xl px-4 sm:px-5 py-2.5 border border-stone-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-amber-600" />
+                  {crextioConfig.theme2TopBarTitle || 'تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان (طرح میزان)'}
+                </span>
+                <span className={`px-3 py-1 rounded-full border text-xs font-extrabold ${currentRoleMeta.badgeColor}`}>
+                  نقش فعلی: {currentRoleMeta.title}
+                </span>
+              </div>
 
-            <div className="flex items-center gap-2">
-              {isStaffMember && !isReadOnlyObserver && (
-                <button
-                  onClick={() => setIsCustomizerOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
-                >
-                  <Palette className="w-3.5 h-3.5 text-amber-600" />
-                  <span>شخصی‌سازی تم ۲</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {isStaffMember && !isReadOnlyObserver && (
+                  <button
+                    onClick={() => setIsCustomizerOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                  >
+                    <Palette className="w-3.5 h-3.5 text-amber-600" />
+                    <span>شخصی‌سازی تم ۲</span>
+                  </button>
+                )}
 
-              {isStaffMember && (
-                <>
-                  <button
-                    onClick={() => setDesignTheme('minimal')}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>تم ۳ (مجمع مینیمال)</span>
-                  </button>
-                  <button
-                    onClick={onToggleToPortalTheme}
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5" />
-                    <span>تم ۱ (پرتال)</span>
-                  </button>
-                </>
-              )}
+                {isStaffMember && (
+                  <>
+                    <button
+                      onClick={() => setDesignTheme('minimal')}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>تم ۳ (مجمع مینیمال)</span>
+                    </button>
+                    <button
+                      onClick={onToggleToPortalTheme}
+                      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                    >
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                      <span>تم ۱ (پرتال)</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )
         ) : null}
 
         {/* MAIN HEADER: CENTERED MEGA-MENU BUTTON, BRAND ON RIGHT, ACTIONS ON LEFT */}
@@ -227,12 +243,16 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-extrabold text-stone-900 tracking-tight">سامانه فقه و قضا</h1>
+                <h1 className="text-xl font-extrabold text-stone-900 tracking-tight">
+                  {crextioConfig.brandMainTitle || 'سامانه فقه و قضا'}
+                </h1>
                 <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-900 border border-amber-400/40">
-                  میزان
+                  {crextioConfig.brandBadgeText || 'میزان'}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-800 font-bold">پرتال و ویترین خدمات نخبگان</p>
+              <p className="text-[11px] text-emerald-800 font-bold">
+                {crextioConfig.brandSubtitleText || 'پرتال و ویترین خدمات نخبگان'}
+              </p>
             </div>
           </button>
 

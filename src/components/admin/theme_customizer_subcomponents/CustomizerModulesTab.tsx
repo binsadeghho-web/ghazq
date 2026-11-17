@@ -24,6 +24,7 @@ import { CrextioDashboardConfig } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { CANONICAL_DASHBOARD_SECTION_ORDER, reconcileDashboardSectionOrder } from '../../../context/ThemeContext';
 import { api } from '../../../services/apiClient';
+import { DEFAULT_CREXTIO_CONFIG } from '../../../data/mockData';
 import { ShowcaseImagesStudioPanel } from './ShowcaseImagesStudioPanel';
 
 interface CustomizerModulesTabProps {
@@ -61,7 +62,10 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
   const uploadTargetKeyRef = useRef<string | null>(null);
 
   const sectionMeta: Record<string, { title: string; desc: string }> = {
-    top_vip_row: { title: 'بنر خوش‌آمدگویی بالای صفحه و پرتره', desc: 'کادر خوش‌آمدگویی هوشمند و آمار کلیدی' },
+    dashboard_banners: { title: 'بنرها و اطلاعیه‌های سراسری داشبورد', desc: 'نوار اطلاع‌رسانی‌های فوری و پیام‌های تبریک مدیریتی' },
+    status_widget: { title: 'ویجت خلاصه وضعیت پرونده‌ها و خدمات', desc: 'نمای یکپارچه کارتابل، دوره‌ها، مشاوره‌ها و رفاهیات کاربر (قابل جابه‌جایی)' },
+    events_calendar: { title: 'ویجت تقویم رویدادها و مهلت‌های مرکز', desc: 'نشست‌های علمی، کارگاه‌ها و فراخوان‌های پیش‌رو (قابل جابه‌جایی)' },
+    top_vip_row: { title: 'بنر خوش‌آمدگویی بالای صفحه و پرتره', desc: 'کادر خوش‌آمدگویی هوشمند، دسترسی سریع و آمار کلیدی' },
     honors_showcase: { title: 'ویترین افتخارات، انتصابات و دستاوردها', desc: 'گالری عکس و تبریک انتصابات با پشتیبانی تمام‌صفحه و نیم‌صفحه' },
     unified_showcase: { title: 'ویترین جامع یکپارچه (همه ویترین‌ها)', desc: 'کادر ترکیبی از ویترین‌های پژوهش، دوره، آراء و... با قابلیت انتخاب زیرمجموعه' },
     rulings_showcase: { title: 'ویترین تالار نقد و مناظره آراء قضایی', desc: 'باکس دادنامه‌ها، استدلال‌ها و ثبت نقد و رأی' },
@@ -252,7 +256,7 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
                 updateCrextioConfig({
                   dashboardSectionOrder: [...CANONICAL_DASHBOARD_SECTION_ORDER],
                   hiddenDashboardSections: {},
-                  dashboardSectionLayouts: {},
+                  dashboardSectionLayouts: { ...DEFAULT_CREXTIO_CONFIG.dashboardSectionLayouts },
                   showResearchPromoShowcase: true,
                   showRulingsShowcase: true,
                 });
@@ -266,14 +270,19 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
           </div>
         </div>
         <p className="text-[11px] text-amber-900/80 leading-relaxed">
-          ویترین‌ها را می‌توانید با <strong>کشیدن و رها کردن (Drag & Drop)</strong> جابه‌جا کنید، عرض آن‌ها را به <strong>نصف‌عرض (۱/۲)</strong> تبدیل کنید تا دو ویترین (مثل دوره‌ها و پژوهش) در یک خط کنار هم بنشینند، و ظاهرشان را روی <strong>مینیمال</strong> بگذارید.
+          تمامی ویترین‌ها، بنرها، ویجت وضعیت و تقویم رویدادها را می‌توانید با <strong>کشیدن و رها کردن (Drag & Drop)</strong> جابه‌جا کنید، عرض آن‌ها را به <strong>نصف‌عرض (۱/۲)</strong> تبدیل کنید و ظاهرشان را روی <strong>مینیمال</strong> بگذارید.
         </p>
 
         <div className="space-y-2 pt-1">
           {sectionOrder.map((key, idx) => {
             const isHidden = hiddenMap[key] === true;
             const meta = sectionMeta[key] || { title: key, desc: 'بخش داشبورد' };
-            const layout = layoutsMap[key] || { span: 'full', density: 'full', scale: 'normal', showImage: true };
+            const layout = layoutsMap[key] || {
+              span: key === 'status_widget' || key === 'events_calendar' ? 'half' : 'full',
+              density: 'full',
+              scale: 'normal',
+              showImage: true,
+            };
             const isHalf = layout.span === 'half';
             const isMinimal = layout.density === 'minimal';
             const boxScale =
@@ -281,8 +290,9 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
                 ? crextioConfig.heroBannerScale || layout.scale || 'normal'
                 : layout.scale || 'normal';
             const boxShowImg = layout.showImage !== false;
-            const canResize = key !== 'top_vip_row' && key !== 'bento_grid';
-            const canScale = key !== 'bento_grid';
+            const canResize =
+              key !== 'top_vip_row' && key !== 'bento_grid' && key !== 'dashboard_banners';
+            const canScale = key !== 'bento_grid' && key !== 'dashboard_banners';
             const hasClassicMinimal = CLASSIC_MINIMAL_KEYS.has(key);
 
             return (

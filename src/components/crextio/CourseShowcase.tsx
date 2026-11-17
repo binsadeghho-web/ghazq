@@ -28,12 +28,13 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
   onSelectCourse,
   mode = 'carousel'
 }) => {
-  const { currentUser, crextioConfig, updateCrextioConfig } = useApp();
+  const { currentUser, crextioConfig, updateCrextioConfig, isAlumniPreview } = useApp();
   const isAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'supervisor';
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
 
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);

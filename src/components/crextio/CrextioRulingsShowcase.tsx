@@ -29,7 +29,7 @@ interface CrextioRulingsShowcaseProps {
 export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
   onNavigateToRulings
 }) => {
-  const { rulings, toggleRulingLike, addRulingDiscussion, currentUser, crextioConfig, updateCrextioConfig } = useApp();
+  const { rulings, toggleRulingLike, addRulingDiscussion, currentUser, crextioConfig, updateCrextioConfig, isAlumniPreview } = useApp();
   const [selectedRuling, setSelectedRuling] = useState<JudicialRuling | null>(() => rulings[0] || null);
   const [activeTab, setActiveTab] = useState<'principles' | 'summary' | 'discussions' | 'fullText'>('summary');
   const [newComment, setNewComment] = useState('');
@@ -40,10 +40,11 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
   const [isPaused, setIsPaused] = useState(false);
 
   const isAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'supervisor';
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
 
   // Active showcase rulings list (custom or default), filtered by admin's selected IDs
   const baseRulings = useMemo(

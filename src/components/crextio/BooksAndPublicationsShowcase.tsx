@@ -24,12 +24,13 @@ interface BooksAndPublicationsShowcaseProps {
 export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcaseProps> = ({
   onNavigateToProducts
 }) => {
-  const { products, currentUser, crextioConfig, updateCrextioConfig } = useApp();
+  const { products, currentUser, crextioConfig, updateCrextioConfig, isAlumniPreview } = useApp();
   const isAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'supervisor';
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);

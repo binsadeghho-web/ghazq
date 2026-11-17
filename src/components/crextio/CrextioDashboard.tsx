@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
@@ -32,6 +32,9 @@ import {
   Check,
   Image as ImageIcon,
   Layers,
+  ArrowUp,
+  ArrowDown,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { CourseShowcase } from './CourseShowcase';
 import { CrextioServicesBento } from './CrextioServicesBento';
@@ -45,8 +48,9 @@ import { ResearchPromoShowcase } from './ResearchPromoShowcase';
 import { MinimalShowcaseCard } from './MinimalShowcaseCard';
 import { HonorsShowcase } from './HonorsShowcase';
 import { UnifiedShowcaseHub } from './UnifiedShowcaseHub';
+import { Theme2StudioDrawer, Theme2StudioTab } from './Theme2StudioDrawer';
 import { AnimatedCounter } from '../common/AnimatedCounter';
-import { DEFAULT_HERO_STATS } from '../../data/mockData';
+import { DEFAULT_HERO_STATS, DEFAULT_CREXTIO_CONFIG } from '../../data/mockData';
 import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import { DashboardWidgetsSuite } from '../dashboard/DashboardWidgetsSuite';
 import { CANONICAL_DASHBOARD_SECTION_ORDER, reconcileDashboardSectionOrder } from '../../context/ThemeContext';
@@ -60,6 +64,9 @@ interface CrextioDashboardProps {
 }
 
 const SECTION_LABELS: Record<string, string> = {
+  dashboard_banners: 'بنرها و اطلاعیه‌های داشبورد',
+  status_widget: 'ویجت خلاصه وضعیت پرونده‌ها',
+  events_calendar: 'تقویم رویدادها و مهلت‌های مرکز',
   top_vip_row: 'بنر خوش‌آمدگویی و پرتره',
   honors_showcase: 'ویترین افتخارات و انتصابات',
   unified_showcase: 'ویترین جامع یکپارچه (همه ویترین‌ها)',
@@ -135,25 +142,36 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
     crextioConfig,
     updateCrextioConfig,
     setDesignTheme,
+    isAlumniPreview,
   } = useApp();
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [studioInitialTab, setStudioInitialTab] = useState<Theme2StudioTab>('hero_quick');
   const [isHeroStatsModalOpen, setIsHeroStatsModalOpen] = useState(false);
   const [quickServiceSuccess, setQuickServiceSuccess] = useState<string | null>(null);
-  const [isAlumniPreview, setIsAlumniPreview] = useState(false);
 
   // Live Drag & Drop and Resize Edit Mode
   const [isLayoutEditMode, setIsLayoutEditMode] = useState(false);
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isAlumniPreview) {
+      setIsLayoutEditMode(false);
+      setIsStudioOpen(false);
+      setIsCustomizerOpen(false);
+      setIsHeroStatsModalOpen(false);
+    }
+  }, [isAlumniPreview]);
+
+  const isRealAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin' ||
+    currentUser?.role === 'alumni_manager' ||
+    currentUser?.role === 'supervisor';
   const isAlumni = currentUser?.role === 'alumni' || isAlumniPreview;
-  const isAdmin =
-    (currentUser?.role === 'admin' ||
-      currentUser?.role === 'super_admin' ||
-      currentUser?.role === 'alumni_manager' ||
-      currentUser?.role === 'supervisor') &&
-    !isAlumniPreview;
+  const isAdmin = isRealAdmin && !isAlumniPreview;
 
   const heroStats = (crextioConfig.heroStatsConfig || DEFAULT_HERO_STATS).filter(
     s => s.isVisible !== false
@@ -230,6 +248,17 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
     setDragOverKey(null);
   };
 
+  const moveSectionByOffset = (key: string, dir: -1 | 1) => {
+    const idx = sectionOrder.indexOf(key);
+    if (idx === -1) return;
+    const target = idx + dir;
+    if (target < 0 || target >= sectionOrder.length) return;
+    const next = [...sectionOrder];
+    const [moved] = next.splice(idx, 1);
+    next.splice(target, 0, moved);
+    updateCrextioConfig({ dashboardSectionOrder: next });
+  };
+
   const toggleHideSection = (key: string) => {
     updateCrextioConfig({
       hiddenDashboardSections: {
@@ -240,6 +269,30 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
   };
 
   const globalMinimalImages = crextioConfig.showShowcaseImagesInMinimal !== false;
+
+  const getQuickBtnIcon = (targetNav: string) => {
+    switch (targetNav) {
+      case 'Synergy':
+        return Users;
+      case 'Research':
+        return Compass;
+      case 'Courses':
+        return GraduationCap;
+      case 'Rulings':
+        return Scale;
+      case 'CounselingGeneral':
+      case 'SpecializedCounseling':
+        return HeartHandshake;
+      case 'Welfare':
+        return Gift;
+      case 'Products':
+        return BookMarked;
+      case 'Alumni':
+        return Award;
+      default:
+        return FileText;
+    }
+  };
 
   const renderSectionContent = (
     sectionKey: string,
@@ -252,6 +305,27 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
     const shouldShowBoxImg = globalMinimalImages && boxShowImage;
 
     switch (sectionKey) {
+      case 'dashboard_banners':
+        return <DashboardWidgetsSuite renderMode="banners_only" onNavigateTab={onNavigateTab} />;
+
+      case 'status_widget':
+        return (
+          <DashboardWidgetsSuite
+            renderMode="status_only"
+            compactHeight={scale === 'micro' || scale === 'compact'}
+            onNavigateTab={onNavigateTab}
+          />
+        );
+
+      case 'events_calendar':
+        return (
+          <DashboardWidgetsSuite
+            renderMode="calendar_only"
+            compactHeight={scale === 'micro' || scale === 'compact'}
+            onNavigateTab={onNavigateTab}
+          />
+        );
+
       case 'top_vip_row': {
         const heroScale = crextioConfig.heroBannerScale || scale || 'normal';
         const showPortrait = crextioConfig.showHeroPortrait !== false && crextioConfig.showProfileCard !== false;
@@ -260,6 +334,22 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           (isAlumni
             ? resolveShowcaseImageUrl('hero_portrait', crextioConfig.showcaseImageOverrides)
             : resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides));
+
+        const rightSlotMode = crextioConfig.heroRightSlotMode || 'both';
+        const configuredQuickBtns = (
+          crextioConfig.heroQuickButtons && crextioConfig.heroQuickButtons.length > 0
+            ? crextioConfig.heroQuickButtons
+            : DEFAULT_CREXTIO_CONFIG.heroQuickButtons || []
+        ).filter(b => b.visible !== false);
+
+        const showStatsSlot =
+          crextioConfig.showKpiRow !== false &&
+          crextioConfig.showHeroStats !== false &&
+          (rightSlotMode === 'stats' || rightSlotMode === 'both');
+        const showQuickSlot =
+          crextioConfig.showQuickActions !== false &&
+          (rightSlotMode === 'quick_actions' || rightSlotMode === 'both') &&
+          configuredQuickBtns.length > 0;
 
         if (heroScale === 'micro') {
           if (crextioConfig.showHeroBanner === false && !showPortrait) return null;
@@ -281,34 +371,37 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 text-[10px] text-emerald-800 font-bold">
                       <span className="flex items-center gap-1 text-amber-700 font-black">
-                        <Scale className="w-3 h-3" /> طرح میزان
+                        <Scale className="w-3 h-3" /> {crextioConfig.heroSchemeLabel || 'طرح میزان'}
                       </span>
                       <span>·</span>
-                      <span className="truncate">{currentUser?.roleTitle || 'عضو رسمی مجمع'}</span>
+                      <span className="truncate">
+                        {currentUser?.roleTitle || crextioConfig.heroPortraitBadgeText || 'عضو رسمی مجمع'}
+                      </span>
                     </div>
                     <h1 className="text-sm sm:text-base font-black text-stone-900 truncate">
-                      {crextioConfig.heroTitle || `خوش آمدید، ${currentUser ? currentUser.fullName : 'جناب آقای دکتر میرزایی'}`}
+                      {crextioConfig.heroTitle ||
+                        `خوش آمدید، ${currentUser ? currentUser.fullName : 'جناب آقای دکتر میرزایی'}`}
                     </h1>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap shrink-0">
-                  {[
-                    { label: 'کارتابل', icon: FileText, action: () => onNavigateTab?.('People') },
-                    { label: 'هم‌افزایی', icon: Users, action: () => onNavigateTab?.('Synergy') },
-                    { label: 'پژوهش', icon: Compass, action: () => onNavigateTab?.('Research') },
-                  ].map((btn, idx) => (
-                    <button
-                      key={idx}
-                      onClick={btn.action}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 border border-stone-200 text-[11px] font-bold transition-all cursor-pointer"
-                    >
-                      <btn.icon className="w-3 h-3 text-emerald-700" />
-                      <span>{btn.label}</span>
-                    </button>
-                  ))}
+                  {showQuickSlot &&
+                    configuredQuickBtns.map(btn => {
+                      const QIcon = getQuickBtnIcon(btn.targetNav);
+                      return (
+                        <button
+                          key={btn.id}
+                          onClick={() => onNavigateTab?.(btn.targetNav)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 border border-stone-200 text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          <QIcon className="w-3 h-3 text-emerald-700" />
+                          <span>{btn.label}</span>
+                        </button>
+                      );
+                    })}
 
-                  {crextioConfig.showKpiRow !== false && (
+                  {showStatsSlot && (
                     <div className="hidden sm:flex items-center gap-1.5 mr-1">
                       {heroStats.slice(0, 3).map(stat => (
                         <div
@@ -368,14 +461,18 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                            <span className="text-[10px] font-bold text-amber-300">عضو رسمی مجمع</span>
+                            <span className="text-[10px] font-bold text-amber-300">
+                              {crextioConfig.heroPortraitBadgeText || 'عضو رسمی مجمع'}
+                            </span>
                           </div>
                           <h3 className="text-base sm:text-lg font-black text-white">{currentUser?.fullName}</h3>
                           <p className="text-emerald-300 text-xs font-semibold">{currentUser?.roleTitle}</p>
                         </div>
 
                         <span className="px-3 py-1 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 text-[11px] font-black backdrop-blur-md shadow-xs">
-                          {isAlumni ? 'دانش‌آموخته' : 'مسئول خدمات'}
+                          {isAlumni
+                            ? crextioConfig.heroPortraitRoleLabelAlumni || 'دانش‌آموخته'
+                            : crextioConfig.heroPortraitRoleLabelStaff || 'مسئول خدمات'}
                         </span>
                       </div>
 
@@ -383,7 +480,8 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                         <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px] text-emerald-100 font-medium">
                           <span>{currentUser?.organization}</span>
                           <span className="text-emerald-400 font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> تایید شده
+                            <CheckCircle2 className="w-3.5 h-3.5" />{' '}
+                            {crextioConfig.heroPortraitVerifiedText || 'تایید شده'}
                           </span>
                         </div>
                       )}
@@ -404,11 +502,12 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                       <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600 font-semibold">
                         <span className="text-amber-700 font-extrabold flex items-center gap-1">
                           <Scale className="w-3.5 h-3.5" />
-                          طرح میزان
+                          {crextioConfig.heroSchemeLabel || 'طرح میزان'}
                         </span>
                         <span>·</span>
                         <span className="text-emerald-800">
-                          {isAlumni ? 'مجمع نخبگان دانش‌آموختگان فقه و قضا' : 'درگاه مدیریت و کارتابل خدمات'}
+                          {crextioConfig.heroDomainLabel ||
+                            (isAlumni ? 'مجمع نخبگان دانش‌آموختگان فقه و قضا' : 'درگاه مدیریت و کارتابل خدمات')}
                         </span>
                         <span>·</span>
                         <span>دوره {toPersianNumbers(currentUser?.graduationYear || '۱۳۹۵')}</span>
@@ -425,61 +524,114 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                         </p>
                       </div>
 
-                      {crextioConfig.showQuickActions !== false && (
+                      {rightSlotMode === 'both' && showQuickSlot && (
                         <div className="pt-1.5 flex flex-wrap items-center gap-2">
-                          {[
-                            { label: 'ثبت درخواست در کارتابل', icon: FileText, action: () => onNavigateTab?.('People') },
-                            { label: 'مشارکت در هم‌افزایی', icon: Users, action: () => onNavigateTab?.('Synergy') },
-                            { label: 'ثبت پروپوزال پژوهشی', icon: Compass, action: () => onNavigateTab?.('Research') },
-                          ].map((btn, idx) => (
-                            <button
-                              key={idx}
-                              onClick={btn.action}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-stone-200/90 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
-                            >
-                              <btn.icon className="w-3.5 h-3.5 text-emerald-700" />
-                              <span>{btn.label}</span>
-                            </button>
-                          ))}
+                          {configuredQuickBtns.map(btn => {
+                            const QIcon = getQuickBtnIcon(btn.targetNav);
+                            return (
+                              <button
+                                key={btn.id}
+                                onClick={() => onNavigateTab?.(btn.targetNav)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-stone-200/90 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                              >
+                                <QIcon className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>{btn.label}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
 
-                    {crextioConfig.showKpiRow !== false && (
+                    {/* Right Slot: Quick Actions Only, Stats Only, Both (Stats on Right), or None */}
+                    {(showStatsSlot || (rightSlotMode === 'quick_actions' && showQuickSlot)) && (
                       <div className="flex flex-col gap-2 shrink-0">
                         {isAdmin && (
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-1.5">
+                            {showStatsSlot && (
+                              <button
+                                onClick={() => setIsHeroStatsModalOpen(true)}
+                                className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <Sliders className="w-3 h-3 text-amber-700" />
+                                <span>مدیریت آمار بنر</span>
+                              </button>
+                            )}
                             <button
-                              onClick={() => setIsHeroStatsModalOpen(true)}
-                              className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
+                              onClick={() => {
+                                setStudioInitialTab('hero_quick');
+                                setIsStudioOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-950 border border-emerald-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
                             >
-                              <Sliders className="w-3 h-3 text-amber-700" />
-                              <span>مدیریت آمار بنر</span>
+                              <Palette className="w-3 h-3 text-emerald-700" />
+                              <span>آمار / دسترسی سریع</span>
                             </button>
                           </div>
                         )}
-                        <div className={`grid grid-cols-2 sm:grid-cols-4 ${heroScale === 'compact' ? 'gap-2' : 'gap-2.5'} shrink-0`}>
-                          {heroStats.map(stat => {
-                            const Icon = getStatIconComponent(stat.icon);
-                            return (
-                              <CrextioCard
-                                key={stat.id}
-                                glowColor="rgba(245, 158, 11, 0.25)"
-                                className={`bg-white/95 ${heroScale === 'compact' ? 'p-2.5' : 'p-3.5'} rounded-2xl border border-[#E7E4D8] shadow-2xs flex flex-col items-center justify-center text-center space-y-1 group`}
-                              >
-                                <div className={`${heroScale === 'compact' ? 'p-1.5' : 'p-2'} rounded-xl ${stat.color} mx-auto`}>
-                                  <Icon className="w-3.5 h-3.5" />
-                                </div>
-                                <span className="text-[10px] font-extrabold text-stone-600 line-clamp-1 block">
-                                  {stat.label}
-                                </span>
-                                <span className={`${heroScale === 'compact' ? 'text-base' : 'text-xl'} font-black text-stone-900 tracking-tight block tabular-nums`}>
-                                  <AnimatedCounter value={toPersianNumbers(stat.val.toLocaleString('fa-IR'))} duration={1500} />
-                                </span>
-                              </CrextioCard>
-                            );
-                          })}
-                        </div>
+
+                        {rightSlotMode === 'quick_actions' && showQuickSlot ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {configuredQuickBtns.map(btn => {
+                              const QIcon = getQuickBtnIcon(btn.targetNav);
+                              return (
+                                <button
+                                  key={btn.id}
+                                  type="button"
+                                  onClick={() => onNavigateTab?.(btn.targetNav)}
+                                  className="px-3.5 py-2.5 rounded-2xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-[#E7E4D8] shadow-2xs flex items-center gap-2 text-xs font-extrabold transition-all active:scale-95 cursor-pointer"
+                                >
+                                  <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-800 shrink-0">
+                                    <QIcon className="w-3.5 h-3.5" />
+                                  </span>
+                                  <span className="truncate">{btn.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          showStatsSlot && (
+                            <div
+                              className={`grid grid-cols-2 sm:grid-cols-4 ${
+                                heroScale === 'compact' ? 'gap-2' : 'gap-2.5'
+                              } shrink-0`}
+                            >
+                              {heroStats.map(stat => {
+                                const Icon = getStatIconComponent(stat.icon);
+                                return (
+                                  <CrextioCard
+                                    key={stat.id}
+                                    glowColor="rgba(245, 158, 11, 0.25)"
+                                    className={`bg-white/95 ${
+                                      heroScale === 'compact' ? 'p-2.5' : 'p-3.5'
+                                    } rounded-2xl border border-[#E7E4D8] shadow-2xs flex flex-col items-center justify-center text-center space-y-1 group`}
+                                  >
+                                    <div
+                                      className={`${
+                                        heroScale === 'compact' ? 'p-1.5' : 'p-2'
+                                      } rounded-xl ${stat.color} mx-auto`}
+                                    >
+                                      <Icon className="w-3.5 h-3.5" />
+                                    </div>
+                                    <span className="text-[10px] font-extrabold text-stone-600 line-clamp-1 block">
+                                      {stat.label}
+                                    </span>
+                                    <span
+                                      className={`${
+                                        heroScale === 'compact' ? 'text-base' : 'text-xl'
+                                      } font-black text-stone-900 tracking-tight block tabular-nums`}
+                                    >
+                                      <AnimatedCounter
+                                        value={toPersianNumbers(stat.val.toLocaleString('fa-IR'))}
+                                        duration={1500}
+                                      />
+                                    </span>
+                                  </CrextioCard>
+                                );
+                              })}
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                   </div>
@@ -498,7 +650,10 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
             scale={scale}
             isAdmin={isAdmin}
             onNavigateTab={onNavigateTab}
-            onOpenEditor={() => setIsCustomizerOpen(true)}
+            onOpenEditor={() => {
+              setStudioInitialTab('honors_unified');
+              setIsStudioOpen(true);
+            }}
           />
         );
 
@@ -510,18 +665,25 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
             scale={scale}
             isAdmin={isAdmin}
             onNavigateTab={onNavigateTab}
-            onOpenEditor={() => setIsCustomizerOpen(true)}
+            onOpenEditor={() => {
+              setStudioInitialTab('honors_unified');
+              setIsStudioOpen(true);
+            }}
           />
         );
 
       case 'rulings_showcase':
         if (crextioConfig.showRulingsShowcase === false) return null;
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.rulings_showcase;
           return (
             <MinimalShowcaseCard
-              kicker="مباحثات تخصصی قضایی"
-              title={crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی'}
-              description="بررسی استدلال‌های حقوقی، نقد رویه قضایی و تبادل نظر نخبگان بر روی آراء منتخب."
+              kicker={ov?.kicker || 'مباحثات تخصصی قضایی'}
+              title={ov?.title || crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی'}
+              description={
+                ov?.description ||
+                'بررسی استدلال‌های حقوقی، نقد رویه قضایی و تبادل نظر نخبگان بر روی آراء منتخب.'
+              }
               icon={<Scale className="w-5 h-5" />}
               accentTone="amber"
               imageUrl={resolvedBoxImg}
@@ -531,7 +693,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                 { label: 'آراء در جریان بحث', value: toPersianNumbers(rulings.length) },
               ]}
               actions={[
-                { label: 'ورود به تالار آراء', onClick: () => onNavigateTab?.('Rulings'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'ورود به تالار آراء',
+                  onClick: () => onNavigateTab?.('Rulings'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -545,11 +711,15 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
       case 'research_promo':
         if (crextioConfig.showResearchPromoShowcase === false) return null;
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.research_promo;
           return (
             <MinimalShowcaseCard
-              kicker="حمایت و هدایت پژوهشی"
-              title={crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و پایان‌نامه‌ها'}
-              description="همراهی با اساتید راهنمای طراز اول، تخصیص گرنت پژوهشی و تسهیل اسکان علمی برای پیشبرد پژوهش‌ها."
+              kicker={ov?.kicker || 'حمایت و هدایت پژوهشی'}
+              title={ov?.title || crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و پایان‌نامه‌ها'}
+              description={
+                ov?.description ||
+                'همراهی با اساتید راهنمای طراز اول، تخصیص گرنت پژوهشی و تسهیل اسکان علمی برای پیشبرد پژوهش‌ها.'
+              }
               icon={<Compass className="w-5 h-5" />}
               accentTone="emerald"
               imageUrl={resolvedBoxImg}
@@ -560,7 +730,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                 { label: 'گرنت تا سقف', value: '۵۰ میلیون' },
               ]}
               actions={[
-                { label: 'میز راهبری پژوهش', onClick: () => onNavigateTab?.('Research'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'میز راهبری پژوهش',
+                  onClick: () => onNavigateTab?.('Research'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -574,11 +748,15 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
       case 'course_showcase':
         if (crextioConfig.showCourseShowcase === false) return null;
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.course_showcase;
           return (
             <MinimalShowcaseCard
-              kicker="توانمندسازی علمی و کارگاه‌ها"
-              title={crextioConfig.courseShowcaseTitle || 'دوره‌ها و کارگاه‌های تخصصی'}
-              description="نشست‌ها و دوره‌های مهارتی فقه القضا، آیین دادرسی و کارگاه‌های علمی دانش‌آموختگان."
+              kicker={ov?.kicker || 'توانمندسازی علمی و کارگاه‌ها'}
+              title={ov?.title || crextioConfig.courseShowcaseTitle || 'دوره‌ها و کارگاه‌های تخصصی'}
+              description={
+                ov?.description ||
+                'نشست‌ها و دوره‌های مهارتی فقه القضا، آیین دادرسی و کارگاه‌های علمی دانش‌آموختگان.'
+              }
               icon={<GraduationCap className="w-5 h-5" />}
               accentTone="sky"
               imageUrl={resolvedBoxImg}
@@ -588,7 +766,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                 { label: 'دوره فعال', value: toPersianNumbers(courses.length) },
               ]}
               actions={[
-                { label: 'مشاهده دوره‌ها', onClick: () => onNavigateTab?.('Courses'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'مشاهده دوره‌ها',
+                  onClick: () => onNavigateTab?.('Courses'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -606,11 +788,15 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
       case 'counseling_promo':
         if (crextioConfig.showCounselingPromo === false) return null;
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.counseling_promo;
           return (
             <MinimalShowcaseCard
-              kicker="هدایت شغلی، علمی و سلامت روان"
-              title={crextioConfig.counselingPromoTitle || 'خدمات مشاوره نخبگان'}
-              description="دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و مشاوره عمومی خانواده با اساتید برجسته."
+              kicker={ov?.kicker || 'هدایت شغلی، علمی و سلامت روان'}
+              title={ov?.title || crextioConfig.counselingPromoTitle || 'خدمات مشاوره نخبگان'}
+              description={
+                ov?.description ||
+                'دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و مشاوره عمومی خانواده با اساتید برجسته.'
+              }
               icon={<HeartHandshake className="w-5 h-5" />}
               accentTone="indigo"
               imageUrl={resolvedBoxImg}
@@ -621,7 +807,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
               ]}
               actions={[
                 { label: 'مشاوره عمومی', onClick: () => onNavigateTab?.('CounselingGeneral') },
-                { label: 'مشاوره شغلی قضا', onClick: () => onNavigateTab?.('SpecializedCounseling'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'مشاوره شغلی قضا',
+                  onClick: () => onNavigateTab?.('SpecializedCounseling'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -637,18 +827,26 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
 
       case 'welfare_showcase':
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.welfare_showcase;
           return (
             <MinimalShowcaseCard
-              kicker="خدمات رفاهی و تسهیلات اعضا"
-              title={crextioConfig.welfareShowcaseTitle || 'رفاهیات، اقامتگاه‌ها و صندوق تعاون'}
-              description="ثبت درخواست اسکان زیارتی و پژوهشی در مشهد و قم، تسهیلات قرض‌الحسنه و تعاونی اعضا."
+              kicker={ov?.kicker || 'خدمات رفاهی و تسهیلات اعضا'}
+              title={ov?.title || crextioConfig.welfareShowcaseTitle || 'رفاهیات، اقامتگاه‌ها و صندوق تعاون'}
+              description={
+                ov?.description ||
+                'ثبت درخواست اسکان زیارتی و پژوهشی در مشهد و قم، تسهیلات قرض‌الحسنه و تعاونی اعضا.'
+              }
               icon={<Gift className="w-5 h-5" />}
               accentTone="emerald"
               imageUrl={resolvedBoxImg}
               showImage={shouldShowBoxImg}
               scale={scale}
               actions={[
-                { label: 'ورود به میز رفاهیات', onClick: () => onNavigateTab?.('Welfare'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'ورود به میز رفاهیات',
+                  onClick: () => onNavigateTab?.('Welfare'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -661,18 +859,26 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
 
       case 'multimedia_showcase':
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.multimedia_showcase;
           return (
             <MinimalShowcaseCard
-              kicker="آرشیو علمی و درس‌گفتارها"
-              title={crextioConfig.multimediaShowcaseTitle || 'آرشیو صوت و تصویر درس‌گفتارها'}
-              description="دسترسی به جلسات ضبط‌شده خارج فقه القضا و نشست‌های تحلیل قضایی."
+              kicker={ov?.kicker || 'آرشیو علمی و درس‌گفتارها'}
+              title={ov?.title || crextioConfig.multimediaShowcaseTitle || 'آرشیو صوت و تصویر درس‌گفتارها'}
+              description={
+                ov?.description ||
+                'دسترسی به جلسات ضبط‌شده خارج فقه القضا و نشست‌های تحلیل قضایی.'
+              }
               icon={<Headphones className="w-5 h-5" />}
               accentTone="stone"
               imageUrl={resolvedBoxImg}
               showImage={shouldShowBoxImg}
               scale={scale}
               actions={[
-                { label: 'مشاهده آرشیو', onClick: () => onNavigateTab?.('Courses'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'مشاهده آرشیو',
+                  onClick: () => onNavigateTab?.('Courses'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -688,11 +894,15 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
 
       case 'books_showcase':
         if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.books_showcase;
           return (
             <MinimalShowcaseCard
-              kicker="مرکز نشر و پژوهش"
-              title={crextioConfig.booksShowcaseTitle || 'منشورات و کتب مرجع فقه و قضا'}
-              description="دسترسی به کتب علمی، موسوعه‌ها و آثار تألیفی اساتید و دانش‌آموختگان مجمع."
+              kicker={ov?.kicker || 'مرکز نشر و پژوهش'}
+              title={ov?.title || crextioConfig.booksShowcaseTitle || 'منشورات و کتب مرجع فقه و قضا'}
+              description={
+                ov?.description ||
+                'دسترسی به کتب علمی، موسوعه‌ها و آثار تألیفی اساتید و دانش‌آموختگان مجمع.'
+              }
               icon={<BookMarked className="w-5 h-5" />}
               accentTone="amber"
               imageUrl={resolvedBoxImg}
@@ -700,7 +910,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
               scale={scale}
               stats={[{ label: 'اثر ثبت‌شده', value: toPersianNumbers(products.length) }]}
               actions={[
-                { label: 'مشاهده منشورات', onClick: () => onNavigateTab?.('Products'), primary: true },
+                {
+                  label: ov?.ctaLabel || 'مشاهده منشورات',
+                  onClick: () => onNavigateTab?.('Products'),
+                  primary: true,
+                },
               ]}
             />
           );
@@ -759,10 +973,22 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
+              onClick={() => {
+                setStudioInitialTab('hero_quick');
+                setIsStudioOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-sm"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>ویرایشگر کامل صفحه</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsLayoutEditMode(prev => !prev)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 isLayoutEditMode
-                  ? 'bg-amber-400 text-stone-950 shadow-md'
+                  ? 'bg-emerald-400 text-stone-950 shadow-md'
                   : 'bg-stone-800 hover:bg-stone-700 text-stone-100 border border-stone-700'
               }`}
             >
@@ -797,7 +1023,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           <div className="flex items-center gap-2 font-bold">
             <GripVertical className="w-4 h-4 text-amber-700" />
             <span>
-              حالت ویرایش زنده چیدمان: هر ویترین را با درگ جابه‌جا کنید، بین طراحی «کلاسیک» و «ساده (مینیمال)» سوئیچ کنید، یا عرض و ارتفاع آن را کوچک/بزرگ نمایید.
+              حالت ویرایش زنده چیدمان: هر ویترین، ویجت وضعیت یا تقویم رویدادها را با درگ یا فلش بالا/پایین جابه‌جا کنید و اندازه آن‌ها را تنظیم نمایید.
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -839,7 +1065,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                 updateCrextioConfig({
                   dashboardSectionOrder: [...CANONICAL_DASHBOARD_SECTION_ORDER],
                   hiddenDashboardSections: {},
-                  dashboardSectionLayouts: {},
+                  dashboardSectionLayouts: { ...DEFAULT_CREXTIO_CONFIG.dashboardSectionLayouts },
                 })
               }
               className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-[11px] hover:bg-amber-100 cursor-pointer"
@@ -850,22 +1076,32 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
         </div>
       )}
 
-      {/* DASHBOARD BANNERS, STATUS WIDGET, EVENTS CALENDAR & ALUMNI PREVIEW */}
-      <DashboardWidgetsSuite
-        onNavigateTab={onNavigateTab}
-        isAlumniPreview={isAlumniPreview}
-        onToggleAlumniPreview={() => setIsAlumniPreview(prev => !prev)}
-      />
+      {/* ADMIN WIDGETS TOOLBAR & ALUMNI PREVIEW SWITCHER (Pinned cleanly outside movable grid) */}
+      {isRealAdmin && (
+        <DashboardWidgetsSuite
+          renderMode="admin_bar"
+          onNavigateTab={onNavigateTab}
+        />
+      )}
 
-      {/* DYNAMIC 12-COLUMN DASHBOARD SECTIONS GRID (Supports Half-Width Pairs + Classic/Minimal + Scale + Images + Drag & Drop) */}
+      {/* DYNAMIC 12-COLUMN DASHBOARD SECTIONS GRID (Includes Movable Status Widget, Events Calendar, Banners & All Showcases) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        {sectionOrder.map(sectionKey => {
+        {sectionOrder.map((sectionKey, sectionIdx) => {
           const isHidden = hiddenMap[sectionKey] === true;
           if (isHidden && !isLayoutEditMode) return null;
 
-          const layout = layoutsMap[sectionKey] || { span: 'full', density: 'full', scale: 'normal', showImage: true };
-          const canResize = sectionKey !== 'top_vip_row' && sectionKey !== 'bento_grid';
-          const canScaleHeight = sectionKey !== 'bento_grid';
+          const layout = layoutsMap[sectionKey] || {
+            span: sectionKey === 'status_widget' || sectionKey === 'events_calendar' ? 'half' : 'full',
+            density: 'full',
+            scale: 'normal',
+            showImage: true,
+          };
+          const canResize =
+            sectionKey !== 'top_vip_row' &&
+            sectionKey !== 'bento_grid' &&
+            sectionKey !== 'dashboard_banners';
+          const canScaleHeight =
+            sectionKey !== 'bento_grid' && sectionKey !== 'dashboard_banners';
           const hasClassicMinimalToggle = CLASSIC_MINIMAL_KEYS.has(sectionKey);
           const span: 'full' | 'half' = layout.span === 'half' && canResize ? 'half' : 'full';
           const density: 'full' | 'minimal' =
@@ -1017,6 +1253,26 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
 
                     <button
                       type="button"
+                      disabled={sectionIdx === 0}
+                      onClick={() => moveSectionByOffset(sectionKey, -1)}
+                      className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 disabled:opacity-30 cursor-pointer"
+                      title="انتقال به بالا"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={sectionIdx === sectionOrder.length - 1}
+                      onClick={() => moveSectionByOffset(sectionKey, 1)}
+                      className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 disabled:opacity-30 cursor-pointer"
+                      title="انتقال به پایین"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => toggleHideSection(sectionKey)}
                       className={`px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer ${
                         isHidden ? 'bg-amber-400 text-stone-950' : 'bg-stone-800 hover:bg-rose-600 text-stone-200'
@@ -1035,17 +1291,27 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
         })}
       </div>
 
+      {/* THEME 2 LIVE FULL-PAGE STUDIO DRAWER */}
+      <Theme2StudioDrawer
+        isOpen={isStudioOpen && isAdmin}
+        initialTab={studioInitialTab}
+        onClose={() => setIsStudioOpen(false)}
+        onOpenAdvancedModal={() => setIsCustomizerOpen(true)}
+        crextioConfig={crextioConfig}
+        updateCrextioConfig={updateCrextioConfig}
+      />
+
       {/* ADMIN LIVE CUSTOMIZER MODAL */}
       <Suspense fallback={null}>
         <ThemeCustomizerModal
-          isOpen={isCustomizerOpen}
+          isOpen={isCustomizerOpen && isAdmin}
           onClose={() => setIsCustomizerOpen(false)}
         />
       </Suspense>
 
       {/* ADMIN HERO STATS CUSTOMIZER MODAL */}
       <CrextioHeroStatsCustomizerModal
-        isOpen={isHeroStatsModalOpen}
+        isOpen={isHeroStatsModalOpen && isAdmin}
         onClose={() => setIsHeroStatsModalOpen(false)}
       />
     </motion.div>

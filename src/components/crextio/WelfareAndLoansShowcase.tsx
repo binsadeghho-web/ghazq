@@ -58,12 +58,13 @@ const getIconComponent = (iconId: string) => {
 export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = ({
   onNavigateToWelfare
 }) => {
-  const { consumables, currentUser, crextioConfig, updateCrextioConfig } = useApp();
+  const { consumables, currentUser, crextioConfig, updateCrextioConfig, isAlumniPreview } = useApp();
   const isAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'supervisor';
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);

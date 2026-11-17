@@ -296,11 +296,46 @@ export interface CrextioDashboardConfig {
     cover: string;
   }>;
 
-  // ویترین هیرو و بنر خوش‌آمدگویی
+  // ویترین هیرو، برند هدر، ویجت‌ها و بنر خوش‌آمدگویی
   heroBadgeText?: string;
   showHeroStats?: boolean;
   heroBannerScale?: 'micro' | 'compact' | 'normal' | 'expanded';
   showHeroPortrait?: boolean;
+  heroRightSlotMode?: 'stats' | 'quick_actions' | 'both' | 'none';
+  heroQuickButtons?: Array<{
+    id: string;
+    label: string;
+    targetNav: string;
+    visible: boolean;
+  }>;
+  brandMainTitle?: string;
+  brandBadgeText?: string;
+  brandSubtitleText?: string;
+  theme2TopBarTitle?: string;
+  heroPortraitBadgeText?: string;
+  heroPortraitVerifiedText?: string;
+  heroPortraitRoleLabelAlumni?: string;
+  heroPortraitRoleLabelStaff?: string;
+  heroSchemeLabel?: string;
+  heroDomainLabel?: string;
+  statusWidgetTitle?: string;
+  statusWidgetSubtitle?: string;
+  eventsCalendarTitle?: string;
+  eventsCalendarSubtitle?: string;
+  bentoSectionTitle?: string;
+  bentoSectionSubtitle?: string;
+  bentoHoverHintText?: string;
+  bentoCardCtaText?: string;
+  bentoCardSchemeText?: string;
+  minimalBoxOverrides?: Record<
+    string,
+    {
+      kicker?: string;
+      title?: string;
+      description?: string;
+      ctaLabel?: string;
+    }
+  >;
 
   // ویترین تالار نقد و مناظره آراء قضایی
   showRulingsShowcase?: boolean;

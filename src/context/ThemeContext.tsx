@@ -6,6 +6,9 @@ import { api } from '../services/apiClient';
 const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
 
 export const CANONICAL_DASHBOARD_SECTION_ORDER = [
+  'dashboard_banners',
+  'status_widget',
+  'events_calendar',
   'top_vip_row',
   'honors_showcase',
   'unified_showcase',
@@ -49,6 +52,9 @@ export interface ThemeContextType {
   designTheme: DesignThemeType;
   setDesignTheme: (theme: DesignThemeType) => void;
   toggleDesignTheme: () => void;
+  isAlumniPreview: boolean;
+  setIsAlumniPreview: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleAlumniPreview: () => void;
   crextioConfig: CrextioDashboardConfig;
   updateCrextioConfig: (updates: Partial<CrextioDashboardConfig>) => void;
   resetCrextioConfig: () => void;
@@ -181,6 +187,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const [designTheme, setDesignThemeState] = useState<DesignThemeType>('crextio');
+  const [isAlumniPreview, setIsAlumniPreview] = useState<boolean>(false);
+
+  const toggleAlumniPreview = useCallback(() => {
+    setIsAlumniPreview(prev => !prev);
+  }, []);
 
   const setDesignTheme = useCallback((newTheme: DesignThemeType) => {
     setDesignThemeState(newTheme);
@@ -209,6 +220,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     designTheme,
     setDesignTheme,
     toggleDesignTheme,
+    isAlumniPreview,
+    setIsAlumniPreview,
+    toggleAlumniPreview,
     crextioConfig,
     updateCrextioConfig,
     resetCrextioConfig,
@@ -221,6 +235,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     designTheme,
     setDesignTheme,
     toggleDesignTheme,
+    isAlumniPreview,
+    toggleAlumniPreview,
     crextioConfig,
     updateCrextioConfig,
     resetCrextioConfig,

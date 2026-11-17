@@ -24,12 +24,13 @@ interface MultimediaAndCoursesShowcaseProps {
 export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcaseProps> = ({
   onNavigateToCourses
 }) => {
-  const { courses, currentUser, crextioConfig, updateCrextioConfig } = useApp();
+  const { courses, currentUser, crextioConfig, updateCrextioConfig, isAlumniPreview } = useApp();
   const isAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'super_admin' ||
-    currentUser?.role === 'alumni_manager' ||
-    currentUser?.role === 'supervisor';
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
