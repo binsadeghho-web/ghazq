@@ -61,7 +61,7 @@ const SHOWCASE_BOXES = [
   { key: 'counseling_promo', title: 'خدمات مشاوره نخبگان' },
   { key: 'welfare_showcase', title: 'تسهیلات رفاهی و اقامتگاه‌ها' },
   { key: 'multimedia_showcase', title: 'درس‌گفتارها و چندرسانه‌ای' },
-  { key: 'books_showcase', title: 'کتب و منشورات تخصصی' },
+  { key: 'books_showcase', title: 'کتاب و محصولات چند رسانه‌ای' },
 ];
 
 export const Theme3StudioDrawer: React.FC<Theme3StudioDrawerProps> = ({

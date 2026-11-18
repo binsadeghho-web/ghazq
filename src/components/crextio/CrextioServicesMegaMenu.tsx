@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { AppSectionId } from '../../types';
-import { canViewSection, useRbacPolicies } from '../../utils/rbacPolicy';
+import { canViewSection, useRbacPolicies, isOrganizationalRole } from '../../utils/rbacPolicy';
 import {
   LayoutGrid,
   Inbox,
@@ -39,7 +39,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
   const menuRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { currentUser, cartableRequests, courses, rulings, products, consultants, researchMentorships } = useApp();
+  const { currentUser, cartableRequests, courses, rulings, products, consultants, researchMentorships, productsStoreConfig } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const pendingCartable = cartableRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length;
 
@@ -145,9 +145,9 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     {
       id: 'Products',
       sectionId: 'products',
-      title: 'محصولات، منشورات و کتب',
-      subtext: 'دانشنامه‌های فقهی-حقوقی، آرای وحدت رویه و متون مرجع قضایی',
-      badge: 'انتشارات مرجع',
+      title: 'کتاب و محصولات چند رسانه‌ای',
+      subtext: 'کتب مرجع، بسته‌های چندرسانه‌ای و صوت با خرید نسخه دیجیتال یا فیزیکی',
+      badge: 'انتشارات و رسانه',
       tag: `${toPersianNumbers(products.length)} اثر علمی`,
       icon: BookOpen,
       accent: '#7C3AED',
@@ -210,10 +210,17 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     }
   ];
 
-  // Strict Menu Cloaking: Hide any service card whose section permission is 'none'
-  const serviceCards = allServiceCards.filter(card =>
-    canViewSection(currentUser, card.sectionId, rolePolicies)
-  );
+  // Strict Menu Cloaking: Hide any service card whose section permission is 'none' or globally disabled store
+  const serviceCards = allServiceCards.filter(card => {
+    if (
+      card.sectionId === 'products' &&
+      !isOrganizationalRole(currentUser?.role) &&
+      !productsStoreConfig.isStoreEnabled
+    ) {
+      return false;
+    }
+    return canViewSection(currentUser, card.sectionId, rolePolicies);
+  });
 
   const visibleCategoriesSet = new Set(serviceCards.map(c => c.category));
   const categories = [

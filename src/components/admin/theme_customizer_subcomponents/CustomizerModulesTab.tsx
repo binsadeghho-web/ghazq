@@ -75,7 +75,7 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
     welfare_showcase: { title: 'ویترین خدمات رفاهی و تسهیلات', desc: 'وام قرض‌الحسنه، اسکان مشهد/قم و تعاونی' },
     multimedia_showcase: { title: 'ویترین درس‌گفتارها و چندرسانه‌ای', desc: 'درس‌گفتارهای صوتی خارج فقه القضا' },
     bento_grid: { title: 'شبکه جامع دسترسی سریع خدمات (Bento)', desc: 'کارت‌های اصلی دسترسی به ماژول‌های سامانه' },
-    books_showcase: { title: 'ویترین کتب و منشورات تخصصی', desc: 'موسوعه‌ها و کتب مرجع فقهی و حقوقی' },
+    books_showcase: { title: 'کتاب و محصولات چند رسانه‌ای', desc: 'کتب مرجع، محصولات چندرسانه‌ای و صوت تخصصی' },
   };
 
   const handleUpdateSectionLayout = (

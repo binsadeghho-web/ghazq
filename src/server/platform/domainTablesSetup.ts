@@ -317,6 +317,63 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
     try { await p.query(`CREATE INDEX idx_products_stock ON products (stock, is_available);`); } catch {}
     try { await p.query(`CREATE INDEX idx_consumables_cust_vis ON consumables (visible_to_customer, category);`); } catch {}
 
+    // 9. Books, Multimedia & Audio Store (Reforms 23-30): Dual-format pricing, delivery options, gallery, soft delete & rich orders
+    const productAlters = [
+      `ADD COLUMN short_description TEXT NULL`,
+      `ADD COLUMN subject_index VARCHAR(128) NULL`,
+      `ADD COLUMN isbn VARCHAR(64) NULL`,
+      `ADD COLUMN gallery_images JSON NULL`,
+      `ADD COLUMN supports_digital TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN digital_price DECIMAL(19,4) NULL`,
+      `ADD COLUMN digital_format_label VARCHAR(128) NULL`,
+      `ADD COLUMN supports_physical TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN physical_price DECIMAL(19,4) NULL`,
+      `ADD COLUMN physical_format_label VARCHAR(128) NULL`,
+      `ADD COLUMN delivery_options JSON NULL`,
+      `ADD COLUMN allowed_payment_method VARCHAR(32) NOT NULL DEFAULT 'both'`,
+      `ADD COLUMN download_link VARCHAR(512) NULL`,
+      `ADD COLUMN shipping_mode VARCHAR(32) NOT NULL DEFAULT 'both'`,
+      `ADD COLUMN shipping_cost_type VARCHAR(32) NOT NULL DEFAULT 'free'`,
+      `ADD COLUMN shipping_fixed_fee DECIMAL(19,4) NOT NULL DEFAULT 0.0000`,
+      `ADD COLUMN pickup_address_notice VARCHAR(512) NULL`,
+      `ADD COLUMN display_order INT NOT NULL DEFAULT 0`,
+      `ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_by VARCHAR(128) NULL`,
+      `ADD COLUMN updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)`,
+    ];
+    for (const clause of productAlters) {
+      try { await p.query(`ALTER TABLE products ${clause};`); } catch {}
+    }
+    try { await p.query(`CREATE INDEX idx_products_del_order ON products (is_deleted, is_available, display_order);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_products_fmt_del ON products (format, is_deleted, display_order);`); } catch {}
+
+    const productOrderAlters = [
+      `ADD COLUMN product_format VARCHAR(32) NOT NULL DEFAULT 'book'`,
+      `ADD COLUMN purchase_format VARCHAR(32) NOT NULL DEFAULT 'digital'`,
+      `ADD COLUMN delivery_method VARCHAR(32) NOT NULL DEFAULT 'digital_instant'`,
+      `ADD COLUMN base_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000`,
+      `ADD COLUMN shipping_fee DECIMAL(19,4) NOT NULL DEFAULT 0.0000`,
+      `ADD COLUMN payment_method VARCHAR(32) NOT NULL DEFAULT 'online_gateway'`,
+      `ADD COLUMN gateway_id VARCHAR(64) NULL`,
+      `ADD COLUMN gateway_name VARCHAR(128) NULL`,
+      `ADD COLUMN receipt_file_url VARCHAR(512) NULL`,
+      `ADD COLUMN receipt_bank_name VARCHAR(128) NULL`,
+      `ADD COLUMN shipping_address TEXT NULL`,
+      `ADD COLUMN shipping_notice VARCHAR(512) NULL`,
+      `ADD COLUMN user_national_id VARCHAR(64) NULL`,
+      `ADD COLUMN user_role_title VARCHAR(128) NULL`,
+      `ADD COLUMN admin_note TEXT NULL`,
+      `ADD COLUMN reviewed_by VARCHAR(128) NULL`,
+      `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL`,
+    ];
+    for (const clause of productOrderAlters) {
+      try { await p.query(`ALTER TABLE product_orders ${clause};`); } catch {}
+    }
+    try { await p.query(`CREATE INDEX idx_porders_user_del ON product_orders (user_id, deleted_at, ordered_at);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_porders_status_del ON product_orders (payment_status, deleted_at, ordered_at);`); } catch {}
+
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');
   } catch (err: any) {

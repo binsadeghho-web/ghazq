@@ -262,21 +262,29 @@ export interface CrextioDashboardConfig {
     imageUrl?: string;
   }>;
 
-  // ویترین کتب و انتشارات
+  // ویترین کتاب و محصولات چند رسانه‌ای
   showProductsMiniPromo?: boolean;
   booksShowcaseTitle?: string;
   booksShowcaseSubtitle?: string;
   booksShowcaseBadge?: string;
   booksShowcaseCtaText?: string;
   booksShowcaseDiscountNotice?: string;
+  booksShowcaseSelectedCategories?: Array<'book' | 'multimedia' | 'audio_series'>;
+  booksShowcaseSelectedProductIds?: string[];
   booksCustomItems?: Array<{
     id: string;
+    productId?: string;
+    format?: 'book' | 'multimedia' | 'audio_series';
     title: string;
     author: string;
     price: number;
+    physicalPrice?: number;
+    supportsDigital?: boolean;
+    supportsPhysical?: boolean;
     discountPercent: number;
     coverImage: string;
     tag: string;
+    shortDescription?: string;
   }>;
 
   // ویترین درس‌گفتارها و چندرسانه‌ای
@@ -495,6 +503,10 @@ export interface MizanDashboardConfig {
   showSynergyHighlights?: boolean;
   showImpactSection: boolean;
   showPublicationsShelf?: boolean;
+  publicationsShelfTitle?: string;
+  publicationsShelfSubtitle?: string;
+  publicationsShelfSelectedCategories?: Array<'book' | 'multimedia' | 'audio_series'>;
+  publicationsShelfSelectedIds?: string[];
   heroSealBadge?: string;
   heroTitle?: string;
   heroGreeting?: string;
@@ -786,20 +798,71 @@ export interface CourseEnrollment {
   version?: number;
 }
 
+export interface ProductDeliveryOption {
+  enabled: boolean;
+  fee: number;
+  label?: string;
+  notice?: string;
+}
+
+export interface ProductDeliveryOptionsMap {
+  complexPickup: ProductDeliveryOption;
+  postal: ProductDeliveryOption;
+  courier: ProductDeliveryOption;
+}
+
+export interface ProductPaymentGateway {
+  id: string;
+  name: string;
+  providerCode: string;
+  description?: string;
+  badge?: string;
+  isActive: boolean;
+}
+
+export interface ProductsStoreConfig {
+  isStoreEnabled: boolean;
+  disabledNotice?: string;
+  enabledCategories: {
+    book: boolean;
+    multimedia: boolean;
+    audio_series: boolean;
+  };
+  storeTitle: string;
+  storeSubtitle: string;
+  gateways: ProductPaymentGateway[];
+  bankCardNumber?: string;
+  bankAccountHolder?: string;
+  bankSheba?: string;
+  bankName?: string;
+  defaultDeliveryOptions: ProductDeliveryOptionsMap;
+  version?: number;
+}
+
 export interface Product {
   id: string;
   title: string;
   subtitle?: string;
+  shortDescription?: string;
+  subjectIndex?: string;
   authorOrPresenter: string;
   format: 'book' | 'multimedia' | 'audio_series';
   formatTitle: string;
   price: number;
+  supportsDigital?: boolean;
+  digitalPrice?: number;
+  digitalFormatLabel?: string;
+  supportsPhysical?: boolean;
+  physicalPrice?: number;
+  physicalFormatLabel?: string;
+  deliveryOptions?: ProductDeliveryOptionsMap;
   description: string;
   pagesOrDuration: string;
   publishedYear: string;
   publisher?: string;
   isbn?: string;
   coverImage?: string;
+  galleryImages?: string[];
   downloadLink?: string;
   allowedPaymentMethod?: 'both' | 'gateway_only' | 'receipt_only';
   shippingMode?: 'postal_only' | 'pickup_only' | 'both';
@@ -808,8 +871,10 @@ export interface Product {
   pickupAddressNotice?: string;
   isAvailable: boolean;
   stock?: number;
+  displayOrder?: number;
   badgeText?: string;
   isOwned?: boolean;
+  ownedFormats?: Array<'digital' | 'physical'>;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
@@ -822,23 +887,30 @@ export interface ProductOrder {
   productId: string;
   productTitle: string;
   productFormat: 'book' | 'multimedia' | 'audio_series';
+  purchaseFormat?: 'digital' | 'physical';
+  deliveryMethod?: 'complex_pickup' | 'postal' | 'courier' | 'digital_instant';
   userId: string;
   userName: string;
   userPhone: string;
   userNationalId: string;
   userRoleTitle: string;
   orderedAt: string;
+  baseAmount?: number;
   amountPaid: number;
   paymentMethod: 'online_gateway' | 'bank_receipt';
+  gatewayId?: string;
+  gatewayName?: string;
   paymentStatus: 'pending_review' | 'confirmed' | 'rejected';
   trackingCode: string;
   receiptFileUrl?: string;
   receiptBankName?: string;
   receiptDate?: string;
-  fulfillmentChoice?: 'postal' | 'pickup';
+  fulfillmentChoice?: 'postal' | 'pickup' | 'courier';
   shippingFee?: number;
   shippingNotice?: string;
   shippingAddress?: string;
+  postalTrackingCode?: string;
+  shippingStatus?: string;
   adminNote?: string;
   reviewedBy?: string;
   reviewedAt?: string;

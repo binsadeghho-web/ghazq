@@ -161,6 +161,9 @@ async function bootstrap() {
   app.use('/uploads/verdicts', (_req: Request, res: Response) => {
     res.status(403).json({ error: 'دسترسی مستقیم به پیوست‌های دادنامه‌ها غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایید.' });
   });
+  app.use('/uploads/product_receipts', (_req: Request, res: Response) => {
+    res.status(403).json({ error: 'دسترسی مستقیم به تصویر فیش‌های خرید غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایید.' });
+  });
 
   // Public Persistent Uploads Static File Serving (avatars, products, courses, verdicts, misc)
   app.use('/uploads', express.static(storageConfig.uploadsDir, {

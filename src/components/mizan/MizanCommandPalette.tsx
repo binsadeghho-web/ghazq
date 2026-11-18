@@ -116,8 +116,8 @@ export const MizanCommandPalette: React.FC<MizanCommandPaletteProps> = ({
     },
     {
       id: 'nav-products',
-      title: 'فروشگاه کتب و منشورات حقوقی',
-      subtitle: 'سفارش آنلاین جدیدترین کتاب‌ها و متون فقهی-قضایی',
+      title: 'کتاب و محصولات چند رسانه‌ای',
+      subtitle: 'سفارش آنلاین کتاب، بسته‌های چندرسانه‌ای و صوت در دو حالت دیجیتال و فیزیکی',
       category: 'خدمات رفاهی',
       icon: BookOpen,
       color: '#5C3882',

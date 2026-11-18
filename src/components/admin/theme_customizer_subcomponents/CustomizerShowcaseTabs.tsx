@@ -633,10 +633,10 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
               </span>
               <div>
                 <h4 className="font-extrabold text-sm text-purple-950">
-                  تنظیمات و محتوای ۱۰۰٪ ویترین کتب و انتشارات تخصصی
+                  تنظیمات و محتوای ۱۰۰٪ ویترین کتاب و محصولات چند رسانه‌ای
                 </h4>
                 <p className="text-[11px] text-purple-800/80 mt-0.5">
-                  ویرایش کامل تیتر، زیرعنوان، نشان، دکمه ورود و اطلاعیه تخفیف اعضا
+                  ویرایش کامل تیتر، زیرعنوان، نشان، دکمه ورود و دسته‌بندی‌های نمایشی
                 </p>
               </div>
             </div>
@@ -665,7 +665,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                     updateCrextioConfig({ booksShowcaseBadge: e.target.value });
                     triggerSuccess();
                   }}
-                  placeholder="مرکز نشر و انتشارات نخبگان"
+                  placeholder="کتاب و محصولات چند رسانه‌ای"
                   className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900"
                 />
               </div>
@@ -678,14 +678,14 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                     updateCrextioConfig({ booksShowcaseCtaText: e.target.value });
                     triggerSuccess();
                   }}
-                  placeholder="ورود به فروشگاه کتب"
+                  placeholder="ورود به کتاب و محصولات چند رسانه‌ای"
                   className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900"
                 />
               </div>
             </div>
 
             <div>
-              <label className="font-bold text-stone-700 block mb-1 text-xs">عنوان اصلی ویترین کتب:</label>
+              <label className="font-bold text-stone-700 block mb-1 text-xs">عنوان اصلی ویترین:</label>
               <input
                 type="text"
                 value={crextioConfig.booksShowcaseTitle || ''}
@@ -693,7 +693,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                   updateCrextioConfig({ booksShowcaseTitle: e.target.value });
                   triggerSuccess();
                 }}
-                placeholder="ویترین جامع کتب، انتشارات و منشورات تخصصی"
+                placeholder="ویترین کتاب و محصولات چند رسانه‌ای"
                 className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-black text-stone-900"
               />
             </div>

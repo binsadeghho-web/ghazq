@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileMenuOpen,
   setMobileMenuOpen,
 }) => {
-  const { currentUser, cartableRequests, rulings, synergyPosts } = useApp();
+  const { currentUser, cartableRequests, rulings, synergyPosts, productsStoreConfig } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const [hoveredTab, setHoveredTab] = useState<NavTabId | null>(null);
 
@@ -100,8 +100,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'products',
-      label: 'محصولات و کتب',
-      subtext: 'کتاب‌های مرجع، موسوعه‌ها و درس‌گفتارها',
+      label: 'کتاب و محصولات چند رسانه‌ای',
+      subtext: 'کتب مرجع، محصولات چندرسانه‌ای و صوت با خرید نسخه دیجیتال یا فیزیکی',
       icon: BookOpen,
       accentColor: 'text-emerald-500 dark:text-emerald-400',
       glowColor: 'rgba(16, 185, 129, 0.2)',
@@ -192,10 +192,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  // Strict Menu Cloaking: Any section with 'none' permission is completely hidden from the sidebar
-  const mainNavItems = allNavCandidates.filter(item =>
-    canViewSection(currentUser, item.id as AppSectionId, rolePolicies)
-  );
+  // Strict Menu Cloaking: Any section with 'none' permission or globally disabled store (for non-officials) is hidden
+  const mainNavItems = allNavCandidates.filter(item => {
+    if (
+      item.id === 'products' &&
+      !isOrganizationalRole(currentUser?.role) &&
+      !productsStoreConfig.isStoreEnabled
+    ) {
+      return false;
+    }
+    return canViewSection(currentUser, item.id as AppSectionId, rolePolicies);
+  });
 
   const showAdminTab = canViewSection(currentUser, 'admin', rolePolicies);
 

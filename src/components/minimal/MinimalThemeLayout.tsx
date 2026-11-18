@@ -175,6 +175,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
     researchMentorships,
     consultants,
     products,
+    productsStoreConfig,
     crextioConfig,
     updateCrextioConfig,
     isAlumniPreview,
@@ -235,15 +236,18 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
     { id: 'SpecializedCounseling', sectionId: 'counseling', label: 'مشاوره تخصصی قضا', icon: Scale },
     { id: 'Courses', sectionId: 'courses', label: 'دوره‌های آموزشی', icon: GraduationCap },
     { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات و تسهیلات', icon: Gift },
-    { id: 'Products', sectionId: 'products', label: 'منشورات و کتب', icon: BookOpen },
+    { id: 'Products', sectionId: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen },
     { id: 'Alumni', sectionId: 'alumni', label: 'بانک دانش‌آموختگان', icon: GraduationCap },
     { id: 'Finance', sectionId: 'finance', label: 'امور مالی', icon: Wallet },
     { id: 'Users', sectionId: 'users', label: 'مدیریت کاربران', icon: Users },
     { id: 'Admin', sectionId: 'admin', label: 'پایش و امنیت', icon: ShieldCheck },
   ];
-  const secondaryNav = allSecondaryNav.filter(item =>
-    canViewSection(currentUser, item.sectionId, rolePolicies)
-  );
+  const secondaryNav = allSecondaryNav.filter(item => {
+    if (item.sectionId === 'products' && !isStaff && !productsStoreConfig.isStoreEnabled) {
+      return false;
+    }
+    return canViewSection(currentUser, item.sectionId, rolePolicies);
+  });
 
   const myRecentCartable = (
     isStaff
@@ -464,11 +468,12 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
           />
         );
       case 'books_showcase':
+        if (!isStaff && !productsStoreConfig.isStoreEnabled) return null;
         return (
           <MinimalShowcaseCard
-            kicker="مرکز نشر نخبگان"
-            title={crextioConfig.booksShowcaseTitle || 'کتب و منشورات تخصصی'}
-            description="موسوعه‌ها، کتب مرجع فقهی و حقوقی با تخفیف ویژه دانش‌آموختگان."
+            kicker="مرکز نشر و رسانه نخبگان"
+            title={crextioConfig.booksShowcaseTitle || 'کتاب و محصولات چند رسانه‌ای'}
+            description="کتب مرجع، بسته‌های چندرسانه‌ای و صوت با امکان خرید نسخه دیجیتال و فیزیکی."
             icon={<BookMarked className="w-4 h-4" />}
             accentTone="amber"
             imageUrl={imgUrl}
@@ -477,7 +482,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
             darkSurface={palette.dark}
             motionEnabled={motionEnabled}
             stats={[{ label: 'اثر ثبت‌شده', value: toPersianNumbers(products.length) }]}
-            actions={[{ label: 'فروشگاه کتب', onClick: () => setActiveNav('Products'), primary: true }]}
+            actions={[{ label: 'کتاب و محصولات چند رسانه‌ای', onClick: () => setActiveNav('Products'), primary: true }]}
           />
         );
       default:

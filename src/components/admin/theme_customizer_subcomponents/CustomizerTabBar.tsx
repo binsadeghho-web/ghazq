@@ -133,7 +133,7 @@ export const CustomizerTabBar: React.FC<CustomizerTabBarProps> = ({
         }`}
       >
         <BookOpen className="w-4 h-4 text-purple-700" />
-        <span>ویترین کتب و انتشارات</span>
+        <span>کتاب و محصولات چند رسانه‌ای</span>
       </button>
 
       <button

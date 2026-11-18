@@ -98,7 +98,7 @@ export const FinancialAuditLedgerModule: React.FC = () => {
         id: `prd_${p.id}`,
         originalId: p.id,
         category: 'products',
-        categoryTitle: 'خرید کتاب و انتشارات',
+        categoryTitle: 'کتاب و محصولات چند رسانه‌ای',
         title: p.productTitle,
         userName: p.userName,
         userPhone: p.userPhone,

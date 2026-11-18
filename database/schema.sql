@@ -281,43 +281,93 @@ CREATE TABLE IF NOT EXISTS `course_enrollments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- ۱۰. جدول محصولات، کتب و انتشارات (Products)
+-- ۱۰. جدول محصولات، کتب و انتشارات چندرسانه‌ای (Products)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `products` (
   `id` BINARY(16) NOT NULL PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
   `subtitle` VARCHAR(255) NULL,
+  `short_description` TEXT NULL,
+  `subject_index` VARCHAR(128) NULL,
   `author_or_presenter` VARCHAR(255) NOT NULL,
   `format` ENUM('book', 'multimedia', 'audio_series') NOT NULL DEFAULT 'book',
   `format_title` VARCHAR(64) NOT NULL,
   `price` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+  `supports_digital` BOOLEAN NOT NULL DEFAULT TRUE,
+  `digital_price` DECIMAL(19,4) NULL,
+  `digital_format_label` VARCHAR(128) NULL,
+  `supports_physical` BOOLEAN NOT NULL DEFAULT TRUE,
+  `physical_price` DECIMAL(19,4) NULL,
+  `physical_format_label` VARCHAR(128) NULL,
+  `delivery_options` JSON NULL,
+  `allowed_payment_method` VARCHAR(32) NOT NULL DEFAULT 'both',
   `description` TEXT NOT NULL,
   `pages_or_duration` VARCHAR(64) NOT NULL,
   `published_year` VARCHAR(10) NOT NULL,
   `publisher` VARCHAR(128) NULL,
+  `isbn` VARCHAR(64) NULL,
   `cover_image` VARCHAR(512) NULL,
+  `gallery_images` JSON NULL,
+  `download_link` VARCHAR(512) NULL,
+  `shipping_mode` VARCHAR(32) NOT NULL DEFAULT 'both',
+  `shipping_cost_type` VARCHAR(32) NOT NULL DEFAULT 'free',
+  `shipping_fixed_fee` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+  `pickup_address_notice` VARCHAR(512) NULL,
+  `stock` INT NOT NULL DEFAULT 20,
+  `display_order` INT NOT NULL DEFAULT 0,
+  `visible_to_customer` BOOLEAN NOT NULL DEFAULT TRUE,
   `is_available` BOOLEAN NOT NULL DEFAULT TRUE,
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  `deleted_at` DATETIME(3) NULL,
+  `deleted_by` VARCHAR(128) NULL,
   `badge_text` VARCHAR(64) NULL,
   `version` INT NOT NULL DEFAULT 1,
   `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  INDEX `idx_format_avail` (`format`, `is_available`)
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX `idx_format_avail` (`format`, `is_available`),
+  INDEX `idx_products_del_order` (`is_deleted`, `is_available`, `display_order`),
+  INDEX `idx_products_fmt_del` (`format`, `is_deleted`, `display_order`),
+  INDEX `idx_products_cust_vis` (`visible_to_customer`, `is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- ۱۱. جدول سفارشات محصولات انتشارات (Product Orders)
+-- ۱۱. جدول سفارشات کتاب و محصولات چند رسانه‌ای (Product Orders)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `product_orders` (
   `id` BINARY(16) NOT NULL PRIMARY KEY,
   `product_id` BINARY(16) NOT NULL,
   `product_title` VARCHAR(255) NOT NULL,
+  `product_format` VARCHAR(32) NOT NULL DEFAULT 'book',
+  `purchase_format` VARCHAR(32) NOT NULL DEFAULT 'digital',
+  `delivery_method` VARCHAR(32) NOT NULL DEFAULT 'digital_instant',
   `user_id` BINARY(16) NOT NULL,
   `user_name` VARCHAR(255) NOT NULL,
   `user_phone` VARCHAR(15) NOT NULL,
+  `user_national_id` VARCHAR(64) NULL,
+  `user_role_title` VARCHAR(128) NULL,
+  `base_amount` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+  `shipping_fee` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
   `amount_paid` DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+  `payment_method` VARCHAR(32) NOT NULL DEFAULT 'online_gateway',
+  `gateway_id` VARCHAR(64) NULL,
+  `gateway_name` VARCHAR(128) NULL,
   `payment_status` ENUM('pending_review', 'confirmed', 'rejected') NOT NULL DEFAULT 'pending_review',
   `tracking_code` VARCHAR(64) NOT NULL,
+  `receipt_file_url` VARCHAR(512) NULL,
+  `receipt_bank_name` VARCHAR(128) NULL,
+  `shipping_address` TEXT NULL,
+  `shipping_notice` VARCHAR(512) NULL,
+  `postal_tracking_code` VARCHAR(128) NULL,
+  `shipping_status` VARCHAR(128) NULL,
+  `admin_note` TEXT NULL,
+  `reviewed_by` VARCHAR(128) NULL,
+  `reviewed_at` DATETIME(3) NULL,
+  `deleted_at` DATETIME(3) NULL,
   `version` INT NOT NULL DEFAULT 1,
   `ordered_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX `idx_porders_user_del` (`user_id`, `deleted_at`, `ordered_at`),
+  INDEX `idx_porders_status_del` (`payment_status`, `deleted_at`, `ordered_at`),
+  INDEX `idx_product_orders_postal` (`postal_tracking_code`),
   CONSTRAINT `fk_porder_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_porder_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -79,6 +79,7 @@ export const MizanLayout: React.FC = () => {
     designTheme,
     setDesignTheme,
     mizanConfig,
+    productsStoreConfig,
     cartableRequests
   } = useApp();
 
@@ -124,7 +125,9 @@ export const MizanLayout: React.FC = () => {
       items: [
         { id: 'courses', label: 'دوره‌ها و کارگاه‌های عالی', icon: GraduationCap, color: '#00848B' },
         { id: 'research', label: 'راهبری پایان‌نامه‌ها', icon: Compass, color: '#A06316' },
-        { id: 'products', label: 'کتب و منشورات حقوقی', icon: BookOpen, color: '#5C3882' }
+        ...(isAdminOrSupervisor || productsStoreConfig.isStoreEnabled
+          ? [{ id: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen, color: '#5C3882' }]
+          : [])
       ]
     },
     {

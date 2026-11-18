@@ -56,7 +56,7 @@ interface CrextioLayoutProps {
 }
 
 export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTheme }) => {
-  const { currentUser, users, switchUserRole, logout, crextioConfig, setDesignTheme, isAlumniPreview, setIsAlumniPreview } = useApp();
+  const { currentUser, users, switchUserRole, logout, crextioConfig, productsStoreConfig, setDesignTheme, isAlumniPreview, setIsAlumniPreview } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -103,7 +103,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'Dashboard', sectionId: 'dashboard', label: 'داشبورد', icon: ShieldCheck },
     { id: 'People', sectionId: 'cartable', label: 'کارتابل', icon: Inbox },
     { id: 'Courses', sectionId: 'courses', label: 'گالری دوره‌ها', icon: BookOpen },
-    { id: 'Products', sectionId: 'products', label: 'ویترین انتشارات', icon: BookOpen },
+    { id: 'Products', sectionId: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen },
     { id: 'Counseling', sectionId: 'counseling', label: 'مشاوره', icon: HeartHandshake },
     { id: 'Research', sectionId: 'research', label: 'راهبری پایان‌نامه‌ها', icon: Compass },
     { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات', icon: Gift },
@@ -116,8 +116,11 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'Setting', label: 'تنظیمات', icon: Settings },
   ];
 
-  // Strict Menu Cloaking: Completely remove any item whose section permission is 'none'
+  // Strict Menu Cloaking & Reform 30 section visibility
   const navItems = allNavCandidates.filter(item => {
+    if (item.sectionId === 'products' && !isStaffMember && !productsStoreConfig.isStoreEnabled) {
+      return false;
+    }
     if (!item.sectionId) return true;
     return canViewSection(currentUser, item.sectionId, rolePolicies);
   });

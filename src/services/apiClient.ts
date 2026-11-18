@@ -397,13 +397,76 @@ class ApiClient {
     });
   }
 
-  // Products endpoints
+  // Products endpoints (Books, Multimedia & Audio Store - Reforms 23-30)
   async getProducts() {
     return this.request<any[]>('/api/products');
   }
 
-  async purchaseProduct(productId: string) {
-    return this.request<any>(`/api/products/${productId}/purchase`, { method: 'POST' });
+  async getProductsStoreConfig() {
+    return this.request<any>('/api/products/store-config');
+  }
+
+  async updateProductsStoreConfig(config: any, expectedVersion?: number) {
+    return this.request<{ success: boolean; config: any }>('/api/products/store-config', {
+      method: 'PUT',
+      body: JSON.stringify({ config, expectedVersion: expectedVersion ?? config?.version }),
+    });
+  }
+
+  async createProduct(productData: any) {
+    return this.request<any>('/api/products', {
+      method: 'POST',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  async updateProduct(productId: string, updates: any, expectedVersion?: number) {
+    return this.request<any>(`/api/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...updates,
+        expectedVersion: expectedVersion ?? updates?.expectedVersion ?? updates?.version,
+      }),
+    });
+  }
+
+  async deleteProduct(productId: string, expectedVersion?: number) {
+    return this.request<{ success: boolean; id: string }>(`/api/products/${productId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ expectedVersion }),
+    });
+  }
+
+  async reorderProducts(orderedIds: string[]) {
+    return this.request<{ success: boolean; orderedIds: string[] }>('/api/products/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ orderedIds }),
+    });
+  }
+
+  async getProductOrders() {
+    return this.request<any[]>('/api/products/orders');
+  }
+
+  async purchaseProduct(productId: string, payload?: any) {
+    return this.request<{ product: any; order: any }>(`/api/products/${productId}/purchase`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    });
+  }
+
+  async reviewProductOrder(
+    orderId: string,
+    status: 'confirmed' | 'rejected',
+    expectedVersion?: number,
+    adminNote?: string,
+    postalTrackingCode?: string,
+    shippingStatus?: string
+  ) {
+    return this.request<{ success: boolean; order: any }>(`/api/products/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, expectedVersion, adminNote, postalTrackingCode, shippingStatus }),
+    });
   }
 
   // Counseling endpoints

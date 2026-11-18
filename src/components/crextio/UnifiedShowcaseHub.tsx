@@ -211,21 +211,21 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
       },
       {
         key: 'books_showcase',
-        shortLabel: 'کتب و منشورات',
-        kicker: 'مرکز نشر نخبگان',
+        shortLabel: 'کتاب و چندرسانه‌ای',
+        kicker: 'مرکز نشر و رسانه نخبگان',
         title:
           crextioConfig.booksShowcaseTitle ||
-          'منشورات، موسوعه‌ها و کتب مرجع فقه و قضا',
+          'کتاب و محصولات چند رسانه‌ای',
         description:
           crextioConfig.booksShowcaseSubtitle ||
-          'تهیه کتب تالیفی اساتید، تقریرات فقهی و مجموعه‌های حقوقی با تخفیف ویژه اعضای مجمع.',
+          'عرضه کتب مرجع، محصولات چندرسانه‌ای و درس‌گفتارهای صوتی با امکان خرید دیجیتال و فیزیکی.',
         highlights: [
           crextioConfig.booksShowcaseDiscountNotice || 'تخفیف ویژه دانش‌آموختگان',
-          products[0]?.title || 'موسوعه‌ها و کتب مرجع تخصصی قضا',
-          'ارسال پستی یا تحویل حضوری در دبیرخانه',
+          products[0]?.title || 'موسوعه‌ها، چندرسانه‌ای و صوت تخصصی قضا',
+          'تحویل آنی دیجیتال و ارسال پستی، پیک یا حضوری در مجتمع',
         ],
         targetNav: 'Products',
-        ctaLabel: 'مشاهده منشورات',
+        ctaLabel: 'مشاهده کتاب و محصولات چند رسانه‌ای',
         icon: BookMarked,
         toneClass: 'text-purple-700 dark:text-purple-400',
         statLabel: `${toPersianNumbers(products.length)} اثر تخصصی`,

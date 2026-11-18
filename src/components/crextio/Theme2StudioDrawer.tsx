@@ -151,7 +151,7 @@ const NAV_TARGET_OPTIONS = [
   { value: 'CounselingGeneral', label: 'مشاوره عمومی' },
   { value: 'SpecializedCounseling', label: 'مشاوره شغلی قضا' },
   { value: 'Welfare', label: 'خدمات رفاهی و وام' },
-  { value: 'Products', label: 'کتب و منشورات' },
+  { value: 'Products', label: 'کتاب و محصولات چند رسانه‌ای' },
   { value: 'Alumni', label: 'بانک نخبگان' },
 ];
 

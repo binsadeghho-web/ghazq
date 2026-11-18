@@ -77,7 +77,7 @@ const SECTION_LABELS: Record<string, string> = {
   welfare_showcase: 'ویترین رفاهیات و تسهیلات',
   multimedia_showcase: 'ویترین درس‌گفتارها',
   bento_grid: 'شبکه جامع خدمات (Bento)',
-  books_showcase: 'ویترین کتب و منشورات',
+  books_showcase: 'کتاب و محصولات چند رسانه‌ای',
 };
 
 const CLASSIC_MINIMAL_KEYS = new Set([
@@ -897,11 +897,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           const ov = crextioConfig.minimalBoxOverrides?.books_showcase;
           return (
             <MinimalShowcaseCard
-              kicker={ov?.kicker || 'مرکز نشر و پژوهش'}
-              title={ov?.title || crextioConfig.booksShowcaseTitle || 'منشورات و کتب مرجع فقه و قضا'}
+              kicker={ov?.kicker || 'مرکز نشر و رسانه'}
+              title={ov?.title || crextioConfig.booksShowcaseTitle || 'کتاب و محصولات چند رسانه‌ای'}
               description={
                 ov?.description ||
-                'دسترسی به کتب علمی، موسوعه‌ها و آثار تألیفی اساتید و دانش‌آموختگان مجمع.'
+                'عرضه کتب تخصصی، محصولات چندرسانه‌ای و صوت با انتخاب نسخه دیجیتال یا فیزیکی.'
               }
               icon={<BookMarked className="w-5 h-5" />}
               accentTone="amber"
@@ -911,7 +911,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
               stats={[{ label: 'اثر ثبت‌شده', value: toPersianNumbers(products.length) }]}
               actions={[
                 {
-                  label: ov?.ctaLabel || 'مشاهده منشورات',
+                  label: ov?.ctaLabel || 'ورود به کتاب و محصولات چند رسانه‌ای',
                   onClick: () => onNavigateTab?.('Products'),
                   primary: true,
                 },

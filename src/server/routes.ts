@@ -64,6 +64,7 @@ export function createMasterRouter(): Router {
         'verdict',
         'cartable_alumni',
         'cartable_officials',
+        'product_receipt',
         'misc',
       ];
 
@@ -73,6 +74,8 @@ export function createMasterRouter(): Router {
         category = 'avatar';
       } else if (rawCategory === 'cartable_official') {
         category = 'cartable_officials';
+      } else if (rawCategory === 'product_receipts') {
+        category = 'product_receipt';
       } else if (validCategories.includes(rawCategory as UploadCategory)) {
         category = rawCategory as UploadCategory;
       }
@@ -83,7 +86,8 @@ export function createMasterRouter(): Router {
         category === 'cartable_officials' ||
         category === 'consultation' ||
         category === 'research' ||
-        category === 'verdict';
+        category === 'verdict' ||
+        category === 'product_receipt';
 
       if (isPrivateCat && !user) {
         return res.status(401).json({
@@ -173,6 +177,8 @@ export function createMasterRouter(): Router {
         verdicts: 'verdict',
         cartable_alumni: 'cartable_alumni',
         cartable_officials: 'cartable_officials',
+        product_receipt: 'product_receipt',
+        product_receipts: 'product_receipt',
       };
 
       const storageKey = catMap[category];
@@ -247,6 +253,30 @@ export function createMasterRouter(): Router {
         });
         if (!canAccessVerdictFile) {
           return res.status(403).json({ error: 'عدم دسترسی: این پیوست مربوط به رأی منتشرنشده است.' });
+        }
+      }
+
+      // Strict BOLA guard for product payment receipts: only order owner or officials
+      if (storageKey === 'product_receipt' && !isOrganizationalUserRole(user.role)) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [rows]: any = await p.query(
+          `SELECT id, user_id
+           FROM product_orders
+           WHERE receipt_file_url LIKE ? AND deleted_at IS NULL
+           LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const ownsReceipt = Array.isArray(rows) && rows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.user_id) ? fromIdBuffer(r.user_id) : String(r.user_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsReceipt) {
+          return res.status(403).json({ error: 'عدم دسترسی: این تصویر فیش متعلق به سفارش‌های شما نیست.' });
         }
       }
 

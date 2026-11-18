@@ -2,201 +2,227 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Product } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
+import { resolveProductCoverUrl } from '../../../data/showcaseImages';
+import { formatTomans, PRODUCT_FORMAT_LABELS } from './productUiHelpers';
 import {
-  BookOpen,
   ZoomIn,
-  User,
-  FileText,
-  Package,
   Eye,
-  Truck,
-  Download,
   ShoppingBag,
   SlidersHorizontal,
   Trash2,
+  ArrowUp,
+  ArrowDown,
+  Images,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
+  index: number;
+  totalCount: number;
   isOfficial: boolean;
   onOpenLightbox: (img: { url: string; title: string; subtitle?: string }) => void;
   onOpenIntro: (product: Product) => void;
   onOpenPurchase: (product: Product) => void;
   onOpenEdit: (product: Product) => void;
   onOpenDelete: (product: Product) => void;
+  onMoveOrder?: (productId: string, direction: 'up' | 'down') => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
+  index,
+  totalCount,
   isOfficial,
   onOpenLightbox,
   onOpenIntro,
   onOpenPurchase,
   onOpenEdit,
   onOpenDelete,
+  onMoveOrder,
 }) => {
-  const isBook = product.format === 'book';
+  const coverUrl = resolveProductCoverUrl(product.coverImage, product.format, index);
+  const galleryCount = Array.isArray(product.galleryImages) ? product.galleryImages.length : 0;
+  const hasDigital = product.supportsDigital !== false;
+  const hasPhysical = Boolean(product.supportsPhysical);
+  const digitalPrice = Number(product.digitalPrice ?? product.price ?? 0);
+  const physicalPrice = Number(product.physicalPrice ?? product.price ?? 0);
 
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      className="glass-card rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col justify-between shadow-lg group transition-all"
+    <motion.article
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.18 }}
+      className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow"
     >
       <div>
-        {/* Cover Image with Lightbox Zoom Click */}
+        {/* 4:3 Editorial Cover */}
         <div
-          onClick={() => {
-            if (product.coverImage) {
-              onOpenLightbox({
-                url: product.coverImage,
-                title: product.title,
-                subtitle: `مؤلف / پدیدآورنده: ${product.authorOrPresenter}`,
-              });
-            }
-          }}
-          className="relative h-48 w-full bg-slate-900 overflow-hidden cursor-pointer group/img"
-          title="جهت مشاهده تصویر جلد در ابعاد کامل کلیک کنید"
+          onClick={() =>
+            onOpenLightbox({
+              url: coverUrl,
+              title: product.title,
+              subtitle: `پدیدآورنده: ${product.authorOrPresenter}`,
+            })
+          }
+          className="relative aspect-[4/3] w-full bg-slate-100 dark:bg-slate-950 overflow-hidden cursor-pointer group/img"
         >
-          {product.coverImage ? (
-            <>
-              <img
-                src={product.coverImage}
-                alt={product.title}
-                className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500 opacity-90"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
-                <ZoomIn className="w-6 h-6 text-amber-400 drop-shadow" />
-                <span className="text-xs font-bold bg-black/60 px-2.5 py-1 rounded-xl backdrop-blur-sm">
-                  مشاهده تصویر کامل اثر
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-amber-950 via-slate-900 to-stone-950 flex items-center justify-center">
-              <BookOpen className="w-16 h-16 text-amber-500/20" />
-            </div>
-          )}
+          <img
+            src={coverUrl}
+            alt={product.title}
+            className="w-full h-full object-cover group-hover/img:scale-[1.03] transition-transform duration-500"
+          />
 
-          {/* Format Badge */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10 pointer-events-none">
-            <span
-              className={`px-2.5 py-1 rounded-xl text-[10px] font-black border ${
-                isBook
-                  ? 'bg-amber-500/90 text-stone-950 border-amber-400'
-                  : 'bg-indigo-600/90 text-white border-indigo-400'
-              }`}
-            >
-              {isBook ? '📚 کتاب چاپی (پست سفارشی)' : '🎧 محصول دیجیتال (دانلود آنی)'}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
+
+          <div className="absolute bottom-3 right-3 left-3 flex items-end justify-between gap-2 text-white pointer-events-none">
+            <span className="text-[11px] font-bold truncate">
+              {product.authorOrPresenter}
             </span>
+            <div className="flex items-center gap-2 shrink-0 text-[11px]">
+              {galleryCount > 1 && (
+                <span className="flex items-center gap-1 bg-black/55 backdrop-blur-sm px-2 py-0.5 rounded-lg tabular-nums">
+                  <Images className="w-3 h-3" />
+                  {toPersianNumbers(galleryCount)}
+                </span>
+              )}
+              <span className="bg-black/55 backdrop-blur-sm px-2 py-0.5 rounded-lg flex items-center gap-1 opacity-85 group-hover/img:opacity-100">
+                <ZoomIn className="w-3 h-3 text-amber-300" />
+              </span>
+            </div>
           </div>
 
           {product.badgeText && (
-            <div className="absolute top-3 left-3 z-10 pointer-events-none">
-              <span className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-emerald-500 text-stone-950 shadow">
+            <div className="absolute top-3 right-3 pointer-events-none">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-amber-500 text-stone-950 shadow-xs">
                 {product.badgeText}
               </span>
             </div>
           )}
 
-          {/* Author Badge */}
-          <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 text-white pointer-events-none max-w-[85%]">
-            <User className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold truncate">{product.authorOrPresenter}</span>
-          </div>
+          {product.isOwned && (
+            <div className="absolute top-3 left-3 pointer-events-none">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>در کتابخانه شما</span>
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Body Content */}
-        <div className="p-5 space-y-3.5">
+        {/* Clean Metadata & Body (Zero pill-badge clutter) */}
+        <div className="p-5 space-y-2.5">
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5">
+            <span className="text-amber-700 dark:text-amber-400">
+              {PRODUCT_FORMAT_LABELS[product.format]}
+            </span>
+            {product.subjectIndex && (
+              <>
+                <span>·</span>
+                <span className="truncate">{product.subjectIndex}</span>
+              </>
+            )}
+            <span>·</span>
+            <span className="tabular-nums">{toPersianNumbers(product.publishedYear)}</span>
+          </div>
+
           <h3
             onClick={() => onOpenIntro(product)}
-            className="text-base font-black text-slate-900 dark:text-white line-clamp-2 leading-relaxed min-h-[48px] cursor-pointer hover:text-amber-600 transition-colors"
-            title="کلیک جهت مطالعه معرفی مشهور و سرفصل‌ها"
+            className="text-base font-black text-slate-900 dark:text-white line-clamp-2 leading-snug cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
           >
             {product.title}
           </h3>
 
-          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-            {product.description}
+          <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+            {product.shortDescription || product.description}
           </p>
 
-          <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/60 dark:border-slate-800 font-medium">
-            <div className="flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-amber-500" />
-              <span>{toPersianNumbers(product.pagesOrDuration)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Package className="w-4 h-4 text-sky-500" />
-              <span>سال انتشار: {toPersianNumbers(product.publishedYear)}</span>
-            </div>
+          {/* Dual Format Price Grid */}
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-xs">
+            {hasDigital && (
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/70 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 block">نسخه دیجیتال (PDF / فایل)</span>
+                <strong className="text-slate-900 dark:text-white font-black tabular-nums block mt-0.5">
+                  {formatTomans(digitalPrice)}
+                </strong>
+              </div>
+            )}
+            {hasPhysical && (
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/70 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 block">نسخه فیزیکی (پست / حضوری)</span>
+                <strong className="text-slate-900 dark:text-white font-black tabular-nums block mt-0.5">
+                  {formatTomans(physicalPrice)}
+                </strong>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="p-5 pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-900/30">
-        <div>
-          <span className="text-[10px] text-slate-400 block font-medium">مبلغ اثر:</span>
-          <span className="text-xs font-black text-slate-900 dark:text-white">
-            {product.price > 0 ? `${toPersianNumbers(product.price.toLocaleString('fa-IR'))} تومان` : 'رایگان'}
-          </span>
-        </div>
-
+      <div className="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          {/* Intro button (معرفی اثر) */}
           <button
+            type="button"
             onClick={() => onOpenIntro(product)}
-            className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5 text-amber-500" />
-            <span>معرفی اثر</span>
+            <span>معرفی و گالری</span>
           </button>
 
-          {product.isOwned ? (
-            <button
-              onClick={() => {
-                if (isBook) {
-                  alert('کتاب چاپی شما با پست پیشتاز به آدرس ثبت‌شده در پروفایل شما در حال ارسال است.');
-                } else {
-                  alert(`لینک دانلود مستقیم اثر: ${product.downloadLink || 'https://cdn.feqh-ghaza.ir/download'}`);
-                }
-              }}
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md cursor-pointer"
-            >
-              {isBook ? <Truck className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
-              <span>{isBook ? 'پیگیری مرسوله پستی' : 'دانلود برخط اثر'}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => onOpenPurchase(product)}
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>خرید و دریافت اثر</span>
-            </button>
-          )}
-
-          {/* Official Management Actions */}
-          {isOfficial && (
-            <div className="flex items-center gap-1 border-r border-slate-300 dark:border-slate-700 pr-1 mr-0.5">
-              <button
-                onClick={() => onOpenEdit(product)}
-                className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                title="ویرایش کامل اثر"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => onOpenDelete(product)}
-                className="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                title="حذف منطقی اثر (نیازمند تایید پین پیامکی)"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => onOpenPurchase(product)}
+            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>{product.isOwned ? 'سفارش نسخه دیگر' : 'خرید و دریافت'}</span>
+          </button>
         </div>
+
+        {isOfficial && (
+          <div className="flex items-center gap-0.5">
+            {onMoveOrder && (
+              <>
+                <button
+                  type="button"
+                  disabled={index === 0}
+                  onClick={() => onMoveOrder(product.id, 'up')}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                  title="انتقال به جلو"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={index >= totalCount - 1}
+                  onClick={() => onMoveOrder(product.id, 'down')}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                  title="انتقال به عقب"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => onOpenEdit(product)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+              title="ویرایش اثر"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenDelete(product)}
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+              title="حذف نرم اثر"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
-    </motion.div>
+    </motion.article>
   );
 };

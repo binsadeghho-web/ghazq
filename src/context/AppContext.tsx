@@ -7,6 +7,7 @@ import {
   CourseEnrollment,
   Product,
   ProductOrder,
+  ProductsStoreConfig,
   Consultant,
   CounselingRequest,
   ResearchMentorship,
@@ -111,10 +112,20 @@ export interface AppContextType {
 
   // Product methods
   productOrders: ProductOrder[];
-  purchaseProduct: (productId: string, orderDetails?: Partial<ProductOrder>) => Promise<void>;
-  reviewProductOrder: (orderId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
-  addProduct: (product: Omit<Product, 'id' | 'isOwned'>) => void;
-  updateProduct: (productId: string, updates: Partial<Product>) => void;
+  productsStoreConfig: ProductsStoreConfig;
+  updateProductsStoreConfig: (updates: Partial<ProductsStoreConfig>) => Promise<ProductsStoreConfig>;
+  purchaseProduct: (productId: string, orderDetails?: any) => Promise<{ product: Product; order: ProductOrder }>;
+  reviewProductOrder: (
+    orderId: string,
+    status: 'confirmed' | 'rejected',
+    adminNote?: string,
+    postalTrackingCode?: string,
+    shippingStatus?: string
+  ) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'isOwned'>) => Promise<Product>;
+  updateProduct: (productId: string, updates: Partial<Product>) => Promise<Product | void>;
+  softDeleteProduct: (productId: string) => Promise<void>;
+  reorderProducts: (orderedIds: string[]) => Promise<void>;
 
   // Counseling methods
   bookCounseling: (data: Omit<CounselingRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
@@ -386,10 +397,14 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     // Products
     products: products.products,
     productOrders: products.productOrders,
+    productsStoreConfig: products.productsStoreConfig,
+    updateProductsStoreConfig: products.updateProductsStoreConfig,
     purchaseProduct: products.purchaseProduct,
     reviewProductOrder: products.reviewProductOrder,
     addProduct: products.addProduct,
     updateProduct: products.updateProduct,
+    softDeleteProduct: products.softDeleteProduct,
+    reorderProducts: products.reorderProducts,
 
     // Counseling
     consultants: counseling.consultants,

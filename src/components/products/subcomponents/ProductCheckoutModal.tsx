@@ -1,436 +1,630 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Product } from '../../../types';
+import { Product, ProductOrder, ProductsStoreConfig, User } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
+import { api } from '../../../services/apiClient';
+import { resolveProductCoverUrl } from '../../../data/showcaseImages';
+import {
+  DELIVERY_METHOD_LABELS,
+  formatTomans,
+  getEffectiveDeliveryOptions,
+} from './productUiHelpers';
 import {
   X,
   Truck,
+  Building2,
+  Send,
+  FileDown,
   Package,
   UploadCloud,
   CreditCard,
   CheckCheck,
+  UserCheck,
+  AlertCircle,
 } from 'lucide-react';
-
-const SAMPLE_RECEIPT_IMAGE = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=60';
 
 interface ProductCheckoutModalProps {
   product: Product | null;
+  currentUser: User | null;
+  storeConfig: ProductsStoreConfig;
   onClose: () => void;
-  currentUserAddress?: string;
-  onSubmitPurchase: (orderData: {
-    fulfillmentChoice?: 'postal' | 'pickup';
-    shippingFee: number;
-    shippingNotice: string;
+  onSubmitPurchase: (payload: {
+    purchaseFormat: 'digital' | 'physical';
+    deliveryMethod?: 'complex_pickup' | 'postal' | 'courier' | 'digital_instant';
+    paymentMethod: 'online_gateway' | 'bank_receipt';
+    gatewayId?: string;
     shippingAddress?: string;
-  }) => Promise<void>;
+    receiptFileUrl?: string;
+    receiptBankName?: string;
+    receiptTrackingCode?: string;
+  }) => Promise<{ product: Product; order: ProductOrder }>;
 }
 
 export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
   product,
+  currentUser,
+  storeConfig,
   onClose,
-  currentUserAddress,
   onSubmitPurchase,
 }) => {
-  const [buyStep, setBuyStep] = useState<1 | 2 | 3>(1);
-  const [buyTermsAccepted, setBuyTermsAccepted] = useState(false);
-  const [buyPaymentMethod, setBuyPaymentMethod] = useState<'online_gateway' | 'bank_receipt'>('bank_receipt');
-  const [fulfillmentChoice, setFulfillmentChoice] = useState<'postal' | 'pickup'>('postal');
-
-  // Bank receipt form state
-  const [receiptTrackingCode, setReceiptTrackingCode] = useState('');
-  const [receiptBankName, setReceiptBankName] = useState('بانک ملی ایران (واریز پایا)');
-  const [receiptFilePreview, setReceiptFilePreview] = useState<string>(SAMPLE_RECEIPT_IMAGE);
-  const [receiptFileName, setReceiptFileName] = useState<string>('receipt_scan_national_bank.jpg');
-  const [receiptFileSize, setReceiptFileSize] = useState<string>('۲۴۵ کیلوبایت');
-  const [shippingAddress, setShippingAddress] = useState(currentUserAddress || 'تهران، خیابان ولیعصر، پلاک ۱۲۰، کد پستی ۱۹۸۸۷');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const receiptFileInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [purchaseFormat, setPurchaseFormat] = useState<'digital' | 'physical'>('digital');
+  const [deliveryMethod, setDeliveryMethod] = useState<'complex_pickup' | 'postal' | 'courier'>('postal');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'online_gateway' | 'bank_receipt'>('online_gateway');
+  const [selectedGatewayId, setSelectedGatewayId] = useState<string>('');
+  const [receiptBankName, setReceiptBankName] = useState('');
+  const [receiptFileUrl, setReceiptFileUrl] = useState('');
+  const [receiptFileName, setReceiptFileName] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [completedOrder, setCompletedOrder] = useState<ProductOrder | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (product) {
-      setBuyStep(1);
-      setBuyTermsAccepted(false);
-      const policy = product.allowedPaymentMethod || 'both';
-      setBuyPaymentMethod(policy === 'gateway_only' ? 'online_gateway' : 'bank_receipt');
-      setReceiptTrackingCode(`PRD-TRX-${Math.floor(1000000 + Math.random() * 9000000)}`);
+    if (!product) return;
+    setStep(1);
+    setErrorMsg(null);
+    setCompletedOrder(null);
+    setReceiptFileUrl('');
+    setReceiptFileName('');
 
-      const mode = product.shippingMode || 'both';
-      if (mode === 'pickup_only') {
-        setFulfillmentChoice('pickup');
-      } else {
-        setFulfillmentChoice('postal');
-      }
-      if (currentUserAddress) {
-        setShippingAddress(currentUserAddress);
-      }
-    }
-  }, [product, currentUserAddress]);
+    const defaultFmt: 'digital' | 'physical' =
+      product.supportsDigital !== false ? 'digital' : 'physical';
+    setPurchaseFormat(defaultFmt);
+
+    const effDelivery = getEffectiveDeliveryOptions(product, storeConfig.defaultDeliveryOptions);
+    if (effDelivery.postal.enabled) setDeliveryMethod('postal');
+    else if (effDelivery.complexPickup.enabled) setDeliveryMethod('complex_pickup');
+    else setDeliveryMethod('courier');
+
+    setShippingAddress(currentUser?.residentialAddress || '');
+
+    const policy = product.allowedPaymentMethod || 'both';
+    setPaymentMethod(policy === 'receipt_only' ? 'bank_receipt' : 'online_gateway');
+
+    const activeGws = (storeConfig.gateways || []).filter(g => g.isActive);
+    setSelectedGatewayId(activeGws[0]?.id || '');
+    setReceiptBankName(storeConfig.bankName || 'بانک ملی ایران');
+  }, [product, currentUser?.residentialAddress, storeConfig]);
 
   if (!product) return null;
 
-  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const hasDigital = product.supportsDigital !== false;
+  const hasPhysical = Boolean(product.supportsPhysical);
+  const effDelivery = getEffectiveDeliveryOptions(product, storeConfig.defaultDeliveryOptions);
+  const activeGateways = (storeConfig.gateways || []).filter(g => g.isActive);
+  const paymentPolicy = product.allowedPaymentMethod || 'both';
+
+  const basePrice =
+    purchaseFormat === 'digital'
+      ? Math.max(0, Number(product.digitalPrice ?? product.price ?? 0))
+      : Math.max(0, Number(product.physicalPrice ?? product.price ?? 0));
+
+  const selectedDeliveryOpt =
+    deliveryMethod === 'complex_pickup'
+      ? effDelivery.complexPickup
+      : deliveryMethod === 'courier'
+      ? effDelivery.courier
+      : effDelivery.postal;
+
+  const shippingFee = purchaseFormat === 'physical' ? Math.max(0, Number(selectedDeliveryOpt.fee || 0)) : 0;
+  const grandTotal = basePrice + shippingFee;
+
+  const handleUploadReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setReceiptFileName(file.name);
-    const sizeKb = Math.round(file.size / 1024);
-    setReceiptFileSize(`${toPersianNumbers(sizeKb)} کیلوبایت`);
-    const reader = new FileReader();
-    reader.onload = event => {
-      if (typeof event.target?.result === 'string') {
-        setReceiptFilePreview(event.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleFinalSubmit = async () => {
     try {
-      setIsSubmitting(true);
-      let shippingFee = 0;
-      let shippingNotice = '';
-      if (product.format === 'book') {
-        if (fulfillmentChoice === 'pickup') {
-          shippingFee = 0;
-          shippingNotice = 'تحویل حضوری در محل دبیرخانه انتشارات مرکز';
-        } else {
-          const costType = product.shippingCostType || 'free';
-          if (costType === 'free') {
-            shippingFee = 0;
-            shippingNotice = 'ارسال پستی رایگان سراسری به عهده مرکز';
-          } else if (costType === 'fixed') {
-            shippingFee = product.shippingFixedFee || 50000;
-            shippingNotice = `پست پیشتاز با مبلغ ثابت ${toPersianNumbers(shippingFee.toLocaleString('fa-IR'))} تومان`;
-          } else {
-            shippingFee = 0;
-            shippingNotice = 'هزینه ارسال پستی پس از ثبت سفارش بر اساس وزن و شهر مقصد استعلام و اعلام می‌گردد.';
-          }
-        }
-      }
-
-      await onSubmitPurchase({
-        fulfillmentChoice: product.format === 'book' ? fulfillmentChoice : undefined,
-        shippingFee,
-        shippingNotice,
-        shippingAddress: fulfillmentChoice === 'postal' ? shippingAddress : undefined,
-      });
-      setBuyStep(3);
+      setUploadingReceipt(true);
+      setErrorMsg(null);
+      const res = await api.uploadFile(file, 'product_receipt');
+      setReceiptFileUrl(res.url);
+      setReceiptFileName(file.name);
     } catch (err: any) {
-      alert(`خطا در ثبت سفارش: ${err.message}`);
+      setErrorMsg(err?.message || 'خطا در بارگذاری تصویر فیش بانکی');
     } finally {
-      setIsSubmitting(false);
+      setUploadingReceipt(false);
+      if (receiptInputRef.current) receiptInputRef.current.value = '';
     }
   };
 
+  const handleNextToStep2 = () => {
+    setErrorMsg(null);
+    if (purchaseFormat === 'physical' && (deliveryMethod === 'postal' || deliveryMethod === 'courier')) {
+      if (shippingAddress.trim().length < 6) {
+        setErrorMsg('برای ارسال پستی یا پیک، وارد کردن نشانی دقیق دریافت‌کننده الزامی است.');
+        return;
+      }
+    }
+    setStep(2);
+  };
+
+  const handleFinalSubmit = async () => {
+    setErrorMsg(null);
+    if (paymentMethod === 'bank_receipt' && !receiptFileUrl) {
+      setErrorMsg('لطفاً ابتدا تصویر فیش واریزی را بارگذاری نمایید.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await onSubmitPurchase({
+        purchaseFormat,
+        deliveryMethod: purchaseFormat === 'digital' ? 'digital_instant' : deliveryMethod,
+        paymentMethod,
+        gatewayId: paymentMethod === 'online_gateway' ? selectedGatewayId : undefined,
+        shippingAddress:
+          purchaseFormat === 'physical' && (deliveryMethod === 'postal' || deliveryMethod === 'courier')
+            ? shippingAddress.trim()
+            : undefined,
+        receiptFileUrl: paymentMethod === 'bank_receipt' ? receiptFileUrl : undefined,
+        receiptBankName: paymentMethod === 'bank_receipt' ? receiptBankName.trim() : undefined,
+      });
+      setCompletedOrder(res.order);
+      setStep(3);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'خطا در ثبت نهایی سفارش');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const coverUrl = resolveProductCoverUrl(product.coverImage, product.format);
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+        dir="rtl"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
           onClick={e => e.stopPropagation()}
+          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
         >
-          <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-[11px] text-amber-400 font-bold block mb-0.5">
-                مرحله {toPersianNumbers(buyStep)} از ۳: {buyStep === 1 ? 'بازبینی اثر و شرایط تحویل' : buyStep === 2 ? 'تکمیل مشخصات و شیوه پرداخت' : 'تایید سفارش و دریافت'}
+          {/* Header */}
+          <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
+            <div className="min-w-0">
+              <span className="text-[11px] text-amber-400 font-bold block">
+                مرحله {toPersianNumbers(step)} از ۳ ·{' '}
+                {step === 1
+                  ? 'انتخاب نوع نسخه، روش تحویل و تایید مبلغ'
+                  : step === 2
+                  ? 'بازبینی مشخصات خریدار و پرداخت از درگاه یا فیش'
+                  : 'تایید نهایی و دریافت کد رهگیری سفارش'}
               </span>
-              <h3 className="text-base sm:text-lg font-black text-white truncate max-w-md">
-                {product.title}
-              </h3>
+              <h3 className="text-base font-black text-white truncate">{product.title}</h3>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto space-y-5 flex-1">
-            {buyStep === 1 && (
+          <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+            {errorMsg && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {/* STEP 1 */}
+            {step === 1 && (
               <div className="space-y-5">
-                {product.coverImage && (
-                  <div className="w-full h-44 rounded-2xl overflow-hidden relative shadow-md">
-                    <img src={product.coverImage} alt={product.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-between p-4 text-white">
-                      <span className="text-xs font-bold">مؤلف: {product.authorOrPresenter}</span>
-                      <span className="text-xs font-black bg-amber-500 text-stone-950 px-3 py-1 rounded-xl">
-                        {product.format === 'book' ? 'ارسال پستی پیشتاز' : 'دانلود آنی برخط'}
-                      </span>
-                    </div>
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  <img src={coverUrl} alt={product.title} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <strong className="text-sm font-black text-slate-900 dark:text-white block truncate">
+                      {product.title}
+                    </strong>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">
+                      {product.authorOrPresenter}
+                    </span>
                   </div>
-                )}
+                </div>
 
-                {/* Price and Shipping Fee Summary Box */}
-                {(() => {
-                  let calcShipping = 0;
-                  if (product.format === 'book' && fulfillmentChoice === 'postal') {
-                    if (product.shippingCostType === 'fixed') {
-                      calcShipping = product.shippingFixedFee || 50000;
-                    }
-                  }
-                  const grandTotal = product.price + calcShipping;
-
-                  return (
-                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <div>
-                        <span className="text-amber-800 dark:text-amber-300 font-bold block">مبلغ نهایی قابل پرداخت سفارش:</span>
-                        <strong className="text-amber-600 dark:text-amber-400 text-lg font-black">
-                          {grandTotal > 0 ? `${toPersianNumbers(grandTotal.toLocaleString('fa-IR'))} تومان` : 'رایگان'}
-                        </strong>
-                        {calcShipping > 0 && (
-                          <span className="text-[10px] text-slate-500 block">
-                            (قیمت اثر: {toPersianNumbers(product.price.toLocaleString('fa-IR'))} + هزینه پست: {toPersianNumbers(calcShipping.toLocaleString('fa-IR'))} تومان)
+                {/* Digital vs Physical Selection */}
+                <div className="space-y-2.5">
+                  <label className="block font-black text-slate-900 dark:text-white text-xs">
+                    ۱. انتخاب نوع دریافت و خرید اثر:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {hasDigital && (
+                      <button
+                        type="button"
+                        onClick={() => setPurchaseFormat('digital')}
+                        className={`text-right p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                          purchaseFormat === 'digital'
+                            ? 'border-emerald-500 bg-emerald-500/10'
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <FileDown className="w-4 h-4 text-emerald-500" />
+                            <span>نسخه دیجیتال (PDF / فایل)</span>
                           </span>
-                        )}
-                      </div>
-                      <div className="text-left text-slate-500 font-medium">
-                        {product.format === 'book'
-                          ? fulfillmentChoice === 'postal'
-                            ? product.shippingCostType === 'free'
-                              ? 'ارسال پستی پیشتاز (رایگان به عهده مرکز)'
-                              : product.shippingCostType === 'fixed'
-                              ? 'شامل هزینه پست پیشتاز ثابت'
-                              : 'استعلام مجزای هزینه پست پس از ثبت'
-                            : 'تحویل حضوری در محل مرکز'
-                          : 'دانلود دیجیتال و دسترسی برخط'}
-                      </div>
-                    </div>
-                  );
-                })()}
+                        </div>
+                        <span className="text-[11px] text-slate-500 block">
+                          {product.digitalFormatLabel || 'دانلود و دسترسی آنی'}
+                        </span>
+                        <strong className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums block mt-2">
+                          {formatTomans(product.digitalPrice ?? product.price)}
+                        </strong>
+                      </button>
+                    )}
 
-                {/* Book Shipping & Fulfillment Selection */}
-                {product.format === 'book' && (
-                  <div className="space-y-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                    <label className="block text-xs font-black text-slate-900 dark:text-white">
-                      انتخاب شیوه تحویل و دریافت کتاب چاپی:
+                    {hasPhysical && (
+                      <button
+                        type="button"
+                        onClick={() => setPurchaseFormat('physical')}
+                        className={`text-right p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                          purchaseFormat === 'physical'
+                            ? 'border-amber-500 bg-amber-500/10'
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Package className="w-4 h-4 text-amber-500" />
+                            <span>نسخه فیزیکی</span>
+                          </span>
+                          <span className="text-[10px] text-slate-500 tabular-nums">
+                            موجودی: {toPersianNumbers(product.stock ?? 0)}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 block">
+                          {product.physicalFormatLabel || 'ارسال فیزیکی / تحویل حضوری'}
+                        </span>
+                        <strong className="text-sm font-black text-amber-600 dark:text-amber-400 tabular-nums block mt-2">
+                          {formatTomans(product.physicalPrice ?? product.price)}
+                        </strong>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Physical Delivery Choices */}
+                {purchaseFormat === 'physical' && (
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <label className="block font-black text-slate-900 dark:text-white">
+                      ۲. انتخاب شیوه تحویل نسخه فیزیکی (هزینه ارسال به مبلغ کل اضافه می‌شود):
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {(product.shippingMode === 'both' || product.shippingMode === 'postal_only' || !product.shippingMode) && (
-                        <div
-                          onClick={() => setFulfillmentChoice('postal')}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                            fulfillmentChoice === 'postal'
-                              ? 'bg-amber-500/15 border-amber-500 font-bold text-slate-900 dark:text-white shadow-xs'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Truck className="w-4 h-4 text-amber-500" />
-                            <span className="font-extrabold">ارسال با پست پیشتاز</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 font-normal">
-                            ارسال به آدرس پستی ثبت‌شده در سراسر کشور
-                          </p>
-                        </div>
-                      )}
-
-                      {(product.shippingMode === 'both' || product.shippingMode === 'pickup_only') && (
-                        <div
-                          onClick={() => setFulfillmentChoice('pickup')}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                            fulfillmentChoice === 'pickup'
-                              ? 'bg-amber-500/15 border-amber-500 font-bold text-slate-900 dark:text-white shadow-xs'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Package className="w-4 h-4 text-emerald-500" />
-                            <span className="font-extrabold">تحویل حضوری در محل مرکز</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 font-normal">
-                            مراجعه به دبیرخانه انتشارات مرکز بدون هزینه پستی
-                          </p>
-                        </div>
-                      )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {[
+                        {
+                          key: 'complex_pickup' as const,
+                          opt: effDelivery.complexPickup,
+                          icon: <Building2 className="w-4 h-4 text-emerald-500" />,
+                        },
+                        {
+                          key: 'postal' as const,
+                          opt: effDelivery.postal,
+                          icon: <Truck className="w-4 h-4 text-amber-500" />,
+                        },
+                        {
+                          key: 'courier' as const,
+                          opt: effDelivery.courier,
+                          icon: <Send className="w-4 h-4 text-sky-500" />,
+                        },
+                      ]
+                        .filter(item => item.opt.enabled)
+                        .map(item => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setDeliveryMethod(item.key)}
+                            className={`text-right p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                              deliveryMethod === item.key
+                                ? 'border-amber-500 bg-white dark:bg-slate-900 shadow-xs'
+                                : 'border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white">
+                              {item.icon}
+                              <span>{item.opt.label || DELIVERY_METHOD_LABELS[item.key]}</span>
+                            </div>
+                            <strong className="block mt-1.5 text-amber-600 dark:text-amber-400 font-black tabular-nums">
+                              {item.opt.fee === 0 ? 'رایگان' : `+ ${formatTomans(item.opt.fee)}`}
+                            </strong>
+                            {item.opt.notice && (
+                              <span className="block mt-1 text-[10px] text-slate-500 leading-relaxed">
+                                {item.opt.notice}
+                              </span>
+                            )}
+                          </button>
+                        ))}
                     </div>
 
-                    {fulfillmentChoice === 'postal' && (
-                      <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-slate-800">
-                        <label className="block text-xs font-black text-slate-800 dark:text-slate-200">
-                          آدرس پستی دقیق جهت ارسال مرسوله:
+                    {(deliveryMethod === 'postal' || deliveryMethod === 'courier') && (
+                      <div className="pt-2">
+                        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                          نشانی دقیق پستی / آدرس تحویل مرسوله:
                         </label>
                         <textarea
                           rows={2}
                           value={shippingAddress}
                           onChange={e => setShippingAddress(e.target.value)}
-                          placeholder="استان، شهر، خیابان، پلاک، واحد، کد پستی ۱۰ رقمی..."
-                          className="w-full p-3 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                          placeholder="استان، شهر، خیابان، کوچه، پلاک، کد پستی..."
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
                         />
-                        <div className="p-2.5 bg-amber-500/10 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-semibold">
-                          {product.shippingCostType === 'free'
-                            ? '✨ هزینه پست پیشتاز: رایگان (ارسال به عهده مرکز)'
-                            : product.shippingCostType === 'fixed'
-                            ? `📦 هزینه ثابت پست پیشتاز: ${toPersianNumbers((product.shippingFixedFee || 50000).toLocaleString('fa-IR'))} تومان (در جمع کل لحاظ شد)`
-                            : '📋 هزینه پست پس از ثبت سفارش بر اساس وزن و شهر مقصد استعلام و به شما اعلام می‌گردد.'}
-                        </div>
-                      </div>
-                    )}
-
-                    {fulfillmentChoice === 'pickup' && (
-                      <div className="p-3 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 rounded-xl text-xs space-y-1 border border-emerald-500/20">
-                        <span className="font-extrabold block">آدرس و محل تحویل حضوری:</span>
-                        <p className="text-[11px]">
-                          {product.pickupAddressNotice || 'قم، خیابان معلم، مجتمع نخبگان فقه و قضا، طبقه دوم، دبیرخانه تحویل حضوری'}
-                        </p>
-                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-bold mt-1">
-                          ساعات مراجعه حضوری: شنبه تا چهارشنبه از ساعت ۰۸:۰۰ الی ۱۴:۳۰
-                        </span>
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={buyTermsAccepted}
-                      onChange={e => setBuyTermsAccepted(e.target.checked)}
-                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 mt-0.5 cursor-pointer"
-                    />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
-                      اینجانب صحت اطلاعات سفارش و آدرس پستی / مشخصات دریافت اثر را تایید می‌نمایم.
+                {/* Total Price Box */}
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300 block">
+                      مبلغ تاییدشده جهت پرداخت:
                     </span>
-                  </label>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 tabular-nums">
+                      قیمت اثر: {formatTomans(basePrice)}
+                      {shippingFee > 0 ? ` + هزینه ارسال: ${formatTomans(shippingFee)}` : ''}
+                    </div>
+                  </div>
+                  <strong className="text-lg font-black text-amber-700 dark:text-amber-400 tabular-nums">
+                    {formatTomans(grandTotal)}
+                  </strong>
                 </div>
               </div>
             )}
 
-            {buyStep === 2 && (
+            {/* STEP 2 */}
+            {step === 2 && (
               <div className="space-y-5">
-                <div className="space-y-3">
-                  <label className="block text-xs font-black text-slate-800 dark:text-slate-200">
-                    انتخاب شیوه پرداخت سفارش:
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div
-                      onClick={() => setBuyPaymentMethod('bank_receipt')}
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                        buyPaymentMethod === 'bank_receipt'
-                          ? 'bg-amber-500/15 border-amber-500 shadow-md text-amber-950 dark:text-amber-200 font-bold'
-                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600'
-                      }`}
-                    >
-                      <UploadCloud className="w-4 h-4 text-amber-500 mb-1" />
-                      <span className="font-extrabold text-xs block">واریز کارت به کارت / فیش بانکی</span>
-                      <span className="text-[11px] opacity-75 font-normal">بارگذاری تصویر فیش واریزی</span>
+                {/* User Profile Review */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
+                    <UserCheck className="w-4 h-4 text-emerald-500" />
+                    <span>مشخصات ثبت‌شده شما برای صدور فاکتور و رهگیری:</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">نام و نام خانوادگی:</span>
+                      <strong className="text-slate-900 dark:text-white">{currentUser?.fullName || 'کاربر سامانه'}</strong>
                     </div>
-
-                    <div
-                      onClick={() => setBuyPaymentMethod('online_gateway')}
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                        buyPaymentMethod === 'online_gateway'
-                          ? 'bg-amber-500/15 border-amber-500 shadow-md text-amber-950 dark:text-amber-200 font-bold'
-                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600'
-                      }`}
-                    >
-                      <CreditCard className="w-4 h-4 text-amber-500 mb-1" />
-                      <span className="font-extrabold text-xs block">درگاه پرداخت الکترونیک شتاب</span>
-                      <span className="text-[11px] opacity-75 font-normal">تایید آنی و دسترسی فوری</span>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">کد ملی / شناسه:</span>
+                      <strong className="font-mono tabular-nums text-slate-900 dark:text-white">
+                        {toPersianNumbers(currentUser?.nationalId || '—')}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">شماره تماس:</span>
+                      <strong className="font-mono tabular-nums text-slate-900 dark:text-white">
+                        {toPersianNumbers(currentUser?.phone || '—')}
+                      </strong>
                     </div>
                   </div>
+                  <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-slate-600 dark:text-slate-400">
+                      انتخاب شما: <strong>{purchaseFormat === 'digital' ? 'نسخه دیجیتال' : 'نسخه فیزیکی'}</strong>
+                      {purchaseFormat === 'physical' ? ` (${DELIVERY_METHOD_LABELS[deliveryMethod]})` : ''}
+                    </span>
+                    <strong className="text-sm font-black text-amber-600 dark:text-amber-400 tabular-nums">
+                      جمع کل قابل پرداخت: {formatTomans(grandTotal)}
+                    </strong>
+                  </div>
+                </div>
 
-                  {buyPaymentMethod === 'bank_receipt' ? (
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">کد رهگیری فیش:</label>
-                          <input
-                            type="text"
-                            value={receiptTrackingCode}
-                            onChange={e => setReceiptTrackingCode(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">بانک مبدأ:</label>
-                          <input
-                            type="text"
-                            value={receiptBankName}
-                            onChange={e => setReceiptBankName(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
-                          />
-                        </div>
-                      </div>
+                {/* Payment Method & Gateways */}
+                <div className="space-y-3">
+                  <label className="block font-black text-slate-900 dark:text-white">
+                    انتخاب درگاه پرداخت یا بارگذاری فیش بانکی:
+                  </label>
 
-                      <input ref={receiptFileInputRef} type="file" accept="image/*" onChange={handleReceiptFileChange} className="hidden" />
-                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-700 flex items-center justify-between text-xs">
-                        <span className="font-mono text-slate-600 dark:text-slate-300 truncate">{receiptFileName}</span>
-                        <button
-                          type="button"
-                          onClick={() => receiptFileInputRef.current?.click()}
-                          className="px-3 py-1.5 rounded-lg bg-amber-500 text-stone-950 font-bold"
-                        >
-                          انتخاب تصویر فیش
-                        </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(paymentPolicy === 'both' || paymentPolicy === 'gateway_only') && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('online_gateway')}
+                        className={`text-right p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                          paymentMethod === 'online_gateway'
+                            ? 'border-amber-500 bg-amber-500/10'
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'
+                        }`}
+                      >
+                        <CreditCard className="w-4 h-4 text-amber-500 mb-1" />
+                        <strong className="block text-slate-900 dark:text-white">پرداخت از طریق درگاه سیستم</strong>
+                        <span className="text-[11px] text-slate-500">تایید آنی و صدور فوری کد رهگیری</span>
+                      </button>
+                    )}
+
+                    {(paymentPolicy === 'both' || paymentPolicy === 'receipt_only') && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('bank_receipt')}
+                        className={`text-right p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                          paymentMethod === 'bank_receipt'
+                            ? 'border-amber-500 bg-amber-500/10'
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950'
+                        }`}
+                      >
+                        <UploadCloud className="w-4 h-4 text-amber-500 mb-1" />
+                        <strong className="block text-slate-900 dark:text-white">بارگذاری تصویر فیش بانکی</strong>
+                        <span className="text-[11px] text-slate-500">واریز به حساب مرکز و تایید واحد مالی</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {paymentMethod === 'online_gateway' ? (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                      <span className="font-bold text-slate-700 dark:text-slate-300 block">
+                        درگاه پرداخت مورد نظر را انتخاب کنید:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {activeGateways.map(gw => (
+                          <button
+                            key={gw.id}
+                            type="button"
+                            onClick={() => setSelectedGatewayId(gw.id)}
+                            className={`text-right p-3 rounded-xl border-2 cursor-pointer ${
+                              selectedGatewayId === gw.id
+                                ? 'border-emerald-500 bg-emerald-500/10'
+                                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                            }`}
+                          >
+                            <strong className="block text-slate-900 dark:text-white">{gw.name}</strong>
+                            {gw.description && (
+                              <span className="text-[10px] text-slate-500 block mt-0.5">{gw.description}</span>
+                            )}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 rounded-2xl bg-slate-900 text-white font-mono text-xs text-center">
-                      اتصال امن به درگاه شاپرک (مبلغ: {toPersianNumbers(product.price.toLocaleString('fa-IR'))} تومان)
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-1">
+                        <strong className="text-amber-900 dark:text-amber-300 block">
+                          مشخصات حساب بانکی جهت واریز وجه:
+                        </strong>
+                        <div>
+                          شماره کارت: <span className="font-mono font-black">{storeConfig.bankCardNumber}</span> ·{' '}
+                          {storeConfig.bankAccountHolder}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          نام بانک مبدا / شرح واریز:
+                        </label>
+                        <input
+                          type="text"
+                          value={receiptBankName}
+                          onChange={e => setReceiptBankName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
+                        />
+                      </div>
+
+                      <input
+                        ref={receiptInputRef}
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleUploadReceipt}
+                        className="hidden"
+                      />
+                      <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-between gap-2">
+                        <span className="text-slate-600 dark:text-slate-300 truncate">
+                          {receiptFileName || 'هنوز فیش واریزی بارگذاری نشده است'}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={uploadingReceipt}
+                          onClick={() => receiptInputRef.current?.click()}
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-500 text-stone-950 font-black cursor-pointer shrink-0 disabled:opacity-50"
+                        >
+                          {uploadingReceipt ? 'در حال آپلود...' : 'انتخاب و آپلود فیش'}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {buyStep === 3 && (
-              <div className="text-center py-8 px-4 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-500 flex items-center justify-center mx-auto shadow-lg">
+            {/* STEP 3 */}
+            {step === 3 && completedOrder && (
+              <div className="py-4 space-y-5 text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCheck className="w-8 h-8" />
                 </div>
-                <h4 className="text-lg font-black text-slate-900 dark:text-white">
-                  سفارش شما با موفقیت ثبت و تایید گردید
-                </h4>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  {product.format === 'book'
-                    ? 'کتاب انتخابی در صف ارسال پستی پیشتاز قرار گرفت.'
-                    : 'مجوز دانلود اثر در کتابخانه دیجیتال شما فعال شد.'}
-                </p>
+
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                    سفارش شما با موفقیت در سیستم ثبت گردید
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    تراکنش با کد رهگیری یکتا ذخیره شد و از بخش «سفارش‌ها و رهگیری» قابل پیگیری است.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-right space-y-2 max-w-md mx-auto">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">کد رهگیری سفارش:</span>
+                    <strong className="font-mono text-sm font-black text-amber-600 dark:text-amber-400 tabular-nums">
+                      {toPersianNumbers(completedOrder.trackingCode)}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">نوع نسخه:</span>
+                    <strong>{completedOrder.purchaseFormat === 'physical' ? 'نسخه فیزیکی' : 'نسخه دیجیتال'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">نحوه تحویل:</span>
+                    <strong>{DELIVERY_METHOD_LABELS[completedOrder.deliveryMethod || 'digital_instant']}</strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">مبلغ کل تراکنش:</span>
+                    <strong className="font-black tabular-nums">{formatTomans(completedOrder.amountPaid)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">وضعیت تایید:</span>
+                    <strong>
+                      {completedOrder.paymentStatus === 'confirmed'
+                        ? 'پرداخت تاییدشده'
+                        : 'در انتظار تایید فیش بانکی'}
+                    </strong>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            {buyStep > 1 && buyStep < 3 ? (
+          {/* Footer */}
+          <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            {step === 2 ? (
               <button
-                onClick={() => setBuyStep(prev => (prev - 1) as any)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold"
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold cursor-pointer"
               >
-                مرحله قبل
+                بازگشت به مرحله قبل
               </button>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
 
             <div>
-              {buyStep === 1 && (
+              {step === 1 && (
                 <button
-                  disabled={!buyTermsAccepted}
-                  onClick={() => setBuyStep(2)}
-                  className={`px-6 py-2.5 rounded-xl text-xs font-black ${
-                    buyTermsAccepted ? 'bg-amber-500 text-stone-950 cursor-pointer shadow-md' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                  }`}
+                  type="button"
+                  onClick={handleNextToStep2}
+                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer"
                 >
-                  تایید و ادامه پرداخت
+                  تایید نوع و مبلغ، ادامه به مشخصات و درگاه
                 </button>
               )}
-              {buyStep === 2 && (
+              {step === 2 && (
                 <button
-                  disabled={isSubmitting}
+                  type="button"
+                  disabled={submitting}
                   onClick={handleFinalSubmit}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 text-stone-950 text-xs font-black cursor-pointer shadow-md disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? 'در حال ثبت...' : 'ثبت نهایی سفارش'}
+                  {submitting
+                    ? 'در حال ثبت تراکنش...'
+                    : paymentMethod === 'online_gateway'
+                    ? 'پرداخت از درگاه و صدور کد رهگیری'
+                    : 'ثبت سفارش با فیش و صدور کد رهگیری'}
                 </button>
               )}
-              {buyStep === 3 && (
+              {step === 3 && (
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 text-stone-950 text-xs font-black cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black cursor-pointer"
                 >
-                  بستن و بازگشت به فروشگاه
+                  بستن و مشاهده کتابخانه / سفارش‌ها
                 </button>
               )}
             </div>
