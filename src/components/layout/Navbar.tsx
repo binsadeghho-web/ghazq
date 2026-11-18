@@ -13,8 +13,12 @@ import {
   Menu,
   X,
   Sparkles,
-  Eye
+  Eye,
+  IdCard
 } from 'lucide-react';
+import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
+import { toPersianNumbers } from '../../utils/persianNumbers';
 
 interface NavbarProps {
   onOpenLogin: () => void;
@@ -33,6 +37,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const { currentUser, logout, switchUserRole, theme, toggleTheme, designTheme, setDesignTheme } = useApp();
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
+  const completionPct = calculateProfileCompletion(currentUser).percentage;
 
   const getRoleLabel = (role: UserRole) => {
     switch (role) {
@@ -131,6 +137,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {currentUser ? (
               <div className="flex items-center gap-2">
+                {/* Reform 56: My Identity Card Button */}
+                <button
+                  onClick={() => setIsIdentityCardOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800/70 rounded-xl transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+                  title="مشاهده و تکمیل کارت اطلاعات هویتی من"
+                >
+                  <IdCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden sm:inline">کارت اطلاعات هویتی من</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-black">
+                    {toPersianNumbers(completionPct)}٪
+                  </span>
+                </button>
+
                 {/* Active Sessions Counter */}
                 <button
                   onClick={onOpenSessions}
@@ -185,6 +204,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         </div>
       </div>
+      <AlumniIdentityCardModal
+        isOpen={isIdentityCardOpen}
+        onClose={() => setIsIdentityCardOpen(false)}
+      />
     </header>
   );
 };

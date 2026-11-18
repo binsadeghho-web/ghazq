@@ -35,10 +35,13 @@ import {
   Users,
   Palette,
   Compass,
-  Wallet
+  Wallet,
+  IdCard
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { UserRole, AppSectionId } from '../../types';
+import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
 import {
   canViewSection,
   useRbacPolicies,
@@ -63,8 +66,10 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
+  const [isIdentityCardOpen, setIsIdentityCardOpen] = useState<boolean>(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
   const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const completionPct = calculateProfileCompletion(currentUser).percentage;
 
   const mapNavToTabId = (nav: string): NavTabId => {
     const n = nav.toLowerCase();
@@ -113,15 +118,19 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'Alumni', sectionId: 'alumni', label: 'دانش‌آموختگان', icon: GraduationCap },
     { id: 'Users', sectionId: 'users', label: 'مدیریت کاربران و نقش‌ها', icon: Users },
     { id: 'Admin', sectionId: 'admin', label: 'مدیریت سایت و پایش امنیت', icon: ShieldCheck },
-    { id: 'Setting', label: 'تنظیمات', icon: Settings },
+    { id: 'Setting', sectionId: 'admin', label: 'تنظیمات', icon: Settings },
   ];
 
-  // Strict Menu Cloaking & Reform 30 section visibility
+  // Strict Menu Cloaking (Reform 57): Hide Alumni, Users, Admin, Setting, Finance from alumni & preview mode
+  const effectiveStaff = isStaffMember && !isAlumniPreview;
   const navItems = allNavCandidates.filter(item => {
-    if (item.sectionId === 'products' && !isStaffMember && !productsStoreConfig.isStoreEnabled) {
+    if (!effectiveStaff && (item.id === 'Alumni' || item.id === 'Users' || item.id === 'Admin' || item.id === 'Setting' || item.id === 'Finance')) {
       return false;
     }
-    if (!item.sectionId) return true;
+    if (item.sectionId === 'products' && !effectiveStaff && !productsStoreConfig.isStoreEnabled) {
+      return false;
+    }
+    if (!item.sectionId) return effectiveStaff;
     return canViewSection(currentUser, item.sectionId, rolePolicies);
   });
 
@@ -264,14 +273,29 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             <CrextioServicesMegaMenu activeNav={activeNav} onNavigate={setActiveNav} />
           </div>
 
-          {/* Left: دکمه بازگشت به داشبورد، اعلان‌ها و نمایه کاربری */}
-          <div className="flex items-center justify-end gap-3 shrink-0">
+          {/* Left: دکمه بازگشت به داشبورد، کارت اطلاعات هویتی من، اعلان‌ها و نمایه کاربری */}
+          <div className="flex items-center justify-end gap-2.5 shrink-0">
             {activeNav !== 'Dashboard' && (
               <button
                 onClick={() => setActiveNav('Dashboard')}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 border border-emerald-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <span>بازگشت به داشبورد</span>
+              </button>
+            )}
+
+            {/* Reform 56: My Identity Card Button */}
+            {currentUser && (
+              <button
+                onClick={() => setIsIdentityCardOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-black transition-all shadow-2xs cursor-pointer"
+                title="مشاهده و تکمیل کارت اطلاعات هویتی من"
+              >
+                <IdCard className="w-4 h-4 text-emerald-700" />
+                <span className="hidden xl:inline">کارت اطلاعات هویتی من</span>
+                <span className="px-1.5 py-0.5 rounded-lg bg-emerald-800 text-white text-[10px] font-black">
+                  {toPersianNumbers(completionPct)}٪
+                </span>
               </button>
             )}
 
@@ -357,7 +381,25 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       <p className="font-bold text-sm text-stone-900">{currentUser?.fullName}</p>
                       <p className="text-xs text-emerald-800 font-medium">{currentUser?.roleTitle}</p>
                       <p className="text-[11px] text-stone-500 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
+                      <p className="text-[11px] text-emerald-800 font-mono font-bold">کد مرکز: {currentUser?.centerCode || 'ثبت نشده'}</p>
                     </div>
+
+                    {/* Reform 56: Open Identity Card from dropdown */}
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        setIsIdentityCardOpen(true);
+                      }}
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-black flex items-center justify-between border border-emerald-200 transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <IdCard className="w-4 h-4 text-emerald-700" />
+                        <span>کارت اطلاعات هویتی من</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-white text-[10px]">
+                        {toPersianNumbers(completionPct)}٪
+                      </span>
+                    </button>
 
                     {/* Logout Action */}
                     <div className="pt-2 border-t border-stone-200">
@@ -476,7 +518,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
         {/* WARM ELEGANT CONTENT CANVAS */}
         <main className={`${canvasBgClass} rounded-[40px] p-6 sm:p-8 lg:p-10 shadow-2xl border text-stone-900 min-h-[700px] transition-colors duration-500`}>
-          {activeNav === 'Dashboard' ? (
+          {activeNav === 'Dashboard' || (!effectiveStaff && (activeNav === 'Finance' || activeNav === 'Alumni' || activeNav === 'Users' || activeNav === 'Admin' || activeNav === 'Setting')) ? (
             <CrextioDashboard onNavigateTab={setActiveNav} />
           ) : activeNav === 'Finance' ? (
             <FinanceSection />
@@ -501,21 +543,29 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         </footer>
       </div>
 
-      {/* THEME CUSTOMIZER MODAL */}
-      <Suspense fallback={null}>
-        <ThemeCustomizerModal
-          isOpen={isCustomizerOpen}
-          onClose={() => setIsCustomizerOpen(false)}
-        />
-      </Suspense>
+      {/* THEME CUSTOMIZER MODAL (Only for authorized staff) */}
+      {effectiveStaff && (
+        <Suspense fallback={null}>
+          <ThemeCustomizerModal
+            isOpen={isCustomizerOpen}
+            onClose={() => setIsCustomizerOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      {/* Floating Alumni Simulation Mode Bar */}
-      {currentUser?.role === 'alumni' && (
+      {/* Reform 56: Self-Service Identity Card Modal */}
+      <AlumniIdentityCardModal
+        isOpen={isIdentityCardOpen}
+        onClose={() => setIsIdentityCardOpen(false)}
+      />
+
+      {/* Floating Alumni Preview Exit Bar (ONLY for staff in preview mode, NEVER for real alumni) */}
+      {isStaffMember && isAlumniPreview && (
         <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2.5 bg-slate-950/95 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl border border-indigo-500/40 shadow-2xl">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-bold text-slate-200">نمای شبیه‌سازی دانش‌آموخته (ابزارهای ادمین پنهان شدند)</span>
+          <span className="text-xs font-bold text-slate-200">پیش‌نمایش نمای دانش‌آموخته فعال است</span>
           <button
-            onClick={() => switchUserRole('admin')}
+            onClick={() => setIsAlumniPreview(false)}
             className="mr-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95"
           >
             بازگشت به پنل مدیریت

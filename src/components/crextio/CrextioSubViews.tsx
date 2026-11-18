@@ -177,9 +177,12 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
   }
 
   /* ========================================================================
-     9. SYSTEM SETTINGS & AUDIT (امنیت و مرکز فرماندهی)
+     9. SYSTEM SETTINGS & AUDIT (امنیت و مرکز فرماندهی - مخصوص مدیران)
      ======================================================================== */
   if (activeNav === 'Setting') {
+    if (currentUser?.role === 'alumni' || currentUser?.role === 'customer') {
+      return null;
+    }
     const handleRunDiagnostic = async () => {
       await verifyAuditChain();
       setDiagMessage('راستی‌آزمایی ریاضی زنجیره SHA-256: ۱۰۰٪ رکوردهای دیتابیس اصیل بوده و هیچ‌گونه دستکاری رخ نداده است.');

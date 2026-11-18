@@ -39,9 +39,10 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
   const menuRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { currentUser, cartableRequests, courses, rulings, products, consultants, researchMentorships, productsStoreConfig } = useApp();
+  const { currentUser, cartableRequests, courses, rulings, products, consultants, researchMentorships, productsStoreConfig, isAlumniPreview } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const pendingCartable = cartableRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length;
+  const isStaff = isOrganizationalRole(currentUser?.role) && !isAlumniPreview;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -210,11 +211,14 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     }
   ];
 
-  // Strict Menu Cloaking: Hide any service card whose section permission is 'none' or globally disabled store
+  // Strict Menu Cloaking (Reform 57): Hide Alumni, Users, Admin from alumni & preview mode
   const serviceCards = allServiceCards.filter(card => {
+    if (!isStaff && (card.sectionId === 'alumni' || card.sectionId === 'users' || card.sectionId === 'admin' || card.sectionId === 'finance')) {
+      return false;
+    }
     if (
       card.sectionId === 'products' &&
-      !isOrganizationalRole(currentUser?.role) &&
+      !isStaff &&
       !productsStoreConfig.isStoreEnabled
     ) {
       return false;

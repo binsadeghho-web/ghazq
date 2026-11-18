@@ -34,15 +34,20 @@ import {
   Lock,
   KeyRound,
   Upload,
-  Image
+  Image,
+  ToggleLeft,
+  ToggleRight,
+  Hash
 } from 'lucide-react';
+import { isOrganizationalRole } from '../../utils/rbacPolicy';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
 interface AlumniDirectorySectionProps {
   onNavigate?: (tab: any) => void;
 }
 
 export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ onNavigate }) => {
-  const { users, currentUser, createUser, updateUserDetails, createAccountForAlumnus } = useApp();
+  const { users, currentUser, createUser, updateUserDetails, createAccountForAlumnus, alumniProfileSettings, updateAlumniProfileSettings } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [degreeFilter, setDegreeFilter] = useState<string>('all');
@@ -55,6 +60,9 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [createAccountAlumnus, setCreateAccountAlumnus] = useState<User | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [isUpdatingToggle, setIsUpdatingToggle] = useState(false);
+  const [isEditingNotice, setIsEditingNotice] = useState(false);
+  const [noticeTextDraft, setNoticeTextDraft] = useState(alumniProfileSettings?.noticeText || '');
 
   // Quick Account Form State
   const [accForm, setAccForm] = useState({
@@ -63,8 +71,8 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
     roleTitle: '',
   });
 
-  // Guard: Strictly Admin & Supervisor Only for other alumni directory; show personal Digital Card for regular alumni
-  const isAllowed = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  // Guard (Reform 57): Strictly organizational roles only; regular alumni & customers cannot see the alumni directory
+  const isAllowed = isOrganizationalRole(currentUser?.role);
   if (!isAllowed) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto mt-6 font-sans" dir="rtl">
@@ -81,6 +89,36 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
     );
   }
 
+  const handleToggleAlumniSelfService = async () => {
+    if (isUpdatingToggle) return;
+    setIsUpdatingToggle(true);
+    try {
+      const nextVal = !(alumniProfileSettings?.allowAlumniProfileCompletion ?? false);
+      await updateAlumniProfileSettings({
+        allowAlumniProfileCompletion: nextVal,
+        noticeText: noticeTextDraft || alumniProfileSettings?.noticeText,
+      });
+      setNotification(nextVal ? 'قابلیت تکمیل اطلاعات هویتی توسط دانش‌آموختگان فعال گردید.' : 'قابلیت تکمیل اطلاعات هویتی توسط دانش‌آموختگان غیرفعال گردید.');
+    } finally {
+      setIsUpdatingToggle(false);
+    }
+  };
+
+  const handleSaveNoticeText = async () => {
+    if (isUpdatingToggle) return;
+    setIsUpdatingToggle(true);
+    try {
+      await updateAlumniProfileSettings({
+        allowAlumniProfileCompletion: alumniProfileSettings?.allowAlumniProfileCompletion ?? false,
+        noticeText: noticeTextDraft,
+      });
+      setIsEditingNotice(false);
+      setNotification('پیام راهنمای کارت اطلاعات هویتی ذخیره گردید.');
+    } finally {
+      setIsUpdatingToggle(false);
+    }
+  };
+
   // Filter only alumni members
   const alumniList = users.filter(u => u.role === 'alumni' || u.judicialGrade || u.graduationYear);
 
@@ -90,6 +128,7 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
       !q ||
       u.fullName.toLowerCase().includes(q) ||
       u.nationalId.includes(q) ||
+      (u.centerCode && u.centerCode.toLowerCase().includes(q)) ||
       (u.username && u.username.toLowerCase().includes(q)) ||
       (u.personnelId && u.personnelId.includes(q)) ||
       (u.courtBranch && u.courtBranch.toLowerCase().includes(q)) ||
@@ -211,6 +250,93 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
         selectedUserForCard={selectedAlumni}
         isOfficial={isAllowed}
       />
+
+      {/* Reform 56: Admin Control Banner for Alumni Self-Service Identity Completion */}
+      <div className="bg-white/95 p-5 rounded-3xl border border-emerald-200 shadow-2xs space-y-4">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${
+              alumniProfileSettings?.allowAlumniProfileCompletion
+                ? 'bg-emerald-100 border-emerald-300 text-emerald-800'
+                : 'bg-stone-100 border-stone-200 text-stone-500'
+            }`}>
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-stone-900">
+                  امکان تکمیل اطلاعات هویتی توسط دانش‌آموختگان
+                </h3>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                  alumniProfileSettings?.allowAlumniProfileCompletion
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                  {alumniProfileSettings?.allowAlumniProfileCompletion ? 'فعال برای دانش‌آموختگان' : 'غیرفعال (فقط مشاهده)'}
+                </span>
+              </div>
+              <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                با روشن کردن این قابلیت، دانش‌آموختگان می‌توانند از بخش «کارت اطلاعات هویتی من» اطلاعات تکمیلی خود را وارد کنند. اطلاعات پایه (نام و نام خانوادگی، کد ملی، شماره همراه و کد مرکز) ثابت بوده و صرفاً توسط مدیر قابل تغییر است.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setNoticeTextDraft(alumniProfileSettings?.noticeText || '');
+                setIsEditingNotice(prev => !prev);
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-xs font-bold text-stone-700 hover:border-emerald-600 transition-all"
+            >
+              تنظیم پیام راهنمای کارت هویتی
+            </button>
+            <button
+              type="button"
+              disabled={isUpdatingToggle}
+              onClick={handleToggleAlumniSelfService}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs transition-all shadow-sm ${
+                alumniProfileSettings?.allowAlumniProfileCompletion
+                  ? 'bg-emerald-800 hover:bg-emerald-900 text-white'
+                  : 'bg-stone-800 hover:bg-emerald-800 text-white'
+              } disabled:opacity-50`}
+            >
+              {alumniProfileSettings?.allowAlumniProfileCompletion ? (
+                <>
+                  <ToggleRight className="w-5 h-5 text-emerald-300" />
+                  <span>روشن (کلیک برای غیرفعال‌سازی)</span>
+                </>
+              ) : (
+                <>
+                  <ToggleLeft className="w-5 h-5 text-stone-300" />
+                  <span>خاموش (کلیک برای فعال‌سازی)</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {isEditingNotice && (
+          <div className="pt-3 border-t border-stone-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input
+              type="text"
+              value={noticeTextDraft}
+              onChange={(e) => setNoticeTextDraft(e.target.value)}
+              placeholder="پیام راهنمای نمایش داده شده در بالای کارت اطلاعات هویتی دانش‌آموختگان..."
+              className="flex-1 bg-[#F5F4EE] border border-stone-200 rounded-2xl px-4 py-2 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+            />
+            <button
+              type="button"
+              onClick={handleSaveNoticeText}
+              disabled={isUpdatingToggle}
+              className="px-4 py-2 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-extrabold"
+            >
+              ذخیره پیام
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Search & Filter Bar */}
       <div className="bg-white/90 p-4 rounded-3xl border border-stone-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -350,11 +476,21 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
                   <div className="space-y-2 text-xs text-stone-700 bg-[#F5F4EE] p-3.5 rounded-2xl border border-stone-200/80">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-stone-500">
+                        <Hash className="w-3.5 h-3.5 text-emerald-800" />
+                        کد مرکز:
+                      </span>
+                      <span className="font-mono font-black text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded-lg">
+                        {alumni.centerCode || 'ثبت نشده'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-stone-500">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                        شماره پرسنلی:
+                        شماره پرسنلی / تکمیل:
                       </span>
                       <span className="font-mono font-bold text-stone-900">
-                        {toPersianNumbers(alumni.personnelId || '---')}
+                        {toPersianNumbers(alumni.personnelId || '---')} · {toPersianNumbers(calculateProfileCompletion(alumni).percentage)}٪
                       </span>
                     </div>
 
@@ -459,11 +595,17 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
                       </td>
 
                       <td className="py-4 px-4 font-mono font-bold text-stone-900">
-                        {toPersianNumbers(alumni.nationalId)}
+                        <div>{toPersianNumbers(alumni.nationalId)}</div>
+                        <div className="text-[11px] text-emerald-800 font-bold mt-0.5">
+                          کد مرکز: {alumni.centerCode || '---'}
+                        </div>
                       </td>
 
                       <td className="py-4 px-4 font-mono font-bold text-stone-600">
-                        {toPersianNumbers(alumni.personnelId || '---')}
+                        <div>{toPersianNumbers(alumni.personnelId || '---')}</div>
+                        <div className="text-[10px] text-stone-500 mt-0.5">
+                          تکمیل: {toPersianNumbers(calculateProfileCompletion(alumni).percentage)}٪
+                        </div>
                       </td>
 
                       <td className="py-4 px-4 font-extrabold text-emerald-800">
@@ -667,6 +809,7 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
     // سربرگ ۱: اطلاعات هویتی
     fullName: alumni.fullName,
     nationalId: alumni.nationalId,
+    centerCode: alumni.centerCode || '',
     phone: alumni.phone,
     email: alumni.email || '',
     fatherName: alumni.fatherName || 'محمدتقی',
@@ -751,7 +894,7 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-stone-500 mt-0.5 font-medium">
-                کد ملی: {toPersianNumbers(alumni.nationalId)} · شماره پرسنلی: {toPersianNumbers(alumni.personnelId || '---')} · پایه {toPersianNumbers(alumni.judicialGrade || 8)} قضایی
+                کد ملی: {toPersianNumbers(alumni.nationalId)} · کد مرکز: <strong className="font-mono text-emerald-800">{formData.centerCode || 'ثبت نشده'}</strong> · شماره پرسنلی: {toPersianNumbers(alumni.personnelId || '---')} · تکمیل پرونده: {toPersianNumbers(calculateProfileCompletion({ ...alumni, ...formData }).percentage)}٪
               </p>
             </div>
           </div>
@@ -815,13 +958,24 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-stone-700">کد ملی (۱۰ رقم):</label>
+                  <label className="font-bold text-stone-700">کد ملی (۱۰ رقم - ثابت برای دانش‌آموخته):</label>
                   <input
                     type="text"
                     required
                     value={formData.nationalId}
                     onChange={e => setFormData({ ...formData, nationalId: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-emerald-900">کد مرکز دانش‌آموخته (ثابت - اختصاصی مرکز):</label>
+                  <input
+                    type="text"
+                    value={formData.centerCode || ''}
+                    onChange={e => setFormData({ ...formData, centerCode: e.target.value })}
+                    placeholder="مثال: MRK-1403-101"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-300 font-mono font-bold text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-700 dir-ltr text-right"
                   />
                 </div>
 
@@ -1231,6 +1385,7 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
   const [activeTab, setActiveTab] = useState<'identity' | 'academic' | 'association' | 'career'>('identity');
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     // سربرگ ۱: اطلاعات هویتی
@@ -1238,6 +1393,7 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
     siteTitle: '',
     profilePictureUrl: '',
     nationalId: '',
+    centerCode: '',
     phone: '',
     email: '',
     fatherName: '',
@@ -1296,8 +1452,9 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
         const res = await apiClient.uploadProfilePicture(base64, file.name);
         if (res.success && res.url) {
           setFormData(prev => ({ ...prev, profilePictureUrl: res.url }));
+          setFormError(null);
         } else {
-          alert('خطا در بارگذاری تصویر پروفایل');
+          setFormError('خطا در بارگذاری تصویر پروفایل');
         }
         setUploadingImage(false);
       };
@@ -1311,9 +1468,10 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fullName || !formData.nationalId) {
-      alert('لطفاً حداقل نام و کد ملی دانش‌آموخته را وارد فرمایید.');
+      setFormError('لطفاً حداقل نام و کد ملی دانش‌آموخته را وارد فرمایید.');
       return;
     }
+    setFormError(null);
 
     setLoading(true);
     await onRegister({
@@ -1388,6 +1546,11 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+          {formError && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold">
+              {formError}
+            </div>
+          )}
           {activeTab === 'identity' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1.5">
@@ -1422,6 +1585,17 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
                   onChange={e => setFormData({ ...formData, nationalId: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                   placeholder="0012345678"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-emerald-900">کد مرکز دانش‌آموخته (ثابت - اختصاصی مرکز):</label>
+                <input
+                  type="text"
+                  value={formData.centerCode}
+                  onChange={e => setFormData({ ...formData, centerCode: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-300 font-mono font-bold text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-700 dir-ltr text-right"
+                  placeholder="مثال: MRK-1403-108"
                 />
               </div>
 

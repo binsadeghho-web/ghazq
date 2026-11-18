@@ -39,7 +39,10 @@ import {
   Sparkles,
   Building2,
   FileText,
-  Wallet
+  Wallet,
+  ToggleLeft,
+  ToggleRight,
+  Hash
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 
@@ -86,8 +89,26 @@ export const UserManagementModule: React.FC = () => {
     setPinUnlocked,
     sendPinOtpSms,
     verifyPinOtpAndSetPin,
-    verifyPin
+    verifyPin,
+    alumniProfileSettings,
+    updateAlumniProfileSettings
   } = useApp();
+
+  const [isUpdatingCompletionToggle, setIsUpdatingCompletionToggle] = useState(false);
+
+  const handleToggleAlumniSelfService = async () => {
+    if (isUpdatingCompletionToggle) return;
+    setIsUpdatingCompletionToggle(true);
+    try {
+      const nextVal = !(alumniProfileSettings?.allowAlumniProfileCompletion ?? false);
+      await updateAlumniProfileSettings({
+        allowAlumniProfileCompletion: nextVal,
+        noticeText: alumniProfileSettings?.noticeText,
+      });
+    } finally {
+      setIsUpdatingCompletionToggle(false);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
@@ -121,6 +142,7 @@ export const UserManagementModule: React.FC = () => {
     const matchesSearch =
       user.fullName.toLowerCase().includes(q) ||
       user.nationalId.includes(q) ||
+      (user.centerCode && user.centerCode.toLowerCase().includes(q)) ||
       (user.username && user.username.toLowerCase().includes(q)) ||
       (user.personnelId && user.personnelId.includes(q)) ||
       user.roleTitle.toLowerCase().includes(q);
@@ -155,7 +177,9 @@ export const UserManagementModule: React.FC = () => {
       await updateUserDetails(userId, updates);
       setEditingUser(null);
     } catch (err: any) {
-      alert(`خطا در ذخیره مشخصات کاربر: ${err?.message || err}`);
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { title: 'خطا در ذخیره مشخصات', message: err?.message || String(err), type: 'error' }
+      }));
     }
   };
 
@@ -264,6 +288,58 @@ export const UserManagementModule: React.FC = () => {
         onRefreshUsers={refreshUsers}
       />
 
+      {/* Reform 56: Quick Toggle Card for Alumni Self-Service Profile Completion */}
+      <div className="bg-white/95 p-5 rounded-3xl border border-emerald-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${
+            alumniProfileSettings?.allowAlumniProfileCompletion
+              ? 'bg-emerald-100 border-emerald-300 text-emerald-800'
+              : 'bg-stone-100 border-stone-200 text-stone-500'
+          }`}>
+            <KeyRound className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-sm font-black text-stone-900">
+                مجوز تکمیل اطلاعات هویتی توسط دانش‌آموختگان
+              </h4>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                alumniProfileSettings?.allowAlumniProfileCompletion
+                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                  : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}>
+                {alumniProfileSettings?.allowAlumniProfileCompletion ? 'فعال' : 'غیرفعال'}
+              </span>
+            </div>
+            <p className="text-xs text-stone-600 mt-1">
+              فیلدهای ثابت (نام و نام خانوادگی، کد ملی، شماره همراه و کد مرکز) صرفاً توسط مدیر قابل تغییر است و سایر اطلاعات در صورت فعال بودن توسط دانش‌آموخته از بخش «کارت اطلاعات هویتی من» تکمیل می‌شود.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={isUpdatingCompletionToggle}
+          onClick={handleToggleAlumniSelfService}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black transition-all shrink-0 shadow-sm ${
+            alumniProfileSettings?.allowAlumniProfileCompletion
+              ? 'bg-emerald-800 hover:bg-emerald-900 text-white'
+              : 'bg-stone-800 hover:bg-emerald-800 text-white'
+          } disabled:opacity-50`}
+        >
+          {alumniProfileSettings?.allowAlumniProfileCompletion ? (
+            <>
+              <ToggleRight className="w-5 h-5 text-emerald-300" />
+              <span>تکمیل اطلاعات: روشن</span>
+            </>
+          ) : (
+            <>
+              <ToggleLeft className="w-5 h-5 text-stone-300" />
+              <span>تکمیل اطلاعات: خاموش</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* ========================================================================
           SEARCH & FILTER & ACTIONS BAR
           ======================================================================== */}
@@ -369,7 +445,7 @@ export const UserManagementModule: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* COLUMN 2: کد ملی */}
+                    {/* COLUMN 2: کد ملی و کد مرکز */}
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono font-extrabold text-stone-900 text-sm">
@@ -382,6 +458,10 @@ export const UserManagementModule: React.FC = () => {
                         >
                           {copiedKey === `nid_${u.id}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
+                      </div>
+                      <div className="text-[11px] font-mono font-bold text-emerald-800 mt-1 flex items-center gap-1">
+                        <Hash className="w-3 h-3" />
+                        <span>کد مرکز: {u.centerCode || '---'}</span>
                       </div>
                     </td>
 
@@ -530,9 +610,10 @@ export const UserManagementModule: React.FC = () => {
                           {!isCurrentActive && (
                             <button
                               onClick={() => {
-                                if (confirm(`آیا از حذف حساب کاربری [${u.fullName}] اطمینان دارید؟`)) {
-                                  deleteUser(u.id);
-                                }
+                                deleteUser(u.id);
+                                window.dispatchEvent(new CustomEvent('app:toast', {
+                                  detail: { title: 'حذف حساب کاربری', message: `حساب کاربری [${u.fullName}] حذف شد.`, type: 'info' }
+                                }));
                               }}
                               className="p-2 rounded-xl bg-stone-100 hover:bg-rose-100 text-stone-400 hover:text-rose-700 transition-colors"
                               title="حذف حساب"
@@ -566,7 +647,13 @@ export const UserManagementModule: React.FC = () => {
           }}
           onApplyToRole={async (role, permissions) => {
             await updateRoleDefaultPermissions(role, permissions);
-            alert(`الگوی دسترسی با موفقیت برای کلیه کاربران دارای نقش «${role === 'admin' ? 'مدیر' : role === 'supervisor' ? 'مسئول' : 'دانش‌آموخته'}» اعمال گردید.`);
+            window.dispatchEvent(new CustomEvent('app:toast', {
+              detail: {
+                title: 'اعمال الگوی دسترسی',
+                message: `الگوی دسترسی با موفقیت برای کلیه کاربران دارای نقش «${role === 'admin' ? 'مدیر' : role === 'supervisor' ? 'مسئول' : 'دانش‌آموخته'}» اعمال گردید.`,
+                type: 'success'
+              }
+            }));
             setPermissionModalUser(null);
           }}
         />
@@ -1008,6 +1095,7 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
   const [formData, setFormData] = useState({
     fullName: '',
     nationalId: '',
+    centerCode: '',
     phone: '',
     username: '',
     password: '',
@@ -1118,7 +1206,9 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
           setFormData(prev => ({ ...prev, profilePictureUrl: res.url }));
         }
       } catch (err: any) {
-        alert(`خطا در آپلود تصویر پروفایل: ${err?.message || err}`);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { title: 'خطا در آپلود تصویر', message: err?.message || String(err), type: 'error' }
+        }));
       } finally {
         setUploadingPic(false);
       }
@@ -1243,6 +1333,18 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
                 onChange={handleNationalIdChange}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 placeholder="0012345678"
+              />
+            </div>
+
+            {/* CENTER CODE (Reform 56) */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-emerald-900">کد مرکز دانش‌آموخته (ثابت - اختصاصی مرکز):</label>
+              <input
+                type="text"
+                value={formData.centerCode}
+                onChange={e => setFormData({ ...formData, centerCode: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-300 font-mono font-bold text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-700 dir-ltr text-right"
+                placeholder="مثال: MRK-1403-101"
               />
             </div>
 
@@ -1482,6 +1584,7 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
   const [formData, setFormData] = useState({
     fullName: user.fullName || '',
     nationalId: user.nationalId || '',
+    centerCode: user.centerCode || '',
     phone: user.phone || '',
     username: user.username || user.nationalId || '',
     password: user.password || user.phone || '123456',
@@ -1555,7 +1658,9 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
           setFormData(prev => ({ ...prev, profilePictureUrl: res.url }));
         }
       } catch (err: any) {
-        alert(`خطا در آپلود تصویر پروفایل: ${err?.message || err}`);
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { title: 'خطا در آپلود تصویر', message: err?.message || String(err), type: 'error' }
+        }));
       } finally {
         setUploadingPic(false);
       }
@@ -1659,6 +1764,18 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
                 value={formData.nationalId}
                 onChange={e => setFormData({ ...formData, nationalId: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+              />
+            </div>
+
+            {/* CENTER CODE (Reform 56) */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-amber-900">کد مرکز دانش‌آموخته (ثابت - اختصاصی مرکز):</label>
+              <input
+                type="text"
+                value={formData.centerCode}
+                onChange={e => setFormData({ ...formData, centerCode: e.target.value })}
+                placeholder="مثال: MRK-1403-101"
+                className="w-full px-4 py-2.5 rounded-2xl bg-amber-50/70 border border-amber-300 font-mono font-bold text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-600 dir-ltr text-right"
               />
             </div>
 

@@ -4,6 +4,8 @@ import { NavTabId } from '../layout/Sidebar';
 import { ModernDashboardCard } from '../ModernDashboardCard';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { DashboardWidgetsSuite } from './DashboardWidgetsSuite';
+import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
+import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
 import {
   Inbox,
   GraduationCap,
@@ -46,6 +48,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerMousePos, setHeaderMousePos] = useState({ x: 0, y: 0 });
   const [isAlumniPreview, setIsAlumniPreview] = useState(false);
+  const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
 
   const handleHeaderMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!headerRef.current) return;
@@ -69,6 +72,10 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
         isAlumniPreview={isAlumniPreview}
         onToggleAlumniPreview={() => setIsAlumniPreview(prev => !prev)}
       />
+
+      {/* Reform 56: Alumni Identity Completion Percentage Widget & My Identity Card Trigger */}
+      <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
+      <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
       {/* 
         ========================================================================
         باکس بالای داشبورد با طیف رنگی انیمیشنی پویا و تغییرکننده (Aurora Spectrum Header)

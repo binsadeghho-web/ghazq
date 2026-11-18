@@ -56,7 +56,11 @@ import {
   Maximize2,
   Minimize2,
   Sparkles,
+  IdCard,
 } from 'lucide-react';
+import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
+import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
 
 const AdminControlCenter = lazy(() =>
   import('../admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter }))
@@ -192,6 +196,8 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
   // Studio Drawer State
   const [studioOpen, setStudioOpen] = useState(false);
   const [studioTab, setStudioTab] = useState<'appearance' | 'texts_layout' | 'honors' | 'unified_boxes'>('appearance');
+  const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
+  const completionPct = calculateProfileCompletion(currentUser).percentage;
 
   const isStaff = isOrganizationalRole(currentUser?.role) && !isAlumniPreview;
   const isAdmin =
@@ -233,7 +239,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
   );
 
   const allSecondaryNav: Array<{ id: string; sectionId: AppSectionId; label: string; icon: any }> = [
-    { id: 'SpecializedCounseling', sectionId: 'counseling', label: 'مشاوره تخصصی قضا', icon: Scale },
+    { id: 'SpecializedCounseling', sectionId: 'specialized_counseling', label: 'مشاوره تخصصی قضا', icon: Scale },
     { id: 'Courses', sectionId: 'courses', label: 'دوره‌های آموزشی', icon: GraduationCap },
     { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات و تسهیلات', icon: Gift },
     { id: 'Products', sectionId: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen },
@@ -243,6 +249,9 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
     { id: 'Admin', sectionId: 'admin', label: 'پایش و امنیت', icon: ShieldCheck },
   ];
   const secondaryNav = allSecondaryNav.filter(item => {
+    if (!isStaff && (item.id === 'Alumni' || item.id === 'Users' || item.id === 'Admin' || item.id === 'Finance')) {
+      return false;
+    }
     if (item.sectionId === 'products' && !isStaff && !productsStoreConfig.isStoreEnabled) {
       return false;
     }
@@ -1121,6 +1130,22 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
               </div>
             )}
 
+            {/* Reform 56: My Identity Card Button */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={() => setIsIdentityCardOpen(true)}
+                className="px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-xs font-black whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 transition-colors"
+                title="مشاهده و تکمیل کارت اطلاعات هویتی من"
+              >
+                <IdCard className="w-4 h-4" />
+                <span className="hidden sm:inline">کارت اطلاعات هویتی من</span>
+                <span className="px-1.5 py-0.5 rounded-md bg-emerald-800 text-white text-[10px] font-black">
+                  {toPersianNumbers(completionPct)}٪
+                </span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setActiveNav('People')}
@@ -1144,22 +1169,26 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
 
       {/* Main Content Viewport */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-7 space-y-6">
-        {activeNav === 'Dashboard' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {blockOrder.map(blk => {
-              const rendered = renderBlock(blk);
-              if (!rendered) return null;
-              const blkSpan = layoutsMap[blk]?.span || blockSpans[blk] || 'full';
-              const colSpan =
-                blkSpan === 'half' && (blk === 'honors_showcase' || blk === 'unified_showcase')
-                  ? 'lg:col-span-6'
-                  : 'lg:col-span-12';
-              return (
-                <div key={blk} className={`${colSpan} flex flex-col`}>
-                  {rendered}
-                </div>
-              );
-            })}
+        {activeNav === 'Dashboard' || (!isStaff && (activeNav === 'Finance' || activeNav === 'Alumni' || activeNav === 'Users' || activeNav === 'Admin')) ? (
+          <div className="space-y-6">
+            {/* Reform 56: Alumni Profile Completion Percentage Widget */}
+            <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {blockOrder.map(blk => {
+                const rendered = renderBlock(blk);
+                if (!rendered) return null;
+                const blkSpan = layoutsMap[blk]?.span || blockSpans[blk] || 'full';
+                const colSpan =
+                  blkSpan === 'half' && (blk === 'honors_showcase' || blk === 'unified_showcase')
+                    ? 'lg:col-span-6'
+                    : 'lg:col-span-12';
+                return (
+                  <div key={blk} className={`${colSpan} flex flex-col`}>
+                    {rendered}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -1208,13 +1237,19 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
         />
       )}
 
-      {/* Bottom Floating Alumni Preview Bar */}
-      {currentUser?.role === 'alumni' && (
+      {/* Reform 56: Self-Service Identity Card Modal */}
+      <AlumniIdentityCardModal
+        isOpen={isIdentityCardOpen}
+        onClose={() => setIsIdentityCardOpen(false)}
+      />
+
+      {/* Bottom Floating Alumni Preview Exit Bar (ONLY for staff in preview mode, NEVER for real alumni) */}
+      {isOrganizationalRole(currentUser?.role) && isAlumniPreview && (
         <div className="fixed bottom-5 left-5 z-50 flex items-center gap-2.5 bg-stone-900 text-white px-4 py-2 rounded-xl border border-stone-700 shadow-lg text-xs">
-          <span className="font-bold">نمای دانش‌آموخته</span>
+          <span className="font-bold">پیش‌نمایش نمای دانش‌آموخته</span>
           <button
             type="button"
-            onClick={() => switchUserRole('admin')}
+            onClick={() => setIsAlumniPreview(false)}
             className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg font-black cursor-pointer"
           >
             بازگشت به مدیریت

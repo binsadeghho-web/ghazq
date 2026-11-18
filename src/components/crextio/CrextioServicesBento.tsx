@@ -59,9 +59,15 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
 
   const rawCards: CrextioBentoCardConfig[] = crextioConfig.bentoCardsConfig || DEFAULT_BENTO_CARDS;
 
-  // فیلتر و مرتب‌سازی کارت‌ها طبق چیدمان تعیین‌شده توسط ادمین
+  // فیلتر و مرتب‌سازی کارت‌ها طبق چیدمان تعیین‌شده توسط ادمین (با رعایت اصلاحیه ۵۷ برای دانش‌آموختگان)
   const sortedCards = [...rawCards]
-    .filter(c => c.isVisible !== false)
+    .filter(c => {
+      if (c.isVisible === false) return false;
+      if (!isAdmin && (c.id === 'Alumni' || c.id === 'Users' || c.id === 'Admin' || c.id === 'Setting' || c.id === 'Finance')) {
+        return false;
+      }
+      return true;
+    })
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   return (

@@ -26,6 +26,17 @@ export async function resetAuthRateLimits(): Promise<void> {
   await p.query(`DELETE FROM auth_rate_limits`);
 }
 
+class DbBackedRateLimitMap extends Map<string, { count: number; resetAt: number }> {
+  override clear(): void {
+    super.clear();
+    resetAuthRateLimits().catch(() => {});
+  }
+}
+
+export const rateLimitIp = new DbBackedRateLimitMap();
+export const rateLimitUser = new DbBackedRateLimitMap();
+export const rateLimitIpUser = new DbBackedRateLimitMap();
+
 async function incrementAndCheckRateBucket(
   limitKey: string,
   maxHits: number,

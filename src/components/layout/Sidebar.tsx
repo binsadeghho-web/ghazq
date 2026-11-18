@@ -192,11 +192,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  // Strict Menu Cloaking: Any section with 'none' permission or globally disabled store (for non-officials) is hidden
+  // Strict Menu Cloaking (Reform 57): Alumni & Customer roles must NEVER see alumni, users, admin, or finance
+  const isStaff = isOrganizationalRole(currentUser?.role);
   const mainNavItems = allNavCandidates.filter(item => {
+    if (!isStaff && (item.id === 'alumni' || item.id === 'users' || item.id === 'admin' || item.id === 'finance')) {
+      return false;
+    }
     if (
       item.id === 'products' &&
-      !isOrganizationalRole(currentUser?.role) &&
+      !isStaff &&
       !productsStoreConfig.isStoreEnabled
     ) {
       return false;
@@ -204,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return canViewSection(currentUser, item.id as AppSectionId, rolePolicies);
   });
 
-  const showAdminTab = canViewSection(currentUser, 'admin', rolePolicies);
+  const showAdminTab = isStaff && canViewSection(currentUser, 'admin', rolePolicies);
 
   const handleSelect = (tab: NavTabId) => {
     setActiveTab(tab);

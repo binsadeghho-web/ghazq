@@ -57,6 +57,8 @@ import { DEFAULT_HERO_STATS, DEFAULT_CREXTIO_CONFIG } from '../../data/mockData'
 import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import { DashboardWidgetsSuite } from '../dashboard/DashboardWidgetsSuite';
 import { CANONICAL_DASHBOARD_SECTION_ORDER, reconcileDashboardSectionOrder } from '../../context/ThemeContext';
+import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
+import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
 
 const ThemeCustomizerModal = lazy(() =>
   import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal }))
@@ -156,6 +158,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
   const [isHeroStatsModalOpen, setIsHeroStatsModalOpen] = useState(false);
   const [quickServiceSuccess, setQuickServiceSuccess] = useState<string | null>(null);
   const [quickEditSectionKey, setQuickEditSectionKey] = useState<string | null>(null);
+  const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
 
   // Live Drag & Drop and Resize Edit Mode
   const [isLayoutEditMode, setIsLayoutEditMode] = useState(false);
@@ -346,7 +349,13 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           crextioConfig.heroQuickButtons && crextioConfig.heroQuickButtons.length > 0
             ? crextioConfig.heroQuickButtons
             : DEFAULT_CREXTIO_CONFIG.heroQuickButtons || []
-        ).filter(b => b.visible !== false);
+        ).filter(b => {
+          if (b.visible === false) return false;
+          if (isAlumni && (b.targetNav === 'Alumni' || b.targetNav === 'Users' || b.targetNav === 'Admin' || b.targetNav === 'Setting' || b.targetNav === 'Finance')) {
+            return false;
+          }
+          return true;
+        });
 
         const showStatsSlot =
           crextioConfig.showKpiRow !== false &&
@@ -386,7 +395,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                     </div>
                     <h1 className="text-sm sm:text-base font-black text-stone-900 truncate">
                       {crextioConfig.heroTitle ||
-                        `خوش آمدید، ${currentUser ? currentUser.fullName : 'جناب آقای دکتر میرزایی'}`}
+                        `خوش آمدید، ${currentUser?.fullName || 'دانش‌آموخته گرامی'}`}
                     </h1>
                   </div>
                 </div>
@@ -522,7 +531,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                       <div>
                         <h1 className={`${heroTitleSizeClass} text-stone-900 leading-snug tracking-tight`}>
                           {crextioConfig.heroTitle ||
-                            `خوش آمدید، ${currentUser ? currentUser.fullName : 'جناب آقای دکتر میرزایی'}`}
+                            `خوش آمدید، ${currentUser?.fullName || 'دانش‌آموخته گرامی'}`}
                         </h1>
                         <p className="text-xs text-stone-600 mt-1.5 leading-relaxed font-medium">
                           {crextioConfig.heroSubtitle ||
@@ -1143,6 +1152,10 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           onNavigateTab={onNavigateTab}
         />
       )}
+
+      {/* Reform 56: Alumni Profile Completion Percentage Widget & My Identity Card Modal */}
+      <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
+      <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
 
       {/* DYNAMIC 12-COLUMN DASHBOARD SECTIONS GRID (Includes Movable Status Widget, Events Calendar, Banners & All Showcases) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
