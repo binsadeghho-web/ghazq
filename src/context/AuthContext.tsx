@@ -92,6 +92,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         localStorage.setItem('feqh_current_user', JSON.stringify(user));
       } catch {}
       api.setAuthContext(user.id, user.role, user.fullName);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:auth_changed', { detail: { user } }));
+      }
     } else {
       try {
         localStorage.removeItem('feqh_current_user');

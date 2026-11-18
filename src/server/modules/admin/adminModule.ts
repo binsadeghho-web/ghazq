@@ -76,8 +76,8 @@ export class AdminService {
     const nationalId = (data.nationalId ? normalizeDigits(data.nationalId) : '').trim();
     const centerCode = data.centerCode ? normalizeDigits(data.centerCode).trim() : undefined;
     const phone = (data.phone ? normalizeDigits(data.phone) : '09120000000').trim();
-    const username = data.username ? data.username.trim() : nationalId;
-    const rawPassword = data.password ? data.password.trim() : phone;
+    const username = data.username ? normalizeDigits(data.username).trim() : nationalId;
+    const rawPassword = data.password ? normalizeDigits(data.password).trim() : phone;
 
     if (!nationalId || nationalId.length < 3) {
       throw AppError.badRequest('کد ملی یا شناسه کاربری باید حداقل ۳ کاراکتر باشد.');
@@ -181,7 +181,7 @@ export class AdminService {
       if ((updates as any)[key] !== undefined) {
         const val = (updates as any)[key];
         if (typeof val === 'string') {
-          updateFields[key] = (key === 'phone' || key === 'nationalId' || key === 'centerCode' || key === 'graduationYear')
+          updateFields[key] = (key === 'phone' || key === 'nationalId' || key === 'centerCode' || key === 'username' || key === 'graduationYear')
             ? normalizeDigits(val).trim()
             : val.trim();
         } else {
@@ -191,8 +191,9 @@ export class AdminService {
     }
 
     if (updates.password && updates.password.trim()) {
-      updateFields.passwordHash = bcrypt.hashSync(updates.password.trim(), 10);
+      updateFields.passwordHash = bcrypt.hashSync(normalizeDigits(updates.password).trim(), 10);
       updateFields.tokenVersionIncrement = true;
+      updateFields.mustChangePassword = false;
     }
 
     if (updates.sectionPermissions !== undefined || updates.role !== undefined) {
@@ -318,10 +319,10 @@ export class AdminService {
     };
 
     if (username && username.trim()) {
-      updateFields.username = username.trim();
+      updateFields.username = normalizeDigits(username).trim();
     }
     if (passwordRaw && passwordRaw.trim()) {
-      updateFields.passwordHash = bcrypt.hashSync(passwordRaw.trim(), 10);
+      updateFields.passwordHash = bcrypt.hashSync(normalizeDigits(passwordRaw).trim(), 10);
     }
 
     const updatedUser = await userRepository.updateUserOptimistic(targetUserId, updateFields, target.version);

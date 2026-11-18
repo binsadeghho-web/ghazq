@@ -14,6 +14,26 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
   const p = getPool();
 
   try {
+    // 0. Critical Auth & Identity Columns First (users.center_code, auth_rate_limits, user_sessions)
+    try { await p.query(`ALTER TABLE users ADD COLUMN center_code VARCHAR(64) NULL UNIQUE;`); } catch {}
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS auth_rate_limits (
+        limit_key VARCHAR(160) PRIMARY KEY,
+        hits INT NOT NULL DEFAULT 1,
+        reset_at BIGINT NOT NULL,
+        INDEX idx_rate_reset (reset_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    const sessionAlters = [
+      `ADD COLUMN device_name VARCHAR(100) NULL`,
+      `ADD COLUMN last_active_at DATETIME(3) NULL DEFAULT CURRENT_TIMESTAMP(3)`,
+      `MODIFY COLUMN refresh_token_hash CHAR(64) NULL`,
+      `MODIFY COLUMN expires_at DATETIME(3) NULL`,
+    ];
+    for (const clause of sessionAlters) {
+      try { await p.query(`ALTER TABLE user_sessions ${clause};`); } catch {}
+    }
+
     // 1. Dashboard Domain Tables: dashboard_banners & dashboard_events
     await p.query(`
       CREATE TABLE IF NOT EXISTS dashboard_banners (
@@ -396,6 +416,7 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN subsidy_notice VARCHAR(512) NULL`,
       `ADD COLUMN counseling_type ENUM('general', 'specialized_career') NOT NULL DEFAULT 'general'`,
       `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
+      `ADD COLUMN version INT NOT NULL DEFAULT 1`,
     ];
     for (const clause of consultantAlters) {
       try { await p.query(`ALTER TABLE consultants ${clause};`); } catch {}

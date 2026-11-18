@@ -4,6 +4,7 @@ import { AppError } from './errors';
 import { userRepository } from '../modules/user/userRepository';
 import { verifyAccessToken } from './jwtService';
 import { selectWithTimeout, isDatabaseConnected } from './mysqlDatabase';
+import { toIdBuffer } from './uuidv7';
 
 export interface AuthenticatedUser {
   id: string;
@@ -88,8 +89,8 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
         if (isDatabaseConnected() && claims.sid) {
           try {
             const sessRows = await selectWithTimeout<any>(
-              `SELECT is_revoked FROM user_sessions WHERE id = ? LIMIT 1`,
-              [claims.sid],
+              `SELECT is_revoked FROM user_sessions WHERE id = ? OR id = ? LIMIT 1`,
+              [toIdBuffer(claims.sid), claims.sid],
               2000
             );
             if (sessRows && sessRows.length > 0 && Boolean(sessRows[0].is_revoked)) {
@@ -141,8 +142,8 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
       if (isDatabaseConnected() && cached.sessionId) {
         try {
           const sessRows = await selectWithTimeout<any>(
-            `SELECT is_revoked FROM user_sessions WHERE id = ? LIMIT 1`,
-            [cached.sessionId],
+            `SELECT is_revoked FROM user_sessions WHERE id = ? OR id = ? LIMIT 1`,
+            [toIdBuffer(cached.sessionId), cached.sessionId],
             2000
           );
           if (sessRows && sessRows.length > 0 && Boolean(sessRows[0].is_revoked)) {

@@ -1587,7 +1587,7 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
     centerCode: user.centerCode || '',
     phone: user.phone || '',
     username: user.username || user.nationalId || '',
-    password: user.password || user.phone || '123456',
+    password: '',
     role: user.role || 'alumni',
     roleTitle: user.roleTitle || '',
     siteTitle: user.siteTitle || '',
@@ -1673,14 +1673,20 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
     setLoading(true);
 
     const isAlumni = userCategory === 'alumni';
-
-    await onSave(user.id, {
+    const payload: Record<string, any> = {
       ...formData,
       siteTitle: formData.siteTitle.trim() || formData.roleTitle,
       avatarText: formData.fullName.slice(0, 2),
       judicialGrade: isAlumni ? Number(formData.judicialGrade) || 1 : 0,
       graduationYear: isAlumni ? formData.graduationYear : '-',
-    });
+    };
+    if (!formData.password || !formData.password.trim()) {
+      delete payload.password;
+    } else {
+      payload.password = formData.password.trim();
+    }
+
+    await onSave(user.id, payload);
 
     setLoading(false);
   };
@@ -1867,7 +1873,7 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
             {/* PASSWORD FIELD */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="font-bold text-stone-700">رمز عبور اختصاصی:</label>
+                <label className="font-bold text-stone-700">رمز عبور جدید (اختیاری):</label>
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, password: prev.phone }))}
@@ -1880,6 +1886,7 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
                 type="text"
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
+                placeholder="خالی = بدون تغییر رمز فعلی (یا رمز جدید وارد کنید)"
                 className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
               />
             </div>

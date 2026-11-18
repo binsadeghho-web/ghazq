@@ -20,8 +20,25 @@ import { userRepository } from '../user/userRepository';
 import { generateTotpSecret, verifyTotpOrBackupCode } from './totpService';
 import { sanitizeUserForApi } from '../admin/adminModule';
 
-export async function resetAuthRateLimits(): Promise<void> {
+let authRateLimitsTableReady = false;
+
+async function ensureAuthRateLimitsTable(): Promise<void> {
+  if (authRateLimitsTableReady) return;
   ensureDatabaseConnection();
+  const p = getPool();
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS auth_rate_limits (
+      limit_key VARCHAR(160) PRIMARY KEY,
+      hits INT NOT NULL DEFAULT 1,
+      reset_at BIGINT NOT NULL,
+      INDEX idx_rate_reset (reset_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+  authRateLimitsTableReady = true;
+}
+
+export async function resetAuthRateLimits(): Promise<void> {
+  await ensureAuthRateLimitsTable();
   const p = getPool();
   await p.query(`DELETE FROM auth_rate_limits`);
 }
@@ -43,7 +60,7 @@ async function incrementAndCheckRateBucket(
   windowMs: number,
   errorCode: string
 ): Promise<void> {
-  ensureDatabaseConnection();
+  await ensureAuthRateLimitsTable();
   const p = getPool();
   const now = Date.now();
   const nextReset = now + windowMs;
@@ -74,9 +91,19 @@ async function incrementAndCheckRateBucket(
 }
 
 export async function checkThreeTierRateLimit(ip: string, username: string): Promise<void> {
-  await incrementAndCheckRateBucket(`ip:${ip}`, 20, 60 * 1000, 'RATE_LIMIT_IP_EXCEEDED');
-  await incrementAndCheckRateBucket(`user:${username}`, 10, 15 * 60 * 1000, 'RATE_LIMIT_USER_EXCEEDED');
-  await incrementAndCheckRateBucket(`ip_user:${ip}:${username}`, 5, 15 * 60 * 1000, 'RATE_LIMIT_IP_USER_EXCEEDED');
+  await incrementAndCheckRateBucket(`ip:${ip}`, 30, 60 * 1000, 'RATE_LIMIT_IP_EXCEEDED');
+  await incrementAndCheckRateBucket(`user:${username}`, 12, 15 * 60 * 1000, 'RATE_LIMIT_USER_EXCEEDED');
+  await incrementAndCheckRateBucket(`ip_user:${ip}:${username}`, 8, 15 * 60 * 1000, 'RATE_LIMIT_IP_USER_EXCEEDED');
+}
+
+async function clearUserRateLimitBuckets(ip: string, username: string): Promise<void> {
+  try {
+    const p = getPool();
+    await p.query(
+      `DELETE FROM auth_rate_limits WHERE limit_key IN (?, ?)`,
+      [`user:${username}`, `ip_user:${ip}:${username}`]
+    );
+  } catch {}
 }
 
 // Dummy hash for constant-time comparison when user is not found
@@ -89,14 +116,16 @@ export class AuthService {
     clientIp: string,
     userAgent: string
   ): Promise<{ user: User; session: UserSession; mustChangePassword: boolean; accessToken?: string; refreshToken?: string; retryAfter?: number }> {
-    const identifier = normalizeDigits(rawIdentifier).trim();
-    const password = normalizeDigits(rawPassword);
+    const trimmedRawIdentifier = String(rawIdentifier || '').trim();
+    const identifier = normalizeDigits(trimmedRawIdentifier).trim();
+    const trimmedRawPassword = String(rawPassword || '').trim();
+    const password = normalizeDigits(trimmedRawPassword).trim();
 
     // 1. MySQL-backed Three-Tier Rate Limiting
     await checkThreeTierRateLimit(clientIp, identifier);
 
     // 2. Query user from MySQL database repository (enforces deleted_at IS NULL)
-    const user = await userRepository.findByNationalIdOrUsername(identifier);
+    const user = await userRepository.findByNationalIdOrUsername(identifier, false, trimmedRawIdentifier);
 
     // 3. Dummy bcrypt compare for non-existent user to preserve uniform timing
     if (!user) {
@@ -142,12 +171,24 @@ export class AuthService {
       }
     }
 
-    // 5. Strict Bcrypt password verification against MySQL hash
+    // 5. Strict Bcrypt password verification against MySQL hash (supporting normalized & raw digit forms)
     let isValidPassword = false;
     const dbHash = user.password_hash;
 
     if (dbHash && (dbHash.startsWith('$2a$') || dbHash.startsWith('$2b$') || dbHash.startsWith('$2y$'))) {
-      isValidPassword = bcrypt.compareSync(password, dbHash);
+      isValidPassword =
+        bcrypt.compareSync(password, dbHash) ||
+        (trimmedRawPassword !== password && bcrypt.compareSync(trimmedRawPassword, dbHash));
+    } else if (dbHash) {
+      bcrypt.compareSync(password, DUMMY_HASH);
+      if (dbHash === password || dbHash === trimmedRawPassword) {
+        isValidPassword = true;
+        try {
+          const upgradedHash = bcrypt.hashSync(password, 10);
+          await userRepository.updateUserOptimistic(user.id, { passwordHash: upgradedHash }, user.version);
+          user.version = (user.version || 1) + 1;
+        } catch {}
+      }
     } else {
       bcrypt.compareSync(password, DUMMY_HASH);
     }
@@ -168,8 +209,13 @@ export class AuthService {
       throw AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
     }
 
-    // 6. Login successful: reset failed attempts & issue session with Concurrent Limit (LRU Eviction)
-    await userRepository.resetFailedAttempts(user.id);
+    // 6. Login successful: reset failed attempts & clear rate-limit buckets for this user
+    await Promise.all([
+      (user.failedAttempts || 0) > 0 || user.isLocked
+        ? userRepository.resetFailedAttempts(user.id)
+        : Promise.resolve(),
+      clearUserRateLimitBuckets(clientIp, identifier),
+    ]);
 
     // Max sessions limit per role: Alumni/Staff: 2, Supervisor: 3, Admin: 2 (Section 3.b of Blueprint)
     const maxAllowedSessions = user.role === 'supervisor' ? 3 : 2;
@@ -177,7 +223,6 @@ export class AuthService {
 
     // If max limit exceeded, evict the oldest session (LRU Invalidation)
     if (existingSessions.length >= maxAllowedSessions) {
-      // Sort ascending by lastActiveAt to find oldest
       existingSessions.sort((a, b) => new Date(a.lastActiveAt).getTime() - new Date(b.lastActiveAt).getTime());
       const evicted = existingSessions.shift();
       if (evicted) {
@@ -211,26 +256,42 @@ export class AuthService {
       sessions: existingSessions,
     } as any, user.version);
 
+    // Issue 15-minute Access Token (JWT) & 7-day Refresh Token
+    const accessToken = issueAccessToken(updatedUser, newSession.id, 15 * 60);
+    const refreshTokenObj = await issueRefreshToken(updatedUser.id, newSession.familyId, undefined);
+
     // Persist session record in user_sessions for strict instant revocation checks
     try {
       const p = getPool();
       await p.query(
-        `INSERT INTO user_sessions (id, user_id, family_id, device_name, ip_address, user_agent, last_active_at, is_revoked)
-         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), 0)`,
+        `INSERT INTO user_sessions (id, user_id, family_id, refresh_token_hash, ip_address, user_agent, is_revoked, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, DATE_ADD(NOW(3), INTERVAL 7 DAY))`,
         [
-          newSession.id,
-          updatedUser.id,
+          toIdBuffer(newSession.id),
+          toIdBuffer(updatedUser.id),
           newSession.familyId,
-          newSession.deviceName,
+          refreshTokenObj.tokenHash,
           clientIp,
           newSession.userAgent,
         ]
       );
-    } catch {}
-
-    // Issue 15-minute Access Token (JWT) & 7-day Refresh Token
-    const accessToken = issueAccessToken(updatedUser, newSession.id, 15 * 60);
-    const refreshTokenObj = await issueRefreshToken(updatedUser.id, newSession.familyId, undefined);
+    } catch {
+      try {
+        const p = getPool();
+        await p.query(
+          `INSERT INTO user_sessions (id, user_id, family_id, device_name, ip_address, user_agent, last_active_at, is_revoked)
+           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), 0)`,
+          [
+            toIdBuffer(newSession.id),
+            toIdBuffer(updatedUser.id),
+            newSession.familyId,
+            newSession.deviceName,
+            clientIp,
+            newSession.userAgent,
+          ]
+        );
+      } catch {}
+    }
 
     // Register session token in server memory store
     registerSessionToken(newSession.id, updatedUser, newSession.id);
@@ -480,7 +541,7 @@ export function createAuthRouter(): Router {
         revokeSessionToken(u.sessionId);
         try {
           const p = getPool();
-          await p.query(`UPDATE user_sessions SET is_revoked = 1 WHERE id = ?`, [u.sessionId]);
+          await p.query(`UPDATE user_sessions SET is_revoked = 1 WHERE id = ? OR id = ?`, [toIdBuffer(u.sessionId), u.sessionId]);
           const dbUser = await userRepository.findById(u.id);
           if (dbUser && Array.isArray(dbUser.sessions)) {
             const remaining = dbUser.sessions.filter(s => s.id !== u.sessionId);

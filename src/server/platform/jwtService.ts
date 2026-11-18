@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { generateUUIDv7 } from './database';
+import { toIdBuffer, fromIdBuffer } from './uuidv7';
 import { AppError } from './errors';
 import { getPool, isDatabaseConnected } from './mysqlDatabase';
 import { logger } from './logger';
@@ -161,7 +162,7 @@ export async function issueRefreshToken(
         `INSERT INTO refresh_tokens (
           id, user_id, token_hash, family_id, parent_id, is_revoked, expires_at
         ) VALUES (?, ?, ?, ?, ?, 0, ?)`,
-        [id, userId, tokenHash, activeFamilyId, parentId || null, expiresAt]
+        [toIdBuffer(id), toIdBuffer(userId), tokenHash, activeFamilyId, parentId || null, new Date(expiresAt)]
       );
     } catch (err: any) {
       logger.warn(`MySQL issueRefreshToken notice: ${err.message}`);
@@ -188,8 +189,8 @@ export async function findRefreshTokenByHash(rawToken: string): Promise<RefreshT
       if (rows && rows.length > 0) {
         const r = rows[0];
         return {
-          id: typeof r.id === 'string' ? r.id : Buffer.isBuffer(r.id) ? r.id.toString('hex') : String(r.id),
-          userId: r.user_id,
+          id: fromIdBuffer(r.id),
+          userId: fromIdBuffer(r.user_id),
           tokenHash: r.token_hash,
           familyId: r.family_id,
           parentId: r.parent_id || null,
@@ -280,8 +281,8 @@ export async function revokeAllUserRefreshTokens(userId: string, reason = 'GLOBA
     try {
       const pool = getPool();
       await pool.query(
-        `UPDATE refresh_tokens SET is_revoked = 1, revocation_reason = ? WHERE user_id = ?`,
-        [reason, userId]
+        `UPDATE refresh_tokens SET is_revoked = 1, revocation_reason = ? WHERE user_id = ? OR user_id = ?`,
+        [reason, toIdBuffer(userId), userId]
       );
     } catch (err: any) {
       logger.warn(`MySQL revokeAllUserRefreshTokens notice: ${err.message}`);

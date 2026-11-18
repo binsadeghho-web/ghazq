@@ -167,19 +167,35 @@ export function mapRowToUser(row: UserDbRow): User & { password_hash?: string; v
   return userObj;
 }
 
+let centerCodeColEnsured = false;
+async function ensureCenterCodeColumn(): Promise<void> {
+  if (centerCodeColEnsured) return;
+  ensureDatabaseConnection();
+  try {
+    const p = getPool();
+    await p.query(`ALTER TABLE users ADD COLUMN center_code VARCHAR(64) NULL UNIQUE;`);
+  } catch {}
+  centerCodeColEnsured = true;
+}
+
 export class UserRepository {
-  async findByNationalIdOrUsername(identifier: string, includeArchived = false): Promise<(User & { password_hash?: string; version: number }) | undefined> {
+  async findByNationalIdOrUsername(
+    identifier: string,
+    includeArchived = false,
+    rawUnnormalizedIdentifier?: string
+  ): Promise<(User & { password_hash?: string; version: number }) | undefined> {
     const rawId = (identifier || '').trim();
     const lowerId = rawId.toLowerCase();
+    const origId = (rawUnnormalizedIdentifier || rawId).trim();
 
-    ensureDatabaseConnection();
+    await ensureCenterCodeColumn();
     try {
       const sql = includeArchived
-        ? `SELECT * FROM users WHERE (national_id = ? OR username = ? OR LOWER(national_id) = ? OR LOWER(username) = ?) LIMIT 1`
-        : `SELECT * FROM users WHERE (national_id = ? OR username = ? OR LOWER(national_id) = ? OR LOWER(username) = ?) AND deleted_at IS NULL LIMIT 1`;
+        ? `SELECT * FROM users WHERE (national_id = ? OR username = ? OR center_code = ? OR LOWER(national_id) = ? OR LOWER(username) = ? OR LOWER(center_code) = ? OR username = ? OR national_id = ?) LIMIT 1`
+        : `SELECT * FROM users WHERE (national_id = ? OR username = ? OR center_code = ? OR LOWER(national_id) = ? OR LOWER(username) = ? OR LOWER(center_code) = ? OR username = ? OR national_id = ?) AND deleted_at IS NULL LIMIT 1`;
       const rows = await selectWithTimeout<UserDbRow>(
         sql,
-        [rawId, rawId, lowerId, lowerId],
+        [rawId, rawId, rawId, lowerId, lowerId, lowerId, origId, origId],
         3000
       );
 
@@ -324,7 +340,7 @@ export class UserRepository {
       version: 1,
     };
 
-    ensureDatabaseConnection();
+    await ensureCenterCodeColumn();
     const pool = getPool();
 
     try {
