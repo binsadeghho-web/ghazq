@@ -20,6 +20,7 @@ import { rulingsRouter } from './modules/rulings/rulingsModule';
 import { welfareRouter } from './modules/welfare/welfareModule';
 import { synergyRouter } from './modules/synergy/synergyModule';
 import { createAdminRouter } from './modules/admin/adminModule';
+import { createUserRouter } from './modules/user/userRoutes';
 import { createOpsRouter } from './modules/ops/opsModule';
 import { createDashboardRouter } from './modules/dashboard/dashboardModule';
 import { createRbacRouter } from './modules/rbac/rbacModule';
@@ -38,6 +39,7 @@ export function createMasterRouter(): Router {
 
   // Mount individual domain modules
   router.use('/auth', createAuthRouter());
+  router.use('/users', createUserRouter());
   router.use('/rbac', createRbacRouter());
   router.use('/dashboard', createDashboardRouter());
   router.use('/cartable', createCartableRouter());
@@ -571,12 +573,21 @@ export function createMasterRouter(): Router {
       // Authorization filtering: private items only go to owners or organizational officials
       const isPrivateResearchTopic =
         msg.topic.startsWith('research.') && msg.topic !== 'research.config_updated';
+      const isPrivateCounselingTopic =
+        msg.topic === 'counseling.requested' ||
+        msg.topic === 'counseling.updated' ||
+        msg.topic === 'counseling.identity_toggled' ||
+        msg.topic === 'counseling.dossier_created' ||
+        msg.topic === 'counseling.test_assigned' ||
+        msg.topic === 'counseling.test_submitted' ||
+        msg.topic === 'counseling.test_reviewed';
       const isPrivateTopic =
         msg.topic.startsWith('cartable.') ||
         msg.topic.startsWith('private_msg.') ||
-        isPrivateResearchTopic;
+        isPrivateResearchTopic ||
+        isPrivateCounselingTopic;
       if (isPrivateTopic && !isOrganizationalUserRole(userRole)) {
-        const ownerId = payload.applicantId || payload.recipientId || payload.userId;
+        const ownerId = payload.applicantId || payload.recipientId || payload.userId || payload.dossier?.applicantId;
         if (ownerId && ownerId !== userId) {
           return; // Suppress event; unauthorized recipient (Leak Prevention)
         }

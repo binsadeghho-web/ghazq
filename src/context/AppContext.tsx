@@ -33,6 +33,14 @@ import {
   BlockedIpItem,
   OpsMaintenanceConfig,
   DesignThemeType,
+  AlumniProfileSettingsConfig,
+  SpecializedCounselingPortalConfig,
+  GeneralCounselingPortalConfig,
+  CounselingFieldItem,
+  GeneralCounselingTariffItem,
+  PsychologicalTest,
+  PsychologicalTestAssignment,
+  PsychologicalTestResult,
 } from '../types';
 import { api } from '../services/apiClient';
 
@@ -60,8 +68,13 @@ export { useResearchAndRulings } from './ResearchAndRulingsContext';
 
 export interface AppContextType {
   currentUser: User | null;
+  isAuthLoading: boolean;
   setCurrentUser: (user: User | null) => void;
   users: User[];
+  alumniProfileSettings: AlumniProfileSettingsConfig;
+  refreshAlumniProfileSettings: () => Promise<void>;
+  updateAlumniProfileSettings: (updates: { allowAlumniProfileCompletion: boolean; noticeText?: string }) => Promise<AlumniProfileSettingsConfig>;
+  updateMyIdentity: (updates: Partial<User>) => Promise<{ user: User; settings: AlumniProfileSettingsConfig }>;
   cartableRequests: CartableRequest[];
   courses: Course[];
   courseEnrollments: CourseEnrollment[];
@@ -70,6 +83,13 @@ export interface AppContextType {
   products: Product[];
   consultants: Consultant[];
   counselingRequests: CounselingRequest[];
+  specializedConfig: SpecializedCounselingPortalConfig;
+  generalConfig: GeneralCounselingPortalConfig;
+  counselingFields: CounselingFieldItem[];
+  counselingTariffs: GeneralCounselingTariffItem[];
+  psychologicalTests: PsychologicalTest[];
+  testAssignments: PsychologicalTestAssignment[];
+  testResults: PsychologicalTestResult[];
   researchMentorships: ResearchMentorship[];
   rulings: JudicialRuling[];
   welfareRequests: WelfareRequest[];
@@ -145,10 +165,38 @@ export interface AppContextType {
     meetingMode?: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی',
     preferredConsultantId?: string,
     preferredConsultantName?: string
-  ) => void;
-  updateConsultant: (consultantId: string, updates: Partial<Consultant>) => void;
-  addConsultant: (consultant: Omit<Consultant, 'id'>) => void;
-  deleteConsultant: (consultantId: string) => void;
+  ) => Promise<void>;
+  updateConsultant: (consultantId: string, updates: Partial<Consultant>) => Promise<void>;
+  addConsultant: (consultant: Omit<Consultant, 'id'>) => Promise<void>;
+  deleteConsultant: (consultantId: string) => Promise<void>;
+  updateSpecializedConfig: (updates: Partial<SpecializedCounselingPortalConfig>) => Promise<SpecializedCounselingPortalConfig | null>;
+  updateGeneralConfig: (updates: Partial<GeneralCounselingPortalConfig>) => Promise<GeneralCounselingPortalConfig | null>;
+  createCounselingField: (data: Omit<CounselingFieldItem, 'id' | 'version'>) => Promise<CounselingFieldItem | null>;
+  updateCounselingField: (id: string, updates: Partial<CounselingFieldItem>) => Promise<CounselingFieldItem | null>;
+  deleteCounselingField: (id: string) => Promise<void>;
+  createCounselingTariff: (data: Omit<GeneralCounselingTariffItem, 'id' | 'version'>) => Promise<GeneralCounselingTariffItem | null>;
+  updateCounselingTariff: (id: string, updates: Partial<GeneralCounselingTariffItem>) => Promise<GeneralCounselingTariffItem | null>;
+  deleteCounselingTariff: (id: string) => Promise<void>;
+  createPsychologicalTest: (data: Omit<PsychologicalTest, 'id' | 'version'>) => Promise<PsychologicalTest | null>;
+  updatePsychologicalTest: (id: string, updates: Partial<PsychologicalTest>) => Promise<PsychologicalTest | null>;
+  deletePsychologicalTest: (id: string) => Promise<void>;
+  assignPsychologicalTest: (data: {
+    testId: string;
+    userId: string;
+    userName: string;
+    userNationalId?: string;
+    requestId?: string;
+    adminNote?: string;
+  }) => Promise<PsychologicalTestAssignment | null>;
+  submitPsychologicalTest: (
+    assignmentId: string,
+    answers: Array<{ questionId: string; questionText: string; answer: string }>,
+    scoreSummary?: string
+  ) => Promise<PsychologicalTestResult | null>;
+  reviewPsychologicalTestResult: (
+    resultId: string,
+    data: { psychologistNotes?: string; scoreSummary?: string }
+  ) => Promise<PsychologicalTestResult | null>;
 
   // Research Mentorship methods
   researchPortalConfig: ResearchPortalConfig;
@@ -357,8 +405,13 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
   const facadeValue = useMemo<AppContextType>(() => ({
     // Auth & Users
     currentUser: auth.currentUser,
+    isAuthLoading: auth.isAuthLoading,
     setCurrentUser: auth.setCurrentUser,
     users: auth.users,
+    alumniProfileSettings: auth.alumniProfileSettings,
+    refreshAlumniProfileSettings: auth.refreshAlumniProfileSettings,
+    updateAlumniProfileSettings: auth.updateAlumniProfileSettings,
+    updateMyIdentity: auth.updateMyIdentity,
     login: auth.login,
     logout: auth.logout,
     globalLogout: auth.globalLogout,
@@ -433,11 +486,32 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     // Counseling
     consultants: counseling.consultants,
     counselingRequests: counseling.counselingRequests,
+    specializedConfig: counseling.specializedConfig,
+    generalConfig: counseling.generalConfig,
+    counselingFields: counseling.counselingFields,
+    counselingTariffs: counseling.counselingTariffs,
+    psychologicalTests: counseling.psychologicalTests,
+    testAssignments: counseling.testAssignments,
+    testResults: counseling.testResults,
     bookCounseling: counseling.bookCounseling,
     updateCounselingStatus: counseling.updateCounselingStatus,
     updateConsultant: counseling.updateConsultant,
     addConsultant: counseling.addConsultant,
     deleteConsultant: counseling.deleteConsultant,
+    updateSpecializedConfig: counseling.updateSpecializedConfig,
+    updateGeneralConfig: counseling.updateGeneralConfig,
+    createCounselingField: counseling.createCounselingField,
+    updateCounselingField: counseling.updateCounselingField,
+    deleteCounselingField: counseling.deleteCounselingField,
+    createCounselingTariff: counseling.createCounselingTariff,
+    updateCounselingTariff: counseling.updateCounselingTariff,
+    deleteCounselingTariff: counseling.deleteCounselingTariff,
+    createPsychologicalTest: counseling.createPsychologicalTest,
+    updatePsychologicalTest: counseling.updatePsychologicalTest,
+    deletePsychologicalTest: counseling.deletePsychologicalTest,
+    assignPsychologicalTest: counseling.assignPsychologicalTest,
+    submitPsychologicalTest: counseling.submitPsychologicalTest,
+    reviewPsychologicalTestResult: counseling.reviewPsychologicalTestResult,
 
     // Welfare
     welfareRequests: welfare.welfareRequests,
@@ -565,7 +639,7 @@ const AuthConsumerBridge: React.FC<{ children: React.ReactNode }> = ({ children 
     <CartableProvider>
       <CoursesProvider currentUser={currentUser} securityPin={securityPin}>
         <ProductsProvider currentUser={currentUser}>
-          <CounselingProvider>
+          <CounselingProvider currentUser={currentUser}>
             <WelfareProvider>
               <ResearchAndRulingsProvider currentUser={currentUser}>
                 <AppContextBridge>

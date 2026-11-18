@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { generateUUIDv7 } from '../../platform/database';
+import { getPool, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
+import { toIdBuffer } from '../../platform/uuidv7';
 import { AppError } from '../../platform/errors';
 import { auditChain } from '../../platform/auditChain';
 import { registerSessionToken, revokeSessionToken, getCurrentUser, updateSessionsMustChangePassword } from '../../platform/sessionAuth';
@@ -18,62 +20,52 @@ import { userRepository } from '../user/userRepository';
 import { generateTotpSecret, verifyTotpOrBackupCode } from './totpService';
 import { sanitizeUserForApi } from '../admin/adminModule';
 
-interface RateLimitBucket {
-  count: number;
-  resetAt: number;
-}
-export const rateLimitIpUser = new Map<string, RateLimitBucket>(); // max 5 in 15 mins
-export const rateLimitUser = new Map<string, RateLimitBucket>();   // max 10 in 15 mins
-export const rateLimitIp = new Map<string, RateLimitBucket>();     // max 20 in 1 min
-
-export function resetAuthRateLimits() {
-  rateLimitIpUser.clear();
-  rateLimitUser.clear();
-  rateLimitIp.clear();
+export async function resetAuthRateLimits(): Promise<void> {
+  ensureDatabaseConnection();
+  const p = getPool();
+  await p.query(`DELETE FROM auth_rate_limits`);
 }
 
-export function checkThreeTierRateLimit(ip: string, username: string): void {
+async function incrementAndCheckRateBucket(
+  limitKey: string,
+  maxHits: number,
+  windowMs: number,
+  errorCode: string
+): Promise<void> {
+  ensureDatabaseConnection();
+  const p = getPool();
   const now = Date.now();
+  const nextReset = now + windowMs;
 
-  // Tier 1: IP limit (20 req / 1 min)
-  let bIp = rateLimitIp.get(ip);
-  if (!bIp || now > bIp.resetAt) {
-    bIp = { count: 1, resetAt: now + 60 * 1000 };
-    rateLimitIp.set(ip, bIp);
-  } else {
-    bIp.count++;
-    if (bIp.count > 20) {
-      const waitSec = Math.ceil((bIp.resetAt - now) / 1000);
-      throw AppError.rateLimited(waitSec, 'RATE_LIMIT_IP_EXCEEDED');
-    }
+  const [rows]: any = await p.query(
+    `SELECT hits, reset_at FROM auth_rate_limits WHERE limit_key = ? LIMIT 1`,
+    [limitKey]
+  );
+
+  if (!rows || rows.length === 0 || Number(rows[0].reset_at) < now) {
+    await p.query(
+      `INSERT INTO auth_rate_limits (limit_key, hits, reset_at)
+       VALUES (?, 1, ?)
+       ON DUPLICATE KEY UPDATE hits = 1, reset_at = VALUES(reset_at)`,
+      [limitKey, nextReset]
+    );
+    return;
   }
 
-  // Tier 2: Username limit (10 req / 15 mins)
-  let bUser = rateLimitUser.get(username);
-  if (!bUser || now > bUser.resetAt) {
-    bUser = { count: 1, resetAt: now + 15 * 60 * 1000 };
-    rateLimitUser.set(username, bUser);
-  } else {
-    bUser.count++;
-    if (bUser.count > 10) {
-      const waitSec = Math.ceil((bUser.resetAt - now) / 1000);
-      throw AppError.rateLimited(waitSec, 'RATE_LIMIT_USER_EXCEEDED');
-    }
-  }
+  const nextHits = Number(rows[0].hits || 0) + 1;
+  const resetAt = Number(rows[0].reset_at);
+  await p.query(`UPDATE auth_rate_limits SET hits = ? WHERE limit_key = ?`, [nextHits, limitKey]);
 
-  // Tier 3: IP + Username limit (5 req / 15 mins)
-  const ipUserKey = `${ip}:${username}`;
-  let bIpUser = rateLimitIpUser.get(ipUserKey);
-  if (!bIpUser || now > bIpUser.resetAt) {
-    bIpUser = { count: 1, resetAt: now + 15 * 60 * 1000 };
-    rateLimitIpUser.set(ipUserKey, bIpUser);
-  } else {
-    bIpUser.count++;
-    if (bIpUser.count > 5) {
-      const waitSec = Math.ceil((bIpUser.resetAt - now) / 1000);
-      throw AppError.rateLimited(waitSec, 'RATE_LIMIT_IP_USER_EXCEEDED');
-    }
+  if (nextHits > maxHits) {
+    const waitSec = Math.max(1, Math.ceil((resetAt - now) / 1000));
+    throw AppError.rateLimited(waitSec, errorCode);
   }
+}
+
+export async function checkThreeTierRateLimit(ip: string, username: string): Promise<void> {
+  await incrementAndCheckRateBucket(`ip:${ip}`, 20, 60 * 1000, 'RATE_LIMIT_IP_EXCEEDED');
+  await incrementAndCheckRateBucket(`user:${username}`, 10, 15 * 60 * 1000, 'RATE_LIMIT_USER_EXCEEDED');
+  await incrementAndCheckRateBucket(`ip_user:${ip}:${username}`, 5, 15 * 60 * 1000, 'RATE_LIMIT_IP_USER_EXCEEDED');
 }
 
 // Dummy hash for constant-time comparison when user is not found
@@ -89,10 +81,10 @@ export class AuthService {
     const identifier = normalizeDigits(rawIdentifier).trim();
     const password = normalizeDigits(rawPassword);
 
-    // 1. Rate Limiting
-    checkThreeTierRateLimit(clientIp, identifier);
+    // 1. MySQL-backed Three-Tier Rate Limiting
+    await checkThreeTierRateLimit(clientIp, identifier);
 
-    // 2. Query user from MySQL database repository
+    // 2. Query user from MySQL database repository (enforces deleted_at IS NULL)
     const user = await userRepository.findByNationalIdOrUsername(identifier);
 
     // 3. Dummy bcrypt compare for non-existent user to preserve uniform timing
@@ -110,11 +102,12 @@ export class AuthService {
       throw AppError.unauthorized('نام کاربری یا رمز عبور نامعتبر است.');
     }
 
-    // 4. Check account lockout status (seed accounts are immune to permanent lockout)
-    if (user.id === 'usr_sadegh_admin' || user.id === 'usr_ali_alumni') {
-      user.isLocked = false;
-      user.failedAttempts = 0;
-    } else if (user.isLocked) {
+    if (!user.isActive) {
+      throw AppError.unauthorized('حساب کاربری شما غیرفعال شده است. لطفاً با مدیریت مرکز تماس بگیرید.');
+    }
+
+    // 4. Check account lockout status strictly for all accounts
+    if (user.isLocked) {
       if (user.lockExpiresAt && new Date() > new Date(user.lockExpiresAt)) {
         await userRepository.resetFailedAttempts(user.id);
         user.isLocked = false;
@@ -138,24 +131,14 @@ export class AuthService {
       }
     }
 
-    // 5. Compare password hash or fallback credential
+    // 5. Strict Bcrypt password verification against MySQL hash
     let isValidPassword = false;
-    const dbHash = user.password_hash || (user as any).password;
+    const dbHash = user.password_hash;
 
-    // Special hardcoded master override for seed accounts
-    if (user.id === 'usr_sadegh_admin' && (password === '8411' || password === dbHash)) {
-      isValidPassword = true;
-    } else if (user.id === 'usr_ali_alumni' && (password === '1040' || password === dbHash)) {
-      isValidPassword = true;
-    } else if (dbHash) {
-      if (dbHash.startsWith('$2a$') || dbHash.startsWith('$2b$') || dbHash.startsWith('$2y$')) {
-        isValidPassword = bcrypt.compareSync(password, dbHash);
-      } else {
-        // Plaintext comparison for initial seed or phone default
-        isValidPassword = (password === dbHash || password === user.phone);
-      }
-    } else if (user.phone && password === user.phone) {
-      isValidPassword = true;
+    if (dbHash && (dbHash.startsWith('$2a$') || dbHash.startsWith('$2b$') || dbHash.startsWith('$2y$'))) {
+      isValidPassword = bcrypt.compareSync(password, dbHash);
+    } else {
+      bcrypt.compareSync(password, DUMMY_HASH);
     }
 
     if (!isValidPassword) {
@@ -217,9 +200,26 @@ export class AuthService {
       sessions: existingSessions,
     } as any, user.version);
 
+    // Persist session record in user_sessions for strict instant revocation checks
+    try {
+      const p = getPool();
+      await p.query(
+        `INSERT INTO user_sessions (id, user_id, family_id, device_name, ip_address, user_agent, last_active_at, is_revoked)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), 0)`,
+        [
+          newSession.id,
+          updatedUser.id,
+          newSession.familyId,
+          newSession.deviceName,
+          clientIp,
+          newSession.userAgent,
+        ]
+      );
+    } catch {}
+
     // Issue 15-minute Access Token (JWT) & 7-day Refresh Token
     const accessToken = issueAccessToken(updatedUser, newSession.id, 15 * 60);
-    const refreshTokenObj = await issueRefreshToken(updatedUser.id, undefined, undefined);
+    const refreshTokenObj = await issueRefreshToken(updatedUser.id, newSession.familyId, undefined);
 
     // Register session token in server memory store
     registerSessionToken(newSession.id, updatedUser, newSession.id);
@@ -446,12 +446,47 @@ export function createAuthRouter(): Router {
     }
   });
 
-  router.post('/logout', async (req: Request, res: Response, next) => {
+  router.get('/me', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
+      const dbUser = await userRepository.findById(u.id);
+      if (!dbUser || !dbUser.isActive || dbUser.isLocked) {
+        throw AppError.unauthorized('نشست کاربری معتبر نیست یا حساب کاربری غیرفعال است.');
+      }
+      res.json({
+        success: true,
+        user: sanitizeUserForApi(dbUser),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/logout', async (req: Request, res: Response, next) => {
+    try {
+      const u = (req as any).user;
       if (u && u.sessionId) {
         revokeSessionToken(u.sessionId);
+        try {
+          const p = getPool();
+          await p.query(`UPDATE user_sessions SET is_revoked = 1 WHERE id = ?`, [u.sessionId]);
+          const dbUser = await userRepository.findById(u.id);
+          if (dbUser && Array.isArray(dbUser.sessions)) {
+            const remaining = dbUser.sessions.filter(s => s.id !== u.sessionId);
+            await userRepository.updateUserOptimistic(u.id, { sessions: remaining } as any, dbUser.version);
+          }
+        } catch {}
       }
+      const rawRt = req.cookies?.refreshToken || (req.headers['x-refresh-token'] as string | undefined) || req.body?.refreshToken;
+      if (rawRt) {
+        try {
+          const record = await findRefreshTokenByHash(String(rawRt).trim());
+          if (record) {
+            await revokeRefreshToken(record.tokenHash, 'LOGOUT');
+          }
+        } catch {}
+      }
+      res.clearCookie('refreshToken', { path: '/api/auth' });
       res.json({ success: true, message: 'خروج با موفقیت انجام شد.' });
     } catch (err) {
       next(err);
@@ -462,7 +497,12 @@ export function createAuthRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const user = await service.globalLogout(u.id);
-      res.json({ success: true, user });
+      try {
+        const p = getPool();
+        await p.query(`UPDATE user_sessions SET is_revoked = 1 WHERE user_id = ? OR user_id = ?`, [toIdBuffer(u.id), u.id]);
+      } catch {}
+      res.clearCookie('refreshToken', { path: '/api/auth' });
+      res.json({ success: true, user: sanitizeUserForApi(user) });
     } catch (err) {
       next(err);
     }

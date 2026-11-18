@@ -1,17 +1,46 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { User, UserRole, UserSectionPermissions, AuditLog, DesignThemeType } from '../types';
-import { INITIAL_USERS } from '../data/mockData';
+import {
+  User,
+  UserRole,
+  UserSectionPermissions,
+  AuditLog,
+  DesignThemeType,
+  AlumniProfileSettingsConfig,
+} from '../types';
 import { api } from '../services/apiClient';
 import { clearAllDrafts } from '../utils/draftStorage';
 import { refreshRolePoliciesFromServer } from '../utils/rbacPolicy';
 
 const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
 
+const ORGANIZATIONAL_ROLES: UserRole[] = [
+  'admin',
+  'super_admin',
+  'general_observer',
+  'alumni_manager',
+  'admin_finance_officer',
+  'education_deputy',
+  'cultural_educational_officer',
+  'research_deputy',
+  'supervisor',
+];
+
+function notifyToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message, type } }));
+  }
+}
+
 export interface AuthContextType {
   currentUser: User | null;
+  isAuthLoading: boolean;
   setCurrentUser: (user: User | null) => void;
   users: User[];
-  login: (nationalId: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  alumniProfileSettings: AlumniProfileSettingsConfig;
+  refreshAlumniProfileSettings: () => Promise<void>;
+  updateAlumniProfileSettings: (updates: { allowAlumniProfileCompletion: boolean; noticeText?: string }) => Promise<AlumniProfileSettingsConfig>;
+  updateMyIdentity: (updates: Partial<User>) => Promise<{ user: User; settings: AlumniProfileSettingsConfig }>;
+  login: (nationalId: string, password: string) => Promise<{ success: boolean; mustChangePassword?: boolean; user?: User; message?: string }>;
   logout: () => Promise<void>;
   globalLogout: (userId: string) => Promise<void>;
   revokeSession: (sessionId: string) => Promise<void>;
@@ -40,28 +69,21 @@ interface AuthProviderProps {
   setDesignTheme?: (theme: DesignThemeType) => void;
 }
 
+const DEFAULT_PROFILE_SETTINGS: AlumniProfileSettingsConfig = {
+  allowAlumniProfileCompletion: true,
+  noticeText: 'تکمیل و ویرایش اطلاعات هویتی و سوابق علمی در این بخش با تایید مدیریت مرکز فعال است. چهار فیلد هویتی پایه (نام، کد ملی، شماره تماس و کد مرکز) همواره فقط خواندنی هستند.',
+  version: 1,
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({
   children,
   addAuditLog,
   setDesignTheme,
 }) => {
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const s = localStorage.getItem('feqh_users_v3');
-      return s ? JSON.parse(s) : INITIAL_USERS;
-    } catch {
-      return INITIAL_USERS;
-    }
-  });
-
-  const [currentUser, setCurrentUserState] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('feqh_current_user');
-      return saved ? JSON.parse(saved) : INITIAL_USERS[0];
-    } catch {
-      return INITIAL_USERS[0];
-    }
-  });
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUserState] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [alumniProfileSettings, setAlumniProfileSettings] = useState<AlumniProfileSettingsConfig>(DEFAULT_PROFILE_SETTINGS);
 
   const setCurrentUser = useCallback((user: User | null) => {
     setCurrentUserState(user);
@@ -71,22 +93,84 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       } catch {}
       api.setAuthContext(user.id, user.role, user.fullName);
     } else {
-      localStorage.removeItem('feqh_current_user');
+      try {
+        localStorage.removeItem('feqh_current_user');
+      } catch {}
     }
   }, []);
 
   const refreshUsers = useCallback(async () => {
     try {
       const newUsers = await api.getUsers();
-      if (Array.isArray(newUsers) && newUsers.length > 0) {
+      if (Array.isArray(newUsers)) {
         setUsers(newUsers);
-        try { localStorage.setItem('feqh_users_v3', JSON.stringify(newUsers)); } catch {}
+      }
+    } catch {
+      // Ignored for non-admin accounts lacking /api/admin/users access
+    }
+  }, []);
+
+  const refreshAlumniProfileSettings = useCallback(async () => {
+    try {
+      const cfg = await api.getAlumniProfileSettings();
+      if (cfg) {
+        setAlumniProfileSettings(cfg);
       }
     } catch {}
   }, []);
 
+  // Mandatory Login-First Bootstrap (Reform 55)
   useEffect(() => {
-    refreshUsers();
+    let active = true;
+    const bootstrapAuth = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('feqh_access_token') : null;
+      if (!token) {
+        api.clearSession();
+        if (active) {
+          setCurrentUserState(null);
+          setUsers([]);
+          setIsAuthLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const res = await api.getMe();
+        if (!active) return;
+        if (res?.success && res.user && !res.mustChangePassword) {
+          setCurrentUser(res.user);
+          await refreshAlumniProfileSettings();
+          if (ORGANIZATIONAL_ROLES.includes(res.user.role)) {
+            await refreshUsers();
+          }
+        } else {
+          api.clearSession();
+          setCurrentUserState(null);
+          setUsers([]);
+        }
+      } catch {
+        api.clearSession();
+        if (active) {
+          setCurrentUserState(null);
+          setUsers([]);
+        }
+      } finally {
+        if (active) {
+          setIsAuthLoading(false);
+        }
+      }
+    };
+
+    bootstrapAuth();
+    return () => {
+      active = false;
+    };
+  }, [setCurrentUser, refreshAlumniProfileSettings, refreshUsers]);
+
+  // Real-time SSE Sync when authenticated
+  useEffect(() => {
+    if (!currentUser) return;
+
     const unsubscribe = api.subscribeToEvents(event => {
       if (
         event.type === 'rbac.permissions_updated' ||
@@ -94,10 +178,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         event.type === 'rbac.item_visibility_updated'
       ) {
         refreshRolePoliciesFromServer();
-        refreshUsers();
+        if (ORGANIZATIONAL_ROLES.includes(currentUser.role)) {
+          refreshUsers();
+        }
 
         const data = event.data?.data || event.data;
-        if (currentUser && data && data.userId === currentUser.id) {
+        if (data && data.userId === currentUser.id) {
           setCurrentUser({
             ...currentUser,
             ...(data.role ? { role: data.role } : {}),
@@ -106,8 +192,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         }
       }
 
+      if (event.type === 'user.alumni_profile_settings_updated') {
+        const delta = event.data?.data || event.data;
+        if (delta?.updates) {
+          setAlumniProfileSettings(prev => ({
+            ...prev,
+            ...delta.updates,
+            version: delta.version ?? delta.updates.version ?? prev.version,
+          }));
+        }
+        return;
+      }
+
       if (event.type.startsWith('user.')) {
-        const delta = event.data?.data;
+        const delta = event.data?.data || event.data;
         const resourceId = delta?.resourceId;
         const updates = delta?.updates;
         const version = delta?.version;
@@ -116,7 +214,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
           setUsers(prev => {
             const exists = prev.some(u => u.id === resourceId);
             if (exists) {
-              return prev.map(u => u.id === resourceId ? { ...u, ...updates, version: version || ((u as any).version || 1) + 1 } : u);
+              return prev.map(u =>
+                u.id === resourceId ? { ...u, ...updates, version: version || ((u as any).version || 1) + 1 } : u
+              );
             }
             if (updates.fullName || updates.nationalId) {
               return [updates as User, ...prev];
@@ -124,66 +224,123 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
             return prev;
           });
 
-          if (currentUser && currentUser.id === resourceId) {
+          if (currentUser.id === resourceId) {
             setCurrentUser({
               ...currentUser,
               ...updates,
+              ...(version ? { version } : {}),
             });
           }
-        } else {
+        } else if (ORGANIZATIONAL_ROLES.includes(currentUser.role)) {
           refreshUsers();
         }
       }
     });
     return () => unsubscribe();
-  }, [refreshUsers]);
+  }, [currentUser, setCurrentUser, refreshUsers]);
 
   const login = useCallback(async (nationalId: string, password: string) => {
     try {
       const res = await api.login(nationalId, password);
       if (res.success && res.user) {
+        if (res.mustChangePassword) {
+          return { success: true, mustChangePassword: true, user: res.user };
+        }
         setCurrentUser(res.user);
-        api.setAuthContext(res.user.id, res.user.role, res.user.fullName, res.token || (res as any).accessToken);
-        if (setDesignTheme) setDesignTheme('crextio');
-        refreshUsers();
+        const token = res.token || (res as any).accessToken;
+        api.setAuthContext(res.user.id, res.user.role, res.user.fullName, token, res.refreshToken);
+        await refreshAlumniProfileSettings();
+        if (ORGANIZATIONAL_ROLES.includes(res.user.role)) {
+          refreshUsers();
+        }
+        if (setDesignTheme && res.user.role === 'alumni') {
+          setDesignTheme('crextio');
+        }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('app:auth_changed', { detail: { user: res.user } }));
         }
-        return { success: true };
+        return { success: true, user: res.user };
       }
-      return { success: false, message: 'اطلاعات ورود نامعتبر است.' };
+      return { success: false, message: res.message || 'اطلاعات ورود نامعتبر است.' };
     } catch (err: any) {
-      // Offline fallback: check local users list
-      const normInput = (nationalId || '').trim().toLowerCase();
-      const found = users.find(u => 
-        (u.nationalId && u.nationalId.toLowerCase() === normInput) || 
-        (u.username && u.username.toLowerCase() === normInput)
-      );
-
-      if (found) {
-        const expectedPw = (found as any).password || (found as any).password_hash || found.phone;
-        if (password === expectedPw || password === '8411' || password === '1040' || password === found.phone) {
-          setCurrentUser(found);
-          if (setDesignTheme) setDesignTheme('crextio');
-          return { success: true };
-        }
-      }
-      return { success: false, message: err.message || 'نام کاربری یا رمز عبور نامعتبر است.' };
+      return { success: false, message: err?.message || 'نام کاربری یا رمز عبور نامعتبر است.' };
     }
-  }, [users, setCurrentUser, setDesignTheme, refreshUsers]);
+  }, [setCurrentUser, setDesignTheme, refreshUsers, refreshAlumniProfileSettings]);
 
   const logout = useCallback(async () => {
     try {
       await api.logout();
     } catch {}
-    localStorage.removeItem('feqh_current_user');
-    localStorage.removeItem('feqh_access_token');
-    localStorage.removeItem('feqh_refresh_token');
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
-    setCurrentUserState(INITIAL_USERS[0]);
-    api.setAuthContext(INITIAL_USERS[0].id, INITIAL_USERS[0].role, INITIAL_USERS[0].fullName, 'sess_default_admin');
+    api.clearSession();
+    try {
+      localStorage.removeItem('feqh_current_user');
+      localStorage.removeItem('feqh_access_token');
+      localStorage.removeItem('feqh_refresh_token');
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}current_user`);
+    } catch {}
+    setCurrentUserState(null);
+    setUsers([]);
     clearAllDrafts().catch(() => {});
   }, []);
+
+  const updateAlumniProfileSettings = useCallback(
+    async (updates: { allowAlumniProfileCompletion: boolean; noticeText?: string }) => {
+      try {
+        const saved = await api.updateAlumniProfileSettings({
+          allowAlumniProfileCompletion: updates.allowAlumniProfileCompletion,
+          noticeText: updates.noticeText ?? alumniProfileSettings.noticeText,
+          expectedVersion: Number(alumniProfileSettings.version || 1),
+        });
+        setAlumniProfileSettings(saved);
+        notifyToast(
+          saved.allowAlumniProfileCompletion
+            ? 'امکان تکمیل اطلاعات هویتی توسط دانش‌آموختگان فعال شد.'
+            : 'تکمیل اطلاعات هویتی توسط دانش‌آموختگان موقتاً غیرفعال شد.',
+          'success'
+        );
+        return saved;
+      } catch (err: any) {
+        if (err?.status === 409) {
+          await refreshAlumniProfileSettings();
+        }
+        notifyToast(err?.message || 'خطا در ذخیره تنظیمات تکمیل اطلاعات هویتی', 'error');
+        throw err;
+      }
+    },
+    [alumniProfileSettings, refreshAlumniProfileSettings]
+  );
+
+  const updateMyIdentity = useCallback(
+    async (updates: Partial<User>) => {
+      if (!currentUser) {
+        throw new Error('کاربر احراز هویت نشده است.');
+      }
+      try {
+        const expectedVersion = Number(currentUser.version || 1);
+        const res = await api.updateMyIdentity(updates, expectedVersion);
+        if (res.user) {
+          setCurrentUser(res.user);
+          setUsers(prev => prev.map(u => (u.id === res.user.id ? { ...u, ...res.user } : u)));
+        }
+        if (res.settings) {
+          setAlumniProfileSettings(res.settings);
+        }
+        notifyToast('اطلاعات کارت هویتی شما با موفقیت در پایگاه داده ذخیره شد.', 'success');
+        return res;
+      } catch (err: any) {
+        if (err?.status === 409) {
+          try {
+            const fresh = await api.getMyIdentity();
+            if (fresh?.user) setCurrentUser(fresh.user);
+            if (fresh?.settings) setAlumniProfileSettings(fresh.settings);
+          } catch {}
+        }
+        notifyToast(err?.message || 'خطا در به‌روزرسانی کارت اطلاعات هویتی', 'error');
+        throw err;
+      }
+    },
+    [currentUser, setCurrentUser]
+  );
 
   const globalLogout = useCallback(async (userId: string) => {
     try {
@@ -191,9 +348,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       if (res.user && currentUser?.id === userId) {
         setCurrentUserState(res.user);
       }
-      alert('خروج سراسری از کلیه دستگاه‌ها با موفقیت انجام شد و تمامی نشست‌ها ابطال گردیدند.');
+      notifyToast('خروج سراسری از کلیه دستگاه‌ها با موفقیت انجام شد و تمامی نشست‌ها ابطال گردیدند.', 'success');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      notifyToast(`خطا: ${err.message}`, 'error');
     }
   }, [currentUser]);
 
@@ -204,65 +361,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       if (res.user) {
         setCurrentUserState(res.user);
       }
+      notifyToast('نشست انتخاب‌شده با موفقیت لغو شد.', 'success');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      notifyToast(`خطا: ${err.message}`, 'error');
     }
   }, [currentUser]);
 
   const switchUserRole = useCallback(async (role: UserRole) => {
-    // 1. Instantly update user state and design theme synchronously (Zero Delay)
+    if (!currentUser || !ORGANIZATIONAL_ROLES.includes(currentUser.role)) {
+      return;
+    }
+
     setCurrentUserState(prev => {
       if (!prev) return prev;
       return {
         ...prev,
         role,
-        roleTitle: role === 'alumni' ? 'دانش‌آموخته نخبه' : (role === 'admin' ? 'مدیر ارشد سامانه' : prev.roleTitle),
+        roleTitle: role === 'alumni' ? 'دانش‌آموخته نخبه' : role === 'admin' ? 'مدیر ارشد سامانه' : prev.roleTitle,
       };
     });
     if (setDesignTheme) {
       setDesignTheme(role === 'alumni' ? 'crextio' : 'portal');
     }
 
-    // 2. Dispatch custom event for immediate responsive re-rendering across the tree
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('app:role_switched', { detail: { role } }));
     }
 
-    // 3. Sync with backend asynchronously
     try {
       const res = await api.switchRole(role);
       if (res.user) {
         setCurrentUserState(res.user);
       }
-    } catch {
-      // Local state is already active
-    }
-  }, [setDesignTheme]);
+    } catch {}
+  }, [currentUser, setDesignTheme]);
 
   const unlockAccount = useCallback(async (userId: string) => {
     try {
       const updated = await api.unlockUser(userId);
       setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
       if (currentUser?.id === userId) setCurrentUserState(updated);
-      alert(`حساب کاربری [${updated.fullName}] با موفقیت رفع توقیف گردید.`);
+      notifyToast(`حساب کاربری [${updated.fullName}] با موفقیت رفع توقیف گردید.`, 'success');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      notifyToast(`خطا: ${err.message}`, 'error');
     }
   }, [currentUser]);
 
   const toggleUserLock = useCallback((userId: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const nextLocked = !u.isLocked;
-      const updated = {
-        ...u,
-        isLocked: nextLocked,
-        failedAttempts: nextLocked ? 5 : 0,
-        lockExpiresAt: nextLocked ? '۱۴۰۳/۰۸/۰۵ - ۱۲:۰۰' : undefined,
-      };
-      if (currentUser?.id === userId) setCurrentUserState(updated);
-      return updated;
-    }));
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id !== userId) return u;
+        const nextLocked = !u.isLocked;
+        const updated = {
+          ...u,
+          isLocked: nextLocked,
+          failedAttempts: nextLocked ? 5 : 0,
+          lockExpiresAt: nextLocked ? '۱۴۰۳/۰۸/۰۵ - ۱۲:۰۰' : undefined,
+        };
+        if (currentUser?.id === userId) setCurrentUserState(updated);
+        return updated;
+      })
+    );
   }, [currentUser]);
 
   const toggleUserActiveStatus = useCallback(async (userId: string) => {
@@ -270,21 +429,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       const updated = await api.toggleUserActive(userId);
       setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
       if (currentUser?.id === userId) setCurrentUserState(updated);
+      notifyToast('وضعیت فعال بودن حساب کاربری به‌روزرسانی شد.', 'success');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      notifyToast(`خطا: ${err.message}`, 'error');
     }
   }, [currentUser]);
 
   const createUser = useCallback(async (userData: Omit<User, 'id' | 'sessions' | 'tokenVersion' | 'failedAttempts' | 'isLocked'>): Promise<User> => {
     const nameParts = userData.fullName.trim().split(' ');
-    const avatar = nameParts.length > 1 
-      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}` 
+    const avatar = nameParts.length > 1
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : nameParts[0].slice(0, 2);
 
     let serverCreatedUser: any = null;
     try {
       serverCreatedUser = await api.createUser({
         nationalId: userData.nationalId,
+        centerCode: userData.centerCode,
         username: userData.username || userData.nationalId,
         password: (userData as any).password || userData.phone,
         fullName: userData.fullName,
@@ -300,7 +461,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         province: (userData as any).province,
       });
     } catch (apiErr: any) {
-      alert(`خطا در ثبت کاربر در دیتابیس سرور: ${apiErr?.message || apiErr}`);
+      notifyToast(`خطا در ثبت کاربر در دیتابیس سرور: ${apiErr?.message || apiErr}`, 'error');
       throw apiErr;
     }
 
@@ -313,31 +474,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       isLocked: false,
       failedAttempts: 0,
       tokenVersion: 1,
-      sessions: serverCreatedUser?.sessions || [
-        {
-          id: `sess_${Date.now()}`,
-          deviceName: 'حساب تازه ایجاد شده (میز کاربری اولیه)',
-          ipAddress: '127.0.0.1',
-          userAgent: 'Default System Client',
-          lastActiveAt: 'هم‌اکنون',
-          isCurrent: true,
-          familyId: `fam_${Date.now()}`,
-        }
-      ],
+      sessions: serverCreatedUser?.sessions || [],
       permissions: userData.permissions || {
         canSubmitRuling: true,
         canBookCounseling: true,
         canRequestLoan: true,
         canBuyCooperative: true,
         canAccessCartable: true,
-      }
+      },
     };
 
     setUsers(prev => {
       const filtered = prev.filter(u => u.id !== newUser.id && u.nationalId !== newUser.nationalId);
-      const next = [newUser, ...filtered];
-      try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
-      return next;
+      return [newUser, ...filtered];
     });
 
     refreshUsers();
@@ -359,19 +508,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
 
   const updateUserDetails = useCallback(async (userId: string, updates: Partial<User>) => {
     const targetUser = users.find(u => u.id === userId);
-    let serverUpdated: any = null;
-    try {
-      serverUpdated = await api.updateUser(userId, {
-        ...updates,
-        _baseVersion: targetUser?.version || 1,
-      });
-    } catch (apiErr: any) {
-      console.error('Backend user update error:', apiErr);
-      throw apiErr;
-    }
+    const serverUpdated = await api.updateUser(userId, {
+      ...updates,
+      _baseVersion: targetUser?.version || 1,
+    });
 
-    setUsers(prev => {
-      const next = prev.map(u => {
+    setUsers(prev =>
+      prev.map(u => {
         if (u.id !== userId) return u;
         const newFullName = updates.fullName !== undefined ? updates.fullName : u.fullName;
         const nameParts = (newFullName || '').trim().split(' ');
@@ -385,20 +528,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
           ...(serverUpdated || {}),
           avatarText: newAvatarText || u.avatarText,
         };
-        if ((updates as any).password) {
-          updated.password = (updates as any).password;
-        }
-        if ((updates as any).username) {
-          updated.username = (updates as any).username;
-        }
         if (currentUser?.id === userId) {
-          setCurrentUserState(updated);
+          setCurrentUser(updated);
         }
         return updated;
-      });
-      try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
-      return next;
-    });
+      })
+    );
 
     refreshUsers();
 
@@ -409,42 +544,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         actorName: currentUser?.fullName || 'مدیر سیستم',
         actorRole: currentUser?.role || 'admin',
         ip: '127.0.0.1',
-        details: `بروزرسانی کامل و جامع اطلاعات حساب کاربری [${updates.fullName || userId}]`,
+        details: `بروزرسانی اطلاعات حساب کاربری [${updates.fullName || userId}]`,
         severity: 'info',
       });
     }
-  }, [users, currentUser, refreshUsers, addAuditLog]);
+  }, [users, currentUser, setCurrentUser, refreshUsers, addAuditLog]);
 
   const deleteUser = useCallback(async (userId: string) => {
     if (currentUser?.id === userId) {
-      alert('نمی‌توانید حساب کاربری فعال خود را حذف نمایید.');
+      notifyToast('نمی‌توانید حساب کاربری فعال خود را حذف نمایید.', 'error');
       return;
     }
     try {
       await api.deleteUser(userId);
-      setUsers(prev => {
-        const next = prev.filter(u => u.id !== userId);
-        try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
-        return next;
-      });
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      notifyToast('کاربر از سیستم حذف گردید.', 'success');
     } catch (err: any) {
-      alert(`خطا در حذف کاربر: ${err?.message || err}`);
+      notifyToast(`خطا در حذف کاربر: ${err?.message || err}`, 'error');
     }
   }, [currentUser]);
 
   const resetUserPassword = useCallback(async (userId: string, customPassword?: string): Promise<string> => {
     const generatedPass = customPassword || `Feqh@${Math.floor(100000 + Math.random() * 900000)}`;
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      return {
-        ...u,
-        failedAttempts: 0,
-        isLocked: false,
-        tokenVersion: u.tokenVersion + 1,
-      };
-    }));
-
     const targetUser = users.find(u => u.id === userId);
+    if (targetUser) {
+      try {
+        await api.updateUserCredentials(userId, targetUser.username || targetUser.nationalId, generatedPass);
+      } catch {}
+    }
+
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id !== userId) return u;
+        return {
+          ...u,
+          failedAttempts: 0,
+          isLocked: false,
+          tokenVersion: u.tokenVersion + 1,
+        };
+      })
+    );
 
     if (addAuditLog) {
       addAuditLog({
@@ -462,41 +601,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   }, [users, currentUser, addAuditLog]);
 
   const revokeUserSession = useCallback((userId: string, sessionId: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const updatedSessions = u.sessions.filter(s => s.id !== sessionId);
-      const updated = { ...u, sessions: updatedSessions };
-      if (currentUser?.id === userId) setCurrentUserState(updated);
-      return updated;
-    }));
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id !== userId) return u;
+        const updatedSessions = (u.sessions || []).filter(s => s.id !== sessionId);
+        const updated = { ...u, sessions: updatedSessions };
+        if (currentUser?.id === userId) setCurrentUserState(updated);
+        return updated;
+      })
+    );
   }, [currentUser]);
 
   const revokeAllUserSessions = useCallback((userId: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const updated = { ...u, sessions: [], tokenVersion: u.tokenVersion + 1 };
-      if (currentUser?.id === userId) setCurrentUserState(updated);
-      return updated;
-    }));
-    alert('کلیه نشست‌های فعال کاربر با موفقیت ابطال و خارج شدند.');
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id !== userId) return u;
+        const updated = { ...u, sessions: [], tokenVersion: u.tokenVersion + 1 };
+        if (currentUser?.id === userId) setCurrentUserState(updated);
+        return updated;
+      })
+    );
+    notifyToast('کلیه نشست‌های فعال کاربر با موفقیت ابطال شدند.', 'success');
   }, [currentUser]);
 
   const createAccountForAlumnus = useCallback(async (userId: string, username?: string, password?: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId && u.nationalId !== userId) return u;
-      const un = username?.trim() || u.nationalId;
-      const pw = password?.trim() || u.phone;
-      return {
-        ...u,
-        hasAccount: true,
-        username: un,
-        password: pw,
-        isActive: true,
-        isLocked: false,
-      };
-    }));
-
     const targetUser = users.find(u => u.id === userId || u.nationalId === userId);
+    const un = username?.trim() || targetUser?.nationalId || userId;
+    const pw = password?.trim() || targetUser?.phone || '123456';
+    try {
+      const updatedUser = await api.updateUserCredentials(targetUser?.id || userId, un, pw);
+      setUsers(prev =>
+        prev.map(u => (u.id === (targetUser?.id || userId) ? { ...u, ...updatedUser, hasAccount: true } : u))
+      );
+      notifyToast('حساب کاربری با موفقیت صادر و فعال شد.', 'success');
+    } catch (err: any) {
+      notifyToast(err?.message || 'خطا در صدور حساب کاربری', 'error');
+    }
+
     if (addAuditLog) {
       addAuditLog({
         eventType: 'ACCOUNT_UNLOCKED',
@@ -504,7 +645,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         actorName: currentUser?.fullName || 'مدیر سیستم',
         actorRole: currentUser?.role || 'admin',
         ip: '127.0.0.1',
-        details: `صدور و فعال‌سازی حساب کاربری رسمی برای دانش‌آموخته [${targetUser?.fullName || userId}] با نام کاربری [${username || targetUser?.nationalId}]`,
+        details: `صدور و فعال‌سازی حساب کاربری رسمی برای دانش‌آموخته [${targetUser?.fullName || userId}]`,
         severity: 'info',
       });
     }
@@ -513,30 +654,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   const updateUserCredentials = useCallback(async (userId: string, username: string, password: string) => {
     try {
       const updatedUser = await api.updateUserCredentials(userId, username, password);
-      setUsers(prev => {
-        const next = prev.map(u => (u.id === userId ? { ...u, ...updatedUser } : u));
-        try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
-        return next;
-      });
+      setUsers(prev => prev.map(u => (u.id === userId ? { ...u, ...updatedUser } : u)));
       if (currentUser?.id === userId) {
-        setCurrentUserState(prev => prev ? { ...prev, ...updatedUser } : null);
+        setCurrentUserState(prev => (prev ? { ...prev, ...updatedUser } : null));
       }
-    } catch {
-      setUsers(prev => {
-        const next = prev.map(u => {
-          if (u.id !== userId) return u;
-          const updated = {
-            ...u,
-            username: username.trim(),
-            password: password.trim(),
-            hasAccount: true,
-          };
-          if (currentUser?.id === userId) setCurrentUserState(updated);
-          return updated;
-        });
-        try { localStorage.setItem('feqh_users_v3', JSON.stringify(next)); } catch {}
-        return next;
-      });
+      notifyToast('نام کاربری و رمز عبور در پایگاه داده به‌روزرسانی شد.', 'success');
+    } catch (err: any) {
+      notifyToast(err?.message || 'خطا در به‌روزرسانی اعتبارنامه کاربر', 'error');
+      throw err;
     }
 
     const targetUser = users.find(u => u.id === userId);
@@ -547,7 +672,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         actorName: currentUser?.fullName || 'مدیر سیستم',
         actorRole: currentUser?.role || 'admin',
         ip: '127.0.0.1',
-        details: `ویرایش مستقیم نام کاربری یا رمز عبور کاربر [${targetUser?.fullName || userId}] توسط مدیر سامانه`,
+        details: `ویرایش نام کاربری یا رمز عبور کاربر [${targetUser?.fullName || userId}] توسط مدیر سامانه`,
         severity: 'warning',
       });
     }
@@ -565,19 +690,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         sectionPermissions: mergedPermissions,
         _baseVersion: targetUser?.version || 1,
       });
-    } catch (err) {
-      console.warn('Backend updateUserSectionPermissions fallback:', err);
-    }
+    } catch {}
 
-    setUsers(prev => prev.map(u => {
-      if (u.id !== userId) return u;
-      const updated = {
-        ...u,
-        sectionPermissions: mergedPermissions,
-      };
-      if (currentUser?.id === userId) setCurrentUserState(updated);
-      return updated;
-    }));
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.id !== userId) return u;
+        const updated = {
+          ...u,
+          sectionPermissions: mergedPermissions,
+        };
+        if (currentUser?.id === userId) setCurrentUserState(updated);
+        return updated;
+      })
+    );
 
     if (addAuditLog) {
       addAuditLog({
@@ -586,7 +711,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         actorName: currentUser?.fullName || 'مدیر سیستم',
         actorRole: currentUser?.role || 'admin',
         ip: '127.0.0.1',
-        details: `تغییر و به‌روزرسانی ماتریس سطوح دسترسی بخش‌های سامانه برای کاربر [${targetUser?.fullName || userId}]`,
+        details: `به‌روزرسانی ماتریس سطوح دسترسی برای کاربر [${targetUser?.fullName || userId}]`,
         severity: 'warning',
       });
     }
@@ -597,77 +722,86 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
       await api.updateRbacRolePolicy(role, {
         sectionPermissions: permissions as Record<string, string>,
       });
-    } catch (err) {
-      console.warn('Backend updateRoleDefaultPermissions fallback:', err);
-    }
+    } catch {}
 
-    setUsers(prev => prev.map(u => {
-      if (u.role !== role) return u;
-      const updated = {
-        ...u,
-        sectionPermissions: {
-          ...u.sectionPermissions,
-          ...permissions,
-        }
-      };
-      if (currentUser?.id === u.id) setCurrentUserState(updated);
-      return updated;
-    }));
+    setUsers(prev =>
+      prev.map(u => {
+        if (u.role !== role) return u;
+        const updated = {
+          ...u,
+          sectionPermissions: {
+            ...u.sectionPermissions,
+            ...permissions,
+          },
+        };
+        if (currentUser?.id === u.id) setCurrentUserState(updated);
+        return updated;
+      })
+    );
   }, [currentUser]);
 
-  const value = useMemo<AuthContextType>(() => ({
-    currentUser,
-    setCurrentUser,
-    users,
-    login,
-    logout,
-    globalLogout,
-    revokeSession,
-    switchUserRole,
-    unlockAccount,
-    toggleUserLock,
-    toggleUserActiveStatus,
-    createUser,
-    updateUserDetails,
-    deleteUser,
-    resetUserPassword,
-    revokeUserSession,
-    revokeAllUserSessions,
-    createAccountForAlumnus,
-    updateUserCredentials,
-    updateUserSectionPermissions,
-    updateRoleDefaultPermissions,
-    refreshUsers,
-  }), [
-    currentUser,
-    setCurrentUser,
-    users,
-    login,
-    logout,
-    globalLogout,
-    revokeSession,
-    switchUserRole,
-    unlockAccount,
-    toggleUserLock,
-    toggleUserActiveStatus,
-    createUser,
-    updateUserDetails,
-    deleteUser,
-    resetUserPassword,
-    revokeUserSession,
-    revokeAllUserSessions,
-    createAccountForAlumnus,
-    updateUserCredentials,
-    updateUserSectionPermissions,
-    updateRoleDefaultPermissions,
-    refreshUsers,
-  ]);
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextType>(
+    () => ({
+      currentUser,
+      isAuthLoading,
+      setCurrentUser,
+      users,
+      alumniProfileSettings,
+      refreshAlumniProfileSettings,
+      updateAlumniProfileSettings,
+      updateMyIdentity,
+      login,
+      logout,
+      globalLogout,
+      revokeSession,
+      switchUserRole,
+      unlockAccount,
+      toggleUserLock,
+      toggleUserActiveStatus,
+      createUser,
+      updateUserDetails,
+      deleteUser,
+      resetUserPassword,
+      revokeUserSession,
+      revokeAllUserSessions,
+      createAccountForAlumnus,
+      updateUserCredentials,
+      updateUserSectionPermissions,
+      updateRoleDefaultPermissions,
+      refreshUsers,
+    }),
+    [
+      currentUser,
+      isAuthLoading,
+      setCurrentUser,
+      users,
+      alumniProfileSettings,
+      refreshAlumniProfileSettings,
+      updateAlumniProfileSettings,
+      updateMyIdentity,
+      login,
+      logout,
+      globalLogout,
+      revokeSession,
+      switchUserRole,
+      unlockAccount,
+      toggleUserLock,
+      toggleUserActiveStatus,
+      createUser,
+      updateUserDetails,
+      deleteUser,
+      resetUserPassword,
+      revokeUserSession,
+      revokeAllUserSessions,
+      createAccountForAlumnus,
+      updateUserCredentials,
+      updateUserSectionPermissions,
+      updateRoleDefaultPermissions,
+      refreshUsers,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {

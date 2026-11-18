@@ -80,6 +80,7 @@ export interface UserPermissions {
 export interface User {
   id: string;
   nationalId: string; // کد ملی (شناسه ورود)
+  centerCode?: string; // کد مرکز اختصاصی دانش‌آموخته (ویرایش فقط توسط مدیر/ادمین)
   username?: string; // نام کاربری (پیش‌فرض کد ملی)
   password?: string; // رمز عبور (پیش‌فرض شماره موبایل)
   password_hash?: string; // هش ذخیره‌شده در دیتابیس
@@ -1090,6 +1091,7 @@ export interface Consultant {
   bio: string;
   experienceYears: number;
   availability: string;
+  scheduleSlots?: string[];
   avatarUrl?: string;
   academicRank?: string;
   resumeDetails?: string[];
@@ -1097,18 +1099,23 @@ export interface Consultant {
   counselingType?: 'general' | 'specialized_career';
   fee?: number;
   subsidyNotice?: string;
+  version?: number;
 }
 
 export interface CounselingRequest {
   id: string;
   applicantId: string;
   applicantName: string;
+  hideIdentity?: boolean;
   userPhone?: string;
   userNationalId?: string;
   userRoleTitle?: string;
   category: CounselingCategory;
   categoryTitle: string;
   counselingType?: 'general' | 'specialized_career';
+  selectedFieldId?: string;
+  selectedFieldTitle?: string;
+  formResponses?: Record<string, string | string[]>;
   preferredConsultantId?: string;
   preferredConsultantName?: string;
   description: string;
@@ -1124,7 +1131,171 @@ export interface CounselingRequest {
   paymentStatus?: 'pending_review' | 'confirmed' | 'waived' | 'free';
   reviewedBy?: string;
   reviewedAt?: string;
+  version?: number;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AlumniProfileSettingsConfig {
+  allowAlumniProfileCompletion: boolean;
+  noticeText?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  version: number;
+}
+
+export interface CounselingFieldItem {
+  id: string;
+  counselingType: 'general' | 'specialized_career';
+  title: string;
+  subtitle?: string;
+  description: string;
+  iconName?: string;
+  accentColor?: string;
+  isActive: boolean;
+  displayOrder: number;
+  version: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type DynamicWizardFieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+
+export interface DynamicWizardField {
+  id: string;
+  key: string;
+  label: string;
+  type: DynamicWizardFieldType;
+  placeholder?: string;
+  helperText?: string;
+  options?: string[];
+  required: boolean;
+  enabled: boolean;
+  order: number;
+}
+
+export interface DynamicWizardStep {
+  id: string;
+  title: string;
+  subtitle?: string;
+  enabled: boolean;
+  order: number;
+  fields: DynamicWizardField[];
+}
+
+export interface SpecializedCounselingPortalConfig {
+  sectionTitle: string;
+  sectionSubtitle: string;
+  landingIntroTitle: string;
+  landingIntroBody: string;
+  landingCalloutTitle: string;
+  landingCalloutSubtitle: string;
+  ctaButtonLabel: string;
+  fieldsSectionTitle: string;
+  fieldsSectionSubtitle: string;
+  descriptionButtonLabel: string;
+  descriptionModalTitle: string;
+  descriptionModalBody: string;
+  showAdvisorsToStudents: boolean;
+  submissionSuccessMessage: string;
+  wizardSteps: DynamicWizardStep[];
+  version: number;
+}
+
+export interface GeneralCounselingPortalConfig {
+  sectionTitle: string;
+  sectionSubtitle: string;
+  landingIntroTitle: string;
+  landingIntroBody: string;
+  landingCalloutTitle: string;
+  landingCalloutSubtitle: string;
+  ctaButtonLabel: string;
+  fieldsSectionTitle: string;
+  fieldsSectionSubtitle: string;
+  descriptionButtonLabel: string;
+  descriptionModalTitle: string;
+  descriptionModalBody: string;
+  showRatesInWizardEnd: boolean;
+  ratesButtonLabel: string;
+  submissionSuccessMessage: string;
+  wizardSteps: DynamicWizardStep[];
+  version: number;
+}
+
+export interface GeneralCounselingTariffItem {
+  id: string;
+  serviceTitle: string;
+  sessionDurationMinutes: number;
+  meetingMode: 'حضوری' | 'برخط' | 'تلفنی' | 'همه روش‌ها';
+  standardFee: number;
+  alumniSubsidizedFee: number;
+  notes?: string;
+  isActive: boolean;
+  displayOrder: number;
+  version: number;
+}
+
+export interface PsychologicalTestQuestion {
+  id: string;
+  prompt: string;
+  type: 'single_choice' | 'scale' | 'text';
+  options?: string[];
+  required?: boolean;
+}
+
+export interface PsychologicalTest {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  estimatedMinutes: number;
+  instructions?: string;
+  questions: PsychologicalTestQuestion[];
+  isActive: boolean;
+  version: number;
+  createdAt?: string;
+}
+
+export interface PsychologicalTestAssignment {
+  id: string;
+  testId: string;
+  testTitle?: string;
+  testCategory?: string;
+  testDescription?: string;
+  estimatedMinutes?: number;
+  instructions?: string;
+  questions?: PsychologicalTestQuestion[];
+  userId: string;
+  userName: string;
+  userNationalId?: string;
+  assignedById?: string;
+  assignedByName: string;
+  requestId?: string;
+  status: 'unlocked' | 'in_progress' | 'completed' | 'reviewed';
+  adminNote?: string;
+  resultId?: string;
+  scoreSummary?: string;
+  version: number;
+  assignedAt: string;
+  completedAt?: string;
+}
+
+export interface PsychologicalTestResult {
+  id: string;
+  assignmentId: string;
+  testId: string;
+  testTitle?: string;
+  userId: string;
+  userName: string;
+  userNationalId?: string;
+  answers: Array<{ questionId: string; prompt?: string; questionText?: string; answer: string | number }>;
+  rawScore?: number;
+  scoreSummary: string;
+  psychologistNotes?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  version: number;
+  submittedAt: string;
 }
 
 export interface ResearchMessage {

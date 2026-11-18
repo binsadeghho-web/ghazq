@@ -14,6 +14,7 @@ import { CrextioSubViews } from './components/crextio/CrextioSubViews';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ModuleFallback } from './components/common/ModuleFallback';
 import { ConcurrentConflictModal } from './components/common/ConcurrentConflictModal';
+import { ToastContainer } from './components/common/ToastContainer';
 
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
 const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
@@ -42,16 +43,27 @@ const tabTitles: Record<NavTabId, string> = {
 };
 
 const MainLayout: React.FC = () => {
-  const { designTheme, setDesignTheme, currentUser, crextioConfig } = useApp();
+  const { designTheme, setDesignTheme, currentUser, isAuthLoading, crextioConfig } = useApp();
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // If user is logged out, render the modern full-page login view
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-[#070C0A] flex flex-col items-center justify-center gap-4 text-emerald-300" dir="rtl">
+        <div className="w-11 h-11 rounded-2xl border-2 border-emerald-500/30 border-t-emerald-400 animate-spin" />
+        <p className="text-xs font-bold tracking-wide text-stone-300">در حال بررسی نشست امنیتی در پایگاه داده...</p>
+      </div>
+    );
+  }
+
+  // Reform 55: Mandatory Login-First Gate for every visitor
   if (!currentUser) {
     return <ModernLoginPage isFullPage={true} />;
   }
+
+  const isRegularEndUser = currentUser.role === 'alumni' || currentUser.role === 'customer';
 
   // Theme 3: Minimalist Community Hub
   if (designTheme === 'minimal' || (currentUser?.role === 'alumni' && crextioConfig.defaultAlumniTheme === 'minimal')) {
@@ -166,14 +178,14 @@ const MainLayout: React.FC = () => {
                     </Suspense>
                   )}
                   {activeTab === 'synergy' && <CrextioSubViews activeNav="Synergy" onNavigate={(tab) => setActiveTab(tab.toLowerCase() as NavTabId)} />}
-                  {activeTab === 'alumni' && (
+                  {activeTab === 'alumni' && !isRegularEndUser && (
                     <Suspense fallback={<ModuleFallback />}>
                       <AlumniDirectorySection onNavigate={setActiveTab} />
                     </Suspense>
                   )}
-                  {activeTab === 'users' && <UserManagementModule />}
-                  {activeTab === 'finance' && <FinanceSection />}
-                  {activeTab === 'admin' && (
+                  {activeTab === 'users' && !isRegularEndUser && <UserManagementModule />}
+                  {activeTab === 'finance' && !isRegularEndUser && <FinanceSection />}
+                  {activeTab === 'admin' && !isRegularEndUser && (
                     <Suspense fallback={<ModuleFallback />}>
                       <AdminControlCenter />
                     </Suspense>
@@ -227,6 +239,7 @@ export default function App() {
     <AppProvider>
       <MainLayout />
       <ConcurrentConflictModal />
+      <ToastContainer />
     </AppProvider>
   );
 }

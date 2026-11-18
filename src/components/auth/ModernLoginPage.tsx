@@ -32,7 +32,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
   onClose,
   isFullPage = false,
 }) => {
-  const { login, setCurrentUser } = useApp();
+  const { setCurrentUser, refreshAlumniProfileSettings, refreshUsers } = useApp();
   
   // Login Form States
   const [identifier, setIdentifier] = useState('');
@@ -80,6 +80,8 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
           res.user.fullName,
           res.token || res.accessToken
         );
+        await refreshAlumniProfileSettings();
+        refreshUsers();
         setCurrentUser(res.user);
         if (onClose) onClose();
         return;
@@ -99,29 +101,23 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
 
     try {
       const res = await api.login(identifier, password);
-      
+
       if (res.success && res.user) {
         if (res.mustChangePassword) {
-          // Flagged for mandatory initial password change
           setTempUserData(res.user);
           setCurrentPasswordInput(password);
           setMustChangePasswordMode(true);
         } else {
           setCurrentUser(res.user);
+          await refreshAlumniProfileSettings();
+          refreshUsers();
           if (onClose) onClose();
         }
         return;
-      } else {
-        setErrorMsg(res.message || 'نام کاربری/کد ملی یا رمز عبور اشتباه است.');
       }
+      setErrorMsg(res.message || 'نام کاربری/کد ملی یا رمز عبور اشتباه است.');
     } catch (err: any) {
-      // Fallback to Context login for offline or local registered users
-      const fallbackRes = await login(identifier, password);
-      if (fallbackRes.success) {
-        if (onClose) onClose();
-        return;
-      }
-      setErrorMsg(err.message || 'نام کاربری/کد ملی یا رمز عبور اشتباه است.');
+      setErrorMsg(err?.message || 'نام کاربری/کد ملی یا رمز عبور اشتباه است.');
     } finally {
       setLoading(false);
     }
@@ -146,6 +142,8 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
       const res = await api.changePassword(currentPasswordInput, newPassword);
       if (res.success && res.user) {
         setChangePasswordSuccess(true);
+        await refreshAlumniProfileSettings();
+        refreshUsers();
         setTimeout(() => {
           setCurrentUser(res.user);
           if (onClose) onClose();
@@ -414,7 +412,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                     required
                     value={identifier}
                     onChange={e => setIdentifier(e.target.value)}
-                    placeholder="مثال: SADEGH یا ۰۰۱۱۷۷۸۸۹۹"
+                    placeholder="کد ملی یا نام کاربری سازمانی"
                     className="w-full px-4 py-3.5 pr-11 text-xs sm:text-sm rounded-2xl bg-[#14231E] border border-[#223A33] text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-mono transition-all"
                     dir="ltr"
                   />

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getPool, selectWithTimeout, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
+import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
@@ -8,25 +9,39 @@ import { getCurrentUser } from '../../platform/sessionAuth';
 import { Consultant, CounselingRequest, CounselingCategory } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
+import { registerCounselingDossierRoutes } from './counselingDossierRoutes';
+import { registerCounselingConfigRoutes } from './counselingConfigRoutes';
+import { registerCounselingTestsRoutes } from './counselingTestsRoutes';
+
+function parseJsonSafe<T>(val: any, fallback: T): T {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val) as T;
+    } catch {
+      return fallback;
+    }
+  }
+  return val as T;
+}
 
 function mapConsultantRow(row: any): Consultant & { version: number; scheduleSlots?: string[] } {
-  let scheduleSlots: string[] = [];
-  try {
-    if (typeof row.schedule_slots === 'string') scheduleSlots = JSON.parse(row.schedule_slots);
-    else if (Array.isArray(row.schedule_slots)) scheduleSlots = row.schedule_slots;
-  } catch {}
-
   return {
     id: fromIdBuffer(row.id),
     name: row.name,
     title: row.title,
     specialty: row.specialty,
+    specialties: parseJsonSafe(row.specialties, []),
     bio: row.bio || '',
     experienceYears: Number(row.experience_years ?? row.experienceYears ?? 0),
     availability: row.availability || '',
-    scheduleSlots,
+    scheduleSlots: parseJsonSafe(row.schedule_slots, []),
     avatarUrl: row.avatar_url || row.avatarUrl || undefined,
-    counselingType: row.counseling_type || row.counselingType || 'general',
+    academicRank: row.academic_rank || undefined,
+    resumeDetails: parseJsonSafe(row.resume_details, []),
+    counselingType: row.counseling_type === 'specialized_career' ? 'specialized_career' : 'general',
+    fee: row.fee !== null && row.fee !== undefined ? Number(row.fee) : 0,
+    subsidyNotice: row.subsidy_notice || undefined,
     isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
     version: Number(row.version || 1),
   };
@@ -40,8 +55,15 @@ function mapCounselingRequestRow(row: any): CounselingRequest & { version: numbe
     applicantId: fromIdBuffer(row.applicant_id),
     applicantName: row.applicant_name || '',
     hideIdentity,
-    category: row.category || 'family',
-    categoryTitle: row.category_title || 'مشاوره خانواده',
+    userPhone: row.user_phone || undefined,
+    userNationalId: row.user_national_id || undefined,
+    userRoleTitle: row.user_role_title || undefined,
+    category: row.category || 'individual',
+    categoryTitle: row.category_title || 'مشاوره',
+    counselingType: row.counseling_type === 'specialized_career' ? 'specialized_career' : 'general',
+    selectedFieldId: row.selected_field_id || undefined,
+    selectedFieldTitle: row.selected_field_title || undefined,
+    formResponses: parseJsonSafe(row.form_responses, {}),
     preferredConsultantId: consultantIdRaw ? fromIdBuffer(consultantIdRaw) : undefined,
     preferredConsultantName: row.preferred_consultant_name || row.consultant_name || undefined,
     description: row.description || '',
@@ -51,6 +73,11 @@ function mapCounselingRequestRow(row: any): CounselingRequest & { version: numbe
     scheduledTime: row.scheduled_time || undefined,
     venueDetails: row.venue_details || undefined,
     counselorNotes: row.counselor_notes || undefined,
+    fee: row.fee !== null && row.fee !== undefined ? Number(row.fee) : 0,
+    subsidyNotice: row.subsidy_notice || undefined,
+    paymentStatus: row.payment_status || 'free',
+    reviewedBy: row.reviewed_by || undefined,
+    reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
@@ -58,17 +85,26 @@ function mapCounselingRequestRow(row: any): CounselingRequest & { version: numbe
 }
 
 export class CounselingService {
-  async getConsultants(): Promise<Array<Consultant & { version: number }>> {
+  async getConsultants(typeFilter?: string): Promise<Array<Consultant & { version: number }>> {
     ensureDatabaseConnection();
-    const rows = await selectWithTimeout<any>(`SELECT * FROM consultants WHERE is_active = 1 ORDER BY name ASC`, [], 3000);
+    await ensureDomainTablesAndIndexes();
+    let sql = `SELECT * FROM consultants WHERE deleted_at IS NULL AND is_active = 1`;
+    const params: any[] = [];
+    if (typeFilter === 'general' || typeFilter === 'specialized_career') {
+      sql += ` AND counseling_type = ?`;
+      params.push(typeFilter);
+    }
+    sql += ` ORDER BY name ASC`;
+    const rows = await selectWithTimeout<any>(sql, params, 3000);
     return (rows || []).map(mapConsultantRow);
   }
 
   async getConsultantById(id: string): Promise<(Consultant & { version: number }) | undefined> {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const idBuf = toIdBuffer(id);
     const rows = await selectWithTimeout<any>(
-      `SELECT * FROM consultants WHERE id = ? OR id = ? LIMIT 1`,
+      `SELECT * FROM consultants WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
       [idBuf, id],
       3000
     );
@@ -79,6 +115,7 @@ export class CounselingService {
   async createConsultant(authCtx: AuthContext, dto: Omit<Consultant, 'id'>): Promise<Consultant & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
 
     if (!dto.name || !dto.specialty) {
       throw AppError.badRequest('نام و تخصص مشاور الزامی است.');
@@ -87,44 +124,42 @@ export class CounselingService {
     const id = generateUUIDv7();
     const idBuf = toIdBuffer(id);
     const p = getPool();
+    const cType = dto.counselingType === 'specialized_career' ? 'specialized_career' : 'general';
 
     await p.query(
       `INSERT INTO consultants (
-        id, name, title, specialty, bio, experience_years, availability, avatar_url, counseling_type, is_active, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        id, name, title, specialty, specialties, bio, experience_years, availability, schedule_slots,
+        avatar_url, academic_rank, resume_details, fee, subsidy_notice, counseling_type, is_active, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         idBuf,
         dto.name.trim(),
         (dto.title || 'مشاور ارشد').trim(),
         dto.specialty.trim(),
+        JSON.stringify(Array.isArray(dto.specialties) ? dto.specialties : []),
         (dto.bio || '').trim(),
         Number(dto.experienceYears || 5),
         (dto.availability || 'دوشنبه و چهارشنبه').trim(),
+        JSON.stringify(Array.isArray(dto.scheduleSlots) ? dto.scheduleSlots : []),
         dto.avatarUrl || null,
-        dto.counselingType || 'general',
+        dto.academicRank ? dto.academicRank.trim() : null,
+        JSON.stringify(Array.isArray(dto.resumeDetails) ? dto.resumeDetails : []),
+        Number(dto.fee || 0),
+        dto.subsidyNotice ? dto.subsidyNotice.trim() : null,
+        cType,
         dto.isActive !== false ? 1 : 0,
       ]
     );
 
-    const created: Consultant & { version: number } = {
-      id,
-      name: dto.name.trim(),
-      title: (dto.title || 'مشاور ارشد').trim(),
-      specialty: dto.specialty.trim(),
-      bio: (dto.bio || '').trim(),
-      experienceYears: Number(dto.experienceYears || 5),
-      availability: (dto.availability || 'دوشنبه و چهارشنبه').trim(),
-      avatarUrl: dto.avatarUrl,
-      counselingType: dto.counselingType || 'general',
-      isActive: dto.isActive !== false,
-      version: 1,
-    };
+    const created = await this.getConsultantById(id);
+    if (!created) throw AppError.internal('خطا در بازخوانی مشاور ایجاد شده');
 
     outbox.enqueue('counseling.consultant_created', {
       id,
       resourceId: id,
       version: 1,
       updates: created,
+      consultant: created,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -140,6 +175,7 @@ export class CounselingService {
   ): Promise<Consultant & { version: number }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
 
     const existing = await this.getConsultantById(id);
     if (!existing) throw AppError.notFound(`مشاور با شناسه ${id}`);
@@ -150,17 +186,47 @@ export class CounselingService {
     const name = updates.name !== undefined ? updates.name.trim() : existing.name;
     const title = updates.title !== undefined ? updates.title.trim() : existing.title;
     const specialty = updates.specialty !== undefined ? updates.specialty.trim() : existing.specialty;
+    const specialties = updates.specialties !== undefined ? updates.specialties : (existing.specialties || []);
     const bio = updates.bio !== undefined ? updates.bio.trim() : existing.bio;
     const expYears = updates.experienceYears !== undefined ? Number(updates.experienceYears) : existing.experienceYears;
     const availability = updates.availability !== undefined ? updates.availability.trim() : existing.availability;
+    const scheduleSlots = updates.scheduleSlots !== undefined ? updates.scheduleSlots : (existing.scheduleSlots || []);
     const avatarUrl = updates.avatarUrl !== undefined ? updates.avatarUrl : existing.avatarUrl;
+    const academicRank = updates.academicRank !== undefined ? updates.academicRank : existing.academicRank;
+    const resumeDetails = updates.resumeDetails !== undefined ? updates.resumeDetails : (existing.resumeDetails || []);
+    const fee = updates.fee !== undefined ? Number(updates.fee) : (existing.fee || 0);
+    const subsidyNotice = updates.subsidyNotice !== undefined ? updates.subsidyNotice : existing.subsidyNotice;
+    const counselingType = updates.counselingType !== undefined
+      ? (updates.counselingType === 'specialized_career' ? 'specialized_career' : 'general')
+      : (existing.counselingType || 'general');
     const isActive = updates.isActive !== undefined ? (updates.isActive ? 1 : 0) : (existing.isActive ? 1 : 0);
 
     const [res]: any = await p.query(
       `UPDATE consultants
-       SET name = ?, title = ?, specialty = ?, bio = ?, experience_years = ?, availability = ?, avatar_url = ?, is_active = ?, version = version + 1
-       WHERE (id = ? OR id = ?) AND version = ?`,
-      [name, title, specialty, bio, expYears, availability, avatarUrl || null, isActive, idBuf, id, expectedVersion]
+       SET name = ?, title = ?, specialty = ?, specialties = ?, bio = ?, experience_years = ?,
+           availability = ?, schedule_slots = ?, avatar_url = ?, academic_rank = ?, resume_details = ?,
+           fee = ?, subsidy_notice = ?, counseling_type = ?, is_active = ?, version = version + 1
+       WHERE (id = ? OR id = ?) AND deleted_at IS NULL AND version = ?`,
+      [
+        name,
+        title,
+        specialty,
+        JSON.stringify(specialties),
+        bio,
+        expYears,
+        availability,
+        JSON.stringify(scheduleSlots),
+        avatarUrl || null,
+        academicRank || null,
+        JSON.stringify(resumeDetails),
+        fee,
+        subsidyNotice || null,
+        counselingType,
+        isActive,
+        idBuf,
+        id,
+        expectedVersion,
+      ]
     );
 
     if (res && res.affectedRows === 0) {
@@ -178,6 +244,7 @@ export class CounselingService {
       resourceId: id,
       version: updated.version,
       updates: updated,
+      consultant: updated,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -188,18 +255,24 @@ export class CounselingService {
   async deleteConsultant(authCtx: AuthContext, id: string): Promise<{ success: boolean; id: string }> {
     AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
 
     const idBuf = toIdBuffer(id);
     const p = getPool();
 
-    await p.query(
-      `UPDATE consultants SET is_active = 0, version = version + 1 WHERE id = ? OR id = ?`,
+    const [res]: any = await p.query(
+      `UPDATE consultants SET is_active = 0, deleted_at = NOW(3), version = version + 1 WHERE (id = ? OR id = ?) AND deleted_at IS NULL`,
       [idBuf, id]
     );
+
+    if (res && res.affectedRows === 0) {
+      throw AppError.notFound('مشاور');
+    }
 
     outbox.enqueue('counseling.consultant_deleted', {
       id,
       resourceId: id,
+      consultantId: id,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -207,10 +280,16 @@ export class CounselingService {
     return { success: true, id };
   }
 
-  async getRequests(authCtx: AuthContext): Promise<Array<CounselingRequest & { version: number }>> {
+  async getRequests(authCtx: AuthContext, typeFilter?: string): Promise<Array<CounselingRequest & { version: number }>> {
     ensureDatabaseConnection();
-    let sql = `SELECT * FROM counseling_requests WHERE 1=1`;
+    await ensureDomainTablesAndIndexes();
+    let sql = `SELECT * FROM counseling_requests WHERE deleted_at IS NULL`;
     const params: any[] = [];
+
+    if (typeFilter === 'general' || typeFilter === 'specialized_career') {
+      sql += ` AND counseling_type = ?`;
+      params.push(typeFilter);
+    }
 
     if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
@@ -224,9 +303,10 @@ export class CounselingService {
 
   async getRequestById(authCtx: AuthContext, id: string): Promise<(CounselingRequest & { version: number }) | undefined> {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const idBuf = toIdBuffer(id);
     const rows = await selectWithTimeout<any>(
-      `SELECT * FROM counseling_requests WHERE id = ? OR id = ? LIMIT 1`,
+      `SELECT * FROM counseling_requests WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
       [idBuf, id],
       3000
     );
@@ -252,10 +332,14 @@ export class CounselingService {
       scheduledTime?: string;
       venueDetails?: string;
       counselorNotes?: string;
+      selectedFieldId?: string;
+      selectedFieldTitle?: string;
+      formResponses?: Record<string, any>;
     },
     expectedVersion: number
   ): Promise<CounselingRequest & { version: number }> {
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
     const idBuf = toIdBuffer(id);
     const p = getPool();
 
@@ -275,13 +359,19 @@ export class CounselingService {
     const status = updates.status !== undefined ? updates.status : existing.status;
     const scheduledDate = updates.scheduledDate !== undefined ? updates.scheduledDate : existing.scheduledDate;
     const scheduledTime = updates.scheduledTime !== undefined ? updates.scheduledTime : existing.scheduledTime;
+    const venueDetails = updates.venueDetails !== undefined ? updates.venueDetails : existing.venueDetails;
     const counselorNotes = updates.counselorNotes !== undefined ? updates.counselorNotes : existing.counselorNotes;
+    const selectedFieldId = updates.selectedFieldId !== undefined ? updates.selectedFieldId : existing.selectedFieldId;
+    const selectedFieldTitle = updates.selectedFieldTitle !== undefined ? updates.selectedFieldTitle : existing.selectedFieldTitle;
+    const formResponses = updates.formResponses !== undefined ? updates.formResponses : (existing.formResponses || {});
 
     const [res]: any = await p.query(
       `UPDATE counseling_requests
        SET category_title = ?, description = ?, meeting_mode = ?, preferred_consultant_id = ?, preferred_consultant_name = ?,
-           status = ?, scheduled_date = ?, scheduled_time = ?, counselor_notes = ?, version = version + 1
-       WHERE (id = ? OR id = ?) AND version = ?`,
+           status = ?, scheduled_date = ?, scheduled_time = ?, venue_details = ?, counselor_notes = ?,
+           selected_field_id = ?, selected_field_title = ?, form_responses = ?,
+           reviewed_by = ?, reviewed_at = NOW(3), version = version + 1
+       WHERE (id = ? OR id = ?) AND deleted_at IS NULL AND version = ?`,
       [
         catTitle,
         desc,
@@ -291,7 +381,12 @@ export class CounselingService {
         status,
         scheduledDate || null,
         scheduledTime || null,
+        venueDetails || null,
         counselorNotes || null,
+        selectedFieldId || null,
+        selectedFieldTitle || null,
+        JSON.stringify(formResponses),
+        authCtx.fullName,
         idBuf,
         id,
         expectedVersion,
@@ -307,9 +402,6 @@ export class CounselingService {
 
     const updated = await this.getRequestById(authCtx, id);
     if (!updated) throw AppError.internal('خطا در بارگذاری مجدد درخواست');
-    if (updates.venueDetails) {
-      updated.venueDetails = updates.venueDetails;
-    }
 
     outbox.enqueue('counseling.updated', {
       requestId: id,
@@ -317,6 +409,7 @@ export class CounselingService {
       applicantId: updated.applicantId,
       version: updated.version,
       updates: updated,
+      request: updated,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -327,74 +420,95 @@ export class CounselingService {
   async book(
     authCtx: AuthContext,
     dto: {
-      category: CounselingCategory;
-      categoryTitle: string;
+      category?: CounselingCategory;
+      categoryTitle?: string;
+      counselingType?: 'general' | 'specialized_career';
+      selectedFieldId?: string;
+      selectedFieldTitle?: string;
+      formResponses?: Record<string, string | string[]>;
+      userPhone?: string;
+      userNationalId?: string;
+      userRoleTitle?: string;
       description: string;
-      meetingMode: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی';
+      meetingMode?: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی';
       preferredConsultantId?: string;
       preferredConsultantName?: string;
+      fee?: number;
+      subsidyNotice?: string;
     }
   ): Promise<CounselingRequest & { version: number }> {
-    if (!dto.description) throw AppError.badRequest('شرح درخواست مشاوره الزامی است.');
+    if (!dto.description && (!dto.formResponses || Object.keys(dto.formResponses).length === 0)) {
+      throw AppError.badRequest('شرح درخواست مشاوره الزامی است.');
+    }
     ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
 
     const id = generateUUIDv7();
     const idBuf = toIdBuffer(id);
     const applicantBuf = toIdBuffer(authCtx.userId);
     const consultantBuf = dto.preferredConsultantId ? toIdBuffer(dto.preferredConsultantId) : null;
     const p = getPool();
-    const now = new Date().toISOString();
+    const cType: 'general' | 'specialized_career' =
+      dto.counselingType === 'specialized_career' ? 'specialized_career' : 'general';
+    const category = dto.category || (cType === 'specialized_career' ? 'academic' : 'individual');
+    const categoryTitle =
+      dto.categoryTitle ||
+      dto.selectedFieldTitle ||
+      (cType === 'specialized_career' ? 'مشاوره تخصصی شغلی و تحصیلی' : 'مشاوره عمومی و روان‌شناسی');
+    const meetingMode = dto.meetingMode || 'حضوری';
+    const descriptionText = (dto.description || '').trim() || categoryTitle;
 
     await p.query(
       `INSERT INTO counseling_requests (
-        id, applicant_id, applicant_name, category, category_title, counseling_type,
-        preferred_consultant_id, preferred_consultant_name, description, status, meeting_mode, version
-      ) VALUES (?, ?, ?, ?, ?, 'general', ?, ?, ?, 'pending', ?, 1)`,
+        id, applicant_id, applicant_name, user_phone, user_national_id, user_role_title,
+        category, category_title, counseling_type, selected_field_id, selected_field_title, form_responses,
+        preferred_consultant_id, preferred_consultant_name, description, status, meeting_mode,
+        fee, subsidy_notice, payment_status, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'free', 1)`,
       [
         idBuf,
         applicantBuf,
         authCtx.fullName,
-        dto.category,
-        dto.categoryTitle,
+        dto.userPhone || null,
+        dto.userNationalId || null,
+        dto.userRoleTitle || null,
+        category,
+        categoryTitle,
+        cType,
+        dto.selectedFieldId || null,
+        dto.selectedFieldTitle || null,
+        JSON.stringify(dto.formResponses || {}),
         consultantBuf,
         dto.preferredConsultantName || null,
-        dto.description,
-        dto.meetingMode,
+        descriptionText,
+        meetingMode,
+        Number(dto.fee || 0),
+        dto.subsidyNotice || null,
       ]
     );
 
     auditChain.appendEntry({
-      eventType: 'LOGIN_SUCCESS',
+      eventType: 'SYSTEM_CONFIG_UPDATED',
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `درخواست مشاوره [${dto.categoryTitle}] با موفقیت ثبت گردید.`,
+      details: `درخواست مشاوره [${cType === 'specialized_career' ? 'تخصصی شغلی/تحصیلی' : 'عمومی/روان‌شناسی'} - ${categoryTitle}] با موفقیت ثبت گردید.`,
       severity: 'info',
     });
 
-    const created: CounselingRequest & { version: number } = {
-      id,
-      applicantId: authCtx.userId,
-      applicantName: authCtx.fullName,
-      category: dto.category,
-      categoryTitle: dto.categoryTitle,
-      preferredConsultantId: dto.preferredConsultantId,
-      preferredConsultantName: dto.preferredConsultantName,
-      description: dto.description,
-      meetingMode: dto.meetingMode,
-      status: 'pending',
-      createdAt: now,
-      version: 1,
-    };
+    const created = await this.getRequestById(authCtx, id);
+    if (!created) throw AppError.internal('خطا در بازخوانی درخواست ثبت‌شده');
 
     outbox.enqueue('counseling.requested', {
       requestId: id,
       resourceId: id,
-      category: dto.category,
+      counselingType: cType,
+      category,
       applicantId: authCtx.userId,
       version: 1,
       updates: created,
+      request: created,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -407,9 +521,10 @@ export function createCounselingRouter(): Router {
   const router = Router();
   const service = new CounselingService();
 
-  router.get('/consultants', async (_req, res, next) => {
+  router.get('/consultants', async (req: Request, res: Response, next) => {
     try {
-      const items = await service.getConsultants();
+      const typeFilter = req.query.type as string | undefined;
+      const items = await service.getConsultants(typeFilter);
       res.json(items);
     } catch (err) {
       next(err);
@@ -454,7 +569,8 @@ export function createCounselingRouter(): Router {
     try {
       const u = getCurrentUser(req);
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
-      const items = await service.getRequests(authCtx);
+      const typeFilter = req.query.type as string | undefined;
+      const items = await service.getRequests(authCtx, typeFilter);
       res.json(items);
     } catch (err) {
       next(err);
@@ -509,8 +625,8 @@ export function createCounselingRouter(): Router {
   });
 
   registerCounselingDossierRoutes(router);
+  registerCounselingConfigRoutes(router);
+  registerCounselingTestsRoutes(router);
 
   return router;
 }
-import { registerCounselingDossierRoutes } from './counselingDossierRoutes';
-

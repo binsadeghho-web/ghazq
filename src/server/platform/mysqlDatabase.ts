@@ -140,6 +140,7 @@ export async function initMySQLTables(): Promise<void> {
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(64) PRIMARY KEY,
         national_id VARCHAR(32) NULL UNIQUE,
+        center_code VARCHAR(64) NULL UNIQUE,
         username VARCHAR(64) UNIQUE,
         password_hash VARCHAR(255),
         full_name VARCHAR(128) NOT NULL,
@@ -203,6 +204,7 @@ export async function initMySQLTables(): Promise<void> {
 
     // Migration helper: dynamically ensure missing columns exist on table users
     const alterCols = [
+      `ADD COLUMN center_code VARCHAR(64) NULL UNIQUE`,
       `ADD COLUMN personnel_id VARCHAR(32) NULL`,
       `ADD COLUMN site_title VARCHAR(128) NULL`,
       `ADD COLUMN profile_picture_url VARCHAR(512) NULL`,
@@ -283,6 +285,15 @@ export async function initMySQLTables(): Promise<void> {
         INDEX idx_refresh_user (user_id),
         INDEX idx_refresh_family (family_id),
         INDEX idx_refresh_hash (token_hash)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS auth_rate_limits (
+        limit_key VARCHAR(160) PRIMARY KEY,
+        hits INT NOT NULL DEFAULT 1,
+        reset_at BIGINT NOT NULL,
+        INDEX idx_rate_reset (reset_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 

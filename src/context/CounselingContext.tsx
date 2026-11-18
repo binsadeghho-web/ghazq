@@ -1,7 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Consultant, CounselingRequest } from '../types';
-import { INITIAL_CONSULTANTS, INITIAL_COUNSELING_REQUESTS } from '../data/mockData';
+import {
+  User,
+  Consultant,
+  CounselingRequest,
+  SpecializedCounselingPortalConfig,
+  GeneralCounselingPortalConfig,
+  CounselingFieldItem,
+  GeneralCounselingTariffItem,
+  PsychologicalTest,
+  PsychologicalTestAssignment,
+  PsychologicalTestResult,
+} from '../types';
 import { api } from '../services/apiClient';
+
+const STAFF_ROLES = new Set([
+  'admin',
+  'super_admin',
+  'general_observer',
+  'alumni_manager',
+  'admin_finance_officer',
+  'education_deputy',
+  'cultural_educational_officer',
+  'research_deputy',
+  'supervisor',
+]);
 
 function notifyToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
   if (typeof window !== 'undefined') {
@@ -9,9 +31,55 @@ function notifyToast(message: string, type: 'success' | 'error' | 'info' = 'info
   }
 }
 
+export const INITIAL_SPECIALIZED_COUNSELING_CONFIG: SpecializedCounselingPortalConfig = {
+  sectionTitle: 'مشاوره تخصصی شغلی و تحصیلی',
+  sectionSubtitle: 'هدایت گام‌به‌گام مسیر حرفه‌ای، پژوهشی و انتخاب گرایش تخصصی دانش‌آموختگان',
+  landingIntroTitle: 'راهنمای جامع مشاوره تخصصی شغلی و تحصیلی مرکز',
+  landingIntroBody: 'در این بخش می‌توانید با بهره‌گیری از تجربه مشاوران تخصصی مرکز، برای مسیر ارتقای شغلی، انتخاب گرایش علمی، ادامه تحصیل در مقاطع تکمیلی و برنامه‌ریزی حرفه‌ای نوبت مشاوره ثبت نمایید.',
+  landingCalloutTitle: 'آماده برنامه‌ریزی دقیق برای مسیر شغلی یا تحصیلی خود هستید؟',
+  landingCalloutSubtitle: 'با کلیک بر روی دکمه زیر وارد مراحل کوتاه و ساختاریافته ثبت درخواست مشاوره خواهید شد.',
+  ctaButtonLabel: 'در خواست مشاوره تخصصی شغلی/تحصیلی دارم',
+  fieldsSectionTitle: 'زمینه‌های مشاوره تخصصی',
+  fieldsSectionSubtitle: 'حوزه‌هایی که مشاوران تخصصی مرکز در آن‌ها آماده راهنمایی شما هستند',
+  descriptionButtonLabel: 'توضیحات',
+  descriptionModalTitle: 'توضیحات و شیوه‌نامه مشاوره تخصصی شغلی / تحصیلی',
+  descriptionModalBody: '۱. پس از ثبت درخواست، پرونده شما توسط دبیرخانه مشاوره تخصصی بررسی و متناسب‌ترین مشاور معرفی می‌گردد.\n۲. جلسات به صورت حضوری در مرکز، برخط تصویری یا تلفنی قابل برگزاری است.',
+  showAdvisorsToStudents: true,
+  submissionSuccessMessage: 'درخواست مشاوره تخصصی شغلی/تحصیلی شما با موفقیت در سامانه ثبت شد.',
+  wizardSteps: [],
+  version: 1,
+};
+
+export const INITIAL_GENERAL_COUNSELING_CONFIG: GeneralCounselingPortalConfig = {
+  sectionTitle: 'مشاوره عمومی و روان‌شناسان مرکز',
+  sectionSubtitle: 'خدمات تخصصی روان‌شناسی، خانواده، تاب‌آوری شغلی و سنجش‌های روان‌شناختی با حفظ محرمانگی کامل',
+  landingIntroTitle: 'آشنایی با مرکز مشاوره و خدمات روان‌شناختی',
+  landingIntroBody: 'این بخش منحصراً توسط روان‌شناسان مجرب مرکز برای حمایت از سلامت روان، آرامش خانواده و تحلیل آزمون‌های استاندارد روان‌شناختی راه‌اندازی شده است.',
+  landingCalloutTitle: 'نیاز به گفت‌وگوی تخصصی با روان‌شناسان مرکز دارید؟',
+  landingCalloutSubtitle: 'برای ثبت نوبت جدید روی دکمه رزرو وقت مشاوره کلیک کرده و مراحل کوتاه را تکمیل فرمایید.',
+  ctaButtonLabel: 'رزرو وقت مشاوره',
+  fieldsSectionTitle: 'زمینه‌های مشاوره عمومی و روان‌شناختی',
+  fieldsSectionSubtitle: 'محورهای تخصصی خدمات روان‌شناختی و خانواده در مرکز',
+  descriptionButtonLabel: 'توضیحات',
+  descriptionModalTitle: 'راهنما و منشور محرمانگی مشاوره روان‌شناختی',
+  descriptionModalBody: '۱. پرونده‌های روان‌شناختی و نتایج تست‌ها تنها برای روان‌شناس متخصص پرونده قابل رویت است.\n۲. تعرفه‌ها با یارانه ویژه اعضای مرکز محاسبه می‌شوند.',
+  showRatesInWizardEnd: true,
+  ratesButtonLabel: 'اطلاع از نرخ نامه مشاوره مرکز',
+  submissionSuccessMessage: 'درخواست رزرو وقت مشاوره شما با موفقیت ثبت شد.',
+  wizardSteps: [],
+  version: 1,
+};
+
 export interface CounselingContextType {
   consultants: Consultant[];
   counselingRequests: CounselingRequest[];
+  specializedConfig: SpecializedCounselingPortalConfig;
+  generalConfig: GeneralCounselingPortalConfig;
+  counselingFields: CounselingFieldItem[];
+  counselingTariffs: GeneralCounselingTariffItem[];
+  psychologicalTests: PsychologicalTest[];
+  testAssignments: PsychologicalTestAssignment[];
+  testResults: PsychologicalTestResult[];
   feedbackMessage: { text: string; type: 'success' | 'error' } | null;
   clearFeedbackMessage: () => void;
   bookCounseling: (data: Omit<CounselingRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
@@ -29,14 +97,56 @@ export interface CounselingContextType {
   updateConsultant: (consultantId: string, updates: Partial<Consultant>) => Promise<void>;
   addConsultant: (consultantData: Omit<Consultant, 'id'>) => Promise<void>;
   deleteConsultant: (consultantId: string) => Promise<void>;
+  updateSpecializedConfig: (updates: Partial<SpecializedCounselingPortalConfig>) => Promise<SpecializedCounselingPortalConfig | null>;
+  updateGeneralConfig: (updates: Partial<GeneralCounselingPortalConfig>) => Promise<GeneralCounselingPortalConfig | null>;
+  createCounselingField: (data: Omit<CounselingFieldItem, 'id' | 'version'>) => Promise<CounselingFieldItem | null>;
+  updateCounselingField: (id: string, updates: Partial<CounselingFieldItem>) => Promise<CounselingFieldItem | null>;
+  deleteCounselingField: (id: string) => Promise<void>;
+  createCounselingTariff: (data: Omit<GeneralCounselingTariffItem, 'id' | 'version'>) => Promise<GeneralCounselingTariffItem | null>;
+  updateCounselingTariff: (id: string, updates: Partial<GeneralCounselingTariffItem>) => Promise<GeneralCounselingTariffItem | null>;
+  deleteCounselingTariff: (id: string) => Promise<void>;
+  createPsychologicalTest: (data: Omit<PsychologicalTest, 'id' | 'version'>) => Promise<PsychologicalTest | null>;
+  updatePsychologicalTest: (id: string, updates: Partial<PsychologicalTest>) => Promise<PsychologicalTest | null>;
+  deletePsychologicalTest: (id: string) => Promise<void>;
+  assignPsychologicalTest: (data: {
+    testId: string;
+    userId: string;
+    userName: string;
+    userNationalId?: string;
+    requestId?: string;
+    adminNote?: string;
+  }) => Promise<PsychologicalTestAssignment | null>;
+  submitPsychologicalTest: (
+    assignmentId: string,
+    answers: Array<{ questionId: string; questionText: string; answer: string }>,
+    scoreSummary?: string
+  ) => Promise<PsychologicalTestResult | null>;
+  reviewPsychologicalTestResult: (
+    resultId: string,
+    data: { psychologistNotes?: string; scoreSummary?: string }
+  ) => Promise<PsychologicalTestResult | null>;
   refreshCounseling: () => Promise<void>;
 }
 
 const CounselingContext = createContext<CounselingContextType | undefined>(undefined);
 
-export const CounselingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [consultants, setConsultants] = useState<Consultant[]>(INITIAL_CONSULTANTS);
-  const [counselingRequests, setCounselingRequests] = useState<CounselingRequest[]>(INITIAL_COUNSELING_REQUESTS);
+export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUser?: User | null }> = ({
+  children,
+  currentUser,
+}) => {
+  const [consultants, setConsultants] = useState<Consultant[]>([]);
+  const [counselingRequests, setCounselingRequests] = useState<CounselingRequest[]>([]);
+  const [specializedConfig, setSpecializedConfig] = useState<SpecializedCounselingPortalConfig>(
+    INITIAL_SPECIALIZED_COUNSELING_CONFIG
+  );
+  const [generalConfig, setGeneralConfig] = useState<GeneralCounselingPortalConfig>(
+    INITIAL_GENERAL_COUNSELING_CONFIG
+  );
+  const [counselingFields, setCounselingFields] = useState<CounselingFieldItem[]>([]);
+  const [counselingTariffs, setCounselingTariffs] = useState<GeneralCounselingTariffItem[]>([]);
+  const [psychologicalTests, setPsychologicalTests] = useState<PsychologicalTest[]>([]);
+  const [testAssignments, setTestAssignments] = useState<PsychologicalTestAssignment[]>([]);
+  const [testResults, setTestResults] = useState<PsychologicalTestResult[]>([]);
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const clearFeedbackMessage = useCallback(() => setFeedbackMessage(null), []);
@@ -47,64 +157,160 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const refreshCounseling = useCallback(async () => {
+    if (!currentUser) {
+      setConsultants([]);
+      setCounselingRequests([]);
+      setCounselingFields([]);
+      setCounselingTariffs([]);
+      setPsychologicalTests([]);
+      setTestAssignments([]);
+      setTestResults([]);
+      return;
+    }
+
+    const isStaff = STAFF_ROLES.has(currentUser.role);
+
     try {
-      const [fetchedConsultants, fetchedRequests] = await Promise.all([
+      const results = await Promise.allSettled([
         api.getConsultants(),
         api.getCounselingRequests(),
+        api.getCounselingPortalConfig('specialized_career'),
+        api.getCounselingPortalConfig('general'),
+        api.getCounselingFields(undefined, isStaff),
+        api.getCounselingTariffs(isStaff),
+        api.getPsychologicalTests(),
+        api.getPsychologicalTestAssignments(),
+        api.getPsychologicalTestResults(),
       ]);
-      if (Array.isArray(fetchedConsultants)) setConsultants(fetchedConsultants);
-      if (Array.isArray(fetchedRequests)) setCounselingRequests(fetchedRequests);
+
+      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) setConsultants(results[0].value);
+      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) setCounselingRequests(results[1].value);
+      if (results[2].status === 'fulfilled' && results[2].value) setSpecializedConfig(results[2].value);
+      if (results[3].status === 'fulfilled' && results[3].value) setGeneralConfig(results[3].value);
+      if (results[4].status === 'fulfilled' && Array.isArray(results[4].value)) setCounselingFields(results[4].value);
+      if (results[5].status === 'fulfilled' && Array.isArray(results[5].value)) setCounselingTariffs(results[5].value);
+      if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) setPsychologicalTests(results[6].value);
+      if (results[7].status === 'fulfilled' && Array.isArray(results[7].value)) setTestAssignments(results[7].value);
+      if (results[8].status === 'fulfilled' && Array.isArray(results[8].value)) setTestResults(results[8].value);
     } catch {}
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     refreshCounseling();
+    if (!currentUser) return;
+
     const unsubscribe = api.subscribeToEvents(event => {
       if (!event.type.startsWith('counseling.')) return;
-      const payload = event.data ?? (event as any).payload;
-      if (!payload) {
+      const rawData = event.data?.data ?? event.data ?? (event as any).payload;
+      if (!rawData) {
         refreshCounseling();
         return;
       }
 
-      // Direct State Patching via Delta-Payload (Zero Re-fetch)
-      if (event.type === 'counseling.requested' && payload.request) {
-        const incoming = payload.request as CounselingRequest;
-        setCounselingRequests(prev => {
-          const exists = prev.some(r => r.id === incoming.id);
-          return exists ? prev.map(r => (r.id === incoming.id ? incoming : r)) : [incoming, ...prev];
-        });
-      } else if (event.type === 'counseling.updated' && payload.request) {
-        const updated = payload.request as CounselingRequest;
+      if (event.type === 'counseling.requested' && rawData.request) {
+        const incoming = rawData.request as CounselingRequest;
+        setCounselingRequests(prev =>
+          prev.some(r => r.id === incoming.id)
+            ? prev.map(r => (r.id === incoming.id ? incoming : r))
+            : [incoming, ...prev]
+        );
+      } else if ((event.type === 'counseling.updated' || event.type === 'counseling.identity_toggled') && rawData.request) {
+        const updated = rawData.request as CounselingRequest;
         setCounselingRequests(prev => prev.map(r => (r.id === updated.id ? updated : r)));
-      } else if (event.type === 'counseling.consultant_created' && payload.consultant) {
-        const incoming = payload.consultant as Consultant;
-        setConsultants(prev => {
-          const exists = prev.some(c => c.id === incoming.id);
-          return exists ? prev.map(c => (c.id === incoming.id ? incoming : c)) : [incoming, ...prev];
-        });
-      } else if (event.type === 'counseling.consultant_updated' && payload.consultant) {
-        const updated = payload.consultant as Consultant;
+      } else if (event.type === 'counseling.consultant_created' && rawData.consultant) {
+        const incoming = rawData.consultant as Consultant;
+        setConsultants(prev =>
+          prev.some(c => c.id === incoming.id)
+            ? prev.map(c => (c.id === incoming.id ? incoming : c))
+            : [incoming, ...prev]
+        );
+      } else if (event.type === 'counseling.consultant_updated' && rawData.consultant) {
+        const updated = rawData.consultant as Consultant;
         setConsultants(prev => prev.map(c => (c.id === updated.id ? updated : c)));
-      } else if (event.type === 'counseling.consultant_deleted' && payload.consultantId) {
-        setConsultants(prev => prev.filter(c => c.id !== payload.consultantId));
+      } else if (event.type === 'counseling.consultant_deleted' && rawData.consultantId) {
+        setConsultants(prev => prev.filter(c => c.id !== rawData.consultantId));
+      } else if (event.type === 'counseling.portal_config_updated' && rawData.config) {
+        if (rawData.counselingType === 'specialized_career') {
+          setSpecializedConfig(rawData.config);
+        } else if (rawData.counselingType === 'general') {
+          setGeneralConfig(rawData.config);
+        }
+      } else if (event.type === 'counseling.field_created' && rawData.updates) {
+        const incoming = rawData.updates as CounselingFieldItem;
+        setCounselingFields(prev =>
+          prev.some(f => f.id === incoming.id) ? prev : [...prev, incoming]
+        );
+      } else if (event.type === 'counseling.field_updated' && rawData.updates) {
+        const updated = rawData.updates as CounselingFieldItem;
+        setCounselingFields(prev => prev.map(f => (f.id === updated.id ? updated : f)));
+      } else if (event.type === 'counseling.field_deleted' && rawData.resourceId) {
+        setCounselingFields(prev => prev.filter(f => f.id !== rawData.resourceId));
+      } else if (event.type === 'counseling.tariff_created' && rawData.updates) {
+        const incoming = rawData.updates as GeneralCounselingTariffItem;
+        setCounselingTariffs(prev =>
+          prev.some(t => t.id === incoming.id) ? prev : [...prev, incoming]
+        );
+      } else if (event.type === 'counseling.tariff_updated' && rawData.updates) {
+        const updated = rawData.updates as GeneralCounselingTariffItem;
+        setCounselingTariffs(prev => prev.map(t => (t.id === updated.id ? updated : t)));
+      } else if (event.type === 'counseling.tariff_deleted' && rawData.resourceId) {
+        setCounselingTariffs(prev => prev.filter(t => t.id !== rawData.resourceId));
+      } else if (event.type === 'counseling.test_created' && rawData.updates) {
+        const incoming = rawData.updates as PsychologicalTest;
+        setPsychologicalTests(prev =>
+          prev.some(t => t.id === incoming.id) ? prev : [incoming, ...prev]
+        );
+      } else if (event.type === 'counseling.test_updated' && rawData.updates) {
+        const updated = rawData.updates as PsychologicalTest;
+        setPsychologicalTests(prev => prev.map(t => (t.id === updated.id ? updated : t)));
+      } else if (event.type === 'counseling.test_deleted' && rawData.resourceId) {
+        setPsychologicalTests(prev => prev.filter(t => t.id !== rawData.resourceId));
+      } else if (event.type === 'counseling.test_assigned' && rawData.updates) {
+        const incoming = rawData.updates as PsychologicalTestAssignment;
+        setTestAssignments(prev =>
+          prev.some(a => a.id === incoming.id) ? prev : [incoming, ...prev]
+        );
+      } else if (event.type === 'counseling.test_submitted' && rawData.updates) {
+        const result = rawData.updates as PsychologicalTestResult;
+        setTestResults(prev =>
+          prev.some(r => r.id === result.id) ? prev : [result, ...prev]
+        );
+        if (rawData.assignmentId) {
+          setTestAssignments(prev =>
+            prev.map(a =>
+              a.id === rawData.assignmentId
+                ? { ...a, status: 'completed', resultId: result.id, scoreSummary: result.scoreSummary }
+                : a
+            )
+          );
+        }
+      } else if (event.type === 'counseling.test_reviewed' && rawData.updates) {
+        const reviewed = rawData.updates as PsychologicalTestResult;
+        setTestResults(prev => prev.map(r => (r.id === reviewed.id ? reviewed : r)));
+        setTestAssignments(prev =>
+          prev.map(a =>
+            a.id === reviewed.assignmentId ? { ...a, status: 'reviewed', scoreSummary: reviewed.scoreSummary } : a
+          )
+        );
       } else {
         refreshCounseling();
       }
     });
     return () => unsubscribe();
-  }, [refreshCounseling]);
+  }, [currentUser, refreshCounseling]);
 
   const bookCounseling = useCallback(async (data: Omit<CounselingRequest, 'id' | 'status' | 'createdAt'>) => {
     try {
       const created = await api.bookCounseling(data);
-      setCounselingRequests(prev => {
-        const exists = prev.some(r => r.id === created.id);
-        return exists ? prev.map(r => (r.id === created.id ? created : r)) : [created, ...prev];
-      });
-      showFeedback('درخواست مشاوره با حفظ محرمانگی کامل در سامانه ثبت شد و جهت هماهنگی بررسی خواهد شد.', 'success');
+      setCounselingRequests(prev =>
+        prev.some(r => r.id === created.id)
+          ? prev.map(r => (r.id === created.id ? created : r))
+          : [created, ...prev]
+      );
+      showFeedback('درخواست مشاوره با حفظ محرمانگی کامل در سامانه ثبت شد.', 'success');
     } catch (err: any) {
       showFeedback(`خطا در ثبت درخواست مشاوره: ${err.message}`, 'error');
+      throw err;
     }
   }, [showFeedback]);
 
@@ -136,10 +342,9 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setCounselingRequests(prev => prev.map(r => (r.id === requestId ? updated : r)));
       showFeedback('وضعیت درخواست مشاوره در پایگاه داده به‌روزرسانی شد.', 'success');
     } catch (err: any) {
-      if (err.status === 409) {
-        await refreshCounseling();
-      }
+      if (err.status === 409) await refreshCounseling();
       showFeedback(`خطا در به‌روزرسانی وضعیت مشاوره: ${err.message}`, 'error');
+      throw err;
     }
   }, [counselingRequests, refreshCounseling, showFeedback]);
 
@@ -147,30 +352,28 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const existing = consultants.find(c => c.id === consultantId);
       const expectedVersion = Number((existing as any)?.version ?? 1);
-      const updated = await api.updateConsultant(consultantId, {
-        ...updates,
-        expectedVersion,
-      });
+      const updated = await api.updateConsultant(consultantId, { ...updates, expectedVersion });
       setConsultants(prev => prev.map(c => (c.id === consultantId ? updated : c)));
       showFeedback('اطلاعات مشاور با موفقیت در پایگاه داده ذخیره شد.', 'success');
     } catch (err: any) {
-      if (err.status === 409) {
-        await refreshCounseling();
-      }
+      if (err.status === 409) await refreshCounseling();
       showFeedback(`خطا در ویرایش اطلاعات مشاور: ${err.message}`, 'error');
+      throw err;
     }
   }, [consultants, refreshCounseling, showFeedback]);
 
   const addConsultant = useCallback(async (consultantData: Omit<Consultant, 'id'>) => {
     try {
       const created = await api.createConsultant(consultantData);
-      setConsultants(prev => {
-        const exists = prev.some(c => c.id === created.id);
-        return exists ? prev.map(c => (c.id === created.id ? created : c)) : [created, ...prev];
-      });
+      setConsultants(prev =>
+        prev.some(c => c.id === created.id)
+          ? prev.map(c => (c.id === created.id ? created : c))
+          : [created, ...prev]
+      );
       showFeedback('مشاور جدید با موفقیت در پایگاه داده ثبت شد.', 'success');
     } catch (err: any) {
       showFeedback(`خطا در ثبت مشاور جدید: ${err.message}`, 'error');
+      throw err;
     }
   }, [showFeedback]);
 
@@ -181,38 +384,291 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       showFeedback('مشاور از پایگاه داده حذف گردید.', 'success');
     } catch (err: any) {
       showFeedback(`خطا در حذف مشاور: ${err.message}`, 'error');
+      throw err;
     }
   }, [showFeedback]);
 
-  const value = useMemo<CounselingContextType>(() => ({
-    consultants,
-    counselingRequests,
-    feedbackMessage,
-    clearFeedbackMessage,
-    bookCounseling,
-    updateCounselingStatus,
-    updateConsultant,
-    addConsultant,
-    deleteConsultant,
-    refreshCounseling,
-  }), [
-    consultants,
-    counselingRequests,
-    feedbackMessage,
-    clearFeedbackMessage,
-    bookCounseling,
-    updateCounselingStatus,
-    updateConsultant,
-    addConsultant,
-    deleteConsultant,
-    refreshCounseling,
-  ]);
+  const updateSpecializedConfig = useCallback(async (updates: Partial<SpecializedCounselingPortalConfig>) => {
+    try {
+      const merged = { ...specializedConfig, ...updates };
+      const saved = await api.updateCounselingPortalConfig(
+        'specialized_career',
+        merged,
+        Number(specializedConfig.version || 1)
+      );
+      setSpecializedConfig(saved);
+      showFeedback('تنظیمات و ساختار فرم مشاوره تخصصی با موفقیت ذخیره شد.', 'success');
+      return saved;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ذخیره تنظیمات مشاوره تخصصی: ${err.message}`, 'error');
+      return null;
+    }
+  }, [specializedConfig, refreshCounseling, showFeedback]);
 
-  return (
-    <CounselingContext.Provider value={value}>
-      {children}
-    </CounselingContext.Provider>
+  const updateGeneralConfig = useCallback(async (updates: Partial<GeneralCounselingPortalConfig>) => {
+    try {
+      const merged = { ...generalConfig, ...updates };
+      const saved = await api.updateCounselingPortalConfig(
+        'general',
+        merged,
+        Number(generalConfig.version || 1)
+      );
+      setGeneralConfig(saved);
+      showFeedback('تنظیمات و ساختار فرم مشاوره عمومی با موفقیت ذخیره شد.', 'success');
+      return saved;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ذخیره تنظیمات مشاوره عمومی: ${err.message}`, 'error');
+      return null;
+    }
+  }, [generalConfig, refreshCounseling, showFeedback]);
+
+  const createCounselingField = useCallback(async (data: Omit<CounselingFieldItem, 'id' | 'version'>) => {
+    try {
+      const created = await api.createCounselingField(data);
+      setCounselingFields(prev => (prev.some(f => f.id === created.id) ? prev : [...prev, created]));
+      showFeedback('زمینه مشاوره جدید با موفقیت اضافه شد.', 'success');
+      return created;
+    } catch (err: any) {
+      showFeedback(`خطا در افزودن زمینه مشاوره: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
+  const updateCounselingField = useCallback(async (id: string, updates: Partial<CounselingFieldItem>) => {
+    try {
+      const existing = counselingFields.find(f => f.id === id);
+      const updated = await api.updateCounselingField(id, updates, Number(existing?.version ?? 1));
+      setCounselingFields(prev => prev.map(f => (f.id === id ? updated : f)));
+      showFeedback('زمینه مشاوره به‌روزرسانی شد.', 'success');
+      return updated;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ویرایش زمینه مشاوره: ${err.message}`, 'error');
+      return null;
+    }
+  }, [counselingFields, refreshCounseling, showFeedback]);
+
+  const deleteCounselingField = useCallback(async (id: string) => {
+    try {
+      await api.deleteCounselingField(id);
+      setCounselingFields(prev => prev.filter(f => f.id !== id));
+      showFeedback('زمینه مشاوره حذف شد.', 'success');
+    } catch (err: any) {
+      showFeedback(`خطا در حذف زمینه مشاوره: ${err.message}`, 'error');
+    }
+  }, [showFeedback]);
+
+  const createCounselingTariff = useCallback(async (data: Omit<GeneralCounselingTariffItem, 'id' | 'version'>) => {
+    try {
+      const created = await api.createCounselingTariff(data);
+      setCounselingTariffs(prev => (prev.some(t => t.id === created.id) ? prev : [...prev, created]));
+      showFeedback('ردیف نرخ‌نامه جدید ثبت شد.', 'success');
+      return created;
+    } catch (err: any) {
+      showFeedback(`خطا در ثبت نرخ‌نامه: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
+  const updateCounselingTariff = useCallback(async (id: string, updates: Partial<GeneralCounselingTariffItem>) => {
+    try {
+      const existing = counselingTariffs.find(t => t.id === id);
+      const updated = await api.updateCounselingTariff(id, updates, Number(existing?.version ?? 1));
+      setCounselingTariffs(prev => prev.map(t => (t.id === id ? updated : t)));
+      showFeedback('ردیف نرخ‌نامه ویرایش شد.', 'success');
+      return updated;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ویرایش نرخ‌نامه: ${err.message}`, 'error');
+      return null;
+    }
+  }, [counselingTariffs, refreshCounseling, showFeedback]);
+
+  const deleteCounselingTariff = useCallback(async (id: string) => {
+    try {
+      await api.deleteCounselingTariff(id);
+      setCounselingTariffs(prev => prev.filter(t => t.id !== id));
+      showFeedback('ردیف نرخ‌نامه حذف شد.', 'success');
+    } catch (err: any) {
+      showFeedback(`خطا در حذف نرخ‌نامه: ${err.message}`, 'error');
+    }
+  }, [showFeedback]);
+
+  const createPsychologicalTest = useCallback(async (data: Omit<PsychologicalTest, 'id' | 'version'>) => {
+    try {
+      const created = await api.createPsychologicalTest(data);
+      setPsychologicalTests(prev => (prev.some(t => t.id === created.id) ? prev : [created, ...prev]));
+      showFeedback('آزمون روان‌شناختی جدید با موفقیت ثبت شد.', 'success');
+      return created;
+    } catch (err: any) {
+      showFeedback(`خطا در ثبت آزمون: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
+  const updatePsychologicalTest = useCallback(async (id: string, updates: Partial<PsychologicalTest>) => {
+    try {
+      const existing = psychologicalTests.find(t => t.id === id);
+      const updated = await api.updatePsychologicalTest(id, updates, Number(existing?.version ?? 1));
+      setPsychologicalTests(prev => prev.map(t => (t.id === id ? updated : t)));
+      showFeedback('آزمون روان‌شناختی ویرایش شد.', 'success');
+      return updated;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ویرایش آزمون: ${err.message}`, 'error');
+      return null;
+    }
+  }, [psychologicalTests, refreshCounseling, showFeedback]);
+
+  const deletePsychologicalTest = useCallback(async (id: string) => {
+    try {
+      await api.deletePsychologicalTest(id);
+      setPsychologicalTests(prev => prev.filter(t => t.id !== id));
+      showFeedback('آزمون از فهرست فعال حذف شد.', 'success');
+    } catch (err: any) {
+      showFeedback(`خطا در حذف آزمون: ${err.message}`, 'error');
+    }
+  }, [showFeedback]);
+
+  const assignPsychologicalTest = useCallback(async (data: {
+    testId: string;
+    userId: string;
+    userName: string;
+    userNationalId?: string;
+    requestId?: string;
+    adminNote?: string;
+  }) => {
+    try {
+      const created = await api.assignPsychologicalTest(data);
+      setTestAssignments(prev => (prev.some(a => a.id === created.id) ? prev : [created, ...prev]));
+      showFeedback(`آزمون برای «${data.userName}» با موفقیت باز و فعال شد.`, 'success');
+      return created;
+    } catch (err: any) {
+      showFeedback(`خطا در باز کردن آزمون برای دانش‌آموخته: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
+  const submitPsychologicalTest = useCallback(async (
+    assignmentId: string,
+    answers: Array<{ questionId: string; questionText: string; answer: string }>,
+    scoreSummary?: string
+  ) => {
+    try {
+      const result = await api.submitPsychologicalTest(assignmentId, answers, scoreSummary);
+      setTestResults(prev => (prev.some(r => r.id === result.id) ? prev : [result, ...prev]));
+      setTestAssignments(prev =>
+        prev.map(a =>
+          a.id === assignmentId
+            ? { ...a, status: 'completed', resultId: result.id, scoreSummary: result.scoreSummary }
+            : a
+        )
+      );
+      showFeedback('پاسخ‌نامه آزمون شما با موفقیت ثبت و برای روان‌شناس مرکز ارسال شد.', 'success');
+      return result;
+    } catch (err: any) {
+      showFeedback(`خطا در ثبت پاسخ‌نامه آزمون: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
+  const reviewPsychologicalTestResult = useCallback(async (
+    resultId: string,
+    data: { psychologistNotes?: string; scoreSummary?: string }
+  ) => {
+    try {
+      const existing = testResults.find(r => r.id === resultId);
+      const updated = await api.reviewPsychologicalTestResult(resultId, {
+        ...data,
+        expectedVersion: Number(existing?.version ?? 1),
+      });
+      setTestResults(prev => prev.map(r => (r.id === resultId ? updated : r)));
+      setTestAssignments(prev =>
+        prev.map(a =>
+          a.id === updated.assignmentId ? { ...a, status: 'reviewed', scoreSummary: updated.scoreSummary } : a
+        )
+      );
+      showFeedback('تحلیل و یادداشت بالینی روان‌شناس ذخیره شد.', 'success');
+      return updated;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ثبت تحلیل نتیجه آزمون: ${err.message}`, 'error');
+      return null;
+    }
+  }, [testResults, refreshCounseling, showFeedback]);
+
+  const value = useMemo<CounselingContextType>(
+    () => ({
+      consultants,
+      counselingRequests,
+      specializedConfig,
+      generalConfig,
+      counselingFields,
+      counselingTariffs,
+      psychologicalTests,
+      testAssignments,
+      testResults,
+      feedbackMessage,
+      clearFeedbackMessage,
+      bookCounseling,
+      updateCounselingStatus,
+      updateConsultant,
+      addConsultant,
+      deleteConsultant,
+      updateSpecializedConfig,
+      updateGeneralConfig,
+      createCounselingField,
+      updateCounselingField,
+      deleteCounselingField,
+      createCounselingTariff,
+      updateCounselingTariff,
+      deleteCounselingTariff,
+      createPsychologicalTest,
+      updatePsychologicalTest,
+      deletePsychologicalTest,
+      assignPsychologicalTest,
+      submitPsychologicalTest,
+      reviewPsychologicalTestResult,
+      refreshCounseling,
+    }),
+    [
+      consultants,
+      counselingRequests,
+      specializedConfig,
+      generalConfig,
+      counselingFields,
+      counselingTariffs,
+      psychologicalTests,
+      testAssignments,
+      testResults,
+      feedbackMessage,
+      clearFeedbackMessage,
+      bookCounseling,
+      updateCounselingStatus,
+      updateConsultant,
+      addConsultant,
+      deleteConsultant,
+      updateSpecializedConfig,
+      updateGeneralConfig,
+      createCounselingField,
+      updateCounselingField,
+      deleteCounselingField,
+      createCounselingTariff,
+      updateCounselingTariff,
+      deleteCounselingTariff,
+      createPsychologicalTest,
+      updatePsychologicalTest,
+      deletePsychologicalTest,
+      assignPsychologicalTest,
+      submitPsychologicalTest,
+      reviewPsychologicalTestResult,
+      refreshCounseling,
+    ]
   );
+
+  return <CounselingContext.Provider value={value}>{children}</CounselingContext.Provider>;
 };
 
 export const useCounseling = (): CounselingContextType => {

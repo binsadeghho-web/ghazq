@@ -140,7 +140,7 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
     try {
       await api.saveCounselingDossier({
         requestId: targetReq.id,
-        consultantId: targetReq.preferredConsultantId || activeConsultant?.id || 'cons_1',
+        consultantId: targetReq.preferredConsultantId || activeConsultant?.id || '',
         applicantId: targetReq.applicantId,
         applicantName: targetReq.applicantName,
         hideApplicantIdentity: dossierHideIdentity,

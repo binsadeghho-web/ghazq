@@ -1,6 +1,7 @@
 import { getPool, isDatabaseConnected } from './mysqlDatabase';
 import { logger } from './logger';
 import { generateUUIDv7, toIdBuffer } from './uuidv7';
+import bcrypt from 'bcryptjs';
 
 let domainTablesInitialized = false;
 
@@ -385,9 +386,307 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
     try { await p.query(`CREATE INDEX idx_disc_ruling_featured ON ruling_discussions (ruling_id, is_featured, created_at);`); } catch {}
     try { await p.query(`CREATE INDEX idx_disc_ruling_del_created ON ruling_discussions (ruling_id, deleted_at, created_at);`); } catch {}
 
-    // 5. Counseling Domain Enhancements: schedule_slots on consultants, hide_identity on counseling_requests, counseling_session_dossiers table
+    // 5. Counseling Domain Enhancements (Reforms 45-54 + زمینه‌های مشاوره + تست‌های روان‌شناسی + نرخ‌نامه)
     try { await p.query(`ALTER TABLE consultants ADD COLUMN schedule_slots JSON NULL;`); } catch {}
-    try { await p.query(`ALTER TABLE counseling_requests ADD COLUMN hide_identity TINYINT(1) NOT NULL DEFAULT 0;`); } catch {}
+    const consultantAlters = [
+      `ADD COLUMN academic_rank VARCHAR(255) NULL`,
+      `ADD COLUMN resume_details JSON NULL`,
+      `ADD COLUMN specialties JSON NULL`,
+      `ADD COLUMN fee BIGINT NOT NULL DEFAULT 0`,
+      `ADD COLUMN subsidy_notice VARCHAR(512) NULL`,
+      `ADD COLUMN counseling_type ENUM('general', 'specialized_career') NOT NULL DEFAULT 'general'`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
+    ];
+    for (const clause of consultantAlters) {
+      try { await p.query(`ALTER TABLE consultants ${clause};`); } catch {}
+    }
+    try { await p.query(`CREATE INDEX idx_consultants_type_active_del ON consultants (deleted_at, is_active, counseling_type, name);`); } catch {}
+
+    const counselingReqAlters = [
+      `ADD COLUMN hide_identity TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN counseling_type ENUM('general', 'specialized_career') NOT NULL DEFAULT 'general'`,
+      `ADD COLUMN selected_field_id VARCHAR(64) NULL`,
+      `ADD COLUMN selected_field_title VARCHAR(255) NULL`,
+      `ADD COLUMN form_responses JSON NULL`,
+      `ADD COLUMN user_phone VARCHAR(32) NULL`,
+      `ADD COLUMN user_national_id VARCHAR(32) NULL`,
+      `ADD COLUMN user_role_title VARCHAR(128) NULL`,
+      `ADD COLUMN venue_details VARCHAR(512) NULL`,
+      `ADD COLUMN fee BIGINT NOT NULL DEFAULT 0`,
+      `ADD COLUMN subsidy_notice VARCHAR(512) NULL`,
+      `ADD COLUMN payment_status VARCHAR(32) NULL DEFAULT 'free'`,
+      `ADD COLUMN reviewed_by VARCHAR(128) NULL`,
+      `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
+    ];
+    for (const clause of counselingReqAlters) {
+      try { await p.query(`ALTER TABLE counseling_requests ${clause};`); } catch {}
+    }
+    try { await p.query(`ALTER TABLE counseling_requests MODIFY COLUMN category VARCHAR(64) NOT NULL DEFAULT 'individual';`); } catch {}
+    try { await p.query(`CREATE INDEX idx_counseling_req_type_status ON counseling_requests (deleted_at, counseling_type, status, created_at);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_counseling_req_app_type ON counseling_requests (applicant_id, counseling_type, deleted_at, created_at);`); } catch {}
+
+    // Counseling Fields (زمینه‌های مشاوره) - strictly separated by counseling_type
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS counseling_fields (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        counseling_type ENUM('general', 'specialized_career') NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        subtitle VARCHAR(255) NULL,
+        description TEXT NOT NULL,
+        icon_name VARCHAR(64) NULL DEFAULT 'sparkles',
+        accent_color VARCHAR(32) NULL DEFAULT 'emerald',
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        display_order INT NOT NULL DEFAULT 1,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_cfields_type_active (deleted_at, counseling_type, is_active, display_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const [existingFieldsCount]: any = await p.query(`SELECT COUNT(*) as cnt FROM counseling_fields WHERE deleted_at IS NULL`);
+    if (Number(existingFieldsCount?.[0]?.cnt || 0) === 0) {
+      const defaultFields = [
+        // Specialized Career & Academic Counseling Fields
+        {
+          type: 'specialized_career',
+          title: 'هدایت مسیر شغلی و ارتقای حرفه‌ای قضات و وکلا',
+          subtitle: 'برنامه‌ریزی شغلی، شعب تخصصی و انتقال تجربه',
+          description: 'مشاوره فردی در خصوص انتخاب رسته تخصصی قضایی، مدیریت شعب پُرپرونده، مهارت‌های وکالت تخصصی و داوری تجاری.',
+          icon: 'briefcase',
+          accent: 'indigo',
+          order: 1,
+        },
+        {
+          type: 'specialized_career',
+          title: 'مسیر علمی، پژوهشی و آمادگی مصاحبه‌های تخصصی',
+          subtitle: 'دکتری، سطح ۴ حوزه و هیئت علمی',
+          description: 'تدوین نقشه راه ادامه تحصیل در مقاطع تکمیلی فقه و حقوق، انتخاب گرایش پژوهشی و آمادگی ارائه علمی.',
+          icon: 'graduation',
+          accent: 'emerald',
+          order: 2,
+        },
+        {
+          type: 'specialized_career',
+          title: 'کارآفرینی حقوقی، داوری و تأسیس دفاتر تخصصی',
+          subtitle: 'ساختاردهی تیم و خدمات حقوقی نوین',
+          description: 'مشاوره راه‌اندازی کلینیک‌های حقوقی، نهادهای داوری سازمانی و استفاده از ابزارهای هوشمند حقوقی.',
+          icon: 'scale',
+          accent: 'amber',
+          order: 3,
+        },
+        // General Psychology Counseling Fields
+        {
+          type: 'general',
+          title: 'روان‌شناسی فردی و مدیریت فرسودگی شغلی',
+          subtitle: 'تاب‌آوری روانی و کنترل استرس حرفه‌ای',
+          description: 'جلسات تخصصی فردی برای پیشگیری و درمان فرسودگی ناشی از پرونده‌های حساس، مدیریت اضطراب و ارتقای آرامش درونی.',
+          icon: 'heart',
+          accent: 'teal',
+          order: 1,
+        },
+        {
+          type: 'general',
+          title: 'مشاوره خانواده، زوج‌درمانی و تربیت فرزند',
+          subtitle: 'تحکیم بنیان خانواده با رویکرد اسلامی-روان‌شناختی',
+          description: 'بهبود کیفیت ارتباط همسران، حل تعارضات خانوادگی و مدیریت تعادل میان مسئولیت‌های شغلی و زندگی خانوادگی.',
+          icon: 'users',
+          accent: 'emerald',
+          order: 2,
+        },
+        {
+          type: 'general',
+          title: 'مشاوره پیش از ازدواج و شناخت شخصیت',
+          subtitle: 'همراه با ارزیابی و تست‌های استاندارد شخصیت',
+          description: 'بررسی ملاک‌های همتایی فکری، رفتاری و خانوادگی با بهره‌گیری از مصاحبه بالینی و آزمون‌های روان‌شناختی.',
+          icon: 'sparkles',
+          accent: 'indigo',
+          order: 3,
+        },
+      ];
+      for (const f of defaultFields) {
+        await p.query(
+          `INSERT INTO counseling_fields (id, counseling_type, title, subtitle, description, icon_name, accent_color, is_active, display_order, version)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 1)`,
+          [toIdBuffer(generateUUIDv7()), f.type, f.title, f.subtitle, f.description, f.icon, f.accent, f.order]
+        );
+      }
+    }
+
+    // Ensure at least starter specialized_career & general consultants exist in MySQL
+    const [specConsCnt]: any = await p.query(`SELECT COUNT(*) as cnt FROM consultants WHERE counseling_type = 'specialized_career' AND deleted_at IS NULL`);
+    if (Number(specConsCnt?.[0]?.cnt || 0) === 0) {
+      await p.query(
+        `INSERT INTO consultants (id, name, title, specialty, academic_rank, resume_details, bio, experience_years, availability, counseling_type, is_active, version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'specialized_career', 1, 1)`,
+        [
+          toIdBuffer(generateUUIDv7()),
+          'دکتر سیدمحمدحسین طباطبایی',
+          'مشاور ارشد هدایت شغلی و مسیر علمی',
+          'فقه القضاء، برنامه‌ریزی دکتری و داوری تجاری',
+          'دانشیار فقه و حقوق و مدیر گروه آموزشی',
+          JSON.stringify(['دکتری حقوق خصوصی دانشگاه تهران', 'سطح ۴ فقه و اصول حوزه علمیه قم', '۱۶ سال سابقه راهبری شغلی و پژوهشی دانش‌آموختگان']),
+          'راهبری گام‌به‌گام مسیر حرفه‌ای، انتخاب گرایش تحصیلی و ورود به عرصه‌های تخصصی حقوقی و داوری.',
+          16,
+          'یکشنبه‌ها و سه‌شنبه‌ها ۱۶ الی ۱۹',
+        ]
+      );
+    }
+
+    const [genConsCnt]: any = await p.query(`SELECT COUNT(*) as cnt FROM consultants WHERE counseling_type = 'general' AND deleted_at IS NULL`);
+    if (Number(genConsCnt?.[0]?.cnt || 0) === 0) {
+      await p.query(
+        `INSERT INTO consultants (id, name, title, specialty, academic_rank, resume_details, bio, experience_years, availability, counseling_type, is_active, version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'general', 1, 1)`,
+        [
+          toIdBuffer(generateUUIDv7()),
+          'دکتر مریم السادات حسینی',
+          'روان‌شناس بالینی و مشاور خانواده مرکز',
+          'روان‌درمانی فردی، خانواده و پیش از ازدواج',
+          'دکتری تخصصی روان‌شناسی بالینی (پروانه نظام روان‌شناسی)',
+          JSON.stringify(['دکتری تخصصی روان‌شناسی بالینی', 'عضو سازمان نظام روان‌شناسی و مشاوره', 'مشاور تخصصی مرکز دانش‌آموختگان با رویکرد اسلامی-بالینی']),
+          'ارائه جلسات مشاوره محرمانه در حوزه‌های سلامت روان، خانواده و تفسیر آزمون‌های شخصیت.',
+          12,
+          'شنبه‌ها و دوشنبه‌ها ۱۴ الی ۱۸',
+        ]
+      );
+    }
+
+    // Counseling Tariffs (نرخ‌نامه مشاوره عمومی)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS counseling_tariffs (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        service_title VARCHAR(255) NOT NULL,
+        session_duration_minutes INT NOT NULL DEFAULT 45,
+        meeting_mode VARCHAR(32) NOT NULL DEFAULT 'همه روش‌ها',
+        standard_fee BIGINT NOT NULL DEFAULT 0,
+        alumni_subsidized_fee BIGINT NOT NULL DEFAULT 0,
+        notes TEXT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        display_order INT NOT NULL DEFAULT 1,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_ctariffs_active_del (deleted_at, is_active, display_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const [tariffsCnt]: any = await p.query(`SELECT COUNT(*) as cnt FROM counseling_tariffs WHERE deleted_at IS NULL`);
+    if (Number(tariffsCnt?.[0]?.cnt || 0) === 0) {
+      const defaultTariffs = [
+        { title: 'جلسه مشاوره فردی و مدیریت استرس (۴۵ دقیقه)', duration: 45, mode: 'حضوری', std: 6500000, sub: 2500000, notes: 'با یارانه ۶۰ درصدی ویژه اعضای مرکز دانش‌آموختگان', order: 1 },
+        { title: 'جلسه مشاوره خانواده و زوج‌درمانی (۶۰ دقیقه)', duration: 60, mode: 'همه روش‌ها', std: 8500000, sub: 3200000, notes: 'شامل ارزیابی اولیه و پیگیری تکمیلی', order: 2 },
+        { title: 'جلسه مشاوره برخط تصویری امن (۴۵ دقیقه)', duration: 45, mode: 'برخط', std: 5500000, sub: 2000000, notes: 'مناسب همکاران مستقر در سایر استان‌ها', order: 3 },
+      ];
+      for (const t of defaultTariffs) {
+        await p.query(
+          `INSERT INTO counseling_tariffs (id, service_title, session_duration_minutes, meeting_mode, standard_fee, alumni_subsidized_fee, notes, is_active, display_order, version)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 1)`,
+          [toIdBuffer(generateUUIDv7()), t.title, t.duration, t.mode, t.std, t.sub, t.notes, t.order]
+        );
+      }
+    }
+
+    // Psychological Tests, Per-User Assignments & Results (بخش تست‌های روان‌شناختی)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS psychological_tests (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        category VARCHAR(128) NOT NULL DEFAULT 'شخصیت‌شناسی',
+        description TEXT NOT NULL,
+        estimated_minutes INT NOT NULL DEFAULT 15,
+        instructions TEXT NULL,
+        questions JSON NOT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_ptests_active_del (deleted_at, is_active, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS psychological_test_assignments (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        test_id BINARY(16) NOT NULL,
+        user_id VARCHAR(64) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_national_id VARCHAR(32) NULL,
+        assigned_by_id VARCHAR(64) NULL,
+        assigned_by_name VARCHAR(255) NOT NULL,
+        request_id VARCHAR(64) NULL,
+        status ENUM('unlocked', 'in_progress', 'completed', 'reviewed') NOT NULL DEFAULT 'unlocked',
+        admin_note TEXT NULL,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
+        version INT NOT NULL DEFAULT 1,
+        assigned_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        completed_at DATETIME(3) NULL,
+        INDEX idx_ptest_assign_user (user_id, deleted_at, status, assigned_at),
+        INDEX idx_ptest_assign_test (test_id, deleted_at, status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS psychological_test_results (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        assignment_id BINARY(16) NOT NULL UNIQUE,
+        test_id BINARY(16) NOT NULL,
+        user_id VARCHAR(64) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        answers JSON NOT NULL,
+        raw_score INT NULL,
+        score_summary TEXT NOT NULL,
+        psychologist_notes TEXT NULL,
+        reviewed_by_name VARCHAR(255) NULL,
+        reviewed_at DATETIME(3) NULL,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
+        version INT NOT NULL DEFAULT 1,
+        submitted_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_ptest_res_user (user_id, deleted_at, submitted_at),
+        INDEX idx_ptest_res_test (test_id, deleted_at, submitted_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const [testsCnt]: any = await p.query(`SELECT COUNT(*) as cnt FROM psychological_tests WHERE deleted_at IS NULL`);
+    if (Number(testsCnt?.[0]?.cnt || 0) === 0) {
+      await p.query(
+        `INSERT INTO psychological_tests (id, title, category, description, estimated_minutes, instructions, questions, is_active, version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+        [
+          toIdBuffer(generateUUIDv7()),
+          'آزمون ارزیابی فرسودگی شغلی و تاب‌آوری روانی',
+          'سلامت شغلی',
+          'سنجش میزان فشار کاری، تعادل هیجانی و نیاز به استراحت یا مداخله حمایتی برای همکاران مرکز.',
+          10,
+          'لطفاً بر اساس احساس خود در دو هفته اخیر، نزدیک‌ترین گزینه به وضعیت واقعی خود را انتخاب نمایید.',
+          JSON.stringify([
+            { id: 'q1', prompt: 'در پایان روز کاری تا چه اندازه احساس خستگی عاطفی یا کاهش انرژی دارید؟', type: 'single_choice', options: ['به ندرت', 'گاهی اوقات', 'بیشتر روزها', 'تقریباً همیشه'], required: true },
+            { id: 'q2', prompt: 'کیفیت خواب شبانه و آرامش ذهنی شما در هفته گذشته چگونه بوده است؟', type: 'single_choice', options: ['بسیار مطلوب', 'نسبتاً خوب', 'نامنظم', 'مختل و نگران‌کننده'], required: true },
+            { id: 'q3', prompt: 'توضیح یا دغدغه خاصی که مایلید روان‌شناس پیش از جلسه بداند بنویسید:', type: 'text', options: [], required: false },
+          ]),
+        ]
+      );
+      await p.query(
+        `INSERT INTO psychological_tests (id, title, category, description, estimated_minutes, instructions, questions, is_active, version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+        [
+          toIdBuffer(generateUUIDv7()),
+          'پرسشنامه کیفیت ارتباط خانوادگی و سبک حل تعارض',
+          'خانواده و ازدواج',
+          'ارزیابی الگوهای گفت‌وگو، مدیریت اختلافات و انتظارات متقابل پیش از جلسات مشاوره خانواده.',
+          12,
+          'به سوالات با صداقت کامل پاسخ دهید. نتایج صرفاً در پرونده محرمانه روان‌شناس مرکز قابل رویت است.',
+          JSON.stringify([
+            { id: 'qf1', prompt: 'هنگام بروز اختلاف نظر در خانه، واکنش غالب شما چیست؟', type: 'single_choice', options: ['گفت‌وگوی آرام و مستقیم', 'سکوت موقت برای آرام شدن', 'بحث طولانی', 'کناره‌گیری کامل'], required: true },
+            { id: 'qf2', prompt: 'میزان رضایت کلی خود از زمان اختصاص‌یافته به خانواده را از ۱ تا ۵ ارزیابی کنید:', type: 'scale', options: ['۱', '۲', '۳', '۴', '۵'], required: true },
+          ]),
+        ]
+      );
+    }
 
     await p.query(`
       CREATE TABLE IF NOT EXISTS counseling_session_dossiers (
@@ -407,6 +706,30 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
         INDEX idx_dossier_applicant (applicant_id, created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Ensure users.center_code & auth_rate_limits exist and seed accounts have valid bcrypt password hashes
+    try { await p.query(`ALTER TABLE users ADD COLUMN center_code VARCHAR(64) NULL UNIQUE;`); } catch {}
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS auth_rate_limits (
+        limit_key VARCHAR(160) PRIMARY KEY,
+        hits INT NOT NULL DEFAULT 1,
+        reset_at BIGINT NOT NULL,
+        INDEX idx_rate_reset (reset_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    try {
+      const [seedRows]: any = await p.query(
+        `SELECT id, national_id, password_hash FROM users WHERE national_id IN ('SADEGH', 'ALI') AND deleted_at IS NULL`
+      );
+      for (const sr of seedRows || []) {
+        const hashStr = String(sr.password_hash || '');
+        if (!hashStr.startsWith('$2a$') && !hashStr.startsWith('$2b$') && !hashStr.startsWith('$2y$')) {
+          const defaultPlain = sr.national_id === 'SADEGH' ? '8411' : '1040';
+          const hashed = bcrypt.hashSync(defaultPlain, 10);
+          await p.query(`UPDATE users SET password_hash = ? WHERE national_id = ?`, [hashed, sr.national_id]);
+        }
+      }
+    } catch {}
 
     // 6. Welfare & Cooperative Domain Enhancements: low_stock_threshold on consumables, postal_tracking_code & shipping_status on orders
     try { await p.query(`ALTER TABLE consumables ADD COLUMN low_stock_threshold INT NOT NULL DEFAULT 5;`); } catch {}

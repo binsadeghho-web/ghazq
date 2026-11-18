@@ -38,20 +38,28 @@ class ApiClient {
   constructor() {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('feqh_access_token');
-      this.sessionToken = stored || 'sess_default_admin';
+      this.sessionToken = stored || '';
       this.refreshTokenVal = localStorage.getItem('feqh_refresh_token');
     } else {
-      this.sessionToken = 'sess_default_admin';
+      this.sessionToken = '';
     }
   }
 
-  public setAuthContext(userId: string, role: string, _name: string, sessionToken?: string): void {
+  public setAuthContext(_userId: string, _role: string, _name: string, sessionToken?: string, refreshToken?: string): void {
     if (sessionToken) {
-      this.sessionToken = sessionToken;
-    } else if (!this.sessionToken || this.sessionToken === 'demo-session') {
-      if (role === 'admin' || userId === 'usr_sadegh_admin') {
-        this.sessionToken = 'sess_default_admin';
-      }
+      this.setSessionToken(sessionToken, refreshToken);
+    }
+  }
+
+  public clearSession(): void {
+    this.sessionToken = '';
+    this.refreshTokenVal = null;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('feqh_access_token');
+        localStorage.removeItem('feqh_refresh_token');
+        localStorage.removeItem('feqh_current_user');
+      } catch {}
     }
   }
 
@@ -61,7 +69,13 @@ class ApiClient {
       this.refreshTokenVal = refreshToken;
       try { localStorage.setItem('feqh_refresh_token', refreshToken); } catch {}
     }
-    try { localStorage.setItem('feqh_access_token', token); } catch {}
+    try {
+      if (token) {
+        localStorage.setItem('feqh_access_token', token);
+      } else {
+        localStorage.removeItem('feqh_access_token');
+      }
+    } catch {}
   }
 
   public async refreshToken(): Promise<{ accessToken: string; refreshToken: string }> {
@@ -146,7 +160,8 @@ class ApiClient {
         response.status === 401 &&
         !this.isRefreshing &&
         !endpoint.includes('/auth/login') &&
-        !endpoint.includes('/auth/refresh')
+        !endpoint.includes('/auth/refresh') &&
+        (this.refreshTokenVal || (typeof window !== 'undefined' && !!localStorage.getItem('feqh_refresh_token')))
       ) {
         try {
           this.isRefreshing = true;
@@ -156,16 +171,14 @@ class ApiClient {
           if (refreshRes && refreshRes.accessToken) {
             headers.set('Authorization', `Bearer ${refreshRes.accessToken}`);
             response = await fetch(endpoint, {
+              ...(isGet ? { cache: 'no-store' as RequestCache } : {}),
               ...options,
               headers,
             });
           }
         } catch (refreshErr) {
           this.isRefreshing = false;
-          // Silent refresh failed: Clear local session & redirect to login
-          if (typeof window !== 'undefined' && !window.location.hash.includes('login')) {
-            window.location.href = '/#login';
-          }
+          this.clearSession();
           throw refreshErr;
         }
       }
@@ -209,14 +222,28 @@ class ApiClient {
 
   // Auth endpoints
   async login(nationalId: string, password: string) {
-    const res = await this.request<{ success: boolean; user: any; session: any; token?: string; mustChangePassword?: boolean; message?: string }>('/api/auth/login', {
+    const res = await this.request<{
+      success: boolean;
+      user: any;
+      session: any;
+      token?: string;
+      accessToken?: string;
+      refreshToken?: string;
+      mustChangePassword?: boolean;
+      message?: string;
+    }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ nationalId, password }),
     });
-    if (res.token) {
-      this.setSessionToken(res.token);
+    const accessTok = res.accessToken || res.token;
+    if (accessTok) {
+      this.setSessionToken(accessTok, res.refreshToken);
     }
     return res;
+  }
+
+  async getMe() {
+    return this.request<{ success: boolean; user: any; mustChangePassword?: boolean }>('/api/auth/me');
   }
 
   async changePassword(currentPassword: string, newPassword: string) {
@@ -227,7 +254,44 @@ class ApiClient {
   }
 
   async logout() {
-    return this.request<{ success: boolean }>('/api/auth/logout', { method: 'POST' });
+    try {
+      return await this.request<{ success: boolean }>('/api/auth/logout', { method: 'POST' });
+    } finally {
+      this.clearSession();
+    }
+  }
+
+  // Self-service Alumni Identity Card & Global Completion Settings (Reform 56)
+  async getAlumniProfileSettings() {
+    return this.request<{
+      allowAlumniProfileCompletion: boolean;
+      noticeText?: string;
+      updatedBy?: string;
+      updatedAt?: string;
+      version: number;
+    }>('/api/users/alumni-profile-settings');
+  }
+
+  async updateAlumniProfileSettings(data: {
+    allowAlumniProfileCompletion: boolean;
+    noticeText?: string;
+    expectedVersion: number;
+  }) {
+    return this.request<any>('/api/users/alumni-profile-settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyIdentity() {
+    return this.request<{ user: any; settings: any }>('/api/users/me/identity');
+  }
+
+  async updateMyIdentity(updates: Record<string, any>, expectedVersion: number) {
+    return this.request<{ user: any; settings: any }>('/api/users/me/identity', {
+      method: 'PUT',
+      body: JSON.stringify({ ...updates, expectedVersion }),
+    });
   }
 
   async globalLogout(userId: string) {
@@ -470,8 +534,9 @@ class ApiClient {
   }
 
   // Counseling endpoints
-  async getConsultants() {
-    return this.request<any[]>('/api/counseling/consultants');
+  async getConsultants(type?: string) {
+    const qs = type ? `?type=${encodeURIComponent(type)}` : '';
+    return this.request<any[]>(`/api/counseling/consultants${qs}`);
   }
 
   async createConsultant(data: any) {
@@ -494,8 +559,9 @@ class ApiClient {
     });
   }
 
-  async getCounselingRequests() {
-    return this.request<any[]>('/api/counseling/requests');
+  async getCounselingRequests(type?: string) {
+    const qs = type ? `?type=${encodeURIComponent(type)}` : '';
+    return this.request<any[]>(`/api/counseling/requests${qs}`);
   }
 
   async bookCounseling(data: any) {
@@ -514,6 +580,139 @@ class ApiClient {
 
   async updateCounselingStatus(requestId: string, data: any) {
     return this.request<any>(`/api/counseling/requests/${requestId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Counseling Portal Config, Fields (زمینه‌های مشاوره), Tariffs & Psychological Tests
+  async getCounselingPortalConfig(type: 'general' | 'specialized_career') {
+    return this.request<any>(`/api/counseling/config/${type}`);
+  }
+
+  async updateCounselingPortalConfig(type: 'general' | 'specialized_career', config: any, expectedVersion?: number) {
+    return this.request<any>(`/api/counseling/config/${type}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...config, expectedVersion: expectedVersion ?? config?.version }),
+    });
+  }
+
+  async getCounselingFields(type?: 'general' | 'specialized_career', includeInactive = false) {
+    const qs = new URLSearchParams();
+    if (type) qs.set('type', type);
+    if (includeInactive) qs.set('includeInactive', 'true');
+    const q = qs.toString();
+    return this.request<any[]>(`/api/counseling/fields${q ? `?${q}` : ''}`);
+  }
+
+  async createCounselingField(data: any) {
+    return this.request<any>('/api/counseling/fields', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCounselingField(id: string, data: any, expectedVersion: number) {
+    return this.request<any>(`/api/counseling/fields/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, expectedVersion }),
+    });
+  }
+
+  async deleteCounselingField(id: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/counseling/fields/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getCounselingTariffs(includeInactive = false) {
+    const qs = includeInactive ? '?includeInactive=true' : '';
+    return this.request<any[]>(`/api/counseling/tariffs${qs}`);
+  }
+
+  async createCounselingTariff(data: any) {
+    return this.request<any>('/api/counseling/tariffs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCounselingTariff(id: string, data: any, expectedVersion: number) {
+    return this.request<any>(`/api/counseling/tariffs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, expectedVersion }),
+    });
+  }
+
+  async deleteCounselingTariff(id: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/counseling/tariffs/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getPsychologicalTests() {
+    return this.request<any[]>('/api/counseling/tests');
+  }
+
+  async createPsychologicalTest(data: any) {
+    return this.request<any>('/api/counseling/tests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePsychologicalTest(id: string, data: any, expectedVersion: number) {
+    return this.request<any>(`/api/counseling/tests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, expectedVersion }),
+    });
+  }
+
+  async deletePsychologicalTest(id: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/counseling/tests/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getPsychologicalTestAssignments(userId?: string) {
+    const qs = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.request<any[]>(`/api/counseling/test-assignments${qs}`);
+  }
+
+  async assignPsychologicalTest(data: {
+    testId: string;
+    userId: string;
+    userName: string;
+    userNationalId?: string;
+    requestId?: string;
+    adminNote?: string;
+  }) {
+    return this.request<any>('/api/counseling/test-assignments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async submitPsychologicalTest(assignmentId: string, answers: any[], scoreSummary?: string) {
+    return this.request<any>(`/api/counseling/test-assignments/${assignmentId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ answers, scoreSummary }),
+    });
+  }
+
+  async getPsychologicalTestResults(filters?: { userId?: string; testId?: string }) {
+    const qs = new URLSearchParams();
+    if (filters?.userId) qs.set('userId', filters.userId);
+    if (filters?.testId) qs.set('testId', filters.testId);
+    const q = qs.toString();
+    return this.request<any[]>(`/api/counseling/test-results${q ? `?${q}` : ''}`);
+  }
+
+  async reviewPsychologicalTestResult(
+    resultId: string,
+    data: { psychologistNotes?: string; scoreSummary?: string; expectedVersion: number }
+  ) {
+    return this.request<any>(`/api/counseling/test-results/${resultId}/review`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });

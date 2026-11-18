@@ -8,6 +8,7 @@ import { toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 export interface UserDbRow {
   id: string;
   national_id: string;
+  center_code: string | null;
   username: string | null;
   password_hash: string | null;
   full_name: string;
@@ -104,6 +105,7 @@ export function mapRowToUser(row: UserDbRow): User & { password_hash?: string; v
   const userObj: any = {
     id: fromIdBuffer(row.id),
     nationalId: row.national_id,
+    centerCode: row.center_code || undefined,
     username: row.username || row.national_id,
     fullName: row.full_name,
     phone: row.phone,
@@ -216,6 +218,7 @@ export class UserRepository {
   async createUser(user: {
     id: string;
     nationalId: string;
+    centerCode?: string;
     username?: string;
     passwordHash: string;
     fullName: string;
@@ -269,6 +272,7 @@ export class UserRepository {
     const newUser: User = {
       id: user.id,
       nationalId: user.nationalId,
+      centerCode: user.centerCode,
       username,
       fullName: user.fullName,
       phone: user.phone,
@@ -326,7 +330,7 @@ export class UserRepository {
     try {
       await pool.query(
         `INSERT INTO users (
-          id, national_id, username, password_hash, full_name, phone, role, role_title,
+          id, national_id, center_code, username, password_hash, full_name, phone, role, role_title,
           site_title, profile_picture_url, personnel_id, judicial_grade, court_branch, province,
           email, academic_degree, thesis_title, supervisor_professor, birth_date, father_name,
           id_number, marital_status, children_count, residential_address, seminary_level,
@@ -336,8 +340,9 @@ export class UserRepository {
           service_years, judicial_specialty, permissions, organization, graduation_year,
           avatar_text, is_active, is_locked, failed_attempts, token_version, must_change_password,
           has_account, version, sessions, section_permissions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, 1, 1, '[]', ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1, ?, 1, 1, '[]', ?)
         ON DUPLICATE KEY UPDATE
+          center_code = COALESCE(VALUES(center_code), center_code),
           password_hash = VALUES(password_hash),
           full_name = VALUES(full_name),
           phone = VALUES(phone),
@@ -382,6 +387,7 @@ export class UserRepository {
         [
           toIdBuffer(user.id),
           user.nationalId,
+          user.centerCode || null,
           username,
           user.passwordHash,
           user.fullName,
@@ -459,15 +465,19 @@ export class UserRepository {
       checkConds.push('username = ?');
       checkParams.push(String(updates.username).trim());
     }
+    if (updates.centerCode !== undefined && updates.centerCode !== null && String(updates.centerCode).trim() !== '') {
+      checkConds.push('center_code = ?');
+      checkParams.push(String(updates.centerCode).trim());
+    }
 
     if (checkConds.length > 0) {
       const pool = getPool();
-      const sql = `SELECT id FROM users WHERE (${checkConds.join(' OR ')}) AND id != ? AND deleted_at IS NULL LIMIT 1`;
-      checkParams.push(id);
+      const sql = `SELECT id FROM users WHERE (${checkConds.join(' OR ')}) AND id != ? AND id != ? AND deleted_at IS NULL LIMIT 1`;
+      checkParams.push(toIdBuffer(id), id);
 
       const [existing]: any = await pool.query(sql, checkParams);
       if (existing && existing.length > 0) {
-        throw AppError.conflict('کد ملی یا نام کاربری وارد شده متعلق به کاربر دیگری است.');
+        throw AppError.conflict('کد ملی، نام کاربری یا کد مرکز وارد شده متعلق به کاربر دیگری است.');
       }
     }
 
@@ -487,6 +497,7 @@ export class UserRepository {
         const colMap: Record<string, string> = {
           fullName: 'full_name',
           nationalId: 'national_id',
+          centerCode: 'center_code',
           username: 'username',
           phone: 'phone',
           role: 'role',
@@ -545,6 +556,10 @@ export class UserRepository {
           fields.push(`section_permissions = ?`);
           params.push(updates.sectionPermissions ? JSON.stringify(updates.sectionPermissions) : null);
         }
+        if (updates.sessions !== undefined) {
+          fields.push(`sessions = ?`);
+          params.push(updates.sessions ? JSON.stringify(updates.sessions) : '[]');
+        }
         if (updates.isActive !== undefined) {
           fields.push('is_active = ?');
           params.push(updates.isActive ? 1 : 0);
@@ -572,15 +587,15 @@ export class UserRepository {
         fields.push('version = version + 1');
 
         if (fields.length > 0) {
-          let sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`;
-          params.push(toIdBuffer(id));
+          let sql = `UPDATE users SET ${fields.join(', ')} WHERE (id = ? OR id = ?) AND deleted_at IS NULL`;
+          params.push(toIdBuffer(id), id);
 
           if (expectedVersion !== undefined && expectedVersion !== null && !isNaN(Number(expectedVersion))) {
             sql += ` AND version = ?`;
             params.push(Number(expectedVersion));
           }
 
-          logger.info(`[SQL UPDATE users OCC] SQL: ${sql} | Params: ${JSON.stringify(params)}`);
+          logger.info(`[SQL UPDATE users OCC] SQL: ${sql}`);
           const [res]: any = await conn.query(sql, params);
           if (res && res.affectedRows === 0) {
             throw AppError.conflict('اطلاعات کاربر توسط کاربر یا مدیر دیگری هم‌زمان تغییر یافته است. لطفاً صفحه را بازخوانی فرمایید.');
@@ -589,8 +604,8 @@ export class UserRepository {
 
         if (isSecurityImpacted) {
           // Instant revocation of all user sessions & refresh tokens
-          await conn.query(`UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ?`, [toIdBuffer(id)]);
-          await conn.query(`UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'SECURITY_CHANGE' WHERE user_id = ?`, [toIdBuffer(id)]);
+          await conn.query(`UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = ? OR user_id = ?`, [toIdBuffer(id), id]);
+          await conn.query(`UPDATE refresh_tokens SET is_revoked = TRUE, revocation_reason = 'SECURITY_CHANGE' WHERE user_id = ? OR user_id = ?`, [toIdBuffer(id), id]);
         }
       });
     } catch (err: any) {
@@ -700,8 +715,8 @@ export class UserRepository {
 
       if (search && search.trim()) {
         const term = `%${search.trim()}%`;
-        sql += ` AND (full_name LIKE ? OR national_id LIKE ? OR username LIKE ? OR phone LIKE ? OR organization LIKE ?)`;
-        params.push(term, term, term, term, term);
+        sql += ` AND (full_name LIKE ? OR national_id LIKE ? OR center_code LIKE ? OR username LIKE ? OR phone LIKE ? OR organization LIKE ?)`;
+        params.push(term, term, term, term, term, term);
       }
 
       sql += ` ORDER BY created_at DESC LIMIT 200`;

@@ -54,6 +54,7 @@ export class AdminService {
 
   async createUser(authCtx: AuthContext, data: {
     nationalId: string;
+    centerCode?: string;
     username?: string;
     password?: string;
     fullName: string;
@@ -73,6 +74,7 @@ export class AdminService {
     assertCanManageTargetUser(authCtx, undefined, data.role || 'alumni');
 
     const nationalId = (data.nationalId ? normalizeDigits(data.nationalId) : '').trim();
+    const centerCode = data.centerCode ? normalizeDigits(data.centerCode).trim() : undefined;
     const phone = (data.phone ? normalizeDigits(data.phone) : '09120000000').trim();
     const username = data.username ? data.username.trim() : nationalId;
     const rawPassword = data.password ? data.password.trim() : phone;
@@ -96,6 +98,7 @@ export class AdminService {
     const createdUser = await userRepository.createUser({
       id,
       nationalId,
+      centerCode,
       username,
       passwordHash,
       fullName: data.fullName.trim(),
@@ -163,7 +166,7 @@ export class AdminService {
 
     const updateFields: any = {};
     const allowedKeys = [
-      'fullName', 'phone', 'nationalId', 'username', 'role', 'roleTitle', 'siteTitle',
+      'fullName', 'phone', 'nationalId', 'centerCode', 'username', 'role', 'roleTitle', 'siteTitle',
       'profilePictureUrl', 'organization', 'graduationYear', 'judicialGrade', 'courtBranch',
       'province', 'email', 'academicDegree', 'thesisTitle', 'supervisorProfessor', 'birthDate',
       'fatherName', 'idNumber', 'maritalStatus', 'childrenCount', 'residentialAddress',
@@ -178,7 +181,7 @@ export class AdminService {
       if ((updates as any)[key] !== undefined) {
         const val = (updates as any)[key];
         if (typeof val === 'string') {
-          updateFields[key] = (key === 'phone' || key === 'nationalId' || key === 'graduationYear')
+          updateFields[key] = (key === 'phone' || key === 'nationalId' || key === 'centerCode' || key === 'graduationYear')
             ? normalizeDigits(val).trim()
             : val.trim();
         } else {

@@ -3,6 +3,7 @@ import { User, UserRole } from '../../types';
 import { AppError } from './errors';
 import { userRepository } from '../modules/user/userRepository';
 import { verifyAccessToken } from './jwtService';
+import { selectWithTimeout, isDatabaseConnected } from './mysqlDatabase';
 
 export interface AuthenticatedUser {
   id: string;
@@ -13,26 +14,8 @@ export interface AuthenticatedUser {
   mustChangePassword?: boolean;
 }
 
-// In-memory active session token map for fast O(1) resolution
+// Active session token map populated strictly after verified DB login
 export const activeSessionTokens = new Map<string, AuthenticatedUser>();
-
-// Pre-seed known master sessions
-activeSessionTokens.set('sess_default_admin', {
-  id: 'usr_sadegh_admin',
-  nationalId: 'SADEGH',
-  fullName: 'صادق (مدیر ارشد سامانه)',
-  role: 'admin',
-  sessionId: 'sess_default_admin',
-  mustChangePassword: false,
-});
-activeSessionTokens.set('sess_ali_alumni', {
-  id: 'usr_ali_alumni',
-  nationalId: 'ALI',
-  fullName: 'علی (دانش‌آموخته نخبه)',
-  role: 'alumni',
-  sessionId: 'sess_ali_alumni',
-  mustChangePassword: true,
-});
 
 /**
  * Registers an active session token for an authenticated user.
@@ -70,8 +53,8 @@ export function revokeSessionToken(token: string): void {
 }
 
 /**
- * Strictly resolves user identity from verified server session/token or JWT Access Token.
- * NEVER trusts client-supplied headers (x-user-id, x-user-role).
+ * Strictly resolves user identity from verified JWT Access Token or verified server session.
+ * NEVER trusts client-supplied headers or hardcoded demo/admin tokens.
  */
 export async function sessionAuthMiddleware(req: Request, _res: Response, next: NextFunction): Promise<void> {
   // CRITICAL SECURITY RULE: Strip any client-injected identity headers
@@ -91,7 +74,7 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
   }
 
   if (token) {
-    // 1. If JWT format (Access Token)
+    // 1. JWT Access Token
     if (token.startsWith('ey')) {
       try {
         const claims = verifyAccessToken(token);
@@ -99,6 +82,20 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
 
         if (!dbUser || !dbUser.isActive || dbUser.isLocked || Number(dbUser.tokenVersion || 1) !== claims.tv) {
           return next(AppError.unauthorized('نشست شما نامعتبر است یا باطل گردیده است. لطفاً مجدداً وارد شوید.', 'SESSION_INVALIDATED'));
+        }
+
+        // Verify session row in MySQL if tracked
+        if (isDatabaseConnected() && claims.sid) {
+          try {
+            const sessRows = await selectWithTimeout<any>(
+              `SELECT is_revoked FROM user_sessions WHERE id = ? LIMIT 1`,
+              [claims.sid],
+              2000
+            );
+            if (sessRows && sessRows.length > 0 && Boolean(sessRows[0].is_revoked)) {
+              return next(AppError.unauthorized('این نشست کاربری ابطال گردیده است. لطفاً مجدداً وارد شوید.', 'SESSION_REVOKED'));
+            }
+          } catch {}
         }
 
         const authUser: AuthenticatedUser = {
@@ -119,6 +116,7 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
                            reqPath.includes('/auth/global-logout') ||
                            reqPath.includes('/auth/login') ||
                            reqPath.includes('/auth/refresh') ||
+                           reqPath.includes('/auth/me') ||
                            reqPath.includes('/auth/sessions');
           if (!isExempt) {
             return next(AppError.forbidden('شما باید ابتدا رمز عبور اولیه خود را تغییر دهید.', 'MUST_CHANGE_PASSWORD_REQUIRED'));
@@ -131,7 +129,7 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
       }
     }
 
-    // 2. Check in-memory fast session token cache (Legacy fallback)
+    // 2. Check verified runtime session map (only populated on real login)
     const cached = activeSessionTokens.get(token);
     if (cached) {
       const dbUser = await userRepository.findById(cached.id);
@@ -140,34 +138,40 @@ export async function sessionAuthMiddleware(req: Request, _res: Response, next: 
         return next(AppError.unauthorized('حساب کاربری شما غیرفعال یا معلق گردیده است.'));
       }
 
-      (req as any).user = cached;
+      if (isDatabaseConnected() && cached.sessionId) {
+        try {
+          const sessRows = await selectWithTimeout<any>(
+            `SELECT is_revoked FROM user_sessions WHERE id = ? LIMIT 1`,
+            [cached.sessionId],
+            2000
+          );
+          if (sessRows && sessRows.length > 0 && Boolean(sessRows[0].is_revoked)) {
+            revokeSessionToken(token);
+            return next(AppError.unauthorized('نشست کاربری شما باطل گردیده است.'));
+          }
+        } catch {}
+      }
 
-      if (cached.mustChangePassword) {
+      (req as any).user = {
+        ...cached,
+        role: dbUser.role,
+        fullName: dbUser.fullName,
+        mustChangePassword: Boolean(dbUser.mustChangePassword),
+      };
+
+      if (Boolean(dbUser.mustChangePassword)) {
         const reqPath = (req.baseUrl + req.path).toLowerCase();
         const isExempt = reqPath.includes('/auth/change-password') ||
                          reqPath.includes('/auth/logout') ||
                          reqPath.includes('/auth/login') ||
                          reqPath.includes('/auth/refresh') ||
+                         reqPath.includes('/auth/me') ||
                          reqPath.includes('/auth/sessions');
         if (!isExempt) {
           return next(AppError.forbidden('شما باید ابتدا رمز عبور اولیه خود را تغییر دهید.', 'MUST_CHANGE_PASSWORD_REQUIRED'));
         }
       }
 
-      return next();
-    }
-
-    if (token === 'sess_default_admin' || token === 'admin_token' || token === 'demo-session') {
-      const defAdmin: AuthenticatedUser = {
-        id: 'usr_sadegh_admin',
-        nationalId: 'SADEGH',
-        fullName: 'صادق (مدیر ارشد سامانه)',
-        role: 'admin',
-        sessionId: token,
-        mustChangePassword: false,
-      };
-      activeSessionTokens.set(token, defAdmin);
-      (req as any).user = defAdmin;
       return next();
     }
   }
