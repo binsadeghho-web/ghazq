@@ -240,6 +240,15 @@ export interface CrextioDashboardConfig {
     coverImage?: string;
   };
 
+  // ویترین مستقل خدمات مشاوره عمومی و خانواده
+  showCounselingGeneralShowcase?: boolean;
+  counselingGeneralShowcaseTitle?: string;
+  counselingGeneralShowcaseSubtitle?: string;
+  counselingGeneralShowcaseBadge?: string;
+  counselingGeneralShowcaseDesc?: string;
+  counselingGeneralShowcaseBtnText?: string;
+  counselingGeneralShowcaseBullets?: string[];
+
   // ویترین خدمات رفاهی و تسهیلات
   showWelfareShowcase?: boolean;
   welfareShowcaseTitle?: string;

@@ -47,6 +47,7 @@ export const ALL_UNIFIED_SHOWCASE_KEYS = [
   'research_promo',
   'course_showcase',
   'counseling_promo',
+  'counseling_general_showcase',
   'welfare_showcase',
   'multimedia_showcase',
   'books_showcase',
@@ -162,10 +163,36 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
           'محرمانگی کامل و برگزاری حضوری یا آنلاین',
         ],
         targetNav: 'SpecializedCounseling',
-        ctaLabel: 'رزرو نوبت مشاوره',
+        ctaLabel: 'رزرو نوبت مشاوره تخصصی',
         icon: HeartHandshake,
         toneClass: 'text-indigo-700 dark:text-indigo-400',
         statLabel: `${toPersianNumbers(consultants.length)} استاد و مشاور`,
+      },
+      {
+        key: 'counseling_general_showcase',
+        shortLabel: 'مشاوره عمومی',
+        kicker:
+          crextioConfig.counselingGeneralShowcaseBadge || 'سلامت روان و خانواده',
+        title:
+          crextioConfig.counselingGeneralShowcaseTitle ||
+          'خدمات مشاوره عمومی، خانواده و روان‌شناختی',
+        description:
+          crextioConfig.counselingGeneralShowcaseSubtitle ||
+          'دسترسی محرمانه به مشاوران خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت فشارهای روانی شغلی.',
+        highlights: [
+          'مشاوره پیش از ازدواج، زوج‌درمانی و تحکیم خانواده',
+          'مدیریت استرس شغلی و پیشگیری از فرسودگی',
+          'پرونده کاملاً محرمانه با یارانه ویژه کانون نخبگان',
+        ],
+        targetNav: 'CounselingGeneral',
+        ctaLabel:
+          crextioConfig.counselingGeneralShowcaseBtnText ||
+          'ورود به مشاوره عمومی',
+        icon: HeartHandshake,
+        toneClass: 'text-rose-700 dark:text-rose-400',
+        statLabel: `${toPersianNumbers(
+          consultants.filter(c => c.counselingType !== 'specialized_career').length
+        )} مشاور خانواده`,
       },
       {
         key: 'welfare_showcase',

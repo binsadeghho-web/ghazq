@@ -16,6 +16,7 @@ export const CANONICAL_DASHBOARD_SECTION_ORDER = [
   'research_promo',
   'course_showcase',
   'counseling_promo',
+  'counseling_general_showcase',
   'welfare_showcase',
   'multimedia_showcase',
   'bento_grid',

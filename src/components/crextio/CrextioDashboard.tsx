@@ -35,10 +35,12 @@ import {
   ArrowUp,
   ArrowDown,
   SlidersHorizontal,
+  Edit3,
 } from 'lucide-react';
 import { CourseShowcase } from './CourseShowcase';
 import { CrextioServicesBento } from './CrextioServicesBento';
 import { CounselingPromoShowcase } from './CounselingPromoShowcase';
+import { CounselingGeneralShowcase } from './CounselingGeneralShowcase';
 import { BooksAndPublicationsShowcase } from './BooksAndPublicationsShowcase';
 import { WelfareAndLoansShowcase } from './WelfareAndLoansShowcase';
 import { MultimediaAndCoursesShowcase } from './MultimediaAndCoursesShowcase';
@@ -49,6 +51,7 @@ import { MinimalShowcaseCard } from './MinimalShowcaseCard';
 import { HonorsShowcase } from './HonorsShowcase';
 import { UnifiedShowcaseHub } from './UnifiedShowcaseHub';
 import { Theme2StudioDrawer, Theme2StudioTab } from './Theme2StudioDrawer';
+import { ShowcaseQuickEditModal } from './ShowcaseQuickEditModal';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { DEFAULT_HERO_STATS, DEFAULT_CREXTIO_CONFIG } from '../../data/mockData';
 import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
@@ -73,7 +76,8 @@ const SECTION_LABELS: Record<string, string> = {
   rulings_showcase: 'ویترین تالار آراء قضایی',
   research_promo: 'ویترین راهبری پژوهش',
   course_showcase: 'ویترین دوره‌های علمی',
-  counseling_promo: 'ویترین خدمات مشاوره',
+  counseling_promo: 'ویترین خدمات مشاوره تخصصی و نخبگان',
+  counseling_general_showcase: 'ویترین خدمات مشاوره عمومی و خانواده',
   welfare_showcase: 'ویترین رفاهیات و تسهیلات',
   multimedia_showcase: 'ویترین درس‌گفتارها',
   bento_grid: 'شبکه جامع خدمات (Bento)',
@@ -85,6 +89,7 @@ const CLASSIC_MINIMAL_KEYS = new Set([
   'research_promo',
   'course_showcase',
   'counseling_promo',
+  'counseling_general_showcase',
   'welfare_showcase',
   'multimedia_showcase',
   'books_showcase',
@@ -150,6 +155,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
   const [studioInitialTab, setStudioInitialTab] = useState<Theme2StudioTab>('hero_quick');
   const [isHeroStatsModalOpen, setIsHeroStatsModalOpen] = useState(false);
   const [quickServiceSuccess, setQuickServiceSuccess] = useState<string | null>(null);
+  const [quickEditSectionKey, setQuickEditSectionKey] = useState<string | null>(null);
 
   // Live Drag & Drop and Resize Edit Mode
   const [isLayoutEditMode, setIsLayoutEditMode] = useState(false);
@@ -825,6 +831,60 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
           </div>
         );
 
+      case 'counseling_general_showcase':
+        if (crextioConfig.showCounselingGeneralShowcase === false) return null;
+        if (density === 'minimal') {
+          const ov = crextioConfig.minimalBoxOverrides?.counseling_general_showcase;
+          const generalCount = consultants.filter(c => c.counselingType !== 'specialized_career').length;
+          return (
+            <MinimalShowcaseCard
+              kicker={
+                ov?.kicker ||
+                crextioConfig.counselingGeneralShowcaseBadge ||
+                'سلامت روان، خانواده و تاب‌آوری'
+              }
+              title={
+                ov?.title ||
+                crextioConfig.counselingGeneralShowcaseTitle ||
+                'خدمات مشاوره عمومی و خانواده'
+              }
+              description={
+                ov?.description ||
+                crextioConfig.counselingGeneralShowcaseSubtitle ||
+                'دریافت نوبت محرمانه مشاوره خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت استرس شغلی.'
+              }
+              icon={<HeartHandshake className="w-5 h-5" />}
+              accentTone="emerald"
+              imageUrl={resolvedBoxImg}
+              showImage={shouldShowBoxImg}
+              scale={scale}
+              stats={[
+                { label: 'مشاور خانواده و روان', value: toPersianNumbers(generalCount) },
+              ]}
+              actions={[
+                {
+                  label:
+                    ov?.ctaLabel ||
+                    crextioConfig.counselingGeneralShowcaseBtnText ||
+                    'درخواست مشاوره عمومی',
+                  onClick: () => onNavigateTab?.('CounselingGeneral'),
+                  primary: true,
+                },
+              ]}
+            />
+          );
+        }
+        return (
+          <div className={scale === 'compact' ? 'origin-top scale-[0.98]' : ''}>
+            <CounselingGeneralShowcase
+              span={span}
+              scale={scale}
+              onNavigateToGeneral={() => onNavigateTab?.('CounselingGeneral')}
+              onOpenQuickEdit={() => setQuickEditSectionKey('counseling_general_showcase')}
+            />
+          </div>
+        );
+
       case 'welfare_showcase':
         if (density === 'minimal') {
           const ov = crextioConfig.minimalBoxOverrides?.welfare_showcase;
@@ -1253,6 +1313,16 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
 
                     <button
                       type="button"
+                      onClick={() => setQuickEditSectionKey(sectionKey)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 font-black flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      title="ویرایش متن، عنوان و تصویر این ویترین"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>ویرایش متن و عکس</span>
+                    </button>
+
+                    <button
+                      type="button"
                       disabled={sectionIdx === 0}
                       onClick={() => moveSectionByOffset(sectionKey, -1)}
                       className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 disabled:opacity-30 cursor-pointer"
@@ -1313,6 +1383,37 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
       <CrextioHeroStatsCustomizerModal
         isOpen={isHeroStatsModalOpen && isAdmin}
         onClose={() => setIsHeroStatsModalOpen(false)}
+      />
+
+      {/* DIRECT PER-SHOWCASE QUICK EDIT MODAL (FROM LAYOUT EDIT MODE TOOLBAR) */}
+      <ShowcaseQuickEditModal
+        sectionKey={isAdmin ? quickEditSectionKey : null}
+        sectionLabel={
+          (quickEditSectionKey && SECTION_LABELS[quickEditSectionKey]) ||
+          quickEditSectionKey ||
+          ''
+        }
+        currentDensity={
+          quickEditSectionKey &&
+          CLASSIC_MINIMAL_KEYS.has(quickEditSectionKey) &&
+          layoutsMap[quickEditSectionKey]?.density === 'minimal'
+            ? 'minimal'
+            : 'full'
+        }
+        hasClassicMinimalToggle={
+          Boolean(quickEditSectionKey && CLASSIC_MINIMAL_KEYS.has(quickEditSectionKey))
+        }
+        crextioConfig={crextioConfig}
+        updateCrextioConfig={updateCrextioConfig}
+        onClose={() => setQuickEditSectionKey(null)}
+        onOpenStudioTab={tab => {
+          setStudioInitialTab(tab);
+          setIsStudioOpen(true);
+        }}
+        onSavedToast={msg => {
+          setQuickServiceSuccess(msg);
+          setTimeout(() => setQuickServiceSuccess(null), 3500);
+        }}
       />
     </motion.div>
   );

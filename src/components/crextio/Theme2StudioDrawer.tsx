@@ -59,7 +59,8 @@ const SECTION_LABELS: Record<string, string> = {
   rulings_showcase: 'ویترین تالار نقد آراء قضایی',
   research_promo: 'ویترین راهبری پژوهش و رساله‌ها',
   course_showcase: 'ویترین دوره‌ها و کارگاه‌های علمی',
-  counseling_promo: 'ویترین خدمات مشاوره نخبگان',
+  counseling_promo: 'ویترین خدمات مشاوره تخصصی و نخبگان',
+  counseling_general_showcase: 'ویترین خدمات مشاوره عمومی و خانواده',
   welfare_showcase: 'ویترین رفاهیات و تسهیلات',
   multimedia_showcase: 'ویترین درس‌گفتارها و چندرسانه‌ای',
   bento_grid: 'شبکه جامع خدمات (Bento)',
@@ -71,6 +72,7 @@ const CLASSIC_MINIMAL_KEYS = new Set([
   'research_promo',
   'course_showcase',
   'counseling_promo',
+  'counseling_general_showcase',
   'welfare_showcase',
   'multimedia_showcase',
   'books_showcase',
@@ -110,11 +112,19 @@ const MINIMAL_BOX_DEFAULTS: Array<{
   },
   {
     key: 'counseling_promo',
-    label: 'باکس ساده مشاوره',
+    label: 'باکس ساده مشاوره تخصصی و نخبگان',
     kicker: 'هدایت شغلی، علمی و سلامت روان',
     title: 'خدمات مشاوره نخبگان',
     description: 'دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و مشاوره عمومی خانواده با اساتید برجسته.',
-    ctaLabel: 'مشاهده خدمات مشاوره',
+    ctaLabel: 'مشاوره شغلی قضا',
+  },
+  {
+    key: 'counseling_general_showcase',
+    label: 'باکس ساده مشاوره عمومی و خانواده',
+    kicker: 'سلامت روان، خانواده و تاب‌آوری',
+    title: 'خدمات مشاوره عمومی و خانواده',
+    description: 'دریافت نوبت محرمانه مشاوره خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت استرس شغلی.',
+    ctaLabel: 'مشاوره عمومی و خانواده',
   },
   {
     key: 'welfare_showcase',
@@ -925,7 +935,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
 
                     {/* Counseling */}
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">عنوان بنر مشاوره</label>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">عنوان بنر مشاوره نخبگان</label>
                       <input
                         type="text"
                         value={crextioConfig.counselingPromoTitle ?? ''}
@@ -934,11 +944,29 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">نشان بنر مشاوره</label>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">نشان بنر مشاوره نخبگان</label>
                       <input
                         type="text"
                         value={crextioConfig.counselingPromoBadge ?? ''}
                         onChange={e => commit({ counselingPromoBadge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">عنوان ویترین مشاوره عمومی</label>
+                      <input
+                        type="text"
+                        value={crextioConfig.counselingGeneralShowcaseTitle ?? ''}
+                        onChange={e => commit({ counselingGeneralShowcaseTitle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">دکمه ویترین مشاوره عمومی</label>
+                      <input
+                        type="text"
+                        value={crextioConfig.counselingGeneralShowcaseBtnText ?? ''}
+                        onChange={e => commit({ counselingGeneralShowcaseBtnText: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-stone-300"
                       />
                     </div>
