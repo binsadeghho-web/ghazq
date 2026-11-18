@@ -520,6 +520,17 @@ class ApiClient {
   }
 
   // Research endpoints
+  async getResearchPortalConfig() {
+    return this.request<any>('/api/research/config');
+  }
+
+  async updateResearchPortalConfig(config: any) {
+    return this.request<{ success: boolean; config: any }>('/api/research/config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  }
+
   async getResearchProjects() {
     return this.request<any[]>('/api/research');
   }
@@ -538,6 +549,30 @@ class ApiClient {
     });
   }
 
+  async updateResearchStatus(
+    projectId: string,
+    data: {
+      status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed';
+      expectedVersion: number;
+      adminNote?: string;
+      assignedSupervisor?: string;
+      stageTitle?: string;
+      replyMessage?: string;
+    }
+  ) {
+    return this.request<{ success: boolean; mentorship: any }>(`/api/research/${projectId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async addResearchMessage(projectId: string, message: string) {
+    return this.request<{ success: boolean; mentorship: any }>(`/api/research/${projectId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  }
+
   async updateResearchProject(projectId: string, data: any) {
     return this.request<any>(`/api/research/${projectId}`, {
       method: 'PUT',
@@ -545,9 +580,13 @@ class ApiClient {
     });
   }
 
-  async deleteResearchProject(projectId: string) {
+  async deleteResearchProject(projectId: string, expectedVersion = 1) {
     return this.request<any>(`/api/research/${projectId}`, {
       method: 'DELETE',
+      headers: {
+        'If-Match': String(expectedVersion),
+      },
+      body: JSON.stringify({ expectedVersion }),
     });
   }
 

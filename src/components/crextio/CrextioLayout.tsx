@@ -105,7 +105,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
     { id: 'Courses', sectionId: 'courses', label: 'گالری دوره‌ها', icon: BookOpen },
     { id: 'Products', sectionId: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen },
     { id: 'Counseling', sectionId: 'counseling', label: 'مشاوره', icon: HeartHandshake },
-    { id: 'Research', sectionId: 'research', label: 'راهبری پایان‌نامه‌ها', icon: Compass },
+    { id: 'Research', sectionId: 'research', label: 'راهبری پژوهش و مقاله (خدمات پژوهشی)', icon: Compass },
     { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات', icon: Gift },
     { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء', icon: Laptop },
     { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی', icon: HeartHandshake },

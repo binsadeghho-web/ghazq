@@ -374,6 +374,44 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
     try { await p.query(`CREATE INDEX idx_porders_user_del ON product_orders (user_id, deleted_at, ordered_at);`); } catch {}
     try { await p.query(`CREATE INDEX idx_porders_status_del ON product_orders (payment_status, deleted_at, ordered_at);`); } catch {}
 
+    // 10. Research Mentorship & Article Guidance (Reforms 31-38): wizard fields, soft delete, two-way research_messages
+    try { await p.query(`ALTER TABLE research_mentorships MODIFY COLUMN status VARCHAR(64) NOT NULL DEFAULT 'pending';`); } catch {}
+    const researchAlters = [
+      `ADD COLUMN research_category VARCHAR(32) NOT NULL DEFAULT 'thesis'`,
+      `ADD COLUMN service_scope VARCHAR(32) NOT NULL DEFAULT 'full_pack'`,
+      `ADD COLUMN selected_partial_topics JSON NULL`,
+      `ADD COLUMN delivery_mode VARCHAR(32) NOT NULL DEFAULT 'in_person'`,
+      `ADD COLUMN accommodation_requested TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN accommodation_city VARCHAR(64) NULL`,
+      `ADD COLUMN brief_summary TEXT NULL`,
+      `ADD COLUMN target_institution VARCHAR(255) NULL`,
+      `ADD COLUMN admin_note TEXT NULL`,
+      `ADD COLUMN reviewed_by VARCHAR(128) NULL`,
+      `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_by VARCHAR(128) NULL`,
+    ];
+    for (const clause of researchAlters) {
+      try { await p.query(`ALTER TABLE research_mentorships ${clause};`); } catch {}
+    }
+    try { await p.query(`CREATE INDEX idx_research_del_status ON research_mentorships (deleted_at, status, created_at);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_research_app_del ON research_mentorships (applicant_id, deleted_at, created_at);`); } catch {}
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS research_messages (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        request_id BINARY(16) NOT NULL,
+        sender_id BINARY(16) NOT NULL,
+        sender_name VARCHAR(255) NOT NULL,
+        sender_role VARCHAR(64) NOT NULL DEFAULT 'alumni',
+        is_official TINYINT(1) NOT NULL DEFAULT 0,
+        message TEXT NOT NULL,
+        deleted_at DATETIME(3) NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_res_msg_req_created (request_id, deleted_at, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');
   } catch (err: any) {

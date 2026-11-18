@@ -123,9 +123,9 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     {
       id: 'Research',
       sectionId: 'research',
-      title: 'راهبری پایان‌نامه‌ها و رساله‌ها',
-      subtext: 'هدایت رساله دکتری، مشاوره اساتید عالی‌رتبه و حمایت مادی از رساله‌ها',
-      badge: 'راهبری علمی',
+      title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+      subtext: 'پک کامل یا مشورت موردی برای پایان‌نامه و مقاله، اساتید مجرب و اسکان مطالعاتی قم',
+      badge: 'خدمات پژوهشی',
       tag: `${toPersianNumbers(researchMentorships?.length || 18)} رساله جاری`,
       icon: BookOpen,
       accent: '#B45309',

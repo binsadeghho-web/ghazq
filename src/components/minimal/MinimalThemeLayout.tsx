@@ -384,9 +384,9 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
       case 'research_promo':
         return (
           <MinimalShowcaseCard
-            kicker="راهبری علمی"
-            title={crextioConfig.researchPromoTitle || 'پژوهش‌ها، رساله‌ها و پایان‌نامه‌ها'}
-            description="تطبیق با استاد راهنمای طراز اول، گرنت پژوهشی و تسهیل اسکان علمی برای پیشبرد پژوهش‌ها."
+            kicker="خدمات پژوهشی"
+            title={crextioConfig.researchPromoTitle || 'راهبری پژوهش و مقاله (خدمات پژوهشی)'}
+            description="تطبیق با استاد راهنمای طراز اول، مشاوره موردی پایان‌نامه و مقاله و اسکان مطالعاتی در قم."
             icon={<Compass className="w-4 h-4" />}
             accentTone="emerald"
             imageUrl={imgUrl}
@@ -395,7 +395,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
             darkSurface={palette.dark}
             motionEnabled={motionEnabled}
             stats={[{ label: 'پژوهش فعال', value: toPersianNumbers(researchMentorships.length) }]}
-            actions={[{ label: 'میز پژوهش', onClick: () => setActiveNav('Research'), primary: true }]}
+            actions={[{ label: 'ورود به خدمات پژوهشی', onClick: () => setActiveNav('Research'), primary: true }]}
           />
         );
       case 'course_showcase':

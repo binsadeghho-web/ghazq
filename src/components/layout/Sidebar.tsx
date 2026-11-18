@@ -127,8 +127,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'research',
-      label: 'راهبری پایان‌نامه‌ها',
-      subtext: 'کوچینگ رساله دکتری و اسکان پژوهشی',
+      label: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+      subtext: 'راهبری پایان‌نامه، مقاله، مشورت موردی و اسکان مطالعاتی',
       icon: FileText,
       accentColor: 'text-amber-500 dark:text-amber-400',
       glowColor: 'rgba(245, 158, 11, 0.2)',

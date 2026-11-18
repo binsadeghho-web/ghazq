@@ -98,8 +98,8 @@ export const MizanCommandPalette: React.FC<MizanCommandPaletteProps> = ({
     },
     {
       id: 'nav-research',
-      title: 'راهبری پایان‌نامه‌ها و رساله‌ها',
-      subtitle: 'داوری، ثبت درخواست راهبری و مشاوره اساتید عالی',
+      title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+      subtitle: 'ثبت درخواست راهبری کامل یا موردی پایان‌نامه و مقاله و پیگیری وضعیت پرونده',
       category: 'آموزش و پژوهش',
       icon: BookOpen,
       color: '#A06316',

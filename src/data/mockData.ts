@@ -130,14 +130,14 @@ export const DEFAULT_BENTO_CARDS: CrextioBentoCardConfig[] = [
   {
     id: 'Research',
     order: 5,
-    title: 'راهبری پایان‌نامه‌ها و رساله‌ها',
-    subtext: 'هدایت علمی، مشاوره اساتید عالی‌رتبه و حمایت مادی از رساله‌های تحول قضایی',
-    badge: 'رساله در جریان هدایت',
+    title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+    subtext: 'هدایت علمی پایان‌نامه‌ها و مقالات، مشاوره موردی، اساتید مجرب و اسکان مطالعاتی در قم',
+    badge: 'خدمات پژوهشی فعال',
     size: '1-col',
     subServices: [
-      'ثبت پروپوزال و تطبیق با اساتید راهنما',
-      'تخصیص گرنت پژوهشی رساله‌های دکتری',
-      'ارزیابی و داوری مقالات علمی'
+      'پک کامل راهبری پایان‌نامه و مقاله (حضوری و آنلاین)',
+      'مشورت و راهبری موردی (موضوع، پروپوزال، ساختار، بازبینی)',
+      'تخصیص استاد معین و هماهنگی اسکان موقت در قم'
     ],
     accentColor: '#D97706',
     isVisible: true
@@ -1518,15 +1518,21 @@ export const INITIAL_RESEARCH_MENTORSHIPS: ResearchMentorship[] = [
     id: 'res_601',
     applicantId: 'usr_alumni_01',
     applicantName: 'دکتر علیرضا میرزایی',
+    researchCategory: 'thesis',
+    serviceScope: 'full_pack',
+    selectedPartialTopics: [],
+    deliveryMode: 'in_person',
     thesisTitle: 'مسئولیت مدنی و کیفری ناشی از تصمیم‌گیری سامانه‌های خودکار قضایی از منظر فقه امامیه و حقوق تطبیقی',
     field: 'فقه و حقوق جزا و جرم‌شناسی',
+    briefSummary: 'پژوهش پیرامون مسئولیت مدنی و کیفری تصمیم‌گیری‌های الگوریتمی در مراجع قضایی جهت ارائه به پژوهشگاه قوه قضائیه',
+    targetInstitution: 'پژوهشگاه قوه قضائیه',
     stage: 'scientific_critique',
     stageTitle: 'نقد و ویراستاری علمی فصول تدوین‌شده',
     progressPercent: 70,
     assignedSupervisor: 'حضرت آیت‌الله دکتر سید ابراهیم علوی',
     accommodationRequested: true,
     accommodationCity: 'قم',
-    status: 'active',
+    status: 'approved',
     milestones: [
       { title: 'تصویب عنوان و دفاع از پروپوزال در گروه علمی', isDone: true, date: '۱۴۰۲/۱۱/۱۵' },
       { title: 'فصل اول: مفاهیم و ادبیات پژوهش در فقه و فناوری', isDone: true, date: '۱۴۰۳/۰۲/۲۰' },
@@ -1534,6 +1540,8 @@ export const INITIAL_RESEARCH_MENTORSHIPS: ResearchMentorship[] = [
       { title: 'فصل سوم: نقد رویه قضایی تطبیقی و استخراج احکام نوظهور', isDone: false, date: 'در دست بررسی' },
       { title: 'پیش‌دفاع و هماهنگی جلسه دفاعیه نهایی', isDone: false, date: 'پیش‌بینی آذر ۱۴۰۳' },
     ],
+    messages: [],
+    version: 1,
     createdAt: '۱۴۰۲/۱۰/۰۵',
   },
 ];

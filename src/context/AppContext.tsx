@@ -11,6 +11,7 @@ import {
   Consultant,
   CounselingRequest,
   ResearchMentorship,
+  ResearchPortalConfig,
   JudicialRuling,
   RulingsPortalConfig,
   WelfareRequest,
@@ -145,10 +146,24 @@ export interface AppContextType {
   deleteConsultant: (consultantId: string) => void;
 
   // Research Mentorship methods
-  submitResearchProject: (data: Omit<ResearchMentorship, 'id' | 'progressPercent' | 'status' | 'milestones' | 'createdAt'>) => Promise<void>;
-  updateResearchProgress: (projectId: string, stage: ResearchMentorship['stage'], stageTitle: string, progressPercent: number) => void;
-  updateResearchProject: (projectId: string, updates: Partial<ResearchMentorship>) => void;
-  deleteResearchProject: (projectId: string) => void;
+  researchPortalConfig: ResearchPortalConfig;
+  updateResearchPortalConfig: (updates: Partial<ResearchPortalConfig>) => Promise<ResearchPortalConfig | null>;
+  submitResearchProject: (data: any) => Promise<ResearchMentorship | null>;
+  updateResearchProgress: (projectId: string, stage: ResearchMentorship['stage'], stageTitle: string, progressPercent: number) => Promise<void>;
+  updateResearchProject: (projectId: string, updates: Partial<ResearchMentorship>) => Promise<ResearchMentorship | null>;
+  updateResearchStatus: (
+    projectId: string,
+    payload: {
+      status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed';
+      adminNote?: string;
+      assignedSupervisor?: string;
+      stageTitle?: string;
+      progressPercent?: number;
+      replyMessage?: string;
+    }
+  ) => Promise<ResearchMentorship | null>;
+  addResearchMessage: (projectId: string, message: string) => Promise<ResearchMentorship | null>;
+  deleteResearchProject: (projectId: string) => Promise<boolean>;
 
   // Judicial Rulings methods
   rulingsPortalConfig: RulingsPortalConfig;
@@ -438,9 +453,13 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
 
     // Research & Rulings & Synergy
     researchMentorships: research.researchMentorships,
+    researchPortalConfig: research.researchPortalConfig,
+    updateResearchPortalConfig: research.updateResearchPortalConfig,
     submitResearchProject: research.submitResearchProject,
     updateResearchProgress: research.updateResearchProgress,
     updateResearchProject: research.updateResearchProject,
+    updateResearchStatus: research.updateResearchStatus,
+    addResearchMessage: research.addResearchMessage,
     deleteResearchProject: research.deleteResearchProject,
     rulings: research.rulings,
     rulingsPortalConfig: research.rulingsPortalConfig,

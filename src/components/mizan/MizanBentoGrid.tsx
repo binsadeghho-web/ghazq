@@ -117,8 +117,8 @@ export const MizanBentoGrid: React.FC<MizanBentoGridProps> = ({ onNavigate }) =>
     },
     {
       id: 'research',
-      title: 'راهبری پژوهش و رساله‌ها',
-      subtext: 'کوچینگ نگارش پایان‌نامه سطح ۳ و ۴، استاد راهنما و اسکان پژوهشی قم',
+      title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+      subtext: 'پک کامل یا مشورت موردی پایان‌نامه و مقاله، استاد معین و اسکان مطالعاتی قم',
       icon: Compass,
       accentColor: '#955890',
       softBg: '#FBE8F8',

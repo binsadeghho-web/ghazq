@@ -971,21 +971,104 @@ export interface CounselingRequest {
   createdAt: string;
 }
 
+export interface ResearchMessage {
+  id: string;
+  requestId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  isOfficial: boolean;
+  message: string;
+  createdAt: string;
+}
+
+export interface ResearchWizardOption {
+  id: string;
+  label: string;
+  description?: string;
+  enabled: boolean;
+}
+
+export interface ResearchPortalConfig {
+  sectionTitle: string;
+  sectionSubtitle: string;
+  landingIntroTitle: string;
+  landingIntroBody: string;
+  landingCalloutTitle: string;
+  landingCalloutSubtitle: string;
+  ctaButtonLabel: string;
+  guidanceNotesTitle: string;
+  guidanceNotesBody: string;
+  contactCenterTitle: string;
+  contactPhone: string;
+  contactExtension?: string;
+  contactMobileOrMessenger?: string;
+  contactHours?: string;
+  contactAddress?: string;
+  accommodationEnabledInWizard: boolean;
+  accommodationCityLabel: string;
+  submissionSuccessMessage: string;
+  wizardConfig: {
+    step1Title: string;
+    step1Options: ResearchWizardOption[];
+    step2Title: string;
+    step2Options: ResearchWizardOption[];
+    fullPackDeliveryTitle: string;
+    fullPackInPersonLabel: string;
+    fullPackOnlineLabel: string;
+    accommodationQuestionLabel: string;
+    briefSummaryLabel: string;
+    briefSummaryPlaceholder: string;
+    partialTopicsTitle: string;
+    partialTopics: ResearchWizardOption[];
+    partialDeliveryTitle: string;
+    partialInPersonLabel: string;
+    partialOnlineLabel: string;
+    reviewStepTitle: string;
+  };
+  version?: number;
+}
+
+export interface ResearchApplicantProfile {
+  fullName: string;
+  phone: string;
+  nationalId: string;
+  email?: string;
+  city?: string;
+  roleTitle?: string;
+  university?: string;
+  major?: string;
+  bio?: string;
+}
+
 export interface ResearchMentorship {
   id: string;
   applicantId: string;
   applicantName: string;
+  researchCategory?: 'thesis' | 'article';
+  serviceScope?: 'full_pack' | 'partial_mentorship';
+  selectedPartialTopics?: string[];
+  deliveryMode?: 'in_person' | 'online';
   thesisTitle: string;
   field: string;
+  briefSummary?: string;
+  targetInstitution?: string;
   stage: 'proposal' | 'supervisor_matching' | 'scientific_critique' | 'drafting' | 'defense_prep';
   stageTitle: string;
   progressPercent: number;
   assignedSupervisor?: string;
   accommodationRequested: boolean;
   accommodationCity?: 'قم' | 'تهران' | 'مشهد';
-  status: 'active' | 'under_review' | 'completed' | 'pending' | 'suspended';
+  status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'active' | 'under_review' | 'completed' | 'suspended';
+  adminNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   milestones: { title: string; isDone: boolean; date: string }[];
+  messages?: ResearchMessage[];
+  applicantProfile?: ResearchApplicantProfile;
+  version?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface RulingTagDefinition {

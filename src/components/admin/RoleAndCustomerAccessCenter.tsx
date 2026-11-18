@@ -47,7 +47,7 @@ const ALL_CONFIGURABLE_SECTIONS: { id: AppSectionId; title: string; icon: any }[
   { id: 'products', title: 'کتب و محصولات انتشارات', icon: BookOpen },
   { id: 'counseling', title: 'مشاوره عمومی و خانواده', icon: Users },
   { id: 'specialized_counseling', title: 'مشاوره تخصصی شغلی و تحصیلی', icon: Scale },
-  { id: 'research', title: 'راهبری پژوهش و پایان‌نامه‌ها', icon: Scale },
+  { id: 'research', title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)', icon: Scale },
   { id: 'rulings', title: 'تالار نقد و مباحثه آراء قضایی', icon: Scale },
   { id: 'welfare', title: 'تسهیلات رفاهی و تعاونی', icon: Building2 },
   { id: 'synergy', title: 'دیوار هم‌افزایی و تجارب', icon: Users },

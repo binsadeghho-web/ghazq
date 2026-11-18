@@ -231,12 +231,12 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
 
         {/* ۵. راهبری پژوهش و رساله‌ها */}
         <ModernDashboardCard
-          title="پژوهش و پایان‌نامه‌ها"
+          title="راهبری پژوهش و مقاله (خدمات پژوهشی)"
           accent="amber"
           icon={<FileText className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-          subValue="هدایت رساله دکتری، استاد ناظر و اسکان پژوهشی قم و تهران"
-          trendContext={`${researchMentorships.length} طرح و رساله در حال هدایت`}
-          badgeText="راهبری علمی"
+          subValue="پک کامل یا مشورت موردی پایان‌نامه و مقاله، اساتید مجرب و اسکان مطالعاتی قم"
+          trendContext={`${researchMentorships.length} پرونده پژوهشی ثبت‌شده`}
+          badgeText="خدمات پژوهشی"
           onClick={() => onNavigate('research')}
         />
 

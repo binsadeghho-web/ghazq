@@ -487,7 +487,12 @@ export function createMasterRouter(): Router {
       }
 
       // Authorization filtering: private items only go to owners or organizational officials
-      const isPrivateTopic = msg.topic.startsWith('cartable.') || msg.topic.startsWith('private_msg.');
+      const isPrivateResearchTopic =
+        msg.topic.startsWith('research.') && msg.topic !== 'research.config_updated';
+      const isPrivateTopic =
+        msg.topic.startsWith('cartable.') ||
+        msg.topic.startsWith('private_msg.') ||
+        isPrivateResearchTopic;
       if (isPrivateTopic && !isOrganizationalUserRole(userRole)) {
         const ownerId = payload.applicantId || payload.recipientId || payload.userId;
         if (ownerId && ownerId !== userId) {

@@ -145,7 +145,7 @@ const MINIMAL_BOX_DEFAULTS: Array<{
 const NAV_TARGET_OPTIONS = [
   { value: 'People', label: 'کارتابل درخواست‌ها' },
   { value: 'Synergy', label: 'تالار هم‌افزایی' },
-  { value: 'Research', label: 'راهبری پژوهش' },
+  { value: 'Research', label: 'راهبری پژوهش و مقاله (خدمات پژوهشی)' },
   { value: 'Courses', label: 'دوره‌های علمی' },
   { value: 'Rulings', label: 'تالار آراء قضایی' },
   { value: 'CounselingGeneral', label: 'مشاوره عمومی' },

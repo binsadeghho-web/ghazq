@@ -124,7 +124,7 @@ export const MizanLayout: React.FC = () => {
       groupName: 'آموزش و پژوهش',
       items: [
         { id: 'courses', label: 'دوره‌ها و کارگاه‌های عالی', icon: GraduationCap, color: '#00848B' },
-        { id: 'research', label: 'راهبری پایان‌نامه‌ها', icon: Compass, color: '#A06316' },
+        { id: 'research', label: 'راهبری پژوهش و مقاله (خدمات پژوهشی)', icon: Compass, color: '#A06316' },
         ...(isAdminOrSupervisor || productsStoreConfig.isStoreEnabled
           ? [{ id: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen, color: '#5C3882' }]
           : [])
