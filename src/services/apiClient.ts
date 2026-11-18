@@ -1006,7 +1006,11 @@ class ApiClient {
   }
 
   // Cartable Attachments & Secure Private File helpers
-  async uploadFile(file: File, category = 'misc'): Promise<{ url: string; filename?: string; originalName?: string }> {
+  async uploadFile(
+    file: File,
+    category = 'misc',
+    extraBody?: Record<string, any>
+  ): Promise<{ url: string; filename?: string; originalName?: string }> {
     const base64Data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -1015,7 +1019,7 @@ class ApiClient {
     });
     const res = await this.request<{ success: boolean; url: string; filename?: string; originalName?: string }>(`/api/upload/${category}`, {
       method: 'POST',
-      body: JSON.stringify({ filename: file.name, base64Data }),
+      body: JSON.stringify({ filename: file.name, base64Data, ...(extraBody || {}) }),
     });
     return { url: res.url, filename: res.filename, originalName: res.originalName };
   }
@@ -1121,10 +1125,121 @@ class ApiClient {
     });
   }
 
-  async issueCourseCertificate(courseId: string, data?: { userId?: string; userName?: string; userNationalId?: string; courseTitle?: string; instructorName?: string; hours?: number; gradeText?: string }) {
+  async issueCourseCertificate(
+    courseId: string,
+    data?: {
+      userId?: string;
+      userName?: string;
+      userNationalId?: string;
+      courseTitle?: string;
+      instructorName?: string;
+      hours?: number;
+      gradeText?: string;
+      certificateFileUrl?: string;
+      certificateFileName?: string;
+    }
+  ) {
     return this.request<any>(`/api/courses/${courseId}/certificates`, {
       method: 'POST',
       body: JSON.stringify(data || {}),
+    });
+  }
+
+  async deleteCourseCertificate(courseId: string, certId: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/courses/${courseId}/certificates/${certId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Course Installments Endpoints
+  async getMyCourseInstallments() {
+    return this.request<{ items: any[]; dueNow: any[] }>('/api/courses/installments/my');
+  }
+
+  async getAdminCourseInstallments(filters?: { courseId?: string; status?: string; search?: string }) {
+    const qs = new URLSearchParams();
+    if (filters?.courseId) qs.set('courseId', filters.courseId);
+    if (filters?.status) qs.set('status', filters.status);
+    if (filters?.search) qs.set('search', filters.search);
+    const queryStr = qs.toString() ? `?${qs.toString()}` : '';
+    return this.request<{ items: any[]; summary: any }>(`/api/courses/installments/admin${queryStr}`);
+  }
+
+  async payCourseInstallment(
+    installmentId: string,
+    data: {
+      paymentMethod: 'online_gateway' | 'bank_receipt';
+      trackingCode?: string;
+      receiptFileUrl?: string;
+      receiptBankName?: string;
+      receiptDate?: string;
+      expectedVersion: number;
+    }
+  ) {
+    return this.request<any>(`/api/courses/installments/${installmentId}/pay`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async reviewCourseInstallment(
+    installmentId: string,
+    data: {
+      status?: 'pending' | 'awaiting_verification' | 'paid' | 'rejected' | 'overdue';
+      adminNote?: string;
+      dueDateIso?: string;
+      dueDateJalali?: string;
+      amount?: number;
+      expectedVersion: number;
+    }
+  ) {
+    return this.request<any>(`/api/courses/installments/${installmentId}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Course Discount Codes Endpoints (Multi-Type + Usage Analytics)
+  async getCourseDiscountCodes(includeUsages = false) {
+    const qs = includeUsages ? '?includeUsages=true' : '';
+    return this.request<any[]>(`/api/courses/discounts${qs}`);
+  }
+
+  async getCourseDiscountDetails(discountId: string) {
+    return this.request<any>(`/api/courses/discounts/${discountId}/details`);
+  }
+
+  async createCourseDiscountCode(data: any) {
+    return this.request<any>('/api/courses/discounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCourseDiscountCode(discountId: string, data: any, expectedVersion: number) {
+    return this.request<any>(`/api/courses/discounts/${discountId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ ...data, expectedVersion }),
+    });
+  }
+
+  async deleteCourseDiscountCode(discountId: string, expectedVersion: number) {
+    return this.request<{ success: boolean; id: string }>(`/api/courses/discounts/${discountId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ expectedVersion }),
+    });
+  }
+
+  async validateCourseDiscountCode(courseId: string, code: string) {
+    return this.request<{
+      valid: boolean;
+      discountCode: any;
+      originalAmount: number;
+      discountAmount: number;
+      finalAmount: number;
+    }>('/api/courses/discounts/validate', {
+      method: 'POST',
+      body: JSON.stringify({ courseId, code }),
     });
   }
 

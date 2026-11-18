@@ -707,17 +707,150 @@ export interface CourseResource {
   sessionNumber?: number;
 }
 
+export interface CourseCustomField {
+  id: string;
+  label: string;
+  value: string;
+  fieldType?: 'text' | 'textarea' | 'date' | 'link' | 'badge';
+  visible?: boolean;
+}
+
+export interface CourseInstallmentPlanItem {
+  installmentNumber: number;
+  title: string;
+  percentage?: number;
+  fixedAmount?: number;
+  dueDateJalali: string;
+  dueDateIso: string;
+  autoOpenGateway?: boolean;
+}
+
+export interface CourseInstallmentPlan {
+  enabled: boolean;
+  count: number;
+  allowReceiptUpload?: boolean;
+  allowOnlineGateway?: boolean;
+  autoOpenOnDueDate?: boolean;
+  items: CourseInstallmentPlanItem[];
+}
+
+export interface CourseInstallmentRecord {
+  id: string;
+  enrollmentId: string;
+  courseId: string;
+  courseTitle?: string;
+  userId: string;
+  userName?: string;
+  userPhone?: string;
+  userNationalId?: string;
+  installmentNumber: number;
+  title: string;
+  amount: number;
+  dueDateIso: string;
+  dueDateJalali: string;
+  status: 'pending' | 'awaiting_verification' | 'paid' | 'rejected' | 'overdue';
+  paymentMethod?: 'online_gateway' | 'bank_receipt';
+  trackingCode?: string;
+  receiptFileUrl?: string;
+  receiptBankName?: string;
+  receiptDate?: string;
+  paidAt?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  adminNote?: string;
+  isDueNow?: boolean;
+  version: number;
+}
+
+export type CourseDiscountCategory =
+  | 'percentage'
+  | 'fixed_amount'
+  | 'single_course'
+  | 'multi_course'
+  | 'all_courses'
+  | 'audience_specific'
+  | 'user_specific'
+  | 'early_bird';
+
+export interface CourseDiscountUsage {
+  id: string;
+  discountId: string;
+  code: string;
+  courseId: string;
+  courseTitle: string;
+  enrollmentId?: string;
+  userId: string;
+  userName: string;
+  userNationalId?: string;
+  userPhone?: string;
+  originalAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  usedAt: string;
+}
+
+export interface CourseDiscountCode {
+  id: string;
+  code: string;
+  title: string;
+  description?: string;
+  discountCategory: CourseDiscountCategory;
+  valueType: 'percent' | 'fixed';
+  discountValue: number;
+  maxDiscountAmount?: number | null;
+  minPurchaseAmount?: number;
+  courseId?: string | null;
+  courseIds?: string[];
+  targetAudiences?: string[];
+  allowedNationalIds?: string[];
+  maxUses?: number | null;
+  perUserLimit?: number;
+  usedCount: number;
+  remainingUses?: number | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  startsAtJalali?: string;
+  expiresAtJalali?: string;
+  isActive: boolean;
+  createdByName?: string;
+  createdAt?: string;
+  version: number;
+  usages?: CourseDiscountUsage[];
+}
+
+export interface CourseCertificateItem {
+  id: string;
+  certificateNumber: string;
+  courseId: string;
+  courseTitle: string;
+  instructor: string;
+  hours: number;
+  userId: string;
+  userName: string;
+  userNationalId?: string;
+  certificateFileUrl?: string;
+  certificateFileName?: string;
+  uploadedByName?: string;
+  gradeText?: string;
+  issuedAt: string;
+  version: number;
+}
+
 export interface Course {
   id: string;
   title: string;
   instructor: string;
   instructorTitle?: string;
+  instructorResume?: string; // رزومه علمی و حرفه‌ای استاد
+  instructorAvatarUrl?: string; // تصویر استاد ذخیره شده روی دیسک
   category?: string; // فقه القضاء، داوری تجاری، جزا و جرم‌شناسی، مهارت‌های قضایی، حقوق خصوصی
   level: string;
   hours: number;
   capacity: number;
   enrolledCount: number;
+  remainingCapacity?: number; // تعداد باقی‌مانده ظرفیت
   schedule: string;
+  holdingTime?: string; // ساعت برگزاری دوره
   startDate?: string;
   endDate?: string;
   holdingFormat: 'online' | 'in_person' | 'hybrid';
@@ -728,9 +861,15 @@ export interface Course {
   price: number;
   hasInstallments: boolean;
   installmentDetails?: string; // مثلاً دو قسط ۵۰٪
+  installmentPlan?: CourseInstallmentPlan;
   hasCertificate: boolean;
   certificateDetails?: string; // گواهی رسمی پایان دوره ممهور به مهر مرکز
   prerequisites?: string; // پیش‌نیازهای دوره
+  necessity?: string; // ضرورت‌های اجرای دوره
+  targetAudiences?: string[]; // مخاطبین دوره: طلاب، قضات، وکلا و موارد سفارشی
+  managerNotes?: string; // توضیحات اضافی مدیر
+  customFields?: CourseCustomField[]; // فیلدهای سفارشی اضافه‌شده توسط ادمین
+  hiddenFields?: string[]; // فیلدهایی که ادمین کسر/مخفی کرده است
   description: string;
   topics: string[];
   status: 'enrolling' | 'ongoing' | 'completed';
@@ -781,6 +920,8 @@ export interface Course {
     description?: string;
   }>;
   visibleToCustomer?: boolean;
+  sessionsCount?: number;
+  waitlistEnabled?: boolean;
   version?: number;
 }
 
@@ -796,6 +937,11 @@ export interface CourseEnrollment {
   enrolledAt: string;
   paymentMethod: 'online_gateway' | 'bank_receipt';
   paymentStatus: 'pending_review' | 'confirmed' | 'rejected';
+  paymentPlanType?: 'full' | 'installment';
+  discountCode?: string;
+  discountAmount?: number;
+  originalAmount?: number;
+  finalTotalAmount?: number;
   amountPaid: number;
   trackingCode: string;
   receiptFileUrl?: string;
@@ -804,6 +950,7 @@ export interface CourseEnrollment {
   adminNote?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  installments?: CourseInstallmentRecord[];
   version?: number;
 }
 

@@ -117,7 +117,12 @@ export function validateSecureUploadBuffer(
   }
 
   const isCartable = category === 'cartable_alumni' || category === 'cartable_officials';
-  const isStrictDocOrImage = isCartable || category === 'verdict' || category === 'product_receipt';
+  const isStrictDocOrImage =
+    isCartable ||
+    category === 'verdict' ||
+    category === 'product_receipt' ||
+    category === 'course_receipt' ||
+    category === 'course_certificate';
   const maxBytes = isStrictDocOrImage ? MAX_CARTABLE_UPLOAD_BYTES : MAX_GENERAL_UPLOAD_BYTES;
   if (buffer.length > maxBytes) {
     const maxMb = Math.round(maxBytes / (1024 * 1024));

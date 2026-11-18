@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Download, X } from 'lucide-react';
+import { api } from '../../../services/apiClient';
+import { Image as ImageIcon, Download, X, Loader2 } from 'lucide-react';
 
 interface CourseLightboxModalProps {
   image: { url: string; title: string; subtitle?: string } | null;
@@ -11,6 +12,42 @@ export const CourseLightboxModal: React.FC<CourseLightboxModalProps> = ({
   image,
   onClose,
 }) => {
+  const [resolvedUrl, setResolvedUrl] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+    if (!image?.url) {
+      setResolvedUrl('');
+      return;
+    }
+
+    if (image.url.startsWith('/api/storage/private/')) {
+      setLoading(true);
+      api
+        .fetchPrivateFileBlob(image.url)
+        .then(res => {
+          if (!active) return;
+          objectUrl = URL.createObjectURL(res.blob);
+          setResolvedUrl(objectUrl);
+        })
+        .catch(() => {
+          if (active) setResolvedUrl('');
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    } else {
+      setResolvedUrl(image.url);
+    }
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [image]);
+
   if (!image) return null;
 
   return (
@@ -37,16 +74,16 @@ export const CourseLightboxModal: React.FC<CourseLightboxModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <a
-                href={image.url}
-                target="_blank"
-                rel="noreferrer"
-                download
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-                title="دانلود یا باز کردن در زبانه جدید"
-              >
-                <Download className="w-4 h-4" />
-              </a>
+              {resolvedUrl && (
+                <a
+                  href={resolvedUrl}
+                  download={image.title || 'course-image'}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="دانلود تصویر"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              )}
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-xl bg-white/10 hover:bg-rose-500 text-white transition-colors cursor-pointer"
@@ -58,12 +95,18 @@ export const CourseLightboxModal: React.FC<CourseLightboxModalProps> = ({
           </div>
 
           {/* Full Image */}
-          <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black flex items-center justify-center max-h-[80vh]">
-            <img
-              src={image.url}
-              alt={image.title}
-              className="w-full h-full object-contain max-h-[78vh]"
-            />
+          <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black flex items-center justify-center min-h-[260px] max-h-[80vh]">
+            {loading ? (
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+            ) : resolvedUrl ? (
+              <img
+                src={resolvedUrl}
+                alt={image.title}
+                className="w-full h-full object-contain max-h-[78vh]"
+              />
+            ) : (
+              <span className="text-xs text-slate-400">امکان نمایش تصویر وجود ندارد.</span>
+            )}
           </div>
         </motion.div>
       </div>

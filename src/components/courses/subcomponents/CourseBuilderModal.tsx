@@ -1,40 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Course } from '../../../types';
+import { Course, CourseCustomField, CourseInstallmentPlan } from '../../../types';
+import { api } from '../../../services/apiClient';
+import { CourseBuilderAdvancedTabs } from './CourseBuilderAdvancedTabs';
 import {
   X,
   Image as ImageIcon,
   ZoomIn,
   UploadCloud,
-  Check
+  Loader2,
+  GraduationCap,
 } from 'lucide-react';
-
-const PRESET_COURSE_COVERS = [
-  {
-    title: 'فقه القضاء و فناوری',
-    url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    title: 'داوری تجاری و قراردادها',
-    url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    title: 'دادگاه کیفری و ادله اثبات',
-    url: 'https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    title: 'بلاک‌چین و جرایم رمزارز',
-    url: 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    title: 'متون فقهی و دروس حوزوی',
-    url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    title: 'اقتصاد و رسیدگی به مفاسد',
-    url: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=800&auto=format&fit=crop&q=80',
-  },
-];
 
 interface CourseBuilderModalProps {
   isOpen: boolean;
@@ -43,6 +19,33 @@ interface CourseBuilderModalProps {
   onSave: (courseData: Partial<Course>) => Promise<void>;
   onImagePreview: (img: { url: string; title: string }) => void;
 }
+
+const buildDefaultInstallmentPlan = (price: number): CourseInstallmentPlan => {
+  const today = new Date();
+  const nextMonth = new Date(Date.now() + 30 * 86400 * 1000);
+  return {
+    enabled: false,
+    count: 2,
+    items: [
+      {
+        installmentNumber: 1,
+        title: 'قسط اول (پیش‌پرداخت ثبت‌نام)',
+        percentage: 50,
+        fixedAmount: Math.round(price * 0.5),
+        dueDateIso: today.toISOString().slice(0, 10),
+        dueDateJalali: today.toLocaleDateString('fa-IR'),
+      },
+      {
+        installmentNumber: 2,
+        title: 'قسط دوم (نیمه دوره)',
+        percentage: 50,
+        fixedAmount: Math.round(price * 0.5),
+        dueDateIso: nextMonth.toISOString().slice(0, 10),
+        dueDateJalali: nextMonth.toLocaleDateString('fa-IR'),
+      },
+    ],
+  };
+};
 
 export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
   isOpen,
@@ -53,16 +56,21 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
 }) => {
   const courseCoverInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [builderForm, setBuilderForm] = useState<{
     title: string;
     instructor: string;
     instructorTitle: string;
+    instructorAvatarUrl: string;
+    instructorResume: string;
     category: string;
     level: string;
     hours: number;
     capacity: number;
     schedule: string;
+    holdingTime: string;
     startDate: string;
     endDate: string;
     holdingFormat: 'online' | 'in_person' | 'hybrid';
@@ -75,11 +83,17 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
     price: number;
     hasInstallments: boolean;
     installmentDetails: string;
+    installmentPlan: CourseInstallmentPlan;
     hasCertificate: boolean;
     certificateDetails: string;
     hasPrerequisites: boolean;
     prerequisites: string;
     description: string;
+    necessity: string;
+    managerNotes: string;
+    targetAudiences: string[];
+    customFields: CourseCustomField[];
+    hiddenFields: string[];
     topics: string[];
     newTopicInput: string;
     customTags: string[];
@@ -90,47 +104,60 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
     title: '',
     instructor: '',
     instructorTitle: '',
+    instructorAvatarUrl: '',
+    instructorResume: '',
     category: 'فقه القضاء و فناوری',
     level: 'تخصصی عالی (سطح ۴ و دکتری)',
     hours: 20,
     capacity: 40,
     schedule: 'پنج‌شنبه‌ها از ساعت ۰۹:۰۰ الی ۱۲:۰۰',
+    holdingTime: 'پنج‌شنبه‌ها ساعت ۰۹:۰۰ الی ۱۲:۰۰',
     startDate: '۱۴۰۳/۰۹/۰۱',
     endDate: '۱۴۰۳/۱۰/۲۰',
     holdingFormat: 'online',
-    venueAddress: 'تهران، مجتمع نخبگان فقه و قضا، سالن شهید بهشتی',
+    venueAddress: 'قم، مجتمع نخبگان فقه و قضا، سالن همایش‌ها',
     meetingLink: 'https://lms.feqh-ghaza.ir/room/new-course',
     meetingAccessGuide: 'ورود با نام کاربری کد ملی و کلمه عبور اختصاصی پیامک‌شده.',
-    hasCoverImage: true,
-    coverImage: PRESET_COURSE_COVERS[0].url,
+    hasCoverImage: false,
+    coverImage: '',
     allowedPaymentMethod: 'both',
     price: 750000,
-    hasInstallments: true,
-    installmentDetails: 'امکان پرداخت در ۲ قسط ۵۰ درصدی (زمان ثبت‌نام و نیمه دوره).',
+    hasInstallments: false,
+    installmentDetails: 'امکان پرداخت در ۲ قسط ۵۰ درصدی.',
+    installmentPlan: buildDefaultInstallmentPlan(750000),
     hasCertificate: true,
     certificateDetails: 'گواهی پایان دوره رسمی ممهور به تمبر و مهر مرکز نخبگان.',
     hasPrerequisites: true,
-    prerequisites: 'دانش‌آموختگان سطح ۳ و ۴ حوزوی، قضات محاکم یا کارشناسان ارشد حقوق.',
+    prerequisites: 'دانش‌آموختگان سطح ۳ و ۴ حوزوی، قضات محاکم یا وکلای دادگستری.',
     description: 'تحلیل تطبیقی و کاربردی مسائل مستحدثه با رویکرد فقهی و حقوقی معاصر.',
+    necessity: '',
+    managerNotes: '',
+    targetAudiences: ['طلاب سطوح عالی و خارج', 'قضات دادگستری', 'وکلای پایه یک'],
+    customFields: [],
+    hiddenFields: [],
     topics: ['مبانی نظری و فقهی', 'بررسی رویه قضایی و آرای وحدت رویه مرتبط'],
     newTopicInput: '',
-    customTags: ['گواهی رسمی ممهور', 'امکان پرداخت اقساطی'],
+    customTags: ['گواهی رسمی ممهور'],
     newTagInput: '',
     status: 'enrolling',
     archiveAccess: 'enrolled_only',
   });
 
   useEffect(() => {
+    setSaveError(null);
     if (courseToEdit) {
       setBuilderForm({
         title: courseToEdit.title,
         instructor: courseToEdit.instructor,
         instructorTitle: courseToEdit.instructorTitle || '',
+        instructorAvatarUrl: courseToEdit.instructorAvatarUrl || '',
+        instructorResume: courseToEdit.instructorResume || '',
         category: courseToEdit.category || 'فقه القضاء و فناوری',
         level: courseToEdit.level,
         hours: courseToEdit.hours,
         capacity: courseToEdit.capacity,
         schedule: courseToEdit.schedule,
+        holdingTime: courseToEdit.holdingTime || courseToEdit.schedule || '',
         startDate: courseToEdit.startDate || '۱۴۰۳/۰۹/۰۱',
         endDate: courseToEdit.endDate || '۱۴۰۳/۱۰/۲۰',
         holdingFormat: courseToEdit.holdingFormat,
@@ -138,16 +165,25 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
         meetingLink: courseToEdit.meetingLink || 'https://lms.feqh-ghaza.ir/room/c',
         meetingAccessGuide: courseToEdit.meetingAccessGuide || '',
         hasCoverImage: Boolean(courseToEdit.coverImage),
-        coverImage: courseToEdit.coverImage || PRESET_COURSE_COVERS[0].url,
+        coverImage: courseToEdit.coverImage || '',
         allowedPaymentMethod: courseToEdit.allowedPaymentMethod || 'both',
         price: courseToEdit.price,
         hasInstallments: courseToEdit.hasInstallments || false,
         installmentDetails: courseToEdit.installmentDetails || '',
+        installmentPlan:
+          courseToEdit.installmentPlan && courseToEdit.installmentPlan.items?.length > 0
+            ? courseToEdit.installmentPlan
+            : buildDefaultInstallmentPlan(courseToEdit.price),
         hasCertificate: courseToEdit.hasCertificate || false,
         certificateDetails: courseToEdit.certificateDetails || '',
         hasPrerequisites: Boolean(courseToEdit.prerequisites),
         prerequisites: courseToEdit.prerequisites || '',
         description: courseToEdit.description,
+        necessity: courseToEdit.necessity || '',
+        managerNotes: courseToEdit.managerNotes || '',
+        targetAudiences: courseToEdit.targetAudiences || [],
+        customFields: courseToEdit.customFields || [],
+        hiddenFields: courseToEdit.hiddenFields || [],
         topics: courseToEdit.topics || [],
         newTopicInput: '',
         customTags: courseToEdit.customTags || [],
@@ -155,64 +191,119 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
         status: courseToEdit.status,
         archiveAccess: courseToEdit.archiveAccess || 'enrolled_only',
       });
+    } else if (isOpen) {
+      setBuilderForm({
+        title: '',
+        instructor: '',
+        instructorTitle: '',
+        instructorAvatarUrl: '',
+        instructorResume: '',
+        category: 'فقه القضاء و فناوری',
+        level: 'تخصصی عالی (سطح ۴ و دکتری)',
+        hours: 20,
+        capacity: 40,
+        schedule: 'پنج‌شنبه‌ها از ساعت ۰۹:۰۰ الی ۱۲:۰۰',
+        holdingTime: 'پنج‌شنبه‌ها ساعت ۰۹:۰۰ الی ۱۲:۰۰',
+        startDate: '۱۴۰۳/۰۹/۰۱',
+        endDate: '۱۴۰۳/۱۰/۲۰',
+        holdingFormat: 'online',
+        venueAddress: 'قم، مجتمع نخبگان فقه و قضا',
+        meetingLink: 'https://lms.feqh-ghaza.ir/room/new-course',
+        meetingAccessGuide: 'ورود با نام کاربری کد ملی و کلمه عبور اختصاصی پیامک‌شده.',
+        hasCoverImage: false,
+        coverImage: '',
+        allowedPaymentMethod: 'both',
+        price: 750000,
+        hasInstallments: false,
+        installmentDetails: 'امکان پرداخت در ۲ قسط ۵۰ درصدی.',
+        installmentPlan: buildDefaultInstallmentPlan(750000),
+        hasCertificate: true,
+        certificateDetails: 'گواهی پایان دوره رسمی ممهور به تمبر و مهر مرکز نخبگان.',
+        hasPrerequisites: true,
+        prerequisites: 'دانش‌آموختگان سطح ۳ و ۴ حوزوی، قضات محاکم یا وکلای دادگستری.',
+        description: 'تحلیل تطبیقی و کاربردی مسائل مستحدثه با رویکرد فقهی و حقوقی معاصر.',
+        necessity: '',
+        managerNotes: '',
+        targetAudiences: ['طلاب سطوح عالی و خارج', 'قضات دادگستری', 'وکلای پایه یک'],
+        customFields: [],
+        hiddenFields: [],
+        topics: ['مبانی نظری و فقهی', 'بررسی رویه قضایی و آرای وحدت رویه مرتبط'],
+        newTopicInput: '',
+        customTags: ['گواهی رسمی ممهور'],
+        newTagInput: '',
+        status: 'enrolling',
+        archiveAccess: 'enrolled_only',
+      });
     }
-  }, [courseToEdit]);
+  }, [courseToEdit, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleCourseCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCourseCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setBuilderForm(prev => ({
-            ...prev,
-            hasCoverImage: true,
-            coverImage: reader.result as string,
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setSaveError(null);
+    setUploadingCover(true);
+    try {
+      const uploaded = await api.uploadFile(file, 'course');
+      setBuilderForm(prev => ({
+        ...prev,
+        hasCoverImage: true,
+        coverImage: uploaded.url,
+      }));
+    } catch (err: any) {
+      setSaveError(err?.message || 'خطا در آپلود تصویر بنر دوره روی سرور.');
+    } finally {
+      setUploadingCover(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     try {
       setIsSubmitting(true);
       await onSave({
         title: builderForm.title,
         instructor: builderForm.instructor,
         instructorTitle: builderForm.instructorTitle,
+        instructorAvatarUrl: builderForm.instructorAvatarUrl || undefined,
+        instructorResume: builderForm.instructorResume,
         category: builderForm.category,
         level: builderForm.level,
         hours: builderForm.hours,
         capacity: builderForm.capacity,
         schedule: builderForm.schedule,
+        holdingTime: builderForm.holdingTime,
         startDate: builderForm.startDate,
         endDate: builderForm.endDate,
         holdingFormat: builderForm.holdingFormat,
         venueAddress: builderForm.venueAddress,
         meetingLink: builderForm.meetingLink,
         meetingAccessGuide: builderForm.meetingAccessGuide,
-        coverImage: builderForm.hasCoverImage ? builderForm.coverImage : undefined,
+        coverImage: builderForm.hasCoverImage && builderForm.coverImage ? builderForm.coverImage : undefined,
         allowedPaymentMethod: builderForm.allowedPaymentMethod,
         price: builderForm.price,
         hasInstallments: builderForm.hasInstallments,
         installmentDetails: builderForm.installmentDetails,
+        installmentPlan: builderForm.installmentPlan,
         hasCertificate: builderForm.hasCertificate,
         certificateDetails: builderForm.certificateDetails,
         prerequisites: builderForm.prerequisites,
         description: builderForm.description,
+        necessity: builderForm.necessity,
+        managerNotes: builderForm.managerNotes,
+        targetAudiences: builderForm.targetAudiences,
+        customFields: builderForm.customFields,
+        hiddenFields: builderForm.hiddenFields,
         topics: builderForm.topics,
         customTags: builderForm.customTags,
         status: builderForm.status,
         archiveAccess: builderForm.archiveAccess,
       });
       onClose();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setSaveError(err?.message || 'خطا در ذخیره اطلاعات دوره در پایگاه داده.');
     } finally {
       setIsSubmitting(false);
     }
@@ -225,27 +316,34 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
           onClick={e => e.stopPropagation()}
         >
           <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
             <div>
               <span className="text-[11px] text-amber-400 font-bold block mb-0.5">
-                پنل هوشمند ویژه مسئول آموزش (تنظیمات شیوه پرداخت، تصویر دوره و سرفصل‌ها)
+                پنل هوشمند ویژه مسئول آموزش (رزومه استاد، فیلدهای پویا، اقساط زمان‌بندی‌شده و سرفصل‌ها)
               </span>
               <h3 className="text-base font-black text-white">
-                {courseToEdit ? 'ویرایش مشخصات و دسترسی‌های دوره' : 'تعریف دوره تخصصی و کارگاه آموزشی جدید'}
+                {courseToEdit ? 'ویرایش مشخصات و فیلدهای دوره' : 'تعریف دوره تخصصی و کارگاه آموزشی جدید'}
               </h3>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+            {saveError && (
+              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
+                {saveError}
+              </div>
+            )}
+
             {/* 1. Basic Identity */}
             <div className="space-y-3">
               <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 border-b border-slate-200 dark:border-slate-800 pb-1">
@@ -287,7 +385,7 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1">
                 <h4 className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4" />
-                  <span>۲. مدیریت تصویر و بنر دوره (آپلود عکس یا انتخاب از آلبوم):</span>
+                  <span>۲. مدیریت تصویر و بنر دوره (ذخیره روی دیسک سرور):</span>
                 </h4>
                 <label className="flex items-center gap-2 cursor-pointer text-xs">
                   <input
@@ -312,66 +410,51 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
 
                   <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div
-                      onClick={() => onImagePreview({ url: builderForm.coverImage, title: 'پیش‌نمایش بنر دوره' })}
-                      className="w-32 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shrink-0 bg-slate-200 cursor-pointer relative group"
+                      onClick={() => {
+                        if (builderForm.coverImage) {
+                          onImagePreview({ url: builderForm.coverImage, title: 'پیش‌نمایش بنر دوره' });
+                        }
+                      }}
+                      className="w-32 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shrink-0 bg-slate-900 cursor-pointer relative group flex items-center justify-center"
                       title="جهت بزرگنمایی کلیک کنید"
                     >
-                      <img
-                        src={builderForm.coverImage}
-                        alt="بنر دوره"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <ZoomIn className="w-4 h-4 text-white" />
-                      </div>
+                      {builderForm.coverImage ? (
+                        <>
+                          <img
+                            src={builderForm.coverImage}
+                            alt="بنر دوره"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <ZoomIn className="w-4 h-4 text-white" />
+                          </div>
+                        </>
+                      ) : (
+                        <GraduationCap className="w-8 h-8 text-emerald-500/40" />
+                      )}
                     </div>
 
                     <div className="space-y-2 flex-1 w-full text-right">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
+                          disabled={uploadingCover}
                           onClick={() => courseCoverInputRef.current?.click()}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-bold shadow-xs cursor-pointer"
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-bold shadow-xs cursor-pointer disabled:opacity-60"
                         >
-                          <UploadCloud className="w-3.5 h-3.5" />
-                          <span>بارگذاری عکس از دستگاه</span>
+                          {uploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                          <span>{uploadingCover ? 'در حال آپلود روی دیسک...' : 'بارگذاری عکس بنر از دستگاه'}</span>
                         </button>
-                        <span className="text-[11px] text-slate-400">یا نشانی مستقیم تصویر را بنویسید:</span>
+                        <span className="text-[11px] text-slate-400">یا نشانی معتبر تصویر را وارد کنید:</span>
                       </div>
 
                       <input
                         type="text"
                         value={builderForm.coverImage}
                         onChange={e => setBuilderForm({ ...builderForm, coverImage: e.target.value })}
-                        placeholder="https://..."
+                        placeholder="/api/storage/courses/..."
                         className="w-full px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono dir-ltr"
                       />
-                    </div>
-                  </div>
-
-                  {/* Preset Cover Library */}
-                  <div className="pt-2">
-                    <span className="text-[11px] font-bold text-slate-500 block mb-2">تصاویر پیشنهادی موضوعی:</span>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {PRESET_COURSE_COVERS.map((preset, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => setBuilderForm({ ...builderForm, coverImage: preset.url })}
-                          className={`h-14 rounded-xl overflow-hidden border-2 cursor-pointer transition-all relative ${
-                            builderForm.coverImage === preset.url
-                              ? 'border-emerald-500 scale-105 shadow-md'
-                              : 'border-transparent hover:border-slate-400 opacity-75 hover:opacity-100'
-                          }`}
-                          title={preset.title}
-                        >
-                          <img src={preset.url} alt={preset.title} className="w-full h-full object-cover" />
-                          {builderForm.coverImage === preset.url && (
-                            <div className="absolute inset-0 bg-emerald-500/30 flex items-center justify-center">
-                              <Check className="w-4 h-4 text-white drop-shadow font-bold" />
-                            </div>
-                          )}
-                        </div>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -752,18 +835,44 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
               </div>
             </div>
 
+            <CourseBuilderAdvancedTabs
+              instructorTitle={builderForm.instructorTitle}
+              onInstructorTitleChange={val => setBuilderForm(prev => ({ ...prev, instructorTitle: val }))}
+              instructorAvatarUrl={builderForm.instructorAvatarUrl}
+              onInstructorAvatarChange={val => setBuilderForm(prev => ({ ...prev, instructorAvatarUrl: val }))}
+              instructorResume={builderForm.instructorResume}
+              onInstructorResumeChange={val => setBuilderForm(prev => ({ ...prev, instructorResume: val }))}
+              holdingTime={builderForm.holdingTime}
+              onHoldingTimeChange={val => setBuilderForm(prev => ({ ...prev, holdingTime: val }))}
+              necessity={builderForm.necessity}
+              onNecessityChange={val => setBuilderForm(prev => ({ ...prev, necessity: val }))}
+              managerNotes={builderForm.managerNotes}
+              onManagerNotesChange={val => setBuilderForm(prev => ({ ...prev, managerNotes: val }))}
+              targetAudiences={builderForm.targetAudiences}
+              onTargetAudiencesChange={val => setBuilderForm(prev => ({ ...prev, targetAudiences: val }))}
+              customFields={builderForm.customFields}
+              onCustomFieldsChange={val => setBuilderForm(prev => ({ ...prev, customFields: val }))}
+              hiddenFields={builderForm.hiddenFields}
+              onHiddenFieldsChange={val => setBuilderForm(prev => ({ ...prev, hiddenFields: val }))}
+              hasInstallments={builderForm.hasInstallments}
+              onHasInstallmentsChange={val => setBuilderForm(prev => ({ ...prev, hasInstallments: val }))}
+              installmentPlan={builderForm.installmentPlan}
+              onInstallmentPlanChange={val => setBuilderForm(prev => ({ ...prev, installmentPlan: val }))}
+              coursePrice={builderForm.price}
+            />
+
             {/* Modal Actions */}
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || uploadingCover}
                 className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? 'در حال ثبت...' : courseToEdit ? 'ذخیره تغییرات دوره' : 'ثبت و انتشار دوره'}

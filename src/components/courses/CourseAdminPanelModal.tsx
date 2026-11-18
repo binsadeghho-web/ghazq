@@ -30,7 +30,7 @@ import {
 import { Course, CourseEnrollment } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { useApp } from '../../context/AppContext';
-import { apiClient } from '../../services/apiClient';
+import { api } from '../../services/apiClient';
 
 interface CourseAdminPanelModalProps {
   course: Course;
@@ -60,6 +60,11 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
   // Form State for Post-Enrollment Page Settings
   const [isSavingPostContent, setIsSavingPostContent] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
+  const [postSaveError, setPostSaveError] = useState<string | null>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [offlineFileError, setOfflineFileError] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<{ enrollmentId: string; userName: string; reason: string } | null>(null);
 
   const [postBanner, setPostBanner] = useState(course.postEnrollmentBanner || course.coverImage || '');
   const [postMessage, setPostMessage] = useState(
@@ -134,25 +139,25 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const base64 = evt.target?.result as string;
-      if (!base64) return;
-      try {
-        const res = await apiClient.uploadProfilePicture(base64, file.name);
-        if (res.success && res.url) {
-          setPostBanner(res.url);
-        }
-      } catch {
-        setPostBanner(base64);
+    setBannerUploading(true);
+    setBannerError(null);
+    try {
+      const res = await api.uploadFile(file, 'course');
+      if (res.url) {
+        setPostBanner(res.url);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      setBannerError(err?.message || 'خطا در آپلود تصویر بنر');
+    } finally {
+      setBannerUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleAddOfflineFile = () => {
+    setOfflineFileError(null);
     if (!newFileTitle.trim() || !newFileUrl.trim()) {
-      alert('لطفاً عنوان فایل و لینک دانلود را وارد فرمایید.');
+      setOfflineFileError('لطفاً عنوان فایل و لینک دانلود را وارد فرمایید.');
       return;
     }
     const newEntry = {
@@ -175,6 +180,7 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
   const handleSavePostContent = async () => {
     setIsSavingPostContent(true);
     setSaveSuccessNotice(false);
+    setPostSaveError(null);
 
     try {
       await updateCourse(course.id, {
@@ -194,7 +200,7 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
       setSaveSuccessNotice(true);
       setTimeout(() => setSaveSuccessNotice(false), 3000);
     } catch (err: any) {
-      alert(`خطا در ذخیره‌سازی تنظیمات: ${err?.message || err}`);
+      setPostSaveError(err?.message || 'خطا در ذخیره‌سازی تنظیمات دوره');
     } finally {
       setIsSavingPostContent(false);
     }
@@ -451,10 +457,13 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                               )}
                               {enr.paymentStatus !== 'rejected' && (
                                 <button
-                                  onClick={() => {
-                                    const reason = prompt('علت رد فیش:', 'نقص اطلاعات واریز');
-                                    if (reason) reviewCourseEnrollment(enr.id, 'rejected', reason);
-                                  }}
+                                  onClick={() =>
+                                    setRejectTarget({
+                                      enrollmentId: enr.id,
+                                      userName: enr.userName,
+                                      reason: 'نقص اطلاعات واریز',
+                                    })
+                                  }
                                   className="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-[11px]"
                                 >
                                   رد
@@ -468,6 +477,41 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {rejectTarget && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <span className="font-black text-rose-800 dark:text-rose-200 whitespace-nowrap">
+                    علت رد فیش {rejectTarget.userName}:
+                  </span>
+                  <input
+                    type="text"
+                    value={rejectTarget.reason}
+                    onChange={e => setRejectTarget({ ...rejectTarget, reason: e.target.value })}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-xs text-slate-900 dark:text-white"
+                    placeholder="علت رد فیش را وارد کنید..."
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!rejectTarget.reason.trim()) return;
+                        await reviewCourseEnrollment(rejectTarget.enrollmentId, 'rejected', rejectTarget.reason.trim());
+                        setRejectTarget(null);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs"
+                    >
+                      ثبت رد فیش
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRejectTarget(null)}
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                    >
+                      انصراف
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -490,6 +534,11 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                 <div className="p-3.5 rounded-2xl bg-emerald-100 text-emerald-900 font-bold flex items-center gap-2 border border-emerald-300">
                   <CheckCircle2 className="w-5 h-5 text-emerald-700" />
                   <span>تنظیمات محتوای دوره با موفقیت در پایگاه داده ذخیره و برای همه کاربران اعمال گردید.</span>
+                </div>
+              )}
+              {postSaveError && (
+                <div className="p-3.5 rounded-2xl bg-rose-100 text-rose-900 font-bold flex items-center gap-2 border border-rose-300">
+                  <span>{postSaveError}</span>
                 </div>
               )}
 
@@ -526,11 +575,14 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                     <div className="flex items-center gap-2">
                       <label className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer inline-flex items-center gap-1.5 shadow-sm">
                         <UploadCloud className="w-4 h-4" />
-                        <span>آپلود تصویر بنر از سیستم</span>
-                        <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+                        <span>{bannerUploading ? 'در حال آپلود...' : 'آپلود تصویر بنر از سیستم'}</span>
+                        <input type="file" accept="image/*" onChange={handleBannerUpload} disabled={bannerUploading} className="hidden" />
                       </label>
                       <span className="text-slate-400 text-[11px]">یا لینک مستقیم تصویر را وارد کنید:</span>
                     </div>
+                    {bannerError && (
+                      <p className="text-[11px] font-bold text-rose-600">{bannerError}</p>
+                    )}
                     <input
                       type="text"
                       value={postBanner}
@@ -765,6 +817,9 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                         </button>
                       </div>
                     </div>
+                    {offlineFileError && (
+                      <p className="text-[11px] font-bold text-rose-600 pt-1">{offlineFileError}</p>
+                    )}
                   </div>
                 </div>
               </div>

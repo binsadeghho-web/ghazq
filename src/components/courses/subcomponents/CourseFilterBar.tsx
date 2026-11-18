@@ -1,8 +1,15 @@
 import React from 'react';
-import { Search, ShieldCheck, Archive } from 'lucide-react';
+import { Search, ShieldCheck, Archive, CalendarClock, TicketPercent } from 'lucide-react';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 
-export type CourseTab = 'available' | 'my_courses' | 'archive' | 'admin_panel' | 'deleted_courses';
+export type CourseTab =
+  | 'available'
+  | 'my_courses'
+  | 'archive'
+  | 'admin_panel'
+  | 'installments_admin'
+  | 'discounts_admin'
+  | 'deleted_courses';
 export type CourseFormatFilter = 'all' | 'online' | 'in_person' | 'hybrid';
 
 interface CourseFilterBarProps {
@@ -34,13 +41,15 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
   pendingReceiptsCount,
   isOfficial,
 }) => {
+  const isCatalogTab = activeTab === 'available' || activeTab === 'my_courses' || activeTab === 'archive';
+
   return (
     <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 glass-card p-3 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs">
       {/* Navigation Tabs */}
       <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800/70 rounded-xl text-xs overflow-x-auto scrollbar-none font-bold">
         <button
           onClick={() => onTabChange('available')}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
+          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'available'
               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -51,7 +60,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
 
         <button
           onClick={() => onTabChange('my_courses')}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'my_courses'
               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -65,7 +74,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
 
         <button
           onClick={() => onTabChange('archive')}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
+          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'archive'
               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -77,7 +86,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
         {isOfficial && (
           <button
             onClick={() => onTabChange('admin_panel')}
-            className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'admin_panel'
                 ? 'bg-amber-500 text-stone-950 shadow-xs font-black'
                 : 'text-amber-600 dark:text-amber-400 hover:text-amber-700'
@@ -95,21 +104,49 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
 
         {isOfficial && (
           <button
+            onClick={() => onTabChange('installments_admin')}
+            className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'installments_admin'
+                ? 'bg-emerald-600 text-white shadow-xs font-black'
+                : 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-800'
+            }`}
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+            <span>مدیریت اقساط و سررسیدها</span>
+          </button>
+        )}
+
+        {isOfficial && (
+          <button
+            onClick={() => onTabChange('discounts_admin')}
+            className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'discounts_admin'
+                ? 'bg-indigo-600 text-white shadow-xs font-black'
+                : 'text-indigo-700 dark:text-indigo-400 hover:text-indigo-800'
+            }`}
+          >
+            <TicketPercent className="w-3.5 h-3.5" />
+            <span>انواع کد تخفیف</span>
+          </button>
+        )}
+
+        {isOfficial && (
+          <button
             onClick={() => onTabChange('deleted_courses')}
-            className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'deleted_courses'
                 ? 'bg-rose-500 text-white shadow-xs font-black'
                 : 'text-rose-600 dark:text-rose-400 hover:text-rose-700'
             }`}
           >
             <Archive className="w-3.5 h-3.5" />
-            <span>دوره‌های بایگانی / حذف منطقی ({toPersianNumbers(deletedCount)})</span>
+            <span>بایگانی / حذف منطقی ({toPersianNumbers(deletedCount)})</span>
           </button>
         )}
       </div>
 
       {/* Search & Format Filter */}
-      {activeTab !== 'admin_panel' && activeTab !== 'deleted_courses' && (
+      {isCatalogTab && (
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800/70 rounded-xl text-xs">
             <button

@@ -65,6 +65,8 @@ export function createMasterRouter(): Router {
         'cartable_alumni',
         'cartable_officials',
         'product_receipt',
+        'course_receipt',
+        'course_certificate',
         'misc',
       ];
 
@@ -76,6 +78,10 @@ export function createMasterRouter(): Router {
         category = 'cartable_officials';
       } else if (rawCategory === 'product_receipts') {
         category = 'product_receipt';
+      } else if (rawCategory === 'course_receipts') {
+        category = 'course_receipt';
+      } else if (rawCategory === 'course_certificates') {
+        category = 'course_certificate';
       } else if (validCategories.includes(rawCategory as UploadCategory)) {
         category = rawCategory as UploadCategory;
       }
@@ -87,7 +93,9 @@ export function createMasterRouter(): Router {
         category === 'consultation' ||
         category === 'research' ||
         category === 'verdict' ||
-        category === 'product_receipt';
+        category === 'product_receipt' ||
+        category === 'course_receipt' ||
+        category === 'course_certificate';
 
       if (isPrivateCat && !user) {
         return res.status(401).json({
@@ -96,6 +104,16 @@ export function createMasterRouter(): Router {
           status: 401,
           detail: 'بارگذاری فایل در بخش خصوصی نیازمند ورود به سامانه است.',
           code: 'UNAUTHENTICATED',
+        });
+      }
+
+      if (category === 'course_certificate' && !isOrganizationalUserRole(user?.role)) {
+        return res.status(403).json({
+          type: 'forbidden',
+          title: 'عدم دسترسی',
+          status: 403,
+          detail: 'بارگذاری گواهی پایان دوره صرفاً برای مدیران و مسئولین آموزش مجاز است.',
+          code: 'FORBIDDEN_UPLOAD_CATEGORY',
         });
       }
 
@@ -138,11 +156,17 @@ export function createMasterRouter(): Router {
       const validated = validateSecureUploadBuffer(category, origName, buffer, declaredMime);
 
       const safeBaseOrig = path.basename(origName).replace(/\.[^.]+$/, '') || 'attachment';
+      const rawCourseId = body.courseId ? String(body.courseId).replace(/[^a-zA-Z0-9_-]/g, '') : '';
+      const subFolder =
+        category === 'course_certificate' && rawCourseId
+          ? `course_${rawCourseId}`
+          : undefined;
       const result = await storageAdapter.saveCategorizedUpload(
         category,
         `${safeBaseOrig}${validated.canonicalExt}`,
         buffer,
-        validated.canonicalExt
+        validated.canonicalExt,
+        subFolder
       );
 
       res.json({
@@ -159,10 +183,10 @@ export function createMasterRouter(): Router {
     }
   });
 
-  // Protected Private File Serving Endpoint (consultations, research, cartable_alumni, cartable_officials)
-  router.get('/storage/private/:category/:filename', async (req: Request, res: Response) => {
+  // Protected Private File Serving Endpoint (including per-course certificate subfolders)
+  router.get('/storage/private/:category/:subFolderOrFilename/:maybeFilename?', async (req: Request, res: Response) => {
     try {
-      const { category, filename } = req.params;
+      const { category, subFolderOrFilename, maybeFilename } = req.params;
       const user = (req as any).user;
 
       if (!user) {
@@ -179,6 +203,10 @@ export function createMasterRouter(): Router {
         cartable_officials: 'cartable_officials',
         product_receipt: 'product_receipt',
         product_receipts: 'product_receipt',
+        course_receipt: 'course_receipt',
+        course_receipts: 'course_receipt',
+        course_certificate: 'course_certificate',
+        course_certificates: 'course_certificate',
       };
 
       const storageKey = catMap[category];
@@ -191,12 +219,17 @@ export function createMasterRouter(): Router {
         return res.status(404).json({ error: 'پوشه یافت نشد.' });
       }
 
-      const safeFilename = path.basename(filename);
+      const hasSubFolder = Boolean(maybeFilename);
+      const safeSubFolder = hasSubFolder ? path.basename(subFolderOrFilename).replace(/[^a-zA-Z0-9_-]/g, '') : '';
+      const rawFilename = hasSubFolder ? maybeFilename! : subFolderOrFilename;
+      const safeFilename = path.basename(rawFilename);
       if (!safeFilename || safeFilename.includes('..') || safeFilename.includes('/') || safeFilename.includes('\\')) {
         return res.status(400).json({ error: 'نام فایل نامعتبر است.' });
       }
 
-      const filePath = path.join(catConfig.path, safeFilename);
+      const filePath = safeSubFolder
+        ? path.join(catConfig.path, safeSubFolder, safeFilename)
+        : path.join(catConfig.path, safeFilename);
       if (!filePath.startsWith(catConfig.path)) {
         return res.status(403).json({ error: 'مسیر دسترسی غیرمجاز است.' });
       }
@@ -277,6 +310,55 @@ export function createMasterRouter(): Router {
         });
         if (!ownsReceipt) {
           return res.status(403).json({ error: 'عدم دسترسی: این تصویر فیش متعلق به سفارش‌های شما نیست.' });
+        }
+      }
+
+      // Strict BOLA guard for course payment/installment receipts: only payer or officials
+      if (storageKey === 'course_receipt' && !isOrganizationalUserRole(user.role)) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [enrRows]: any = await p.query(
+          `SELECT user_id FROM course_enrollments WHERE receipt_file_url LIKE ? LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const [instRows]: any = await p.query(
+          `SELECT user_id FROM course_installments WHERE receipt_file_url LIKE ? AND deleted_at IS NULL LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const allRows = [...(enrRows || []), ...(instRows || [])];
+        const ownsCourseReceipt = allRows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.user_id) ? fromIdBuffer(r.user_id) : String(r.user_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsCourseReceipt) {
+          return res.status(403).json({ error: 'عدم دسترسی: این فیش متعلق به ثبت‌نام یا اقساط شما نیست.' });
+        }
+      }
+
+      // Strict BOLA guard for course certificates: only certificate owner or officials
+      if (storageKey === 'course_certificate' && !isOrganizationalUserRole(user.role)) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = safeSubFolder
+          ? `%/${catConfig.folderName}/${safeSubFolder}/${safeFilename}%`
+          : `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [certRows]: any = await p.query(
+          `SELECT user_id FROM course_certificates WHERE certificate_file_url LIKE ? AND (deleted_at IS NULL) LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const ownsCert = Array.isArray(certRows) && certRows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.user_id) ? fromIdBuffer(r.user_id) : String(r.user_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsCert) {
+          return res.status(403).json({ error: 'عدم دسترسی: این گواهی دوره متعلق به شما نیست.' });
         }
       }
 

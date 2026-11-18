@@ -9,6 +9,7 @@ import {
   Clock,
   Plus
 } from 'lucide-react';
+import type { CourseTab } from './CourseFilterBar';
 
 interface CourseStatsHeaderProps {
   availableCount: number;
@@ -17,7 +18,7 @@ interface CourseStatsHeaderProps {
   pendingReceiptsCount: number;
   totalHours: number;
   isOfficial: boolean;
-  onSelectTab: (tab: 'available' | 'my_courses' | 'archive' | 'admin_panel') => void;
+  onSelectTab: (tab: CourseTab) => void;
   onOpenBuilder: () => void;
 }
 

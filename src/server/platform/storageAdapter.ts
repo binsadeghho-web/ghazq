@@ -123,7 +123,8 @@ export class StorageAdapter implements IStorageAdapter {
     category: UploadCategory,
     originalName: string,
     buffer: Buffer,
-    forcedExt?: string
+    forcedExt?: string,
+    subFolder?: string
   ): Promise<SavedUploadResult> {
     // Strict Fail-Fast 503 if MySQL database is not connected
     ensureDatabaseConnection();
@@ -136,7 +137,10 @@ export class StorageAdapter implements IStorageAdapter {
     }
 
     const catConfig = storageConfig.categories[category] || storageConfig.categories.misc;
-    const targetDir = catConfig.path;
+    const cleanSubFolder = subFolder
+      ? path.basename(subFolder).replace(/[^a-zA-Z0-9_-]/g, '')
+      : '';
+    const targetDir = cleanSubFolder ? path.join(catConfig.path, cleanSubFolder) : catConfig.path;
 
     // Ensure target folder exists
     try {
@@ -154,11 +158,12 @@ export class StorageAdapter implements IStorageAdapter {
     }
 
     await fs.promises.writeFile(filePath, buffer);
-    logger.info(`Categorized file uploaded [${category}]: ${safeFilename}`);
+    logger.info(`Categorized file uploaded [${category}${cleanSubFolder ? `/${cleanSubFolder}` : ''}]: ${safeFilename}`);
 
+    const urlSegment = cleanSubFolder ? `${catConfig.folderName}/${cleanSubFolder}/${safeFilename}` : `${catConfig.folderName}/${safeFilename}`;
     const url = catConfig.isPrivate
-      ? `/api/storage/private/${catConfig.folderName}/${safeFilename}`
-      : `/uploads/${catConfig.folderName}/${safeFilename}`;
+      ? `/api/storage/private/${urlSegment}`
+      : `/uploads/${urlSegment}`;
 
     return {
       filename: safeFilename,

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CourseEnrollment } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
-import { FileText, X } from 'lucide-react';
+import { api } from '../../../services/apiClient';
+import { FileText, X, Loader2, Download } from 'lucide-react';
 
 interface CourseReceiptInspectionModalProps {
   enrollment: CourseEnrollment | null;
@@ -17,7 +18,50 @@ export const CourseReceiptInspectionModal: React.FC<CourseReceiptInspectionModal
   onConfirm,
   onImageClick,
 }) => {
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
+  const [contentType, setContentType] = useState<string>('');
+  const [loadingFile, setLoadingFile] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let objUrl: string | null = null;
+    const rawUrl = enrollment?.receiptFileUrl;
+    if (!rawUrl) {
+      setPreviewBlobUrl('');
+      setContentType('');
+      return;
+    }
+
+    if (rawUrl.startsWith('/api/storage/private/')) {
+      setLoadingFile(true);
+      api
+        .fetchPrivateFileBlob(rawUrl)
+        .then(res => {
+          if (!active) return;
+          objUrl = URL.createObjectURL(res.blob);
+          setPreviewBlobUrl(objUrl);
+          setContentType(res.contentType || res.blob.type);
+        })
+        .catch(() => {
+          if (active) setPreviewBlobUrl('');
+        })
+        .finally(() => {
+          if (active) setLoadingFile(false);
+        });
+    } else {
+      setPreviewBlobUrl(rawUrl);
+      setContentType(rawUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+    }
+
+    return () => {
+      active = false;
+      if (objUrl) URL.revokeObjectURL(objUrl);
+    };
+  }, [enrollment]);
+
   if (!enrollment) return null;
+
+  const isPdf = contentType.includes('pdf') || enrollment.receiptFileUrl?.toLowerCase().endsWith('.pdf');
 
   return (
     <AnimatePresence>
@@ -65,16 +109,33 @@ export const CourseReceiptInspectionModal: React.FC<CourseReceiptInspectionModal
             </div>
 
             {enrollment.receiptFileUrl && (
-              <div
-                onClick={() => onImageClick({ url: enrollment.receiptFileUrl!, title: `فیش بانکی: ${enrollment.userName}` })}
-                className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-72 bg-slate-950 flex items-center justify-center cursor-pointer group"
-                title="جهت بزرگنمایی تصویر فیش کلیک کنید"
-              >
-                <img
-                  src={enrollment.receiptFileUrl}
-                  alt="فیش واریزی"
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform"
-                />
+              <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 min-h-[180px] max-h-72 bg-slate-950 flex items-center justify-center">
+                {loadingFile ? (
+                  <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
+                ) : !previewBlobUrl ? (
+                  <span className="text-slate-400 text-xs">فایل فیش در دسترس نیست.</span>
+                ) : isPdf ? (
+                  <div className="p-6 text-center space-y-3 text-white">
+                    <FileText className="w-10 h-10 text-emerald-400 mx-auto" />
+                    <p className="font-bold">فایل فیش در قالب PDF ذخیره‌شده روی دیسک</p>
+                    <a
+                      href={previewBlobUrl}
+                      download={`receipt-${enrollment.trackingCode}.pdf`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>دانلود فایل PDF</span>
+                    </a>
+                  </div>
+                ) : (
+                  <img
+                    src={previewBlobUrl}
+                    alt="فیش واریزی"
+                    onClick={() => onImageClick({ url: enrollment.receiptFileUrl!, title: `فیش بانکی: ${enrollment.userName}` })}
+                    title="جهت بزرگنمایی تصویر فیش کلیک کنید"
+                    className="w-full h-full max-h-72 object-contain cursor-pointer hover:scale-105 transition-transform"
+                  />
+                )}
               </div>
             )}
 

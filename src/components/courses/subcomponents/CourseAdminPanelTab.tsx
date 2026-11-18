@@ -18,6 +18,8 @@ export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
 }) => {
   const [adminEnrollmentStatusFilter, setAdminEnrollmentStatusFilter] = useState<'all' | 'pending_review' | 'confirmed' | 'rejected'>('all');
   const [adminEnrollmentCourseFilter, setAdminEnrollmentCourseFilter] = useState<string>('all');
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; userName: string; reason: string } | null>(null);
+  const [submittingReject, setSubmittingReject] = useState(false);
 
   const filteredEnrollments = useMemo(() => {
     return courseEnrollments.filter(e => {
@@ -154,10 +156,13 @@ export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
                       )}
                       {enr.paymentStatus !== 'rejected' && (
                         <button
-                          onClick={() => {
-                            const reason = prompt('لطفاً دلیل عدم تایید یا نقص فیش را بنویسید:', 'شماره پیگیری فیش در صورتحساب مرکز مشاهده نشد.');
-                            if (reason) onReviewEnrollment(enr.id, 'rejected', reason);
-                          }}
+                          onClick={() =>
+                            setRejectTarget({
+                              id: enr.id,
+                              userName: enr.userName,
+                              reason: 'شماره پیگیری فیش در صورتحساب مرکز مشاهده نشد.',
+                            })
+                          }
                           className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 border border-rose-500/30 font-bold text-xs transition-colors cursor-pointer"
                         >
                           رد
@@ -171,6 +176,46 @@ export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
           </tbody>
         </table>
       </div>
+
+      {rejectTarget && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 text-xs">
+          <span className="font-black text-rose-800 dark:text-rose-200 whitespace-nowrap">
+            دلیل عدم تایید فیش ({rejectTarget.userName}):
+          </span>
+          <input
+            type="text"
+            value={rejectTarget.reason}
+            onChange={e => setRejectTarget({ ...rejectTarget, reason: e.target.value })}
+            className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-slate-900 dark:text-white"
+            placeholder="دلیل رد فیش را وارد کنید..."
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={submittingReject || !rejectTarget.reason.trim()}
+              onClick={async () => {
+                setSubmittingReject(true);
+                try {
+                  await onReviewEnrollment(rejectTarget.id, 'rejected', rejectTarget.reason.trim());
+                  setRejectTarget(null);
+                } finally {
+                  setSubmittingReject(false);
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black disabled:opacity-50"
+            >
+              {submittingReject ? 'در حال ثبت...' : 'تایید رد فیش'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRejectTarget(null)}
+              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold"
+            >
+              انصراف
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

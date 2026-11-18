@@ -5,6 +5,7 @@ import {
   CartableRequest,
   Course,
   CourseEnrollment,
+  CourseInstallmentRecord,
   Product,
   ProductOrder,
   ProductsStoreConfig,
@@ -64,6 +65,8 @@ export interface AppContextType {
   cartableRequests: CartableRequest[];
   courses: Course[];
   courseEnrollments: CourseEnrollment[];
+  myInstallments: CourseInstallmentRecord[];
+  dueNowInstallments: CourseInstallmentRecord[];
   products: Product[];
   consultants: Consultant[];
   counselingRequests: CounselingRequest[];
@@ -110,6 +113,8 @@ export interface AppContextType {
   restoreCourse: (courseId: string) => Promise<{ success: boolean; message: string }>;
   sendCourseSms: (courseId: string, recipientPhone: string | 'all', message: string, recipientName?: string) => Promise<{ success: boolean; count: number; message: string }>;
   reviewCourseEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
+  refreshCourses: () => Promise<void>;
+  refreshMyInstallments: () => Promise<void>;
 
   // Product methods
   productOrders: ProductOrder[];
@@ -400,6 +405,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     // Courses
     courses: courses.courses,
     courseEnrollments: courses.courseEnrollments,
+    myInstallments: courses.myInstallments,
+    dueNowInstallments: courses.dueNowInstallments,
     enrollCourse: courses.enrollCourse,
     enrollCourseWithDetails: courses.enrollCourseWithDetails,
     addCourse: courses.addCourse,
@@ -408,6 +415,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     restoreCourse: courses.restoreCourse,
     sendCourseSms: courses.sendCourseSms,
     reviewCourseEnrollment: courses.reviewCourseEnrollment,
+    refreshCourses: courses.refreshCourses,
+    refreshMyInstallments: courses.refreshMyInstallments,
 
     // Products
     products: products.products,

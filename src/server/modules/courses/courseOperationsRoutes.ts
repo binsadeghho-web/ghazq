@@ -21,7 +21,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
         selectWithTimeout<any>(`SELECT id, title, instructor, hours, sessions_count, waitlist_enabled, version FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_attendance WHERE course_id = ? OR course_id = ? ORDER BY session_number ASC`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_waitlist WHERE course_id = ? OR course_id = ? ORDER BY created_at ASC`, [cBuf, courseId], 3000),
-        selectWithTimeout<any>(`SELECT * FROM course_certificates WHERE course_id = ? OR course_id = ? ORDER BY issued_at DESC`, [cBuf, courseId], 3000),
+        selectWithTimeout<any>(`SELECT * FROM course_certificates WHERE (course_id = ? OR course_id = ?) AND deleted_at IS NULL ORDER BY issued_at DESC`, [cBuf, courseId], 3000),
       ]);
 
       if (!courseRows || courseRows.length === 0) {
@@ -67,6 +67,10 @@ export function registerCourseOperationsRoutes(router: Router): void {
           userId: fromIdBuffer(cert.user_id),
           userName: cert.user_name,
           userNationalId: cert.user_national_id || '',
+          certificateFileUrl: cert.certificate_file_url || undefined,
+          certificateFileName: cert.certificate_file_name || undefined,
+          uploadedByName: cert.uploaded_by_name || undefined,
+          gradeText: cert.grade_text || undefined,
           issuedAt: cert.issued_at ? new Date(cert.issued_at).toISOString() : new Date().toISOString(),
           version: Number(cert.version || 1),
         })),
@@ -259,7 +263,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
     }
   });
 
-  // Issue Official Course Certificate
+  // Issue or Attach Uploaded Certificate File (stored per course in dedicated disk folder)
   router.post('/:courseId/certificates', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
@@ -273,11 +277,17 @@ export function registerCourseOperationsRoutes(router: Router): void {
       if (!cRows || cRows.length === 0) throw AppError.notFound('دوره آموزشی');
       const course = cRows[0];
 
-      const targetUserId = (currentUser.role === 'admin' || currentUser.role === 'supervisor') && req.body.userId
-        ? req.body.userId
-        : currentUser.id;
+      const isAdmin = currentUser.role === 'admin' || currentUser.role === 'supervisor';
+      const targetUserId = isAdmin && req.body.userId ? req.body.userId : currentUser.id;
       const targetUserName = req.body.userName || currentUser.fullName;
-      const targetNationalId = req.body.userNationalId || currentUser.nationalId || '';
+      const targetNationalId = req.body.userNationalId || (currentUser as any).nationalId || '';
+      const certFileUrl = req.body.certificateFileUrl || null;
+      const certFileName = req.body.certificateFileName || null;
+      const gradeText = req.body.gradeText || null;
+
+      if (certFileUrl && !String(certFileUrl).startsWith('/api/storage/private/course_certificates/')) {
+        throw AppError.badRequest('مسیر فایل گواهی نامعتبر است و باید در پوشه اختصاصی گواهی دوره ذخیره شود.', 'INVALID_CERT_FILE_URL');
+      }
 
       const uBuf = toIdBuffer(targetUserId);
       const existingCert = await selectWithTimeout<any>(
@@ -288,18 +298,40 @@ export function registerCourseOperationsRoutes(router: Router): void {
 
       if (existingCert && existingCert.length > 0) {
         const c = existingCert[0];
-        return res.json({
-          id: fromIdBuffer(c.id),
-          certificateNumber: c.certificate_number,
-          courseId: fromIdBuffer(c.course_id),
-          courseTitle: c.course_title,
-          instructor: c.instructor,
-          hours: Number(c.hours || course.hours || course.duration_hours || 16),
-          userId: fromIdBuffer(c.user_id),
-          userName: c.user_name,
-          userNationalId: c.user_national_id || '',
-          issuedAt: c.issued_at ? new Date(c.issued_at).toISOString() : new Date().toISOString(),
-        });
+        if (certFileUrl || gradeText || c.deleted_at) {
+          await p.query(
+            `UPDATE course_certificates
+             SET certificate_file_url = COALESCE(?, certificate_file_url),
+                 certificate_file_name = COALESCE(?, certificate_file_name),
+                 grade_text = COALESCE(?, grade_text),
+                 uploaded_by_name = ?,
+                 deleted_at = NULL,
+                 version = version + 1
+             WHERE id = ?`,
+            [certFileUrl, certFileName, gradeText, currentUser.fullName, c.id]
+          );
+        }
+        const refreshed = await selectWithTimeout<any>(`SELECT * FROM course_certificates WHERE id = ? LIMIT 1`, [c.id], 3000);
+        const r = refreshed[0];
+        const certObj = {
+          id: fromIdBuffer(r.id),
+          certificateNumber: r.certificate_number,
+          courseId: fromIdBuffer(r.course_id),
+          courseTitle: r.course_title,
+          instructor: r.instructor,
+          hours: Number(r.hours || course.hours || course.duration_hours || 16),
+          userId: fromIdBuffer(r.user_id),
+          userName: r.user_name,
+          userNationalId: r.user_national_id || '',
+          certificateFileUrl: r.certificate_file_url || undefined,
+          certificateFileName: r.certificate_file_name || undefined,
+          uploadedByName: r.uploaded_by_name || undefined,
+          gradeText: r.grade_text || undefined,
+          issuedAt: r.issued_at ? new Date(r.issued_at).toISOString() : new Date().toISOString(),
+          version: Number(r.version || 1),
+        };
+        outbox.enqueue('courses.certificate_issued', { courseId, certificate: certObj });
+        return res.json(certObj);
       }
 
       const id = generateUUIDv7();
@@ -307,9 +339,26 @@ export function registerCourseOperationsRoutes(router: Router): void {
       const hours = Number(course.hours || course.duration_hours || 16);
 
       await p.query(
-        `INSERT INTO course_certificates (id, certificate_number, course_id, course_title, instructor, hours, user_id, user_name, user_national_id, version)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-        [toIdBuffer(id), certNum, cBuf, course.title, course.instructor, hours, uBuf, targetUserName, targetNationalId]
+        `INSERT INTO course_certificates (
+          id, certificate_number, course_id, course_title, instructor, hours,
+          user_id, user_name, user_national_id, certificate_file_url, certificate_file_name,
+          uploaded_by_name, grade_text, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        [
+          toIdBuffer(id),
+          certNum,
+          cBuf,
+          course.title,
+          course.instructor,
+          hours,
+          uBuf,
+          targetUserName,
+          targetNationalId,
+          certFileUrl,
+          certFileName,
+          certFileUrl ? currentUser.fullName : null,
+          gradeText,
+        ]
       );
 
       const certObj = {
@@ -322,7 +371,12 @@ export function registerCourseOperationsRoutes(router: Router): void {
         userId: targetUserId,
         userName: targetUserName,
         userNationalId: targetNationalId,
+        certificateFileUrl: certFileUrl || undefined,
+        certificateFileName: certFileName || undefined,
+        uploadedByName: certFileUrl ? currentUser.fullName : undefined,
+        gradeText: gradeText || undefined,
         issuedAt: new Date().toISOString(),
+        version: 1,
       };
 
       outbox.enqueue('courses.certificate_issued', {
@@ -331,6 +385,28 @@ export function registerCourseOperationsRoutes(router: Router): void {
       });
 
       res.status(201).json(certObj);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Soft-delete uploaded certificate (Admin Only)
+  router.delete('/:courseId/certificates/:certId', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      const user = getCurrentUser(req);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+
+      const certBuf = toIdBuffer(req.params.certId);
+      const p = getPool();
+      const [upd]: any = await p.query(
+        `UPDATE course_certificates SET deleted_at = CURRENT_TIMESTAMP(3), version = version + 1 WHERE id = ? OR id = ?`,
+        [certBuf, req.params.certId]
+      );
+      if (!upd || upd.affectedRows === 0) throw AppError.notFound('گواهی دوره');
+
+      outbox.enqueue('courses.certificate_issued', { courseId: req.params.courseId, removedCertId: req.params.certId });
+      res.json({ success: true, id: req.params.certId });
     } catch (err) {
       next(err);
     }

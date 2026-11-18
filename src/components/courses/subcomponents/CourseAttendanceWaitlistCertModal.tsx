@@ -1,22 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Course, CourseEnrollment, User } from '../../../types';
 import { api } from '../../../services/apiClient';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
+import { PrivateFileViewerModal } from './PrivateFileViewerModal';
 import {
   X,
-  CheckCircle2,
   ClipboardCheck,
   Award,
   Clock,
   Printer,
   ToggleLeft,
   ToggleRight,
-  Users,
   Check,
   UserPlus,
-  Sparkles,
   Calendar,
+  UploadCloud,
+  FolderOpen,
+  Trash2,
+  Eye,
+  Loader2,
 } from 'lucide-react';
 
 interface CourseAttendanceWaitlistCertModalProps {
@@ -44,6 +47,11 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
   const [waitlistItems, setWaitlistItems] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [printingCert, setPrintingCert] = useState<any | null>(null);
+  const [viewerCertFile, setViewerCertFile] = useState<{ url: string; title: string } | null>(null);
+  const [selectedCertUserId, setSelectedCertUserId] = useState<string>('');
+  const [certGradeText, setCertGradeText] = useState<string>('عالی (احراز کامل ساعت آموزشی)');
+  const [uploadingCertFor, setUploadingCertFor] = useState<boolean>(false);
+  const certFileInputRef = useRef<HTMLInputElement>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -159,7 +167,10 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
     }
   };
 
-  const handleIssueCertificate = async (participant: { userId: string; userName: string; nationalId?: string }) => {
+  const handleIssueCertificate = async (
+    participant: { userId: string; userName: string; nationalId?: string },
+    uploadedFile?: { url: string; fileName: string }
+  ) => {
     try {
       await api.issueCourseCertificate(course.id, {
         userId: participant.userId,
@@ -168,12 +179,55 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
         courseTitle: course.title,
         instructorName: course.instructor,
         hours: course.hours,
-        gradeText: 'عالی (احراز کامل ساعت آموزشی)',
+        gradeText: certGradeText || 'عالی (احراز کامل ساعت آموزشی)',
+        certificateFileUrl: uploadedFile?.url,
+        certificateFileName: uploadedFile?.fileName,
       });
       await loadCourseOpsData();
-      showToast(`گواهینامه رسمی دوره برای «${participant.userName}» صادر گردید.`);
+      showToast(
+        uploadedFile
+          ? `فایل گواهینامه در پوشه اختصاصی دوره (course_${course.id}) برای «${participant.userName}» ذخیره و صادر شد.`
+          : `گواهینامه رسمی دوره برای «${participant.userName}» صادر گردید.`
+      );
     } catch (err: any) {
-      showToast(`خطا در صدور گواهینامه: ${err.message}`);
+      showToast(`خطا در صدور/بارگذاری گواهینامه: ${err.message}`);
+    }
+  };
+
+  const handleCertFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedCertUserId) return;
+    const participant = courseEnrollments.find(en => en.userId === selectedCertUserId);
+    if (!participant) {
+      showToast('ابتدا شرکت‌کننده را انتخاب نمایید.');
+      return;
+    }
+    setUploadingCertFor(true);
+    try {
+      const uploaded = await api.uploadFile(file, 'course_certificate', { courseId: course.id });
+      await handleIssueCertificate(
+        {
+          userId: participant.userId,
+          userName: participant.userName,
+          nationalId: participant.userNationalId,
+        },
+        { url: uploaded.url, fileName: uploaded.originalName || file.name }
+      );
+    } catch (err: any) {
+      showToast(`خطا در آپلود فایل گواهی: ${err?.message || 'خطای سرور'}`);
+    } finally {
+      setUploadingCertFor(false);
+      if (certFileInputRef.current) certFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteCertificate = async (certId: string) => {
+    try {
+      await api.deleteCourseCertificate(course.id, certId);
+      await loadCourseOpsData();
+      showToast('گواهینامه با موفقیت حذف نرم شد.');
+    } catch (err: any) {
+      showToast(`خطا در حذف گواهینامه: ${err?.message || 'خطای سرور'}`);
     }
   };
 
@@ -603,14 +657,73 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
               </div>
             )}
 
-            {/* TAB 3: OFFICIAL CERTIFICATE ISSUANCE */}
+            {/* TAB 3: OFFICIAL CERTIFICATE ISSUANCE & PER-COURSE FOLDER UPLOAD */}
             {activeTab === 'certificates' && (
               <div className="space-y-5">
                 {isOfficial && (
-                  <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-3">
-                    <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 block">
-                      صدور گواهینامه پایان دوره برای شرکت‌کنندگان تاییدشده:
-                    </span>
+                  <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                        <FolderOpen className="w-4 h-4 text-indigo-600" />
+                        <span>بارگذاری فایل گواهینامه در پوشه ویژه این دوره (course_{course.id}) و صدور رسمی:</span>
+                      </span>
+                      <span className="text-[10px] font-mono bg-white/80 dark:bg-slate-900 px-2.5 py-1 rounded-lg text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        course_certificates/course_{course.id}/
+                      </span>
+                    </div>
+
+                    {/* Dedicated File Upload Bar for Selected Participant */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end p-3 rounded-xl bg-white/80 dark:bg-slate-900 border border-indigo-200/70 dark:border-indigo-800/50 text-xs">
+                      <div className="sm:col-span-5 space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block">
+                          انتخاب شرکت‌کننده جهت آپلود گواهی:
+                        </label>
+                        <select
+                          value={selectedCertUserId}
+                          onChange={e => setSelectedCertUserId(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
+                        >
+                          <option value="">-- انتخاب شرکت‌کننده دوره --</option>
+                          {courseEnrollments.map(enr => (
+                            <option key={enr.id} value={enr.userId}>
+                              {enr.userName} ({toPersianNumbers(enr.userNationalId || enr.userPhone)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-4 space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block">
+                          درجه / عنوان ارزشیابی:
+                        </label>
+                        <input
+                          type="text"
+                          value={certGradeText}
+                          onChange={e => setCertGradeText(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3 flex gap-1.5">
+                        <input
+                          ref={certFileInputRef}
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={handleCertFileUpload}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          disabled={!selectedCertUserId || uploadingCertFor}
+                          onClick={() => certFileInputRef.current?.click()}
+                          className="w-full px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {uploadingCertFor ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                          <span>{uploadingCertFor ? 'در حال آپلود...' : 'آپلود فایل گواهی'}</span>
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="flex flex-wrap gap-2">
                       {courseEnrollments.map(enr => {
                         const alreadyIssued = certificates.some(c => c.userId === enr.userId);
@@ -633,7 +746,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                           >
                             <Award className="w-3.5 h-3.5" />
                             <span>
-                              {alreadyIssued ? `به‌روزرسانی گواهی: ${enr.userName}` : `صدور گواهی: ${enr.userName}`}
+                              {alreadyIssued ? `به‌روزرسانی گواهی سیستمی: ${enr.userName}` : `صدور گواهی سیستمی: ${enr.userName}`}
                             </span>
                           </button>
                         );
@@ -644,7 +757,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
 
                 {visibleCertificates.length === 0 ? (
                   <div className="p-10 text-center text-xs text-slate-400 border border-slate-200 dark:border-slate-800 rounded-2xl">
-                    هنوز گواهینامه‌ای در این دوره صادر نشده است.
+                    هنوز گواهینامه‌ای در این دوره صادر یا بارگذاری نشده است.
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -653,7 +766,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                         key={cert.id}
                         className="p-6 rounded-3xl bg-gradient-to-br from-amber-50/90 via-white to-emerald-50/70 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/30 border-2 border-amber-500/40 shadow-md space-y-4"
                       >
-                        <div className="flex items-start justify-between gap-4 border-b border-amber-500/20 pb-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-amber-500/20 pb-3">
                           <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black">
                               <Award className="w-6 h-6" />
@@ -663,22 +776,51 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                                 گواهینامه رسمی پایان دوره تخصصی مرکز فقه و قضا
                               </span>
                               <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                                {cert.courseTitle}
+                                {cert.courseTitle} — {cert.userName}
                               </h4>
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPrintingCert(cert);
-                              setTimeout(() => window.print(), 150);
-                            }}
-                            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <Printer className="w-3.5 h-3.5 text-amber-400" />
-                            <span>چاپ گواهینامه رسمی</span>
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {cert.certificateFileUrl && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewerCertFile({
+                                    url: cert.certificateFileUrl,
+                                    title: `فایل گواهینامه ${cert.userName} (${cert.certificateFileName || 'گواهی'})`,
+                                  })
+                                }
+                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>مشاهده و دانلود فایل گواهی</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPrintingCert(cert);
+                                setTimeout(() => window.print(), 150);
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-amber-400" />
+                              <span>چاپ گواهینامه</span>
+                            </button>
+
+                            {isOfficial && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCertificate(cert.id)}
+                                className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 cursor-pointer"
+                                title="حذف گواهینامه"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-200">
@@ -697,6 +839,11 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
 
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-500/20 text-[11px] text-slate-500 font-mono">
                           <span>شماره ثبت و استعلام گواهینامه: {cert.certificateNumber}</span>
+                          {cert.certificateFileName && (
+                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                              فایل پیوست: {cert.certificateFileName}
+                            </span>
+                          )}
                           <span>تاریخ صدور: {toPersianNumbers(cert.issuedDate)}</span>
                         </div>
                       </div>
@@ -708,6 +855,12 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
           </div>
         </motion.div>
       </div>
+
+      <PrivateFileViewerModal
+        fileUrl={viewerCertFile?.url || null}
+        title={viewerCertFile?.title}
+        onClose={() => setViewerCertFile(null)}
+      />
     </AnimatePresence>
   );
 };

@@ -120,13 +120,70 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
     try { await p.query(`CREATE INDEX idx_cartable_dept_status ON cartable_requests (referred_department, status, created_at);`); } catch {}
     try { await p.query(`CREATE INDEX idx_cartable_assigned_role ON cartable_requests (assigned_official_role, status, created_at);`); } catch {}
 
-    // 3. Courses Domain Enhancements: sessions_count, waitlist_enabled + course_attendance, course_waitlist, course_certificates tables
+    // 3. Courses Domain Enhancements (Reforms 39-45 + Multi-type Discounts + Per-course Certificates)
     const courseAlters = [
       `ADD COLUMN sessions_count INT NOT NULL DEFAULT 4`,
-      `ADD COLUMN waitlist_enabled TINYINT(1) NOT NULL DEFAULT 1`
+      `ADD COLUMN waitlist_enabled TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN instructor_title VARCHAR(255) NULL`,
+      `ADD COLUMN instructor_resume TEXT NULL`,
+      `ADD COLUMN instructor_avatar_url VARCHAR(512) NULL`,
+      `ADD COLUMN category VARCHAR(128) NULL`,
+      `ADD COLUMN level VARCHAR(128) NULL`,
+      `ADD COLUMN hours INT NOT NULL DEFAULT 0`,
+      `ADD COLUMN start_date VARCHAR(64) NULL`,
+      `ADD COLUMN holding_time VARCHAR(128) NULL`,
+      `ADD COLUMN schedule VARCHAR(255) NULL`,
+      `ADD COLUMN end_date VARCHAR(64) NULL`,
+      `ADD COLUMN holding_format ENUM('online', 'in_person', 'hybrid') NOT NULL DEFAULT 'online'`,
+      `ADD COLUMN venue_address VARCHAR(512) NULL`,
+      `ADD COLUMN meeting_link VARCHAR(512) NULL`,
+      `ADD COLUMN meeting_access_guide TEXT NULL`,
+      `ADD COLUMN cover_image VARCHAR(512) NULL`,
+      `ADD COLUMN allowed_payment_method VARCHAR(32) NOT NULL DEFAULT 'both'`,
+      `ADD COLUMN archive_access VARCHAR(32) NOT NULL DEFAULT 'enrolled_only'`,
+      `ADD COLUMN archive_resources JSON NULL`,
+      `ADD COLUMN prerequisites TEXT NULL`,
+      `ADD COLUMN necessity TEXT NULL`,
+      `ADD COLUMN description TEXT NULL`,
+      `ADD COLUMN manager_notes TEXT NULL`,
+      `ADD COLUMN target_audiences JSON NULL`,
+      `ADD COLUMN custom_tags JSON NULL`,
+      `ADD COLUMN custom_fields JSON NULL`,
+      `ADD COLUMN hidden_fields JSON NULL`,
+      `ADD COLUMN has_installments TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN installment_details VARCHAR(512) NULL`,
+      `ADD COLUMN installment_plan JSON NULL`,
+      `ADD COLUMN has_certificate TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN certificate_details VARCHAR(512) NULL`,
+      `ADD COLUMN post_enrollment_banner VARCHAR(512) NULL`,
+      `ADD COLUMN post_enrollment_message TEXT NULL`,
+      `ADD COLUMN welcome_box_font_size VARCHAR(16) NULL`,
+      `ADD COLUMN welcome_box_bg_color VARCHAR(16) NULL`,
+      `ADD COLUMN reminder_date VARCHAR(64) NULL`,
+      `ADD COLUMN reminder_schedule VARCHAR(255) NULL`,
+      `ADD COLUMN offline_download_url VARCHAR(512) NULL`,
+      `ADD COLUMN offline_download_guide TEXT NULL`,
+      `ADD COLUMN offline_download_files JSON NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL`,
+      `ADD COLUMN deleted_by VARCHAR(255) NULL`
     ];
     for (const clause of courseAlters) {
       try { await p.query(`ALTER TABLE courses ${clause};`); } catch {}
+    }
+
+    const enrollmentAlters = [
+      `ADD COLUMN payment_plan_type ENUM('full', 'installment') NOT NULL DEFAULT 'full'`,
+      `ADD COLUMN discount_code VARCHAR(64) NULL`,
+      `ADD COLUMN discount_amount BIGINT NOT NULL DEFAULT 0`,
+      `ADD COLUMN original_amount BIGINT NOT NULL DEFAULT 0`,
+      `ADD COLUMN final_total_amount BIGINT NOT NULL DEFAULT 0`,
+      `ADD COLUMN receipt_bank_name VARCHAR(128) NULL`,
+      `ADD COLUMN receipt_date VARCHAR(64) NULL`,
+      `ADD COLUMN reviewed_by VARCHAR(255) NULL`,
+      `ADD COLUMN reviewed_at DATETIME(3) NULL`
+    ];
+    for (const clause of enrollmentAlters) {
+      try { await p.query(`ALTER TABLE course_enrollments ${clause};`); } catch {}
     }
 
     await p.query(`
@@ -173,11 +230,117 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
         user_id BINARY(16) NOT NULL,
         user_name VARCHAR(255) NOT NULL,
         user_national_id VARCHAR(32) NULL,
+        certificate_file_url VARCHAR(512) NULL,
+        certificate_file_name VARCHAR(255) NULL,
+        uploaded_by_name VARCHAR(255) NULL,
+        grade_text VARCHAR(255) NULL,
         issued_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        deleted_at DATETIME(3) NULL,
         version INT NOT NULL DEFAULT 1,
         UNIQUE KEY uq_cert_course_user (course_id, user_id),
         INDEX idx_cert_user (user_id, issued_at),
-        INDEX idx_cert_number (certificate_number)
+        INDEX idx_cert_number (certificate_number),
+        INDEX idx_cert_course_del (course_id, deleted_at, issued_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const certAlters = [
+      `ADD COLUMN certificate_file_url VARCHAR(512) NULL`,
+      `ADD COLUMN certificate_file_name VARCHAR(255) NULL`,
+      `ADD COLUMN uploaded_by_name VARCHAR(255) NULL`,
+      `ADD COLUMN grade_text VARCHAR(255) NULL`,
+      `ADD COLUMN deleted_at DATETIME(3) NULL`
+    ];
+    for (const clause of certAlters) {
+      try { await p.query(`ALTER TABLE course_certificates ${clause};`); } catch {}
+    }
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS course_installments (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        enrollment_id BINARY(16) NOT NULL,
+        course_id BINARY(16) NOT NULL,
+        course_title VARCHAR(255) NOT NULL,
+        user_id BINARY(16) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(32) NULL,
+        user_national_id VARCHAR(32) NULL,
+        installment_number INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        amount BIGINT NOT NULL DEFAULT 0,
+        due_date_iso VARCHAR(32) NOT NULL,
+        due_date_jalali VARCHAR(32) NOT NULL,
+        status ENUM('pending', 'awaiting_verification', 'paid', 'rejected', 'overdue') NOT NULL DEFAULT 'pending',
+        payment_method ENUM('online_gateway', 'bank_receipt') NULL,
+        tracking_code VARCHAR(128) NULL,
+        receipt_file_url VARCHAR(512) NULL,
+        receipt_bank_name VARCHAR(128) NULL,
+        receipt_date VARCHAR(64) NULL,
+        paid_at DATETIME(3) NULL,
+        reviewed_by VARCHAR(255) NULL,
+        reviewed_at DATETIME(3) NULL,
+        admin_note TEXT NULL,
+        deleted_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        UNIQUE KEY uq_enr_inst_num (enrollment_id, installment_number),
+        INDEX idx_inst_user_status_due (user_id, deleted_at, status, due_date_iso),
+        INDEX idx_inst_course_status (course_id, deleted_at, status, due_date_iso),
+        INDEX idx_inst_enrollment (enrollment_id, installment_number)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS course_discount_codes (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        code VARCHAR(64) NOT NULL UNIQUE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        discount_category ENUM('percentage', 'fixed_amount', 'single_course', 'multi_course', 'all_courses', 'audience_specific', 'user_specific', 'early_bird') NOT NULL DEFAULT 'percentage',
+        value_type ENUM('percent', 'fixed') NOT NULL DEFAULT 'percent',
+        discount_value BIGINT NOT NULL DEFAULT 0,
+        max_discount_amount BIGINT NULL,
+        min_purchase_amount BIGINT NOT NULL DEFAULT 0,
+        course_id BINARY(16) NULL,
+        course_ids JSON NULL,
+        target_audiences JSON NULL,
+        allowed_national_ids JSON NULL,
+        max_uses INT NULL,
+        per_user_limit INT NOT NULL DEFAULT 1,
+        used_count INT NOT NULL DEFAULT 0,
+        starts_at DATETIME(3) NULL,
+        expires_at DATETIME(3) NULL,
+        starts_at_jalali VARCHAR(32) NULL,
+        expires_at_jalali VARCHAR(32) NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_by_name VARCHAR(255) NULL,
+        deleted_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_disc_active_del (deleted_at, is_active, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS course_discount_usages (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        discount_id BINARY(16) NOT NULL,
+        code VARCHAR(64) NOT NULL,
+        course_id BINARY(16) NOT NULL,
+        course_title VARCHAR(255) NOT NULL,
+        enrollment_id BINARY(16) NULL,
+        user_id BINARY(16) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_national_id VARCHAR(32) NULL,
+        user_phone VARCHAR(32) NULL,
+        original_amount BIGINT NOT NULL DEFAULT 0,
+        discount_amount BIGINT NOT NULL DEFAULT 0,
+        final_amount BIGINT NOT NULL DEFAULT 0,
+        used_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_disc_usage_code (discount_id, used_at),
+        INDEX idx_disc_usage_user (user_id, discount_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 

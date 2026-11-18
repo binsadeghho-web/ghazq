@@ -1,14 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { Course, CourseEnrollment } from '../../types';
-import { GraduationCap } from 'lucide-react';
+import { Course, CourseEnrollment, CourseInstallmentRecord } from '../../types';
+import { GraduationCap, CreditCard, CalendarClock, ArrowLeft } from 'lucide-react';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
+import { toPersianNumbers } from '../../utils/persianNumbers';
 
 // Subcomponents
 import { CourseStatsHeader } from './subcomponents/CourseStatsHeader';
 import { CourseFilterBar, CourseTab, CourseFormatFilter } from './subcomponents/CourseFilterBar';
 import { CourseCard } from './subcomponents/CourseCard';
+import { CourseDetailModal } from './subcomponents/CourseDetailModal';
 import { CourseRegistrationModal } from './subcomponents/CourseRegistrationModal';
 import { CourseAttendanceModal } from './subcomponents/CourseAttendanceModal';
 import { CourseRosterModal } from './subcomponents/CourseRosterModal';
@@ -20,12 +22,19 @@ import { CourseDeletedTab } from './subcomponents/CourseDeletedTab';
 import { CourseAdminPanelTab } from './subcomponents/CourseAdminPanelTab';
 import { CourseAdminPanelModal } from './CourseAdminPanelModal';
 import { CourseAttendanceWaitlistCertModal } from './subcomponents/CourseAttendanceWaitlistCertModal';
+import { InstallmentAutoGatewayModal } from './subcomponents/InstallmentAutoGatewayModal';
+import { CourseInstallmentsAdminPanel } from './subcomponents/CourseInstallmentsAdminPanel';
+import { CourseDiscountsAdminPanel } from './subcomponents/CourseDiscountsAdminPanel';
 
 export const CoursesSection: React.FC = () => {
   const {
     currentUser,
     courses,
     courseEnrollments,
+    myInstallments,
+    dueNowInstallments,
+    refreshMyInstallments,
+    refreshCourses,
     enrollCourseWithDetails,
     addCourse,
     updateCourse,
@@ -45,6 +54,7 @@ export const CoursesSection: React.FC = () => {
   const [formatFilter, setFormatFilter] = useState<CourseFormatFilter>('all');
 
   // Modals & Active Selections
+  const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [registrationCourse, setRegistrationCourse] = useState<Course | null>(null);
   const [attendanceCourse, setAttendanceCourse] = useState<Course | null>(null);
   const [opsModalCourse, setOpsModalCourse] = useState<Course | null>(null);
@@ -56,6 +66,24 @@ export const CoursesSection: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [inspectingEnrollment, setInspectingEnrollment] = useState<CourseEnrollment | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+
+  // Installment Auto-Gateway Modal State
+  const [activeGatewayInstallment, setActiveGatewayInstallment] = useState<CourseInstallmentRecord | null>(null);
+  const [isAutoTriggeredGateway, setIsAutoTriggeredGateway] = useState(false);
+  const autoPromptedUserRef = useRef<string | null>(null);
+
+  // Auto-open payment gateway when due installment exists for the current user
+  useEffect(() => {
+    if (!currentUser?.id) {
+      autoPromptedUserRef.current = null;
+      return;
+    }
+    if (dueNowInstallments.length > 0 && autoPromptedUserRef.current !== currentUser.id) {
+      autoPromptedUserRef.current = currentUser.id;
+      setActiveGatewayInstallment(dueNowInstallments[0]);
+      setIsAutoTriggeredGateway(true);
+    }
+  }, [currentUser?.id, dueNowInstallments]);
 
   // Memoized Lists (with granular customer visibility filtering)
   const activeCourses = useMemo(
@@ -80,6 +108,11 @@ export const CoursesSection: React.FC = () => {
   const pendingReceiptsCount = useMemo(() => {
     return courseEnrollments.filter(e => e.paymentStatus === 'pending_review').length;
   }, [courseEnrollments]);
+
+  const unpaidMyInstallments = useMemo(
+    () => myInstallments.filter(item => item.status !== 'paid'),
+    [myInstallments]
+  );
 
   const currentList = useMemo(() => {
     let list: Course[] = [];
@@ -115,6 +148,8 @@ export const CoursesSection: React.FC = () => {
 
   const handleSubmitRegistration = async (enrollmentData: {
     paymentMethod: 'online_gateway' | 'bank_receipt';
+    paymentPlanType?: 'full' | 'installment';
+    discountCode?: string;
     trackingCode: string;
     receiptBankName: string;
     receiptDate: string;
@@ -122,6 +157,7 @@ export const CoursesSection: React.FC = () => {
   }) => {
     if (!registrationCourse) throw new Error('No course selected');
     await enrollCourseWithDetails(registrationCourse.id, enrollmentData);
+    await refreshMyInstallments().catch(() => {});
     return enrollmentData.trackingCode;
   };
 
@@ -157,6 +193,8 @@ export const CoursesSection: React.FC = () => {
     }
   };
 
+  const isCatalogTab = activeTab === 'available' || activeTab === 'my_courses' || activeTab === 'archive';
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* 1. Header & Metrics Overview */}
@@ -173,6 +211,52 @@ export const CoursesSection: React.FC = () => {
           setCourseBuilderOpen(true);
         }}
       />
+
+      {/* User Installment Status & Auto-Gateway Banner */}
+      {unpaidMyInstallments.length > 0 && (
+        <div
+          className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+            dueNowInstallments.length > 0
+              ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100'
+              : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100'
+          }`}
+        >
+          <div className="flex items-center gap-3 text-xs">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                dueNowInstallments.length > 0 ? 'bg-amber-500 text-stone-950' : 'bg-emerald-600 text-white'
+              }`}
+            >
+              <CalendarClock className="w-5 h-5" />
+            </div>
+            <div>
+              <strong className="font-black text-sm block">
+                {dueNowInstallments.length > 0
+                  ? `${toPersianNumbers(dueNowInstallments.length)} قسط سررسید شده آماده پرداخت دارید`
+                  : `${toPersianNumbers(unpaidMyInstallments.length)} قسط آتی در برنامه اقساط شما ثبت شده است`}
+              </strong>
+              <span className="opacity-85">
+                {dueNowInstallments.length > 0
+                  ? `نزدیک‌ترین قسط: ${dueNowInstallments[0].courseTitle || 'دوره تخصصی'} · قسط ${toPersianNumbers(dueNowInstallments[0].installmentNumber)} به مبلغ ${toPersianNumbers(dueNowInstallments[0].amount.toLocaleString('fa-IR'))} تومان`
+                  : `قسط بعدی: ${unpaidMyInstallments[0].courseTitle || 'دوره تخصصی'} · سررسید ${toPersianNumbers(unpaidMyInstallments[0].dueDateJalali || unpaidMyInstallments[0].dueDateIso.slice(0, 10))}`}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsAutoTriggeredGateway(false);
+              setActiveGatewayInstallment(dueNowInstallments[0] || unpaidMyInstallments[0]);
+            }}
+            className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-500 text-white dark:text-stone-950 text-xs font-black flex items-center gap-2 hover:opacity-95 shrink-0 cursor-pointer"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>{dueNowInstallments.length > 0 ? 'پرداخت قسط سررسید شده' : 'مدیریت و پرداخت اقساط من'}</span>
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 2. Navigation Tabs & Filter Bar */}
       <CourseFilterBar
@@ -191,7 +275,7 @@ export const CoursesSection: React.FC = () => {
       />
 
       {/* 3. Catalog & Course Cards Grid */}
-      {activeTab !== 'admin_panel' && activeTab !== 'deleted_courses' && (
+      {isCatalogTab && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentList.length === 0 ? (
             <div className="col-span-full p-16 text-center text-xs text-slate-400 space-y-3 glass-card rounded-3xl border border-slate-200 dark:border-white/10">
@@ -208,6 +292,7 @@ export const CoursesSection: React.FC = () => {
                   course={course}
                   userEnrollment={userEnrollment}
                   isOfficial={isOfficial}
+                  onOpenDetail={setDetailCourse}
                   onOpenRegistration={handleOpenRegistration}
                   onOpenAttendance={setAttendanceCourse}
                   onOpenDedicatedAdmin={setDedicatedCourseAdmin}
@@ -247,7 +332,54 @@ export const CoursesSection: React.FC = () => {
         />
       )}
 
-      {/* 6. Modular Dialogs */}
+      {/* 6. Admin Installments Management Tab */}
+      {isOfficial && activeTab === 'installments_admin' && (
+        <CourseInstallmentsAdminPanel courses={courses} />
+      )}
+
+      {/* 7. Admin Discount Codes Management Tab */}
+      {isOfficial && activeTab === 'discounts_admin' && (
+        <CourseDiscountsAdminPanel courses={courses} />
+      )}
+
+      {/* 8. Modular Dialogs */}
+      <CourseDetailModal
+        course={detailCourse}
+        userEnrollment={detailCourse ? courseEnrollments.find(e => e.courseId === detailCourse.id && e.userId === currentUser?.id) : undefined}
+        isOfficial={isOfficial}
+        onClose={() => setDetailCourse(null)}
+        onOpenRegistration={c => {
+          setDetailCourse(null);
+          handleOpenRegistration(c);
+        }}
+        onOpenAttendance={c => {
+          setDetailCourse(null);
+          setAttendanceCourse(c);
+        }}
+        onOpenDedicatedAdmin={
+          isOfficial
+            ? c => {
+                setDetailCourse(null);
+                setDedicatedCourseAdmin(c);
+              }
+            : undefined
+        }
+        onImageClick={setLightboxImage}
+      />
+
+      <InstallmentAutoGatewayModal
+        installment={activeGatewayInstallment}
+        allMyInstallments={myInstallments}
+        isAutoTriggered={isAutoTriggeredGateway}
+        onClose={() => {
+          setActiveGatewayInstallment(null);
+          setIsAutoTriggeredGateway(false);
+        }}
+        onPaymentSuccess={async () => {
+          await Promise.all([refreshMyInstallments(), refreshCourses()]);
+        }}
+      />
+
       <CourseRegistrationModal
         course={registrationCourse}
         currentUser={currentUser}

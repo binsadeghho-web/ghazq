@@ -21,6 +21,8 @@ export type UploadCategory =
   | 'cartable_alumni'
   | 'cartable_officials'
   | 'product_receipt'
+  | 'course_receipt'
+  | 'course_certificate'
   | 'misc';
 
 export interface StorageConfig {
@@ -60,6 +62,8 @@ export const storageConfig: StorageConfig = {
     cartable_alumni: { path: path.join(uploadsDir, 'cartable_alumni'), isPrivate: true, folderName: 'cartable_alumni' },
     cartable_officials: { path: path.join(uploadsDir, 'cartable_officials'), isPrivate: true, folderName: 'cartable_officials' },
     product_receipt: { path: path.join(uploadsDir, 'product_receipts'), isPrivate: true, folderName: 'product_receipts' },
+    course_receipt: { path: path.join(uploadsDir, 'course_receipts'), isPrivate: true, folderName: 'course_receipts' },
+    course_certificate: { path: path.join(uploadsDir, 'course_certificates'), isPrivate: true, folderName: 'course_certificates' },
     misc: { path: path.join(uploadsDir, 'misc'), isPrivate: false, folderName: 'misc' },
   },
   backupsDir: path.join(rootPath, 'backups'),
@@ -99,6 +103,8 @@ export async function initStorageDirectories(timeoutMs = 5000): Promise<boolean>
           storageConfig.categories.cartable_alumni.path,
           storageConfig.categories.cartable_officials.path,
           storageConfig.categories.product_receipt.path,
+          storageConfig.categories.course_receipt.path,
+          storageConfig.categories.course_certificate.path,
           storageConfig.categories.misc.path,
           // Legacy backwards compatibility folder
           path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE'),

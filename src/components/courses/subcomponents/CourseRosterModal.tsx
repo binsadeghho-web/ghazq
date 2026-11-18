@@ -45,6 +45,14 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
   const [smsTemplateKey, setSmsTemplateKey] = useState<string>('custom');
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsFeedback, setSmsFeedback] = useState<string | null>(null);
+  const [inlineAction, setInlineAction] = useState<{
+    enrollmentId: string;
+    userName: string;
+    mode: 'reject' | 'note';
+    currentStatus: CourseEnrollment['paymentStatus'];
+    text: string;
+  } | null>(null);
+  const [savingInlineAction, setSavingInlineAction] = useState(false);
 
   const courseEnrollmentsList = useMemo(() => {
     if (!course) return [];
@@ -207,6 +215,55 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
 
             {/* Participants Roster List */}
             <div className="p-4 overflow-y-auto space-y-2.5 flex-1 divide-y divide-slate-100 dark:divide-slate-800">
+              {inlineAction && (
+                <div className="p-3 mb-2 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-emerald-500/40 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-xs">
+                  <span className="font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                    {inlineAction.mode === 'reject'
+                      ? `علت رد ثبت‌نام ${inlineAction.userName}:`
+                      : `یادداشت مدیر برای ${inlineAction.userName}:`}
+                  </span>
+                  <input
+                    type="text"
+                    value={inlineAction.text}
+                    onChange={e => setInlineAction({ ...inlineAction, text: e.target.value })}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                    placeholder={inlineAction.mode === 'reject' ? 'علت رد را بنویسید...' : 'متن یادداشت...'}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={savingInlineAction || (inlineAction.mode === 'reject' && !inlineAction.text.trim())}
+                      onClick={async () => {
+                        setSavingInlineAction(true);
+                        try {
+                          const targetStatus =
+                            inlineAction.mode === 'reject'
+                              ? 'rejected'
+                              : inlineAction.currentStatus === 'rejected'
+                              ? 'rejected'
+                              : 'confirmed';
+                          await onReviewEnrollment(inlineAction.enrollmentId, targetStatus, inlineAction.text.trim());
+                          setInlineAction(null);
+                        } finally {
+                          setSavingInlineAction(false);
+                        }
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl font-black text-white disabled:opacity-50 ${
+                        inlineAction.mode === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                      }`}
+                    >
+                      {savingInlineAction ? 'در حال ثبت...' : inlineAction.mode === 'reject' ? 'ثبت رد' : 'ذخیره یادداشت'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInlineAction(null)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold"
+                    >
+                      انصراف
+                    </button>
+                  </div>
+                </div>
+              )}
               {filteredEnrollments.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-400">
                   هیچ شرکت‌کننده‌ای با مشخصات جستجو یافت نشد.
@@ -295,10 +352,15 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
 
                       {enr.paymentStatus !== 'rejected' && (
                         <button
-                          onClick={() => {
-                            const reason = prompt('علت رد ثبت‌نام را وارد فرمایید:', 'نقص در مدارک واریزی');
-                            if (reason) onReviewEnrollment(enr.id, 'rejected', reason);
-                          }}
+                          onClick={() =>
+                            setInlineAction({
+                              enrollmentId: enr.id,
+                              userName: enr.userName,
+                              mode: 'reject',
+                              currentStatus: enr.paymentStatus,
+                              text: 'نقص در مدارک واریزی',
+                            })
+                          }
                           className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/30 font-bold hover:bg-rose-500/20"
                         >
                           رد
@@ -306,12 +368,15 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                       )}
 
                       <button
-                        onClick={() => {
-                          const newNote = prompt('ویرایش یادداشت مدیر برای این پرونده:', enr.adminNote || '');
-                          if (newNote !== null) {
-                            onReviewEnrollment(enr.id, enr.paymentStatus === 'rejected' ? 'rejected' : 'confirmed', newNote);
-                          }
-                        }}
+                        onClick={() =>
+                          setInlineAction({
+                            enrollmentId: enr.id,
+                            userName: enr.userName,
+                            mode: 'note',
+                            currentStatus: enr.paymentStatus,
+                            text: enr.adminNote || '',
+                          })
+                        }
                         className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                         title="ویرایش یادداشت مدیر"
                       >
