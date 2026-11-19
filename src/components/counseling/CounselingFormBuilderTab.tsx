@@ -47,7 +47,7 @@ export const CounselingFormBuilderTab: React.FC<CounselingFormBuilderTabProps> =
 
   useEffect(() => {
     setDraft(JSON.parse(JSON.stringify(sourceConfig)));
-  }, [sourceConfig]);
+  }, [sourceConfig.version, counselingType]);
 
   const steps: DynamicWizardStep[] = Array.isArray(draft.wizardSteps) ? draft.wizardSteps : [];
 

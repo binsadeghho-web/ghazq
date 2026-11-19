@@ -84,10 +84,49 @@ function mapCounselingRequestRow(row: any): CounselingRequest & { version: numbe
   };
 }
 
+let counselingRequestsSchemaEnsured = false;
+
+async function ensureCounselingRequestsSchema(): Promise<void> {
+  if (counselingRequestsSchemaEnsured) return;
+  const p = getPool();
+  const alters = [
+    `ADD COLUMN hide_identity TINYINT(1) NOT NULL DEFAULT 0`,
+    `ADD COLUMN counseling_type ENUM('general', 'specialized_career') NOT NULL DEFAULT 'general'`,
+    `ADD COLUMN selected_field_id VARCHAR(64) NULL`,
+    `ADD COLUMN selected_field_title VARCHAR(255) NULL`,
+    `ADD COLUMN form_responses JSON NULL`,
+    `ADD COLUMN preferred_consultant_id BINARY(16) NULL`,
+    `ADD COLUMN preferred_consultant_name VARCHAR(255) NULL`,
+    `ADD COLUMN user_phone VARCHAR(32) NULL`,
+    `ADD COLUMN user_national_id VARCHAR(32) NULL`,
+    `ADD COLUMN user_role_title VARCHAR(128) NULL`,
+    `ADD COLUMN venue_details VARCHAR(512) NULL`,
+    `ADD COLUMN fee BIGINT NOT NULL DEFAULT 0`,
+    `ADD COLUMN subsidy_notice VARCHAR(512) NULL`,
+    `ADD COLUMN payment_status VARCHAR(32) NULL DEFAULT 'free'`,
+    `ADD COLUMN reviewed_by VARCHAR(128) NULL`,
+    `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+    `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
+    `ADD COLUMN version INT NOT NULL DEFAULT 1`,
+    `ADD COLUMN updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)`,
+    `MODIFY COLUMN category VARCHAR(64) NOT NULL DEFAULT 'individual'`,
+    `MODIFY COLUMN category_title VARCHAR(255) NOT NULL DEFAULT 'مشاوره'`,
+    `MODIFY COLUMN meeting_mode VARCHAR(64) NOT NULL DEFAULT 'حضوری'`,
+    `MODIFY COLUMN status VARCHAR(64) NOT NULL DEFAULT 'pending'`,
+  ];
+  for (const clause of alters) {
+    try {
+      await p.query(`ALTER TABLE counseling_requests ${clause};`);
+    } catch {}
+  }
+  counselingRequestsSchemaEnsured = true;
+}
+
 export class CounselingService {
   async getConsultants(typeFilter?: string): Promise<Array<Consultant & { version: number }>> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
+    await ensureCounselingRequestsSchema();
     let sql = `SELECT * FROM consultants WHERE deleted_at IS NULL AND is_active = 1`;
     const params: any[] = [];
     if (typeFilter === 'general' || typeFilter === 'specialized_career') {
@@ -283,6 +322,7 @@ export class CounselingService {
   async getRequests(authCtx: AuthContext, typeFilter?: string): Promise<Array<CounselingRequest & { version: number }>> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
+    await ensureCounselingRequestsSchema();
     let sql = `SELECT * FROM counseling_requests WHERE deleted_at IS NULL`;
     const params: any[] = [];
 
@@ -304,6 +344,7 @@ export class CounselingService {
   async getRequestById(authCtx: AuthContext, id: string): Promise<(CounselingRequest & { version: number }) | undefined> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
+    await ensureCounselingRequestsSchema();
     const idBuf = toIdBuffer(id);
     const rows = await selectWithTimeout<any>(
       `SELECT * FROM counseling_requests WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
@@ -340,6 +381,7 @@ export class CounselingService {
   ): Promise<CounselingRequest & { version: number }> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
+    await ensureCounselingRequestsSchema();
     const idBuf = toIdBuffer(id);
     const p = getPool();
 
@@ -442,6 +484,7 @@ export class CounselingService {
     }
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
+    await ensureCounselingRequestsSchema();
 
     const id = generateUUIDv7();
     const idBuf = toIdBuffer(id);

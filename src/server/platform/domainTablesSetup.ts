@@ -429,6 +429,8 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN selected_field_id VARCHAR(64) NULL`,
       `ADD COLUMN selected_field_title VARCHAR(255) NULL`,
       `ADD COLUMN form_responses JSON NULL`,
+      `ADD COLUMN preferred_consultant_id BINARY(16) NULL`,
+      `ADD COLUMN preferred_consultant_name VARCHAR(255) NULL`,
       `ADD COLUMN user_phone VARCHAR(32) NULL`,
       `ADD COLUMN user_national_id VARCHAR(32) NULL`,
       `ADD COLUMN user_role_title VARCHAR(128) NULL`,
@@ -439,11 +441,16 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN reviewed_by VARCHAR(128) NULL`,
       `ADD COLUMN reviewed_at DATETIME(3) NULL`,
       `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
+      `ADD COLUMN version INT NOT NULL DEFAULT 1`,
+      `ADD COLUMN updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)`,
     ];
     for (const clause of counselingReqAlters) {
       try { await p.query(`ALTER TABLE counseling_requests ${clause};`); } catch {}
     }
     try { await p.query(`ALTER TABLE counseling_requests MODIFY COLUMN category VARCHAR(64) NOT NULL DEFAULT 'individual';`); } catch {}
+    try { await p.query(`ALTER TABLE counseling_requests MODIFY COLUMN category_title VARCHAR(255) NOT NULL DEFAULT 'مشاوره';`); } catch {}
+    try { await p.query(`ALTER TABLE counseling_requests MODIFY COLUMN meeting_mode VARCHAR(64) NOT NULL DEFAULT 'حضوری';`); } catch {}
+    try { await p.query(`ALTER TABLE counseling_requests MODIFY COLUMN status VARCHAR(64) NOT NULL DEFAULT 'pending';`); } catch {}
     try { await p.query(`CREATE INDEX idx_counseling_req_type_status ON counseling_requests (deleted_at, counseling_type, status, created_at);`); } catch {}
     try { await p.query(`CREATE INDEX idx_counseling_req_app_type ON counseling_requests (applicant_id, counseling_type, deleted_at, created_at);`); } catch {}
 

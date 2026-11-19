@@ -46,7 +46,95 @@ export const INITIAL_SPECIALIZED_COUNSELING_CONFIG: SpecializedCounselingPortalC
   descriptionModalBody: '۱. پس از ثبت درخواست، پرونده شما توسط دبیرخانه مشاوره تخصصی بررسی و متناسب‌ترین مشاور معرفی می‌گردد.\n۲. جلسات به صورت حضوری در مرکز، برخط تصویری یا تلفنی قابل برگزاری است.',
   showAdvisorsToStudents: true,
   submissionSuccessMessage: 'درخواست مشاوره تخصصی شغلی/تحصیلی شما با موفقیت در سامانه ثبت شد.',
-  wizardSteps: [],
+  wizardSteps: [
+    {
+      id: 'spec_step_1',
+      title: 'نوع نیاز و اولویت جلسه',
+      subtitle: 'مشخص فرمایید مشاوره شما بیشتر متمرکز بر کدام هدف است.',
+      enabled: true,
+      order: 1,
+      fields: [
+        {
+          id: 'sf_goal',
+          key: 'primaryGoal',
+          label: 'هدف اصلی درخواست مشاوره تخصصی',
+          type: 'radio',
+          options: ['مشاوره ارتقا و مسیر شغلی', 'مشاوره ادامه تحصیل و مقطع دکتری/سطح ۴', 'راه‌اندازی دفتر تخصصی یا داوری', 'سایر موارد ترکیبی'],
+          required: true,
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'sf_urgency',
+          key: 'urgencyLevel',
+          label: 'اولویت زمانی رسیدگی',
+          type: 'select',
+          options: ['عادی (برنامه‌ریزی هفتگی)', 'فوری (نیاز به تصمیم‌گیری در چند روز آینده)'],
+          required: true,
+          enabled: true,
+          order: 2,
+        },
+      ],
+    },
+    {
+      id: 'spec_step_2',
+      title: 'شرح مسئله و سوابق مرتبط',
+      subtitle: 'ارائه خلاصه وضعیت فعلی به مشاور کمک می‌کند جلسه پربارتری داشته باشید.',
+      enabled: true,
+      order: 2,
+      fields: [
+        {
+          id: 'sf_background',
+          key: 'currentStatus',
+          label: 'وضعیت فعلی شغلی یا تحصیلی',
+          type: 'text',
+          placeholder: 'مثال: دانش‌آموخته پایه قضایی / دانشجوی سطح ۳ / وکیل پایه یک...',
+          required: true,
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'sf_question',
+          key: 'keyQuestions',
+          label: 'سوالات کلیدی و چالش‌هایی که می‌خواهید بررسی شود',
+          type: 'textarea',
+          placeholder: 'لطفاً دغدغه اصلی، محدودیت‌ها یا گزینه‌های پیش رو را به صورت خلاصه بنویسید...',
+          required: true,
+          enabled: true,
+          order: 2,
+        },
+      ],
+    },
+    {
+      id: 'spec_step_3',
+      title: 'شیوه و زمان پیشنهادی برگزاری',
+      subtitle: 'شیوه مطلوب ارتباط با مشاور را مشخص نمایید.',
+      enabled: true,
+      order: 3,
+      fields: [
+        {
+          id: 'sf_mode',
+          key: 'meetingMode',
+          label: 'نحوه برگزاری جلسه',
+          type: 'radio',
+          options: ['حضوری', 'برخط (تصویری امن)', 'تلفنی'],
+          required: true,
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'sf_time_pref',
+          key: 'preferredDays',
+          label: 'روزها و بازه زمانی مناسب شما',
+          type: 'checkbox',
+          options: ['شنبه تا دوشنبه (صبح)', 'شنبه تا دوشنبه (عصر)', 'سه‌شنبه و چهارشنبه (صبح)', 'سه‌شنبه و چهارشنبه (عصر)'],
+          required: false,
+          enabled: true,
+          order: 2,
+        },
+      ],
+    },
+  ],
   version: 1,
 };
 
@@ -66,7 +154,95 @@ export const INITIAL_GENERAL_COUNSELING_CONFIG: GeneralCounselingPortalConfig = 
   showRatesInWizardEnd: true,
   ratesButtonLabel: 'اطلاع از نرخ نامه مشاوره مرکز',
   submissionSuccessMessage: 'درخواست رزرو وقت مشاوره شما با موفقیت ثبت شد.',
-  wizardSteps: [],
+  wizardSteps: [
+    {
+      id: 'gen_step_1',
+      title: 'حوزه موضوعی و مخاطب جلسه',
+      subtitle: 'حوزه اصلی مشاوره روان‌شناختی را مشخص فرمایید.',
+      enabled: true,
+      order: 1,
+      fields: [
+        {
+          id: 'gf_audience',
+          key: 'clientType',
+          label: 'مشاوره برای چه کسی درخواست می‌شود؟',
+          type: 'radio',
+          options: ['شخص خود متقاضی', 'همراه با همسر / مشاوره خانواده', 'فرزند یا یکی از اعضای درجه یک خانواده'],
+          required: true,
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'gf_topic',
+          key: 'psychTopic',
+          label: 'موضوع محوری جلسه',
+          type: 'select',
+          options: ['مدیریت استرس و فرسودگی شغلی', 'روابط زوجین و خانواده', 'مشاوره پیش از ازدواج', 'رشد فردی و تصمیم‌گیری', 'سایر مسائل روان‌شناختی'],
+          required: true,
+          enabled: true,
+          order: 2,
+        },
+      ],
+    },
+    {
+      id: 'gen_step_2',
+      title: 'شرح حال اولیه و ترجیحات',
+      subtitle: 'بیان کوتاه وضعیت فعلی کمک می‌کند جلسه با آمادگی کامل آغاز شود.',
+      enabled: true,
+      order: 2,
+      fields: [
+        {
+          id: 'gf_summary',
+          key: 'issueSummary',
+          label: 'خلاصه موضوع یا هدف از جلسه مشاوره',
+          type: 'textarea',
+          placeholder: 'به‌اختصار بفرمایید در چه زمینه‌ای نیاز به همراهی روان‌شناس دارید...',
+          required: true,
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'gf_history',
+          key: 'priorCounseling',
+          label: 'آیا پیش‌تر در این زمینه جلسه مشاوره‌ای داشته‌اید؟',
+          type: 'radio',
+          options: ['خیر، اولین نوبت است', 'بله، سابقه پیگیری قبلی دارم'],
+          required: false,
+          enabled: true,
+          order: 2,
+        },
+      ],
+    },
+    {
+      id: 'gen_step_3',
+      title: 'شیوه برگزاری و زمان پیشنهادی',
+      subtitle: 'نوع جلسه و روزهای مطلوب خود را مشخص نمایید.',
+      enabled: true,
+      order: 3,
+      fields: [
+        {
+          id: 'gf_mode',
+          key: 'meetingMode',
+          label: 'شیوه برگزاری جلسه مشاوره',
+          type: 'radio',
+          options: ['حضوری', 'برخط (تصویری امن)', 'تلفنی'],
+          required: true,
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'gf_days',
+          key: 'preferredDays',
+          label: 'بازه زمانی مناسب جهت هماهنگی نوبت',
+          type: 'checkbox',
+          options: ['روزهای زوج (صبح)', 'روزهای زوج (عصر)', 'روزهای فرد (صبح)', 'روزهای فرد (عصر)'],
+          required: false,
+          enabled: true,
+          order: 2,
+        },
+      ],
+    },
+  ],
   version: 1,
 };
 
@@ -156,8 +332,11 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
     notifyToast(text, type);
   }, []);
 
+  const currentUserId = currentUser?.id;
+  const currentUserRole = currentUser?.role;
+
   const refreshCounseling = useCallback(async () => {
-    if (!currentUser) {
+    if (!currentUserId || !currentUserRole) {
       setConsultants([]);
       setCounselingRequests([]);
       setCounselingFields([]);
@@ -168,7 +347,7 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       return;
     }
 
-    const isStaff = STAFF_ROLES.has(currentUser.role);
+    const isStaff = STAFF_ROLES.has(currentUserRole);
 
     try {
       const results = await Promise.allSettled([
@@ -193,11 +372,11 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       if (results[7].status === 'fulfilled' && Array.isArray(results[7].value)) setTestAssignments(results[7].value);
       if (results[8].status === 'fulfilled' && Array.isArray(results[8].value)) setTestResults(results[8].value);
     } catch {}
-  }, [currentUser]);
+  }, [currentUserId, currentUserRole]);
 
   useEffect(() => {
     refreshCounseling();
-    if (!currentUser) return;
+    if (!currentUserId) return;
 
     const unsubscribe = api.subscribeToEvents(event => {
       if (!event.type.startsWith('counseling.')) return;

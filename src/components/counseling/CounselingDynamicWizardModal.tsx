@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -95,48 +95,79 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showTariffPopup, setShowTariffPopup] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setErrorMsg('');
-    setIsSubmitted(false);
-    setShowTariffPopup(false);
-    setUserPhone(currentUser?.phone || '');
-    setPreferredConsultantId('');
+  const wasOpenRef = useRef(false);
+  const lastPreselectedIdRef = useRef<string | null>(null);
 
-    const initResponses: Record<string, any> = {};
+  useEffect(() => {
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      lastPreselectedIdRef.current = null;
+      return;
+    }
+
+    const currentPreselectedId = preselectedField?.id || null;
+    const isFreshOpen = !wasOpenRef.current || lastPreselectedIdRef.current !== currentPreselectedId;
+
+    const initDefaults: Record<string, any> = {};
     for (const st of activeSteps) {
       for (const fl of st.fields || []) {
         if (fl.type === 'checkbox') {
-          initResponses[fl.key] = [];
+          initDefaults[fl.key] = [];
         } else {
-          initResponses[fl.key] = '';
+          initDefaults[fl.key] = '';
         }
       }
     }
-    setResponses(initResponses);
 
-    if (preselectedField) {
-      setSelectedFieldId(preselectedField.id);
-      setSelectedFieldTitle(preselectedField.title);
-      setStepIndex(activeFieldsList.length > 0 ? 1 : 0);
-    } else if (activeFieldsList.length > 0) {
-      setSelectedFieldId(activeFieldsList[0].id);
-      setSelectedFieldTitle(activeFieldsList[0].title);
-      setStepIndex(0);
-    } else {
-      setSelectedFieldId('');
-      setSelectedFieldTitle('');
-      setStepIndex(0);
+    if (isFreshOpen) {
+      wasOpenRef.current = true;
+      lastPreselectedIdRef.current = currentPreselectedId;
+      setErrorMsg('');
+      setIsSubmitted(false);
+      setShowTariffPopup(false);
+      setUserPhone(currentUser?.phone || '');
+      setPreferredConsultantId('');
+      setResponses(initDefaults);
+
+      if (preselectedField) {
+        setSelectedFieldId(preselectedField.id);
+        setSelectedFieldTitle(preselectedField.title);
+        setStepIndex(activeFieldsList.length > 0 ? 1 : 0);
+      } else if (activeFieldsList.length > 0) {
+        setSelectedFieldId(activeFieldsList[0].id);
+        setSelectedFieldTitle(activeFieldsList[0].title);
+        setStepIndex(0);
+      } else {
+        setSelectedFieldId('');
+        setSelectedFieldTitle('');
+        setStepIndex(0);
+      }
+      return;
     }
+
+    // While modal is already open, preserve stepIndex and user responses if background data refreshes
+    setResponses(prev => ({ ...initDefaults, ...prev }));
+    setSelectedFieldId(prev => {
+      if (prev) return prev;
+      if (preselectedField) return preselectedField.id;
+      return activeFieldsList[0]?.id || '';
+    });
+    setSelectedFieldTitle(prev => {
+      if (prev) return prev;
+      if (preselectedField) return preselectedField.title;
+      return activeFieldsList[0]?.title || '';
+    });
+    setUserPhone(prev => prev || currentUser?.phone || '');
   }, [isOpen, preselectedField, activeFieldsList, activeSteps, currentUser]);
 
   if (!isOpen) return null;
 
+  const safeStepIndex = Math.min(stepIndex, Math.max(0, totalStepsCount - 1));
   const hasFieldSelectionStep = activeFieldsList.length > 0;
-  const isFieldStep = hasFieldSelectionStep && stepIndex === 0;
+  const isFieldStep = hasFieldSelectionStep && safeStepIndex === 0;
   const dynamicStepOffset = hasFieldSelectionStep ? 1 : 0;
-  const isReviewStep = stepIndex === dynamicStepOffset + activeSteps.length;
-  const currentDynamicStep = !isFieldStep && !isReviewStep ? activeSteps[stepIndex - dynamicStepOffset] : null;
+  const isReviewStep = safeStepIndex === dynamicStepOffset + activeSteps.length;
+  const currentDynamicStep = !isFieldStep && !isReviewStep ? activeSteps[safeStepIndex - dynamicStepOffset] : null;
 
   const handleToggleCheckbox = (key: string, opt: string) => {
     setResponses(prev => {
