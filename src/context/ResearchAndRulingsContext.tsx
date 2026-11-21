@@ -220,9 +220,16 @@ export const ResearchAndRulingsProvider: React.FC<ResearchAndRulingsProviderProp
         api.getResearchProjects(),
         api.getResearchPortalConfig().catch(() => null),
       ]);
-      if (Array.isArray(fetchedResearch)) setResearchMentorships(fetchedResearch);
+      if (Array.isArray(fetchedResearch)) {
+        setResearchMentorships(prev =>
+          JSON.stringify(prev) === JSON.stringify(fetchedResearch) ? prev : fetchedResearch
+        );
+      }
       if (fetchedResearchCfg && typeof fetchedResearchCfg === 'object') {
-        setResearchPortalConfig(mergePortalConfig(fetchedResearchCfg));
+        const merged = mergePortalConfig(fetchedResearchCfg);
+        setResearchPortalConfig(prev =>
+          JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged
+        );
       }
     } catch {}
   }, []);
@@ -236,16 +243,26 @@ export const ResearchAndRulingsProvider: React.FC<ResearchAndRulingsProviderProp
         api.getRulingsPortalConfig().catch(() => null),
         api.getSynergyPosts(),
       ]);
-      if (Array.isArray(fetchedResearch)) setResearchMentorships(fetchedResearch);
+      if (Array.isArray(fetchedResearch)) {
+        setResearchMentorships(prev =>
+          JSON.stringify(prev) === JSON.stringify(fetchedResearch) ? prev : fetchedResearch
+        );
+      }
       if (fetchedResearchCfg && typeof fetchedResearchCfg === 'object') {
-        setResearchPortalConfig(mergePortalConfig(fetchedResearchCfg));
+        const merged = mergePortalConfig(fetchedResearchCfg);
+        setResearchPortalConfig(prev =>
+          JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged
+        );
       }
       if (Array.isArray(fetchedRulings)) setRulings(fetchedRulings);
       if (fetchedPortalCfg && typeof fetchedPortalCfg === 'object') {
-        setRulingsPortalConfig({
+        const mergedRulingsCfg = {
           ...DEFAULT_CLIENT_RULINGS_PORTAL_CONFIG,
           ...fetchedPortalCfg,
-        });
+        };
+        setRulingsPortalConfig(prev =>
+          JSON.stringify(prev) === JSON.stringify(mergedRulingsCfg) ? prev : mergedRulingsCfg
+        );
       }
       if (Array.isArray(fetchedSynergy)) setSynergyPosts(fetchedSynergy);
     } catch {}

@@ -51,9 +51,9 @@ const MainLayout: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-[#070C0A] flex flex-col items-center justify-center gap-4 text-emerald-300" dir="rtl">
-        <div className="w-11 h-11 rounded-2xl border-2 border-emerald-500/30 border-t-emerald-400 animate-spin" />
-        <p className="text-xs font-bold tracking-wide text-stone-300">در حال بررسی نشست امنیتی در پایگاه داده...</p>
+      <div className="min-h-screen bg-[#040A19] flex flex-col items-center justify-center gap-4 text-[#F3D082]" dir="rtl">
+        <div className="w-11 h-11 rounded-2xl border-2 border-[#D8A84E]/30 border-t-[#F3D082] animate-spin" />
+        <p className="text-xs font-bold tracking-wide text-[#C6D3EB]">در حال بررسی نشست امنیتی در پایگاه داده...</p>
       </div>
     );
   }

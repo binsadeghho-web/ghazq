@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -64,27 +64,69 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Sync state when opening or editing
+  // Track open transitions so background 10s polling / SSE config updates NEVER reset the active wizard step or user inputs
+  const wasOpenRef = useRef(false);
+  const lastEditingIdRef = useRef<string | null>(null);
+  const latestWizardConfigRef = useRef(w);
+  latestWizardConfigRef.current = w;
+  const latestEditingRequestRef = useRef(editingRequest);
+  latestEditingRequestRef.current = editingRequest;
+
+  const currentEditingId = editingRequest?.id ?? null;
+
+  // Sync state ONLY when opening the modal (false -> true) or switching to a different editingRequest ID
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      lastEditingIdRef.current = null;
+      return;
+    }
+
+    const justOpened = !wasOpenRef.current;
+    const editingTargetChanged = currentEditingId !== lastEditingIdRef.current;
+    if (!justOpened && !editingTargetChanged) {
+      return;
+    }
+
+    wasOpenRef.current = true;
+    lastEditingIdRef.current = currentEditingId;
+
+    const currentWizard = latestWizardConfigRef.current;
+    const activeEdit = latestEditingRequestRef.current;
+
     setErrorMsg('');
-    if (editingRequest) {
+    if (activeEdit) {
       setStep(1);
-      setResearchCategory(editingRequest.researchCategory || 'thesis');
-      setServiceScope(editingRequest.serviceScope || 'full_pack');
-      setSelectedPartialTopics(editingRequest.selectedPartialTopics || []);
-      setDeliveryMode(editingRequest.deliveryMode || 'in_person');
-      setAccommodationRequested(Boolean(editingRequest.accommodationRequested));
-      setBriefSummary(editingRequest.briefSummary || '');
-      setThesisTitle(editingRequest.thesisTitle || '');
-      setField(editingRequest.field || 'فقه و حقوق جزا و جرم‌شناسی');
-      setTargetInstitution(editingRequest.targetInstitution || '');
+      setResearchCategory(activeEdit.researchCategory || 'thesis');
+      const matchedStep1 = currentWizard.step1Options.find(
+        o => o.id === (activeEdit.researchCategory || 'thesis')
+      );
+      setSelectedStep1Label(
+        matchedStep1?.label || (activeEdit.researchCategory === 'article' ? 'راهبری مقاله' : 'راهبری پایان‌نامه')
+      );
+      setServiceScope(activeEdit.serviceScope || 'full_pack');
+      const matchedStep2 = currentWizard.step2Options.find(
+        o => o.id === (activeEdit.serviceScope || 'full_pack')
+      );
+      setSelectedStep2Label(
+        matchedStep2?.label ||
+          (activeEdit.serviceScope === 'partial_mentorship'
+            ? 'نیاز به راهبری بخشی از پژوهش دارم'
+            : 'نیاز به پک کامل راهبری دارم')
+      );
+      setSelectedPartialTopics(activeEdit.selectedPartialTopics || []);
+      setDeliveryMode(activeEdit.deliveryMode || 'in_person');
+      setAccommodationRequested(Boolean(activeEdit.accommodationRequested));
+      setBriefSummary(activeEdit.briefSummary || '');
+      setThesisTitle(activeEdit.thesisTitle || '');
+      setField(activeEdit.field || 'فقه و حقوق جزا و جرم‌شناسی');
+      setTargetInstitution(activeEdit.targetInstitution || '');
     } else {
       setStep(1);
       setResearchCategory('thesis');
-      setSelectedStep1Label(w.step1Options[0]?.label || 'راهبری پایان‌نامه');
+      setSelectedStep1Label(currentWizard.step1Options[0]?.label || 'راهبری پایان‌نامه');
       setServiceScope('full_pack');
-      setSelectedStep2Label(w.step2Options[0]?.label || 'نیاز به پک کامل راهبری دارم');
+      setSelectedStep2Label(currentWizard.step2Options[0]?.label || 'نیاز به پک کامل راهبری دارم');
       setSelectedPartialTopics([]);
       setDeliveryMode('in_person');
       setAccommodationRequested(false);
@@ -93,7 +135,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
       setField('فقه و حقوق جزا و جرم‌شناسی');
       setTargetInstitution('');
     }
-  }, [isOpen, editingRequest, w.step1Options, w.step2Options]);
+  }, [isOpen, currentEditingId]);
 
   if (!isOpen) return null;
 

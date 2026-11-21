@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Plus, Trash2, Settings, Phone, ListChecks, Info } from 'lucide-react';
 import { ResearchPortalConfig, ResearchWizardOption } from '../../../types';
 
@@ -18,12 +18,20 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
   const [tab, setTab] = useState<'texts' | 'contacts' | 'wizard'>('texts');
   const [draft, setDraft] = useState<ResearchPortalConfig>(config);
   const [saving, setSaving] = useState(false);
+  const wasOpenRef = useRef(false);
+  const latestConfigRef = useRef(config);
+  latestConfigRef.current = config;
 
   useEffect(() => {
-    if (isOpen) {
-      setDraft(JSON.parse(JSON.stringify(config)));
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
     }
-  }, [isOpen, config]);
+    if (!wasOpenRef.current) {
+      wasOpenRef.current = true;
+      setDraft(JSON.parse(JSON.stringify(latestConfigRef.current)));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
