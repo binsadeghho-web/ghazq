@@ -42,8 +42,8 @@ async function bootstrap() {
     logger.warn('MySQL probe notice: ' + (err?.message || err));
   });
 
-  // Request body parsing with bounded size (supports up to 8MB base64 attachments)
-  app.use(express.json({ limit: '15mb' }));
+  // Request body parsing with bounded size (supports up to 45MB audio/video/document attachments)
+  app.use(express.json({ limit: '60mb' }));
 
   // Item 9 & 11: Persian / Arabic character & digit normalization (skipping sensitive keys)
   app.use(persianNormalizerMiddleware);

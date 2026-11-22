@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Product } from '../../types';
 import { MizanHeroSeal } from './MizanHeroSeal';
 import { MizanStoriesSlider } from './MizanStoriesSlider';
 import { MizanBentoGrid } from './MizanBentoGrid';
@@ -9,6 +8,11 @@ import { MizanImpactSection } from './MizanImpactSection';
 import { resolveProductCoverUrl } from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
+import {
+  formatPresentersText,
+  getAllProductCategories,
+  getProductCategoryLabel,
+} from '../products/subcomponents/productUiHelpers';
 import { BookOpen, ArrowLeft, ShoppingBag } from 'lucide-react';
 
 interface MizanDashboardProps {
@@ -16,30 +20,33 @@ interface MizanDashboardProps {
   onOpenNewRequestModal?: () => void;
 }
 
-const FORMAT_LABELS: Record<Product['format'], string> = {
-  book: 'کتاب',
-  multimedia: 'چندرسانه‌ای',
-  audio_series: 'صوت',
-};
-
 export const MizanDashboard: React.FC<MizanDashboardProps> = ({ onNavigate, onOpenNewRequestModal }) => {
   const { products, productsStoreConfig, mizanConfig, currentUser } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const isOfficial = canManageAllInSection(currentUser, 'products', rolePolicies);
-  const [catFilter, setCatFilter] = useState<'all' | Product['format']>('all');
+  const [catFilter, setCatFilter] = useState<string>('all');
 
   const showProductsShelf = isOfficial || productsStoreConfig.isStoreEnabled;
+
+  const allCategories = useMemo(
+    () => getAllProductCategories(productsStoreConfig),
+    [productsStoreConfig]
+  );
 
   const featuredProducts = useMemo(() => {
     return products
       .filter(p => {
-        if (p.isDeleted) return false;
-        if (!isOfficial && productsStoreConfig.enabledCategories?.[p.format] === false) return false;
+        if (p.isDeleted || !p.isAvailable) return false;
+        if (currentUser?.role === 'customer' && p.visibleToCustomer === false) return false;
+        if (!isOfficial) {
+          if (p.showInShowcase === false) return false;
+          if (productsStoreConfig.enabledCategories?.[p.format] === false) return false;
+        }
         if (catFilter !== 'all' && p.format !== catFilter) return false;
         return true;
       })
       .slice(0, 4);
-  }, [products, isOfficial, productsStoreConfig.enabledCategories, catFilter]);
+  }, [products, currentUser?.role, isOfficial, productsStoreConfig.enabledCategories, catFilter]);
 
   return (
     <div className="space-y-7 pb-12 max-w-7xl mx-auto">
@@ -67,34 +74,34 @@ export const MizanDashboard: React.FC<MizanDashboardProps> = ({ onNavigate, onOp
               <div>
                 <h3 className="text-base font-bold text-[#0D3829]">کتاب و محصولات چند رسانه‌ای</h3>
                 <p className="text-xs text-[#527768]">
-                  کتب مرجع، بسته‌های چندرسانه‌ای و درس‌گفتارهای صوتی با نسخه دیجیتال و فیزیکی
+                  کتب مرجع، نشست‌های علمی، درس‌گفتارها و فایل‌های قابل دانلود با نسخه دیجیتال و فیزیکی
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-white border border-[#E3ECE8] text-[11px] font-bold">
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-white border border-[#E3ECE8] text-[11px] font-bold overflow-x-auto scrollbar-none">
                 <button
                   type="button"
                   onClick={() => setCatFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap ${
                     catFilter === 'all' ? 'bg-[#158561] text-white' : 'text-[#527768]'
                   }`}
                 >
                   همه
                 </button>
-                {(['book', 'multimedia', 'audio_series'] as const)
-                  .filter(c => isOfficial || productsStoreConfig.enabledCategories?.[c] !== false)
+                {allCategories
+                  .filter(c => isOfficial || productsStoreConfig.enabledCategories?.[c.id] !== false)
                   .map(cat => (
                     <button
-                      key={cat}
+                      key={cat.id}
                       type="button"
-                      onClick={() => setCatFilter(cat)}
-                      className={`px-2.5 py-1 rounded-lg cursor-pointer ${
-                        catFilter === cat ? 'bg-[#158561] text-white' : 'text-[#527768]'
+                      onClick={() => setCatFilter(cat.id)}
+                      className={`px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap ${
+                        catFilter === cat.id ? 'bg-[#158561] text-white' : 'text-[#527768]'
                       }`}
                     >
-                      {FORMAT_LABELS[cat]}
+                      {cat.shortLabel || cat.label}
                     </button>
                   ))}
               </div>
@@ -125,7 +132,7 @@ export const MizanDashboard: React.FC<MizanDashboardProps> = ({ onNavigate, onOp
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-white">
-                      {FORMAT_LABELS[item.format]}
+                      {getProductCategoryLabel(item.format, item.formatTitle, productsStoreConfig)}
                     </div>
                   </div>
 
@@ -134,7 +141,7 @@ export const MizanDashboard: React.FC<MizanDashboardProps> = ({ onNavigate, onOp
                       {item.title}
                     </h4>
                     <p className="text-[11px] text-[#698F81] mt-0.5 line-clamp-1">
-                      {item.authorOrPresenter}
+                      {formatPresentersText(item)}
                     </p>
                   </div>
                 </div>

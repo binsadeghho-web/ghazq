@@ -1,10 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
-import { BookOpen, AlertTriangle, CheckCircle2, Sliders, X } from 'lucide-react';
+import { BookOpen, AlertTriangle, CheckCircle2, Sliders, X, Power } from 'lucide-react';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 
-import { ProductShelfKey } from './subcomponents/productUiHelpers';
+import {
+  ProductShelfKey,
+  getAllProductCategories,
+  getPresentersList,
+} from './subcomponents/productUiHelpers';
 import { ProductStatsHeader } from './subcomponents/ProductStatsHeader';
 import { ProductShelfBar } from './subcomponents/ProductShelfBar';
 import { ProductCard } from './subcomponents/ProductCard';
@@ -27,6 +31,7 @@ export const ProductsSection: React.FC = () => {
     reviewProductOrder,
     addProduct,
     updateProduct,
+    toggleProductShowcase,
     softDeleteProduct,
     reorderProducts,
     sendPinOtpSms,
@@ -38,6 +43,7 @@ export const ProductsSection: React.FC = () => {
   const [activeShelf, setActiveShelf] = useState<ProductShelfKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [notice, setNotice] = useState<{ msg: string; tone: 'success' | 'error' } | null>(null);
+  const [enablingNow, setEnablingNow] = useState(false);
 
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
   const [purchasingProduct, setPurchasingProduct] = useState<Product | null>(null);
@@ -51,17 +57,25 @@ export const ProductsSection: React.FC = () => {
     setNotice({ msg, tone });
   };
 
-  // Enforce Reform 30 active shelf fallback for non-officials when a category is disabled
+  const categoriesList = useMemo(
+    () => getAllProductCategories(productsStoreConfig),
+    [productsStoreConfig]
+  );
+
+  // Enforce active shelf fallback for non-officials when a category is disabled
   useEffect(() => {
-    if (!isOfficial) {
-      if (
-        (activeShelf === 'book' || activeShelf === 'multimedia' || activeShelf === 'audio_series') &&
-        productsStoreConfig.enabledCategories?.[activeShelf] === false
-      ) {
+    if (!isOfficial && activeShelf !== 'all' && activeShelf !== 'my_library' && activeShelf !== 'orders') {
+      if (productsStoreConfig.enabledCategories?.[activeShelf] === false) {
         setActiveShelf('all');
       }
     }
   }, [activeShelf, isOfficial, productsStoreConfig.enabledCategories]);
+
+  // Keep introProduct fresh after purchase/edit
+  const activeIntroProduct = useMemo(() => {
+    if (!introProduct) return null;
+    return products.find(p => p.id === introProduct.id) || introProduct;
+  }, [introProduct, products]);
 
   const activeProducts = useMemo(
     () =>
@@ -76,17 +90,25 @@ export const ProductsSection: React.FC = () => {
     [products, currentUser?.role, isOfficial, productsStoreConfig.enabledCategories]
   );
 
-  const booksShelf = useMemo(() => activeProducts.filter(p => p.format === 'book'), [activeProducts]);
-  const multimediaShelf = useMemo(() => activeProducts.filter(p => p.format === 'multimedia'), [activeProducts]);
-  const audioShelf = useMemo(() => activeProducts.filter(p => p.format === 'audio_series'), [activeProducts]);
+  const categoryCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const cat of categoriesList) {
+      map[cat.id] = 0;
+    }
+    for (const p of activeProducts) {
+      map[p.format] = (map[p.format] || 0) + 1;
+    }
+    return map;
+  }, [activeProducts, categoriesList]);
+
   const myOwnedProducts = useMemo(() => activeProducts.filter(p => p.isOwned), [activeProducts]);
 
   const currentShelfList = useMemo(() => {
     let list: Product[] = activeProducts;
-    if (activeShelf === 'book') list = booksShelf;
-    else if (activeShelf === 'multimedia') list = multimediaShelf;
-    else if (activeShelf === 'audio_series') list = audioShelf;
-    else if (activeShelf === 'my_library') list = myOwnedProducts;
+    if (activeShelf === 'my_library') list = myOwnedProducts;
+    else if (activeShelf !== 'all' && activeShelf !== 'orders') {
+      list = activeProducts.filter(p => p.format === activeShelf);
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -94,12 +116,13 @@ export const ProductsSection: React.FC = () => {
         p =>
           p.title.toLowerCase().includes(q) ||
           p.authorOrPresenter.toLowerCase().includes(q) ||
+          getPresentersList(p).some(pr => pr.toLowerCase().includes(q)) ||
           (p.subjectIndex || '').toLowerCase().includes(q) ||
           (p.shortDescription || '').toLowerCase().includes(q)
       );
     }
     return list;
-  }, [activeShelf, activeProducts, booksShelf, multimediaShelf, audioShelf, myOwnedProducts, searchQuery]);
+  }, [activeShelf, activeProducts, myOwnedProducts, searchQuery]);
 
   const filteredOrders = useMemo(() => {
     if (!searchQuery.trim()) return productOrders;
@@ -112,7 +135,7 @@ export const ProductsSection: React.FC = () => {
     );
   }, [productOrders, searchQuery]);
 
-  // Reform 30: If master section is disabled and user is not an official
+  // If master section is disabled and user is not an official
   if (!productsStoreConfig.isStoreEnabled && !isOfficial) {
     return (
       <div className="p-10 rounded-3xl border border-amber-500/30 bg-white dark:bg-slate-900 text-center space-y-3" dir="rtl">
@@ -128,6 +151,25 @@ export const ProductsSection: React.FC = () => {
     );
   }
 
+  const handleEnableStoreNow = async () => {
+    try {
+      setEnablingNow(true);
+      const nextEnabled: Record<string, boolean> = { ...(productsStoreConfig.enabledCategories || {}) };
+      for (const cat of categoriesList) {
+        nextEnabled[cat.id] = true;
+      }
+      await updateProductsStoreConfig({
+        isStoreEnabled: true,
+        enabledCategories: nextEnabled,
+      });
+      notify('بخش «کتاب و محصولات چند رسانه‌ای» و همه دسته‌بندی‌ها برای تمامی کاربران فعال شد.');
+    } catch (err: any) {
+      notify(err?.message || 'خطا در فعال‌سازی فوری بخش', 'error');
+    } finally {
+      setEnablingNow(false);
+    }
+  };
+
   const handleOpenProductBuilder = (productToEdit?: Product) => {
     setEditingProduct(productToEdit || null);
     setProductBuilderOpen(true);
@@ -136,10 +178,23 @@ export const ProductsSection: React.FC = () => {
   const handleSaveProductBuilder = async (payload: any, editingProductId: string | null) => {
     if (editingProductId) {
       await updateProduct(editingProductId, payload);
-      notify(`تغییرات «${payload.title}» با موفقیت ذخیره شد.`);
+      notify(`تغییرات «${payload.title}» با موفقیت در پایگاه داده ذخیره و همگام‌سازی شد.`);
     } else {
       await addProduct(payload);
-      notify(`«${payload.title}» به کتاب و محصولات چند رسانه‌ای اضافه شد.`);
+      notify(`«${payload.title}» با موفقیت ثبت و در ویترین جامع خدمات و فروشگاه فعال شد.`);
+    }
+  };
+
+  const handleToggleShowcase = async (productId: string, showInShowcase: boolean) => {
+    try {
+      await toggleProductShowcase(productId, showInShowcase);
+      notify(
+        showInShowcase
+          ? 'نمایش اثر در ویترین جامع خدمات فعال شد.'
+          : 'اثر از ویترین جامع خدمات مخفی شد (در فروشگاه همچنان موجود است).'
+      );
+    } catch (err: any) {
+      notify(err?.message || 'خطا در تغییر وضعیت نمایش ویترین', 'error');
     }
   };
 
@@ -165,10 +220,9 @@ export const ProductsSection: React.FC = () => {
     }
   };
 
-  const anyCategoryDisabled =
-    productsStoreConfig.enabledCategories?.book === false ||
-    productsStoreConfig.enabledCategories?.multimedia === false ||
-    productsStoreConfig.enabledCategories?.audio_series === false;
+  const anyCategoryDisabled = categoriesList.some(
+    cat => productsStoreConfig.enabledCategories?.[cat.id] === false
+  );
 
   return (
     <div className="space-y-5" dir="rtl">
@@ -178,18 +232,29 @@ export const ProductsSection: React.FC = () => {
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
               {!productsStoreConfig.isStoreEnabled
-                ? 'هشدار مدیریتی: کل بخش «کتاب و محصولات چند رسانه‌ای» برای کاربران غیرفعال است.'
-                : 'توجه: یک یا چند دسته‌بندی (کتاب / چندرسانه‌ای / صوت) در حال حاضر برای کاربران غیرفعال است.'}
+                ? 'هشدار مدیریتی: کل بخش «کتاب و محصولات چند رسانه‌ای» هم‌اکنون برای کاربران غیرفعال است و پیام غیرفعالی نمایش می‌دهد.'
+                : 'توجه: یک یا چند دسته‌بندی محصولات در حال حاضر برای کاربران غیرفعال است.'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center gap-1.5 self-start sm:self-center cursor-pointer"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>تغییر وضعیت فعال‌سازی</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={enablingNow}
+              onClick={handleEnableStoreNow}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>{enablingNow ? 'در حال فعال‌سازی...' : 'فعال‌سازی فوری برای همه کاربران'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center gap-1.5 cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>تنظیمات</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -214,9 +279,7 @@ export const ProductsSection: React.FC = () => {
       <ProductStatsHeader
         storeConfig={productsStoreConfig}
         activeProductsCount={activeProducts.length}
-        booksCount={booksShelf.length}
-        multimediaCount={multimediaShelf.length}
-        audioCount={audioShelf.length}
+        categoryCounts={categoryCounts}
         myOwnedCount={myOwnedProducts.length}
         ordersCount={productOrders.length}
         activeShelf={activeShelf}
@@ -232,9 +295,7 @@ export const ProductsSection: React.FC = () => {
         storeConfig={productsStoreConfig}
         isOfficial={isOfficial}
         allCount={activeProducts.length}
-        booksCount={booksShelf.length}
-        multimediaCount={multimediaShelf.length}
-        audioCount={audioShelf.length}
+        categoryCounts={categoryCounts}
         myOwnedCount={myOwnedProducts.length}
         ordersCount={productOrders.length}
         searchQuery={searchQuery}
@@ -244,6 +305,8 @@ export const ProductsSection: React.FC = () => {
       {activeShelf === 'orders' ? (
         <ProductOrdersView
           orders={filteredOrders}
+          products={products}
+          storeConfig={productsStoreConfig}
           isOfficial={isOfficial}
           onReviewOrder={reviewProductOrder}
           onNotify={notify}
@@ -265,12 +328,14 @@ export const ProductsSection: React.FC = () => {
                 index={idx}
                 totalCount={currentShelfList.length}
                 isOfficial={isOfficial}
+                storeConfig={productsStoreConfig}
                 onOpenLightbox={setLightboxImage}
                 onOpenIntro={setIntroProduct}
                 onOpenPurchase={setPurchasingProduct}
                 onOpenEdit={handleOpenProductBuilder}
                 onOpenDelete={setProductToDelete}
                 onMoveOrder={isOfficial && activeShelf === 'all' ? handleMoveOrder : undefined}
+                onToggleShowcase={isOfficial ? handleToggleShowcase : undefined}
               />
             ))
           )}
@@ -278,8 +343,9 @@ export const ProductsSection: React.FC = () => {
       )}
 
       <ProductIntroModal
-        product={introProduct}
+        product={activeIntroProduct}
         storeConfig={productsStoreConfig}
+        isOfficial={isOfficial}
         onClose={() => setIntroProduct(null)}
         onOpenPurchase={setPurchasingProduct}
         onOpenLightbox={setLightboxImage}
@@ -304,6 +370,7 @@ export const ProductsSection: React.FC = () => {
         storeConfig={productsStoreConfig}
         onClose={() => setProductBuilderOpen(false)}
         onSave={handleSaveProductBuilder}
+        onUpdateStoreConfig={updateProductsStoreConfig}
       />
 
       <ProductStoreSettingsModal

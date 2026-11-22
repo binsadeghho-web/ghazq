@@ -67,6 +67,7 @@ export function createMasterRouter(): Router {
         'cartable_alumni',
         'cartable_officials',
         'product_receipt',
+        'product_media',
         'course_receipt',
         'course_certificate',
         'misc',
@@ -80,6 +81,8 @@ export function createMasterRouter(): Router {
         category = 'cartable_officials';
       } else if (rawCategory === 'product_receipts') {
         category = 'product_receipt';
+      } else if (rawCategory === 'product_medias') {
+        category = 'product_media';
       } else if (rawCategory === 'course_receipts') {
         category = 'course_receipt';
       } else if (rawCategory === 'course_certificates') {
@@ -96,6 +99,7 @@ export function createMasterRouter(): Router {
         category === 'research' ||
         category === 'verdict' ||
         category === 'product_receipt' ||
+        category === 'product_media' ||
         category === 'course_receipt' ||
         category === 'course_certificate';
 
@@ -106,6 +110,16 @@ export function createMasterRouter(): Router {
           status: 401,
           detail: 'بارگذاری فایل در بخش خصوصی نیازمند ورود به سامانه است.',
           code: 'UNAUTHENTICATED',
+        });
+      }
+
+      if (category === 'product_media' && !isOrganizationalUserRole(user?.role)) {
+        return res.status(403).json({
+          type: 'forbidden',
+          title: 'عدم دسترسی',
+          status: 403,
+          detail: 'بارگذاری فایل جلسات و محصولات صرفاً برای مدیران سامانه مجاز است.',
+          code: 'FORBIDDEN_UPLOAD_CATEGORY',
         });
       }
 
@@ -205,6 +219,8 @@ export function createMasterRouter(): Router {
         cartable_officials: 'cartable_officials',
         product_receipt: 'product_receipt',
         product_receipts: 'product_receipt',
+        product_media: 'product_media',
+        product_medias: 'product_media',
         course_receipt: 'course_receipt',
         course_receipts: 'course_receipt',
         course_certificate: 'course_certificate',
@@ -312,6 +328,31 @@ export function createMasterRouter(): Router {
         });
         if (!ownsReceipt) {
           return res.status(403).json({ error: 'عدم دسترسی: این تصویر فیش متعلق به سفارش‌های شما نیست.' });
+        }
+      }
+
+      // Strict BOLA guard for product session media downloads: only confirmed purchasers or officials
+      if (storageKey === 'product_media' && !isOrganizationalUserRole(user.role)) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [rows]: any = await p.query(
+          `SELECT p.id
+           FROM products p
+           INNER JOIN product_orders po ON (po.product_id = p.id)
+           WHERE (po.user_id = ? OR po.user_id = ?)
+             AND po.payment_status = 'confirmed'
+             AND po.deleted_at IS NULL
+             AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
+             AND (p.download_link LIKE ? OR CAST(p.media_sessions AS CHAR) LIKE ?)
+           LIMIT 1`,
+          [userIdBuf, user.id, fileUrlSuffix, fileUrlSuffix]
+        );
+        if (!Array.isArray(rows) || rows.length === 0) {
+          return res.status(403).json({ error: 'عدم دسترسی: دریافت فایل جلسات منوط به تکمیل و تایید ثبت‌نام/خرید است.' });
         }
       }
 

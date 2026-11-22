@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { AppSectionId } from '../../types';
@@ -14,7 +14,6 @@ import {
   Gift,
   Users2,
   ShieldCheck,
-  ChevronLeft,
   Wallet
 } from 'lucide-react';
 
@@ -50,6 +49,7 @@ interface NavItemConfig {
   glowColor: string;
   activeBg: string;
   count?: number;
+  statusTag?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -61,6 +61,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentUser, cartableRequests, rulings, synergyPosts, productsStoreConfig } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const [hoveredTab, setHoveredTab] = useState<NavTabId | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; right: number } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const pendingCartableCount = cartableRequests.filter(
     r => r.status === 'pending' || r.status === 'need_info'
@@ -101,11 +103,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'products',
       label: 'کتاب و محصولات چند رسانه‌ای',
-      subtext: 'کتب مرجع، محصولات چندرسانه‌ای و صوت با خرید نسخه دیجیتال یا فیزیکی',
+      subtext: 'کتب مرجع، نشست‌های علمی، درس‌گفتارها و فایل‌های دانلودی',
       icon: BookOpen,
       accentColor: 'text-emerald-500 dark:text-emerald-400',
       glowColor: 'rgba(16, 185, 129, 0.2)',
       activeBg: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white',
+      statusTag: !productsStoreConfig.isStoreEnabled ? 'غیرفعال' : undefined,
     },
     {
       id: 'counseling',
@@ -192,17 +195,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  // Strict Menu Cloaking (Reform 57): Alumni & Customer roles must NEVER see alumni, users, admin, or finance
+  // Strict Menu Cloaking: Hide Alumni, Users, Admin, Finance from alumni & customer roles
   const isStaff = isOrganizationalRole(currentUser?.role);
   const mainNavItems = allNavCandidates.filter(item => {
     if (!isStaff && (item.id === 'alumni' || item.id === 'users' || item.id === 'admin' || item.id === 'finance')) {
-      return false;
-    }
-    if (
-      item.id === 'products' &&
-      !isStaff &&
-      !productsStoreConfig.isStoreEnabled
-    ) {
       return false;
     }
     return canViewSection(currentUser, item.id as AppSectionId, rolePolicies);
@@ -214,7 +210,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setActiveTab(tab);
     setMobileMenuOpen(false);
     setHoveredTab(null);
+    setTooltipPos(null);
   };
+
+  const handleHoverEnter = (tabId: NavTabId, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    const centerTop = Math.max(90, Math.min(window.innerHeight - 130, rect.top + rect.height / 2));
+    const rightOffset = window.innerWidth - rect.left + 14;
+    setHoveredTab(tabId);
+    setTooltipPos({ top: centerTop, right: rightOffset });
+  };
+
+  const hoveredItem =
+    hoveredTab === 'admin'
+      ? {
+          id: 'admin' as NavTabId,
+          label: 'مدیریت سایت و پایش امنیت',
+          subtext: 'پایش امنیت پایگاه داده، زنجیره وقایع SHA-256 و عیب‌یابی آنی سامانه',
+          count: undefined,
+          statusTag: 'Admin',
+        }
+      : mainNavItems.find(i => i.id === hoveredTab) || null;
 
   return (
     <>
@@ -226,30 +242,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* 
-        ========================================================================
-        باکس مستقل شناور (Floating Capsule Dock) به شکل بیضی کشیده
-        بدون چسبیدن به لبه صفحه و بدون باز شدن عرضی (همیشه کپسولی فشرده)
-        با نمایش کارت راهنما (Tooltip) در هاور
-        ========================================================================
-      */}
+      {/* Floating Vertical Capsule Dock with smooth internal scroll + non-clipping fixed tooltip */}
       <aside
-        onMouseLeave={() => setHoveredTab(null)}
-        className={`
-          fixed top-24 right-5 bottom-24 z-30 hidden lg:flex flex-col items-center justify-between
-          w-20 py-4 px-2.5 glass-panel rounded-[36px]
-          border border-white/20 dark:border-white/10
-          shadow-2xl shadow-indigo-500/10 backdrop-blur-2xl transition-colors
-        `}
+        onMouseLeave={() => {
+          setHoveredTab(null);
+          setTooltipPos(null);
+        }}
+        className="fixed top-24 right-5 bottom-24 z-30 hidden lg:flex flex-col items-center w-20 py-3 px-2 glass-panel rounded-[36px] border border-white/20 dark:border-white/10 shadow-2xl shadow-indigo-500/10 backdrop-blur-2xl transition-colors"
       >
-        <div className="flex flex-col items-center space-y-2 w-full">
-          {/* لوگوی بالایی سایدبار */}
-          <div className="w-11 h-11 rounded-full bg-slate-900/90 dark:bg-amber-500 text-amber-400 dark:text-slate-950 flex items-center justify-center font-black shadow-lg mb-2">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
+        {/* Top Dock Emblem */}
+        <div className="w-11 h-11 shrink-0 rounded-full bg-slate-900/90 dark:bg-amber-500 text-amber-400 dark:text-slate-950 flex items-center justify-center font-black shadow-lg mb-2">
+          <ShieldCheck className="w-5 h-5" />
+        </div>
 
-          <div className="w-8 h-px bg-slate-200/60 dark:bg-white/10 my-1" />
+        <div className="w-8 h-px shrink-0 bg-slate-200/60 dark:bg-white/10 mb-1" />
 
+        {/* Scrollable Nav Items */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={() => {
+            setHoveredTab(null);
+            setTooltipPos(null);
+          }}
+          className="flex-1 min-h-0 w-full overflow-y-auto scrollbar-none flex flex-col items-center space-y-1.5 py-1"
+        >
           {mainNavItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -258,10 +274,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div
                 key={item.id}
-                className="relative group w-full flex justify-center"
-                onMouseEnter={() => setHoveredTab(item.id)}
+                className="relative group w-full flex justify-center shrink-0"
+                onMouseEnter={e => handleHoverEnter(item.id, e.currentTarget)}
               >
-                {/* کپسول شناور مغناطیسی پشت آیکون */}
                 {isItemHovered && !isActive && (
                   <motion.div
                     layoutId="sidebar-hover-capsule"
@@ -273,7 +288,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                 )}
 
-                {/* کپسول وضعیت فعال */}
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active-capsule"
@@ -283,8 +297,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 <button
+                  type="button"
+                  aria-label={item.label}
                   onClick={() => handleSelect(item.id)}
-                  className={`relative z-10 w-12 h-12 flex items-center justify-center rounded-2xl transition-all group active:scale-95 ${
+                  className={`relative z-10 w-11 h-11 flex items-center justify-center rounded-2xl transition-all group active:scale-95 cursor-pointer ${
                     isActive
                       ? 'text-white dark:text-slate-950 font-bold'
                       : 'text-slate-700 dark:text-slate-300'
@@ -292,10 +308,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <motion.div
                     animate={{
-                      scale: isItemHovered ? 1.18 : 1,
-                      rotate: isItemHovered ? [0, -5, 5, 0] : 0,
+                      scale: isItemHovered ? 1.15 : 1,
                     }}
-                    transition={{ duration: 0.25 }}
+                    transition={{ duration: 0.2 }}
                     className={`p-1 rounded-xl transition-colors ${
                       isActive
                         ? 'text-amber-400 dark:text-slate-950'
@@ -307,57 +322,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <Icon className="w-5 h-5" />
                   </motion.div>
 
-                  {/* نشانگر شمارنده (Badge Count) */}
                   {item.count !== undefined && item.count > 0 && (
-                    <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-amber-500 text-slate-950 text-[9px] font-black flex items-center justify-center shadow-sm tabular-nums">
+                    <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-amber-500 text-slate-950 text-[9px] font-black flex items-center justify-center shadow-sm tabular-nums">
                       {item.count}
                     </span>
                   )}
                 </button>
-
-                {/* 
-                  کارت راهنما (Popover / Tooltip) با نمایش نام بخش و توضیحات کامل در هنگام هاور
-                */}
-                <AnimatePresence>
-                  {isItemHovered && (
-                    <motion.div
-                      initial={{ opacity: 0, x: 12, scale: 0.95 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: 12, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-full mr-4 top-1/2 -translate-y-1/2 z-50 pointer-events-none w-64 glass-card p-3.5 rounded-2xl border border-white/20 dark:border-white/15 shadow-2xl shadow-indigo-500/15"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-black text-slate-900 dark:text-white">
-                          {item.label}
-                        </span>
-                        {item.count !== undefined && item.count > 0 && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 tabular-nums">
-                            {item.count} مورد
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        {item.subtext}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             );
           })}
 
-          {/* زبانه مدیریت و نظارت (Admin Tab) */}
           {showAdminTab && (
             <div
-              className="relative group w-full flex justify-center pt-2 mt-1 border-t border-slate-200/60 dark:border-white/10"
-              onMouseEnter={() => setHoveredTab('admin')}
+              className="relative group w-full flex justify-center pt-2 mt-1 border-t border-slate-200/60 dark:border-white/10 shrink-0"
+              onMouseEnter={e => handleHoverEnter('admin', e.currentTarget)}
             >
               {hoveredTab === 'admin' && activeTab !== 'admin' && (
                 <motion.div
                   layoutId="sidebar-hover-capsule"
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  className="absolute inset-x-1 inset-y-2 rounded-2xl bg-amber-500/15 backdrop-blur-md border border-amber-500/35 z-0 pointer-events-none"
+                  className="absolute inset-x-1 top-2 bottom-0 rounded-2xl bg-amber-500/15 backdrop-blur-md border border-amber-500/35 z-0 pointer-events-none"
                 />
               )}
 
@@ -365,59 +349,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <motion.div
                   layoutId="sidebar-active-capsule"
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  className="absolute inset-x-1 inset-y-2 rounded-2xl bg-amber-500 shadow-lg z-0 pointer-events-none"
+                  className="absolute inset-x-1 top-2 bottom-0 rounded-2xl bg-amber-500 shadow-lg z-0 pointer-events-none"
                 />
               )}
 
               <button
+                type="button"
+                aria-label="مدیریت سایت و پایش امنیت"
                 onClick={() => handleSelect('admin')}
-                className={`relative z-10 w-12 h-12 flex items-center justify-center rounded-2xl transition-all group active:scale-95 ${
+                className={`relative z-10 w-11 h-11 flex items-center justify-center rounded-2xl transition-all group active:scale-95 cursor-pointer ${
                   activeTab === 'admin' ? 'text-slate-950 font-bold' : 'text-slate-700 dark:text-slate-300'
                 }`}
               >
                 <ShieldCheck className={`w-5 h-5 ${activeTab === 'admin' ? 'text-slate-950' : 'text-amber-500'}`} />
               </button>
-
-              <AnimatePresence>
-                {hoveredTab === 'admin' && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 12, scale: 0.95 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: 12, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-full mr-4 top-1/2 -translate-y-1/2 z-50 pointer-events-none w-64 glass-card p-3.5 rounded-2xl border border-white/20 dark:border-white/15 shadow-2xl shadow-amber-500/15"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-black text-slate-900 dark:text-white">
-                        مدیریت سایت و پایش امنیت
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400">
-                        Admin & Security
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                      پایش امنیت پایگاه داده، زنجیره وقایع SHA-256 و عیب‌یابی آنی سامانه
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           )}
         </div>
-
-        {/* پایین کپسول (نشانگر وضعیت اتصال) */}
-        <div className="flex flex-col items-center pb-1">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-        </div>
       </aside>
 
-      {/* کشوی موبایل (Mobile Drawer) */}
+      {/* Non-clipping fixed Popover Tooltip outside scroll container */}
+      <AnimatePresence>
+        {hoveredItem && tooltipPos && (
+          <motion.div
+            key={hoveredItem.id}
+            initial={{ opacity: 0, x: 10, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 10, scale: 0.96 }}
+            transition={{ duration: 0.14 }}
+            style={{
+              position: 'fixed',
+              top: `${tooltipPos.top}px`,
+              right: `${tooltipPos.right}px`,
+              transform: 'translateY(-50%)',
+            }}
+            className="hidden lg:block z-50 pointer-events-none w-64 glass-card p-3.5 rounded-2xl border border-white/25 dark:border-white/15 shadow-2xl shadow-indigo-500/15 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl"
+          >
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                {hoveredItem.label}
+              </span>
+              {hoveredItem.count !== undefined && hoveredItem.count > 0 ? (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 tabular-nums shrink-0">
+                  {hoveredItem.count} مورد
+                </span>
+              ) : hoveredItem.statusTag ? (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-200 shrink-0">
+                  {hoveredItem.statusTag}
+                </span>
+              ) : null}
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+              {hoveredItem.subtext}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Drawer */}
       <aside
         className={`fixed top-16 bottom-0 right-0 w-72 glass-panel border-l border-slate-200/90 dark:border-white/10 z-40 lg:hidden transition-transform duration-300 ease-in-out overflow-y-auto p-4 ${
           mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="space-y-2">
+        <div className="space-y-2 pb-16">
           <div className="px-3 py-1 text-xs font-bold text-slate-400">بخش‌های اصلی خدمات</div>
           {mainNavItems.map(item => {
             const Icon = item.icon;
@@ -426,18 +421,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleSelect(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-right transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-right transition-all cursor-pointer ${
                   isActive
                     ? 'bg-slate-900 text-white dark:bg-amber-500 dark:text-slate-950 font-bold'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-5 h-5" />
-                  <span className="text-xs font-bold">{item.label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-bold truncate">{item.label}</span>
                 </div>
                 {item.count !== undefined && item.count > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 font-bold tabular-nums">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold tabular-nums shrink-0">
                     {item.count}
                   </span>
                 )}
@@ -448,7 +443,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {showAdminTab && (
             <button
               onClick={() => handleSelect('admin')}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-right transition-all mt-4 ${
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-right transition-all mt-4 cursor-pointer ${
                 activeTab === 'admin'
                   ? 'bg-amber-500 text-slate-950 font-bold'
                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'

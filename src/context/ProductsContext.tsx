@@ -1,11 +1,39 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Product,
+  ProductCategoryConfig,
   ProductOrder,
   ProductsStoreConfig,
   User,
 } from '../types';
 import { api } from '../services/apiClient';
+
+export const DEFAULT_BUILT_IN_CATEGORIES: ProductCategoryConfig[] = [
+  {
+    id: 'book',
+    label: 'کتب و منشورات علمی',
+    shortLabel: 'کتب',
+    kind: 'book',
+    isEnabled: true,
+    isBuiltIn: true,
+  },
+  {
+    id: 'multimedia',
+    label: 'نشست‌های علمی (صوتی و تصویری)',
+    shortLabel: 'نشست‌ها',
+    kind: 'session',
+    isEnabled: true,
+    isBuiltIn: true,
+  },
+  {
+    id: 'audio_series',
+    label: 'درس‌گفتارها و سلسله مباحث',
+    shortLabel: 'درس‌گفتارها',
+    kind: 'lecture',
+    isEnabled: true,
+    isBuiltIn: true,
+  },
+];
 
 export const DEFAULT_CLIENT_STORE_CONFIG: ProductsStoreConfig = {
   isStoreEnabled: true,
@@ -15,9 +43,10 @@ export const DEFAULT_CLIENT_STORE_CONFIG: ProductsStoreConfig = {
     multimedia: true,
     audio_series: true,
   },
+  customCategories: DEFAULT_BUILT_IN_CATEGORIES,
   storeTitle: 'کتاب و محصولات چند رسانه‌ای',
   storeSubtitle:
-    'عرضه تخصصی کتب مرجع، بسته‌های چندرسانه‌ای و درس‌گفتارهای صوتی مرکز فقه و حقوق اسلامی با امکان انتخاب نسخه دیجیتال یا فیزیکی و پرداخت امن',
+    'عرضه تخصصی کتب مرجع، نشست‌های علمی صوتی و تصویری و درس‌گفتارهای مرکز فقه و حقوق اسلامی با امکان دسترسی دیجیتال پس از ثبت‌نام یا ارسال نسخه فیزیکی',
   gateways: [
     {
       id: 'gw_zarinpal',
@@ -63,6 +92,26 @@ export const DEFAULT_CLIENT_STORE_CONFIG: ProductsStoreConfig = {
   version: 1,
 };
 
+function mergeStoreConfig(incoming?: Partial<ProductsStoreConfig> | null): ProductsStoreConfig {
+  if (!incoming || typeof incoming !== 'object') return DEFAULT_CLIENT_STORE_CONFIG;
+  const mergedEnabled: Record<string, boolean> = {
+    ...DEFAULT_CLIENT_STORE_CONFIG.enabledCategories,
+    ...(incoming.enabledCategories || {}),
+  };
+  const customCategories = Array.isArray(incoming.customCategories) && incoming.customCategories.length > 0
+    ? incoming.customCategories
+    : DEFAULT_BUILT_IN_CATEGORIES.map(c => ({
+        ...c,
+        isEnabled: mergedEnabled[c.id] !== undefined ? mergedEnabled[c.id] : c.isEnabled,
+      }));
+  return {
+    ...DEFAULT_CLIENT_STORE_CONFIG,
+    ...incoming,
+    enabledCategories: mergedEnabled,
+    customCategories,
+  };
+}
+
 export interface ProductsContextType {
   products: Product[];
   productOrders: ProductOrder[];
@@ -78,6 +127,7 @@ export interface ProductsContextType {
   ) => Promise<void>;
   addProduct: (productData: Omit<Product, 'id' | 'isOwned'>) => Promise<Product>;
   updateProduct: (productId: string, updates: Partial<Product>) => Promise<Product | void>;
+  toggleProductShowcase: (productId: string, showInShowcase: boolean) => Promise<Product | void>;
   softDeleteProduct: (productId: string) => Promise<void>;
   reorderProducts: (orderedIds: string[]) => Promise<void>;
   refreshProducts: () => Promise<void>;
@@ -99,9 +149,11 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
   const [productsStoreConfig, setProductsStoreConfig] = useState<ProductsStoreConfig>(
     DEFAULT_CLIENT_STORE_CONFIG
   );
+  const lastSyncRef = useRef<number>(0);
 
   const refreshProducts = useCallback(async () => {
     if (!currentUser) return;
+    lastSyncRef.current = Date.now();
     try {
       const [fetchedProducts, fetchedConfig, fetchedOrders] = await Promise.all([
         api.getProducts(),
@@ -110,7 +162,7 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
       ]);
       if (Array.isArray(fetchedProducts)) setProducts(fetchedProducts);
       if (fetchedConfig && typeof fetchedConfig === 'object') {
-        setProductsStoreConfig({ ...DEFAULT_CLIENT_STORE_CONFIG, ...fetchedConfig });
+        setProductsStoreConfig(mergeStoreConfig(fetchedConfig));
       }
       if (Array.isArray(fetchedOrders)) setProductOrders(fetchedOrders);
     } catch {}
@@ -125,6 +177,26 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
 
     refreshProducts();
 
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastSyncRef.current > 4000) {
+        refreshProducts();
+      }
+    };
+    const handleForceSync = () => {
+      refreshProducts();
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('app:auth_changed', handleForceSync);
+    window.addEventListener('app:role_switched', handleForceSync);
+
+    const pollInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshProducts();
+      }
+    }, 20000);
+
     const unsubscribe = api.subscribeToEvents(event => {
       if (!event.type.startsWith('products.')) return;
       const delta = event.data?.data || event.data || {};
@@ -133,8 +205,7 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
       const version = delta?.version;
 
       if (event.type === 'products.store_config_updated' && delta?.config) {
-        setProductsStoreConfig({ ...DEFAULT_CLIENT_STORE_CONFIG, ...delta.config });
-        // Re-fetch products if store/category visibility changed for non-officials
+        setProductsStoreConfig(mergeStoreConfig(delta.config));
         refreshProducts();
         return;
       }
@@ -169,9 +240,6 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
       }
 
       if (event.type === 'products.purchased') {
-        if (updates && resourceId) {
-          setProducts(prev => prev.map(p => (p.id === resourceId ? { ...p, ...updates } : p)));
-        }
         if (delta?.order) {
           const newOrder = delta.order as ProductOrder;
           const isOfficial =
@@ -185,6 +253,7 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
             );
           }
         }
+        refreshProducts();
         return;
       }
 
@@ -208,18 +277,46 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('app:auth_changed', handleForceSync);
+      window.removeEventListener('app:role_switched', handleForceSync);
+      window.clearInterval(pollInterval);
+      unsubscribe();
+    };
   }, [currentUser, refreshProducts]);
 
   const updateProductsStoreConfig = useCallback(
     async (updates: Partial<ProductsStoreConfig>): Promise<ProductsStoreConfig> => {
-      const merged = { ...productsStoreConfig, ...updates };
-      const res = await api.updateProductsStoreConfig(merged, productsStoreConfig.version);
-      const fresh = res?.config || merged;
-      setProductsStoreConfig(fresh);
-      return fresh;
+      const merged = mergeStoreConfig({ ...productsStoreConfig, ...updates });
+      try {
+        const res = await api.updateProductsStoreConfig(merged, productsStoreConfig.version);
+        const fresh = mergeStoreConfig(res?.config || merged);
+        setProductsStoreConfig(fresh);
+        await refreshProducts();
+        return fresh;
+      } catch (err: any) {
+        if (err?.status === 409 || String(err?.code || '').includes('CONFLICT')) {
+          const latest = await api.getProductsStoreConfig();
+          const retriedMerged = mergeStoreConfig({
+            ...latest,
+            ...updates,
+            enabledCategories: {
+              ...(latest?.enabledCategories || {}),
+              ...(updates?.enabledCategories || {}),
+            },
+          });
+          const retryRes = await api.updateProductsStoreConfig(retriedMerged, latest?.version);
+          const fresh = mergeStoreConfig(retryRes?.config || retriedMerged);
+          setProductsStoreConfig(fresh);
+          await refreshProducts();
+          return fresh;
+        }
+        throw err;
+      }
     },
-    [productsStoreConfig]
+    [productsStoreConfig, refreshProducts]
   );
 
   const purchaseProduct = useCallback(
@@ -290,6 +387,16 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
     [products]
   );
 
+  const toggleProductShowcase = useCallback(
+    async (productId: string, showInShowcase: boolean): Promise<Product | void> => {
+      const target = products.find(p => p.id === productId);
+      const updated = await api.toggleProductShowcase(productId, showInShowcase, target?.version);
+      setProducts(prev => prev.map(p => (p.id === productId ? updated : p)));
+      return updated;
+    },
+    [products]
+  );
+
   const softDeleteProduct = useCallback(
     async (productId: string) => {
       const target = products.find(p => p.id === productId);
@@ -319,6 +426,7 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
       reviewProductOrder,
       addProduct,
       updateProduct,
+      toggleProductShowcase,
       softDeleteProduct,
       reorderProducts,
       refreshProducts,
@@ -332,6 +440,7 @@ export const ProductsProvider: React.FC<ProductsProviderProps> = ({
       reviewProductOrder,
       addProduct,
       updateProduct,
+      toggleProductShowcase,
       softDeleteProduct,
       reorderProducts,
       refreshProducts,

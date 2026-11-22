@@ -229,7 +229,8 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
   const allPrimaryNav: Array<{ id: string; sectionId: AppSectionId; label: string }> = [
     { id: 'Dashboard', sectionId: 'dashboard', label: 'میز کار' },
     { id: 'People', sectionId: 'cartable', label: 'کارتابل' },
-    { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی' },
+    { id: 'Courses', sectionId: 'courses', label: 'دوره‌ها' },
+    { id: 'Products', sectionId: 'products', label: 'کتب و محصولات' },
     { id: 'Research', sectionId: 'research', label: 'پژوهش' },
     { id: 'Counseling', sectionId: 'counseling', label: 'مشاوره' },
     { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء' },
@@ -240,7 +241,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
 
   const allSecondaryNav: Array<{ id: string; sectionId: AppSectionId; label: string; icon: any }> = [
     { id: 'SpecializedCounseling', sectionId: 'specialized_counseling', label: 'مشاوره تخصصی قضا', icon: Scale },
-    { id: 'Courses', sectionId: 'courses', label: 'دوره‌های آموزشی', icon: GraduationCap },
+    { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی و تجارب', icon: Users2 },
     { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات و تسهیلات', icon: Gift },
     { id: 'Products', sectionId: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen },
     { id: 'Alumni', sectionId: 'alumni', label: 'بانک دانش‌آموختگان', icon: GraduationCap },
@@ -250,9 +251,6 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
   ];
   const secondaryNav = allSecondaryNav.filter(item => {
     if (!isStaff && (item.id === 'Alumni' || item.id === 'Users' || item.id === 'Admin' || item.id === 'Finance')) {
-      return false;
-    }
-    if (item.sectionId === 'products' && !isStaff && !productsStoreConfig.isStoreEnabled) {
       return false;
     }
     return canViewSection(currentUser, item.sectionId, rolePolicies);

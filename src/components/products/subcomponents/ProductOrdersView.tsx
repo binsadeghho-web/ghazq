@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { ProductOrder } from '../../../types';
+import { Product, ProductOrder, ProductsStoreConfig } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { api } from '../../../services/apiClient';
 import {
   DELIVERY_METHOD_LABELS,
   PAYMENT_STATUS_LABELS,
-  PRODUCT_FORMAT_LABELS,
   formatTomans,
+  getProductCategoryLabel,
+  isSafeMediaUrl,
+  triggerSafeMediaDownload,
 } from './productUiHelpers';
 import {
   PackageCheck,
@@ -18,10 +20,14 @@ import {
   Receipt,
   MapPin,
   CreditCard,
+  Download,
+  Loader2,
 } from 'lucide-react';
 
 interface ProductOrdersViewProps {
   orders: ProductOrder[];
+  products?: Product[];
+  storeConfig?: ProductsStoreConfig;
   isOfficial: boolean;
   onReviewOrder: (
     orderId: string,
@@ -35,11 +41,14 @@ interface ProductOrdersViewProps {
 
 export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
   orders,
+  products = [],
+  storeConfig,
   isOfficial,
   onReviewOrder,
   onNotify,
 }) => {
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
   const [postalInputs, setPostalInputs] = useState<Record<string, string>>({});
   const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
   const [receiptPreview, setReceiptPreview] = useState<{ url: string; title: string } | null>(null);
@@ -55,6 +64,17 @@ export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
       });
     } catch (err: any) {
       onNotify(err?.message || 'امکان نمایش تصویر فیش وجود ندارد.', 'error');
+    }
+  };
+
+  const handleDownloadOrderMedia = async (key: string, url: string, title: string) => {
+    try {
+      setDownloadingKey(key);
+      await triggerSafeMediaDownload(url, title);
+    } catch (err: any) {
+      onNotify(err?.message || 'امکان دریافت فایل وجود ندارد.', 'error');
+    } finally {
+      setDownloadingKey(null);
     }
   };
 
@@ -99,7 +119,7 @@ export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
           هنوز سفارشی در این بخش ثبت نشده است.
         </p>
         <p className="text-xs text-slate-500">
-          پس از ثبت سفارش کتاب، محصول چندرسانه‌ای یا صوت، کد رهگیری و سوابق پرداخت اینجا نمایش داده می‌شود.
+          پس از ثبت سفارش کتاب، نشست علمی، درس‌گفتار یا محصول، کد رهگیری و سوابق پرداخت اینجا نمایش داده می‌شود.
         </p>
       </div>
     );
@@ -109,6 +129,16 @@ export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4">
         {orders.map(order => {
+          const matchedProduct = products.find(p => p.id === order.productId);
+          const unlockedSessions =
+            order.paymentStatus === 'confirmed' && matchedProduct
+              ? (matchedProduct.mediaSessions || []).filter(s => isSafeMediaUrl(s.downloadUrl))
+              : [];
+          const hasMainDownload =
+            order.paymentStatus === 'confirmed' &&
+            matchedProduct &&
+            isSafeMediaUrl(matchedProduct.downloadLink);
+
           const statusTone =
             order.paymentStatus === 'confirmed'
               ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/25'
@@ -128,7 +158,7 @@ export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
                       کد رهگیری: {toPersianNumbers(order.trackingCode)}
                     </span>
                     <span>·</span>
-                    <span>{PRODUCT_FORMAT_LABELS[order.productFormat] || 'اثر'}</span>
+                    <span>{getProductCategoryLabel(order.productFormat, undefined, storeConfig)}</span>
                     <span>·</span>
                     <span>
                       {order.purchaseFormat === 'physical' ? 'نسخه فیزیکی' : 'نسخه دیجیتال / فایل'}
@@ -203,6 +233,54 @@ export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
                   )}
                 </div>
               </div>
+
+              {(hasMainDownload || unlockedSessions.length > 0) && matchedProduct && (
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-2 text-xs">
+                  <div className="flex items-center gap-1.5 font-black text-emerald-800 dark:text-emerald-300">
+                    <Download className="w-3.5 h-3.5" />
+                    <span>فایل‌ها و لینک‌های دانلود فعال‌شده برای این سفارش:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {hasMainDownload && matchedProduct.downloadLink && (
+                      <button
+                        type="button"
+                        disabled={downloadingKey === `${order.id}_main`}
+                        onClick={() =>
+                          handleDownloadOrderMedia(`${order.id}_main`, matchedProduct.downloadLink!, matchedProduct.title)
+                        }
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {downloadingKey === `${order.id}_main` ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>دانلود فایل اصلی</span>
+                      </button>
+                    )}
+                    {unlockedSessions.map((session, sIdx) => (
+                      <button
+                        key={session.id}
+                        type="button"
+                        disabled={downloadingKey === `${order.id}_${session.id}`}
+                        onClick={() =>
+                          handleDownloadOrderMedia(`${order.id}_${session.id}`, session.downloadUrl, session.title)
+                        }
+                        className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-500/35 text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        {downloadingKey === `${order.id}_${session.id}` ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5 text-emerald-600" />
+                        )}
+                        <span>
+                          {toPersianNumbers(sIdx + 1)}. {session.title}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {(order.shippingAddress || order.receiptFileUrl || order.adminNote) && (
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs">

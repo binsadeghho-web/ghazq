@@ -13,11 +13,16 @@ import {
   DEFAULT_DELIVERY_OPTIONS,
   DEFAULT_PRODUCTS_STORE_CONFIG,
   getDefaultDigitalLabel,
+  getDefaultFormatTitle,
   getDefaultPhysicalLabel,
   loadProductsStoreConfig,
   mapProductOrderRow,
   mapProductRow,
+  normalizeCustomCategories,
   normalizeDeliveryOptions,
+  sanitizeMediaSessions,
+  sanitizeMediaUrl,
+  sanitizePresentersList,
 } from './productHelpers';
 
 export interface PurchaseProductDto {
@@ -39,7 +44,7 @@ export class ProductsService {
     const isOfficial = isOrganizationalUserRole(authCtx?.role);
     const storeConfig = await loadProductsStoreConfig();
 
-    // Reform 30: Non-official users see nothing if whole store is disabled
+    // Non-official users see nothing if whole store is disabled
     if (!isOfficial && !storeConfig.isStoreEnabled) {
       return [];
     }
@@ -51,43 +56,45 @@ export class ProductsService {
     sql += ` ORDER BY display_order ASC, created_at DESC`;
 
     const rows = await selectWithTimeout<any>(sql, [], 4000);
-    let products = (rows || []).map(r => mapProductRow(r, false, []));
+    let filteredRows = rows || [];
 
-    // Reform 30: Filter disabled categories for non-officials
+    // Filter disabled categories for non-officials
     if (!isOfficial) {
-      products = products.filter(prod => storeConfig.enabledCategories[prod.format] !== false);
+      filteredRows = filteredRows.filter(r => {
+        const fmt = String(r.format || 'book').trim() || 'book';
+        return storeConfig.enabledCategories[fmt] !== false;
+      });
     }
 
-    if (authCtx?.userId && products.length > 0) {
+    const ownedMap = new Map<string, Set<'digital' | 'physical'>>();
+    if (authCtx?.userId && filteredRows.length > 0) {
       const uBuf = toIdBuffer(authCtx.userId);
       const [orderRows] = await p.query<any[]>(
         `SELECT product_id, purchase_format FROM product_orders
          WHERE (user_id = ? OR user_id = ?) AND payment_status = 'confirmed' AND deleted_at IS NULL`,
         [uBuf, authCtx.userId]
       );
-      const ownedMap = new Map<string, Set<'digital' | 'physical'>>();
       for (const row of orderRows || []) {
         const pid = fromIdBuffer(row.product_id);
         if (!ownedMap.has(pid)) ownedMap.set(pid, new Set());
         const fmt = row.purchase_format === 'physical' ? 'physical' : 'digital';
         ownedMap.get(pid)!.add(fmt);
       }
-      return products.map(prod => {
-        const ownedSet = ownedMap.get(prod.id);
-        return {
-          ...prod,
-          isOwned: Boolean(ownedSet && ownedSet.size > 0),
-          ownedFormats: ownedSet ? Array.from(ownedSet) : [],
-        };
-      });
     }
 
-    return products;
+    return filteredRows.map(r => {
+      const pid = fromIdBuffer(r.id);
+      const ownedSet = ownedMap.get(pid);
+      const isOwned = Boolean(ownedSet && ownedSet.size > 0);
+      const ownedFormats = ownedSet ? Array.from(ownedSet) : [];
+      return mapProductRow(r, isOwned, ownedFormats, isOfficial || isOwned);
+    });
   }
 
   async getById(id: string, authCtx?: AuthContext): Promise<(Product & { version: number }) | undefined> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
+    const isOfficial = isOrganizationalUserRole(authCtx?.role);
     const idBuf = toIdBuffer(id);
     const rows = await selectWithTimeout<any>(
       `SELECT * FROM products WHERE (id = ? OR id = ?) AND (is_deleted = 0 OR is_deleted IS NULL) AND deleted_at IS NULL LIMIT 1`,
@@ -116,7 +123,8 @@ export class ProductsService {
       }
     }
 
-    return mapProductRow(rows[0], ownedFormats.length > 0, ownedFormats);
+    const isOwned = ownedFormats.length > 0;
+    return mapProductRow(rows[0], isOwned, ownedFormats, isOfficial || isOwned);
   }
 
   async createProduct(authCtx: AuthContext, dto: any): Promise<Product & { version: number }> {
@@ -125,15 +133,18 @@ export class ProductsService {
     await ensureDomainTablesAndIndexes();
 
     const title = String(dto.title || '').trim();
-    const author = String(dto.authorOrPresenter || '').trim();
+    const presenters = sanitizePresentersList(dto.presenters, dto.authorOrPresenter);
+    const author = presenters.length > 0
+      ? presenters.join('، ')
+      : String(dto.authorOrPresenter || '').trim();
     const desc = String(dto.description || '').trim();
 
     if (!title || !author || !desc) {
-      throw AppError.badRequest('عنوان، پدیدآورنده/نویسنده و شرح محصول الزامی است.');
+      throw AppError.badRequest('عنوان، پدیدآورنده/ارائه‌دهنده و شرح محصول الزامی است.');
     }
 
-    const format: Product['format'] =
-      dto.format === 'multimedia' || dto.format === 'audio_series' ? dto.format : 'book';
+    const rawFormat = String(dto.format || 'book').trim().replace(/[^\w\u0600-\u06FF-]/g, '');
+    const format: string = (rawFormat || 'book').slice(0, 64);
     const supportsDigital = dto.supportsDigital !== undefined ? Boolean(dto.supportsDigital) : true;
     const supportsPhysical = dto.supportsPhysical !== undefined ? Boolean(dto.supportsPhysical) : format === 'book';
 
@@ -156,35 +167,43 @@ export class ProductsService {
     }
 
     const deliveryOptions = normalizeDeliveryOptions(dto.deliveryOptions || DEFAULT_DELIVERY_OPTIONS);
+    const mediaSessions = sanitizeMediaSessions(dto.mediaSessions);
     const id = generateUUIDv7();
     const idBuf = toIdBuffer(id);
     const p = getPool();
 
     const fmtTitle =
-      dto.formatTitle ||
-      (format === 'book' ? 'کتاب' : format === 'multimedia' ? 'محصول چندرسانه‌ای' : 'صوت و درس‌گفتار');
+      String(dto.formatTitle || '').trim() || getDefaultFormatTitle(format);
     const shortDesc = String(dto.shortDescription || desc.slice(0, 140)).trim();
     const subjectIndex = dto.subjectIndex ? String(dto.subjectIndex).trim() : null;
     const isbn = dto.isbn ? String(dto.isbn).trim() : null;
     const year = String(dto.publishedYear || '۱۴۰۴').trim();
-    const pages = String(dto.pagesOrDuration || (format === 'audio_series' ? '۲۰ ساعت' : '۳۵۰ صفحه')).trim();
+    const pages = String(
+      dto.pagesOrDuration ||
+        (format === 'audio_series'
+          ? '۱۰ جلسه'
+          : format === 'multimedia'
+          ? 'نشست علمی'
+          : '۳۵۰ صفحه')
+    ).trim();
     const publisher = String(dto.publisher || 'انتشارات مرکز فقه و حقوق اسلامی').trim();
     const stock = Math.max(0, Number(dto.stock !== undefined ? dto.stock : 25));
     const displayOrder = Number(dto.displayOrder || 0);
     const allowedPaymentMethod = dto.allowedPaymentMethod || 'both';
-    const downloadLink = dto.downloadLink ? String(dto.downloadLink).trim() : null;
+    const downloadLink = sanitizeMediaUrl(dto.downloadLink) || null;
     const badgeText = dto.badgeText ? String(dto.badgeText).trim() : null;
     const visibleToCustomer = dto.visibleToCustomer !== undefined ? Boolean(dto.visibleToCustomer) : true;
+    const showInShowcase = dto.showInShowcase !== undefined ? Boolean(dto.showInShowcase) : true;
 
     await p.query(
       `INSERT INTO products (
-        id, title, subtitle, short_description, subject_index, author_or_presenter,
+        id, title, subtitle, short_description, subject_index, author_or_presenter, presenters,
         format, format_title, price, supports_digital, digital_price, digital_format_label,
         supports_physical, physical_price, physical_format_label, delivery_options,
         allowed_payment_method, description, pages_or_duration, published_year, publisher,
-        isbn, cover_image, gallery_images, download_link, badge_text, stock,
-        display_order, visible_to_customer, is_available, is_deleted, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1)`,
+        isbn, cover_image, gallery_images, download_link, media_sessions, badge_text, stock,
+        display_order, visible_to_customer, show_in_showcase, is_available, is_deleted, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1)`,
       [
         idBuf,
         title,
@@ -192,6 +211,7 @@ export class ProductsService {
         shortDesc,
         subjectIndex,
         author,
+        JSON.stringify(presenters.length > 0 ? presenters : [author]),
         format,
         fmtTitle,
         effectiveBasePrice,
@@ -211,10 +231,12 @@ export class ProductsService {
         coverImage,
         JSON.stringify(galleryImages),
         downloadLink,
+        JSON.stringify(mediaSessions),
         badgeText,
         stock,
         displayOrder,
         visibleToCustomer ? 1 : 0,
+        showInShowcase ? 1 : 0,
       ]
     );
 
@@ -231,12 +253,12 @@ export class ProductsService {
       severity: 'info',
     });
 
+    // Note: strip protected media urls from public SSE payload unless client refetches or is official
     outbox.enqueue('products.created', {
       id: created.id,
       resourceId: created.id,
       productId: created.id,
       version: created.version,
-      updates: created,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -267,10 +289,11 @@ export class ProductsService {
     }
     const expVer = Number(rawVersion);
 
-    const format: Product['format'] =
-      updates.format === 'book' || updates.format === 'multimedia' || updates.format === 'audio_series'
-        ? updates.format
-        : existing.format;
+    const rawFormat = updates.format !== undefined
+      ? String(updates.format || '').trim().replace(/[^\w\u0600-\u06FF-]/g, '').slice(0, 64)
+      : existing.format;
+    const format: string = rawFormat || existing.format;
+
     const supportsDigital =
       updates.supportsDigital !== undefined ? Boolean(updates.supportsDigital) : Boolean(existing.supportsDigital);
     const supportsPhysical =
@@ -302,17 +325,45 @@ export class ProductsService {
         ? normalizeDeliveryOptions(updates.deliveryOptions)
         : existing.deliveryOptions || DEFAULT_DELIVERY_OPTIONS;
 
+    const presenters =
+      updates.presenters !== undefined || updates.authorOrPresenter !== undefined
+        ? sanitizePresentersList(
+            updates.presenters,
+            updates.authorOrPresenter ?? existing.authorOrPresenter
+          )
+        : existing.presenters || sanitizePresentersList(undefined, existing.authorOrPresenter);
+    const authorOrPresenter =
+      updates.authorOrPresenter !== undefined && String(updates.authorOrPresenter).trim()
+        ? String(updates.authorOrPresenter).trim()
+        : presenters.join('، ') || existing.authorOrPresenter;
+
+    const mediaSessions =
+      updates.mediaSessions !== undefined
+        ? sanitizeMediaSessions(updates.mediaSessions)
+        : existing.mediaSessions || [];
+
+    const downloadLink =
+      updates.downloadLink !== undefined
+        ? sanitizeMediaUrl(updates.downloadLink) || null
+        : existing.downloadLink || null;
+
+    const showInShowcase =
+      updates.showInShowcase !== undefined
+        ? Boolean(updates.showInShowcase)
+        : existing.showInShowcase !== false;
+
     const p = getPool();
     const [res]: any = await p.query(
       `UPDATE products
        SET title = ?, subtitle = ?, short_description = ?, subject_index = ?,
-           author_or_presenter = ?, format = ?, format_title = ?, price = ?,
+           author_or_presenter = ?, presenters = ?, format = ?, format_title = ?, price = ?,
            supports_digital = ?, digital_price = ?, digital_format_label = ?,
            supports_physical = ?, physical_price = ?, physical_format_label = ?,
            delivery_options = ?, allowed_payment_method = ?, description = ?,
            pages_or_duration = ?, published_year = ?, publisher = ?, isbn = ?,
-           cover_image = ?, gallery_images = ?, download_link = ?, badge_text = ?,
-           stock = ?, display_order = ?, visible_to_customer = ?, is_available = ?,
+           cover_image = ?, gallery_images = ?, download_link = ?, media_sessions = ?,
+           badge_text = ?, stock = ?, display_order = ?, visible_to_customer = ?,
+           show_in_showcase = ?, is_available = ?,
            version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
        WHERE (id = ? OR id = ?) AND version = ? AND (is_deleted = 0 OR is_deleted IS NULL) AND deleted_at IS NULL`,
       [
@@ -320,9 +371,10 @@ export class ProductsService {
         updates.subtitle !== undefined ? updates.subtitle || null : existing.subtitle || null,
         updates.shortDescription !== undefined ? String(updates.shortDescription).trim() : existing.shortDescription || null,
         updates.subjectIndex !== undefined ? updates.subjectIndex || null : existing.subjectIndex || null,
-        updates.authorOrPresenter !== undefined ? String(updates.authorOrPresenter).trim() : existing.authorOrPresenter,
+        authorOrPresenter,
+        JSON.stringify(presenters),
         format,
-        updates.formatTitle !== undefined ? updates.formatTitle : existing.formatTitle,
+        updates.formatTitle !== undefined ? String(updates.formatTitle).trim() || getDefaultFormatTitle(format) : existing.formatTitle,
         price,
         supportsDigital ? 1 : 0,
         digitalPrice,
@@ -339,11 +391,13 @@ export class ProductsService {
         updates.isbn !== undefined ? updates.isbn || null : existing.isbn || null,
         coverImage,
         JSON.stringify(galleryImages),
-        updates.downloadLink !== undefined ? updates.downloadLink || null : existing.downloadLink || null,
+        downloadLink,
+        JSON.stringify(mediaSessions),
         updates.badgeText !== undefined ? updates.badgeText || null : existing.badgeText || null,
         updates.stock !== undefined ? Math.max(0, Number(updates.stock)) : Number(existing.stock ?? 20),
         updates.displayOrder !== undefined ? Number(updates.displayOrder) : Number(existing.displayOrder ?? 0),
         updates.visibleToCustomer !== undefined ? (updates.visibleToCustomer ? 1 : 0) : existing.visibleToCustomer !== false ? 1 : 0,
+        showInShowcase ? 1 : 0,
         updates.isAvailable !== undefined ? (updates.isAvailable ? 1 : 0) : existing.isAvailable ? 1 : 0,
         idBuf,
         id,
@@ -366,7 +420,54 @@ export class ProductsService {
       resourceId: updated.id,
       productId: updated.id,
       version: updated.version,
-      updates: updated,
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+    });
+
+    return updated;
+  }
+
+  async toggleShowcase(
+    authCtx: AuthContext,
+    id: string,
+    showInShowcase: boolean,
+    expectedVersion?: number
+  ): Promise<Product & { version: number }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
+
+    const idBuf = toIdBuffer(id);
+    const p = getPool();
+    const params: any[] = [showInShowcase ? 1 : 0, idBuf, id];
+    let versionClause = '';
+    if (expectedVersion !== undefined && !isNaN(Number(expectedVersion))) {
+      versionClause = ' AND version = ?';
+      params.push(Number(expectedVersion));
+    }
+
+    const [res]: any = await p.query(
+      `UPDATE products
+       SET show_in_showcase = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE (id = ? OR id = ?)${versionClause} AND (is_deleted = 0 OR is_deleted IS NULL) AND deleted_at IS NULL`,
+      params
+    );
+
+    if (res && res.affectedRows === 0) {
+      throw AppError.conflict(
+        'محصول یافت نشد یا نسخه آن تغییر یافته است.',
+        'CONCURRENT_MODIFICATION_CONFLICT'
+      );
+    }
+
+    const updated = await this.getById(id, authCtx);
+    if (!updated) throw AppError.notFound(`محصول با شناسه ${id}`);
+
+    outbox.enqueue('products.updated', {
+      id: updated.id,
+      resourceId: updated.id,
+      productId: updated.id,
+      version: updated.version,
       actorId: authCtx.userId,
       actorName: authCtx.fullName,
     });
@@ -520,7 +621,7 @@ export class ProductsService {
     const isOfficial = isOrganizationalUserRole(authCtx.role);
     const storeConfig = await loadProductsStoreConfig();
 
-    // Reform 30: Enforce master store toggle & category toggle
+    // Enforce master store toggle & category toggle
     if (!isOfficial && !storeConfig.isStoreEnabled) {
       throw AppError.forbidden(
         storeConfig.disabledNotice || 'بخش کتاب و محصولات چند رسانه‌ای موقتاً توسط مدیریت غیرفعال است.',
@@ -566,7 +667,7 @@ export class ProductsService {
 
     let deliveryMethod: 'complex_pickup' | 'postal' | 'courier' | 'digital_instant' = 'digital_instant';
     let shippingFee = 0;
-    let shippingNotice = 'دسترسی و دانلود آنی نسخه دیجیتال در کتابخانه من';
+    let shippingNotice = 'دسترسی و دانلود آنی فایل‌ها و جلسات محصول در کتابخانه من';
     let shippingAddress: string | null = null;
 
     if (purchaseFormat === 'physical') {
@@ -717,6 +818,12 @@ export class ProductsService {
       );
       const createdOrder = mapProductOrderRow(insertedOrderRows[0]);
 
+      // Fetch fresh raw product row inside the transaction so confirmed buyers get unlocked downloadLink & mediaSessions immediately
+      const [freshProdRows]: any = await conn.query(
+        `SELECT * FROM products WHERE id = ? OR id = ? LIMIT 1`,
+        [pBuf, productId]
+      );
+
       auditChain.appendEntry({
         eventType: 'CARTABLE_STATUS_CHANGE',
         actorId: authCtx.userId,
@@ -730,14 +837,18 @@ export class ProductsService {
       const updatedOwnedFormats: Array<'digital' | 'physical'> = Array.from(
         new Set([...(product.ownedFormats || []), ...(paymentStatus === 'confirmed' ? [purchaseFormat] : [])])
       );
+      const isNowOwned = Boolean(paymentStatus === 'confirmed' || product.isOwned);
+      const includeProtectedMedia = isOfficial || isNowOwned;
 
-      const updatedProduct: Product & { version: number } = {
-        ...product,
-        stock: purchaseFormat === 'physical' ? Math.max(0, (product.stock || 1) - 1) : product.stock,
-        isOwned: paymentStatus === 'confirmed' ? true : product.isOwned,
-        ownedFormats: updatedOwnedFormats,
-        version: (product.version || 1) + (purchaseFormat === 'physical' ? 1 : 0),
-      };
+      const updatedProduct: Product & { version: number } = freshProdRows?.[0]
+        ? mapProductRow(freshProdRows[0], isNowOwned, updatedOwnedFormats, includeProtectedMedia)
+        : {
+            ...product,
+            stock: purchaseFormat === 'physical' ? Math.max(0, (product.stock || 1) - 1) : product.stock,
+            isOwned: isNowOwned,
+            ownedFormats: updatedOwnedFormats,
+            version: (product.version || 1) + (purchaseFormat === 'physical' ? 1 : 0),
+          };
 
       outbox.enqueue('products.purchased', {
         id: productId,
@@ -746,7 +857,6 @@ export class ProductsService {
         userId: authCtx.userId,
         orderId,
         order: createdOrder,
-        updates: updatedProduct,
         priceTomans: totalAmount,
       });
 
@@ -787,15 +897,29 @@ export function createProductsRouter(): Router {
       const incoming = req.body?.config || req.body || {};
       const { version: _v, expectedVersion: _ev, ...clean } = incoming;
 
+      const mergedEnabled: Record<string, boolean> = {
+        ...DEFAULT_PRODUCTS_STORE_CONFIG.enabledCategories,
+        ...(currentCfg.enabledCategories || {}),
+        ...(clean.enabledCategories || {}),
+      };
+
+      const rawCategories =
+        clean.customCategories !== undefined
+          ? clean.customCategories
+          : currentCfg.customCategories;
+      const customCategories = normalizeCustomCategories(rawCategories, mergedEnabled);
+      for (const cat of customCategories) {
+        if (mergedEnabled[cat.id] === undefined) {
+          mergedEnabled[cat.id] = cat.isEnabled;
+        }
+      }
+
       const merged: ProductsStoreConfig = {
         ...DEFAULT_PRODUCTS_STORE_CONFIG,
         ...currentCfg,
         ...clean,
-        enabledCategories: {
-          ...DEFAULT_PRODUCTS_STORE_CONFIG.enabledCategories,
-          ...(currentCfg.enabledCategories || {}),
-          ...(clean.enabledCategories || {}),
-        },
+        enabledCategories: mergedEnabled,
+        customCategories,
         defaultDeliveryOptions: {
           complexPickup: {
             ...DEFAULT_DELIVERY_OPTIONS.complexPickup,
@@ -936,6 +1060,23 @@ export function createProductsRouter(): Router {
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const expectedVersion = extractExpectedVersion(req, true);
       const updated = await service.updateProduct(authCtx, req.params.id, req.body, expectedVersion);
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/:id/showcase', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const showInShowcase = Boolean(req.body?.showInShowcase);
+      const hasExplicitVersion =
+        req.headers['if-match'] !== undefined ||
+        (req.body?.expectedVersion !== undefined && req.body?.expectedVersion !== null) ||
+        (req.body?.version !== undefined && req.body?.version !== null);
+      const expectedVersion = hasExplicitVersion ? extractExpectedVersion(req, false) : undefined;
+      const updated = await service.toggleShowcase(authCtx, req.params.id, showInShowcase, expectedVersion);
       res.json(updated);
     } catch (err) {
       next(err);

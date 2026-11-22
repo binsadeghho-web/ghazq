@@ -6,8 +6,12 @@ import { api } from '../../../services/apiClient';
 import { resolveProductCoverUrl } from '../../../data/showcaseImages';
 import {
   DELIVERY_METHOD_LABELS,
+  MEDIA_TYPE_LABELS,
+  formatPresentersText,
   formatTomans,
   getEffectiveDeliveryOptions,
+  isSafeMediaUrl,
+  triggerSafeMediaDownload,
 } from './productUiHelpers';
 import {
   X,
@@ -21,6 +25,8 @@ import {
   CheckCheck,
   UserCheck,
   AlertCircle,
+  Download,
+  Lock,
 } from 'lucide-react';
 
 interface ProductCheckoutModalProps {
@@ -58,8 +64,10 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
   const [receiptFileName, setReceiptFileName] = useState('');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [downloadingSessionId, setDownloadingSessionId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [completedOrder, setCompletedOrder] = useState<ProductOrder | null>(null);
+  const [unlockedProduct, setUnlockedProduct] = useState<Product | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,6 +75,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
     setStep(1);
     setErrorMsg(null);
     setCompletedOrder(null);
+    setUnlockedProduct(null);
     setReceiptFileUrl('');
     setReceiptFileName('');
 
@@ -162,6 +171,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
         receiptBankName: paymentMethod === 'bank_receipt' ? receiptBankName.trim() : undefined,
       });
       setCompletedOrder(res.order);
+      setUnlockedProduct(res.product || product);
       setStep(3);
     } catch (err: any) {
       setErrorMsg(err?.message || 'خطا در ثبت نهایی سفارش');
@@ -170,7 +180,22 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
     }
   };
 
+  const handleDownloadFile = async (id: string, url: string, title: string) => {
+    try {
+      setDownloadingSessionId(id);
+      setErrorMsg(null);
+      await triggerSafeMediaDownload(url, title);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'خطا در دریافت فایل از سرور');
+    } finally {
+      setDownloadingSessionId(null);
+    }
+  };
+
   const coverUrl = resolveProductCoverUrl(product.coverImage, product.format);
+  const finalProduct = unlockedProduct || product;
+  const unlockedSessions = (finalProduct.mediaSessions || []).filter(s => isSafeMediaUrl(s.downloadUrl));
+  const hasUnlockedMainLink = isSafeMediaUrl(finalProduct.downloadLink);
 
   return (
     <AnimatePresence>
@@ -195,7 +220,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                   ? 'انتخاب نوع نسخه، روش تحویل و تایید مبلغ'
                   : step === 2
                   ? 'بازبینی مشخصات خریدار و پرداخت از درگاه یا فیش'
-                  : 'تایید نهایی و دریافت کد رهگیری سفارش'}
+                  : 'تایید نهایی، کد رهگیری و دریافت لینک دانلود'}
               </span>
               <h3 className="text-base font-black text-white truncate">{product.title}</h3>
             </div>
@@ -226,7 +251,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                       {product.title}
                     </strong>
                     <span className="text-[11px] text-slate-500 block mt-0.5">
-                      {product.authorOrPresenter}
+                      ارائه‌دهندگان / نویسندگان: {formatPresentersText(product)}
                     </span>
                   </div>
                 </div>
@@ -250,11 +275,11 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                             <FileDown className="w-4 h-4 text-emerald-500" />
-                            <span>نسخه دیجیتال (PDF / فایل)</span>
+                            <span>نسخه دیجیتال (صوت / فیلم / PDF)</span>
                           </span>
                         </div>
                         <span className="text-[11px] text-slate-500 block">
-                          {product.digitalFormatLabel || 'دانلود و دسترسی آنی'}
+                          {product.digitalFormatLabel || 'دانلود و دسترسی آنی پس از ثبت‌نام'}
                         </span>
                         <strong className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums block mt-2">
                           {formatTomans(product.digitalPrice ?? product.price)}
@@ -382,7 +407,6 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
             {/* STEP 2 */}
             {step === 2 && (
               <div className="space-y-5">
-                {/* User Profile Review */}
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
                     <UserCheck className="w-4 h-4 text-emerald-500" />
@@ -436,7 +460,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                       >
                         <CreditCard className="w-4 h-4 text-amber-500 mb-1" />
                         <strong className="block text-slate-900 dark:text-white">پرداخت از طریق درگاه سیستم</strong>
-                        <span className="text-[11px] text-slate-500">تایید آنی و صدور فوری کد رهگیری</span>
+                        <span className="text-[11px] text-slate-500">تایید آنی و باز شدن فوری لینک دانلود صوت/فیلم</span>
                       </button>
                     )}
 
@@ -534,7 +558,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
 
             {/* STEP 3 */}
             {step === 3 && completedOrder && (
-              <div className="py-4 space-y-5 text-center">
+              <div className="py-2 space-y-5 text-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCheck className="w-8 h-8" />
                 </div>
@@ -544,7 +568,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                     سفارش شما با موفقیت در سیستم ثبت گردید
                   </h4>
                   <p className="text-xs text-slate-500">
-                    تراکنش با کد رهگیری یکتا ذخیره شد و از بخش «سفارش‌ها و رهگیری» قابل پیگیری است.
+                    تراکنش با کد رهگیری یکتا ذخیره شد و از بخش «سفارش‌ها و رهگیری» و «کتابخانه من» قابل دسترسی است.
                   </p>
                 </div>
 
@@ -576,6 +600,68 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                     </strong>
                   </div>
                 </div>
+
+                {/* Unlocked Download Links Panel */}
+                {completedOrder.paymentStatus === 'confirmed' ? (
+                  (unlockedSessions.length > 0 || hasUnlockedMainLink) && (
+                    <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-right space-y-3 max-w-lg mx-auto">
+                      <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300">
+                        <Download className="w-4 h-4" />
+                        <span>فایل‌ها و لینک‌های دانلود آماده دریافت شد:</span>
+                      </div>
+                      <div className="space-y-2">
+                        {hasUnlockedMainLink && finalProduct.downloadLink && (
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/25 flex items-center justify-between gap-2">
+                            <span className="font-bold text-slate-900 dark:text-white truncate">
+                              فایل اصلی: {finalProduct.title}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={downloadingSessionId === '__main__'}
+                              onClick={() => handleDownloadFile('__main__', finalProduct.downloadLink!, finalProduct.title)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>{downloadingSessionId === '__main__' ? 'در حال دریافت...' : 'دانلود فایل'}</span>
+                            </button>
+                          </div>
+                        )}
+                        {unlockedSessions.map((session, sIdx) => (
+                          <div
+                            key={session.id}
+                            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/25 flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <strong className="block text-slate-900 dark:text-white truncate">
+                                {toPersianNumbers(sIdx + 1)}. {session.title}
+                              </strong>
+                              <span className="text-[10px] text-slate-500">
+                                {MEDIA_TYPE_LABELS[session.mediaType]}
+                                {session.durationOrSize ? ` · ${toPersianNumbers(session.durationOrSize)}` : ''}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={downloadingSessionId === session.id}
+                              onClick={() => handleDownloadFile(session.id, session.downloadUrl, session.title)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>{downloadingSessionId === session.id ? 'در حال دریافت...' : 'دانلود'}</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-300 max-w-md mx-auto flex items-center gap-2 text-right">
+                    <Lock className="w-4 h-4 shrink-0" />
+                    <span>
+                      لینک‌های دانلود صوت، فیلم و فایل جلسات بلافاصله پس از تایید فیش بانکی توسط واحد مالی، در بخش «کتابخانه من» و صفحه همین محصول برای شما فعال خواهد شد.
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>

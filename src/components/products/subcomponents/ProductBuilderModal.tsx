@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Product,
+  ProductCategoryConfig,
   ProductDeliveryOptionsMap,
+  ProductMediaSession,
   ProductsStoreConfig,
 } from '../../../types';
 import { api } from '../../../services/apiClient';
@@ -10,12 +12,30 @@ import {
   PRODUCT_STUDIO_IMAGES,
   resolveProductCoverUrl,
 } from '../../../data/showcaseImages';
-import { X, Truck, Plus, Trash2, UploadCloud, AlertCircle } from 'lucide-react';
+import { toPersianNumbers } from '../../../utils/persianNumbers';
+import {
+  getAllProductCategories,
+  getPresentersList,
+  MEDIA_TYPE_LABELS,
+} from './productUiHelpers';
+import {
+  X,
+  Truck,
+  Plus,
+  Trash2,
+  UploadCloud,
+  AlertCircle,
+  Users,
+  Headphones,
+  Loader2,
+  CheckCircle2,
+  Sparkles,
+} from 'lucide-react';
 
 export const PRESET_PRODUCT_COVERS = [
   { title: 'کتاب مرجع فقه القضا', url: PRODUCT_STUDIO_IMAGES.book_jurisprudence },
   { title: 'تک‌نگاری و منشورات حقوقی', url: PRODUCT_STUDIO_IMAGES.book_monograph },
-  { title: 'بسته نرم‌افزاری چندرسانه‌ای', url: PRODUCT_STUDIO_IMAGES.multimedia_software },
+  { title: 'نشست علمی (صوتی و تصویری)', url: PRODUCT_STUDIO_IMAGES.multimedia_software },
   { title: 'آرشیو درس‌گفتار صوتی', url: PRODUCT_STUDIO_IMAGES.audio_lectures },
 ];
 
@@ -25,6 +45,7 @@ interface ProductBuilderModalProps {
   storeConfig: ProductsStoreConfig;
   onClose: () => void;
   onSave: (payload: any, editingProductId: string | null) => Promise<void>;
+  onUpdateStoreConfig?: (updates: Partial<ProductsStoreConfig>) => Promise<any>;
 }
 
 export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
@@ -33,19 +54,29 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
   storeConfig,
   onClose,
   onSave,
+  onUpdateStoreConfig,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const singleFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingMediaTarget, setUploadingMediaTarget] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [addingCategoryOpen, setAddingCategoryOpen] = useState(false);
+  const [newCategoryTitle, setNewCategoryTitle] = useState('');
+  const [newCategoryKind, setNewCategoryKind] = useState<ProductCategoryConfig['kind']>('custom');
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  const wasOpenRef = useRef(false);
 
   const [form, setForm] = useState<{
     title: string;
     subtitle: string;
     shortDescription: string;
     subjectIndex: string;
-    authorOrPresenter: string;
-    format: 'book' | 'multimedia' | 'audio_series';
+    presenters: string[];
+    format: string;
     supportsDigital: boolean;
     digitalPrice: number;
     digitalFormatLabel: string;
@@ -61,17 +92,19 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
     coverImage: string;
     galleryImages: string[];
     downloadLink: string;
+    mediaSessions: ProductMediaSession[];
     badgeText: string;
     stock: number;
     displayOrder: number;
     visibleToCustomer: boolean;
+    showInShowcase: boolean;
     description: string;
   }>({
     title: '',
     subtitle: '',
     shortDescription: '',
     subjectIndex: '',
-    authorOrPresenter: '',
+    presenters: [''],
     format: 'book',
     supportsDigital: true,
     digitalPrice: 280000,
@@ -88,95 +121,110 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
     coverImage: PRODUCT_STUDIO_IMAGES.book_jurisprudence,
     galleryImages: [PRODUCT_STUDIO_IMAGES.book_jurisprudence],
     downloadLink: '',
+    mediaSessions: [],
     badgeText: '',
     stock: 25,
     displayOrder: 0,
     visibleToCustomer: true,
+    showInShowcase: true,
     description: '',
   });
 
   useEffect(() => {
-    if (!isOpen) return;
-    setFormError(null);
-    if (editingProduct) {
-      const resolvedCover = resolveProductCoverUrl(editingProduct.coverImage, editingProduct.format);
-      const rawGallery = Array.isArray(editingProduct.galleryImages)
-        ? editingProduct.galleryImages.filter(u => u && !u.includes('unsplash.com'))
-        : [];
-      const mergedGallery = Array.from(new Set([resolvedCover, ...rawGallery]));
+    if (isOpen && !wasOpenRef.current) {
+      setFormError(null);
+      setAddingCategoryOpen(false);
+      setNewCategoryTitle('');
+      if (editingProduct) {
+        const resolvedCover = resolveProductCoverUrl(editingProduct.coverImage, editingProduct.format);
+        const rawGallery = Array.isArray(editingProduct.galleryImages)
+          ? editingProduct.galleryImages.filter(u => u && !u.includes('unsplash.com'))
+          : [];
+        const mergedGallery = Array.from(new Set([resolvedCover, ...rawGallery]));
+        const initialPresenters = getPresentersList(editingProduct);
 
-      setForm({
-        title: editingProduct.title,
-        subtitle: editingProduct.subtitle || '',
-        shortDescription: editingProduct.shortDescription || '',
-        subjectIndex: editingProduct.subjectIndex || '',
-        authorOrPresenter: editingProduct.authorOrPresenter,
-        format: editingProduct.format,
-        supportsDigital: editingProduct.supportsDigital !== false,
-        digitalPrice: Number(editingProduct.digitalPrice ?? editingProduct.price ?? 0),
-        digitalFormatLabel:
-          editingProduct.digitalFormatLabel ||
-          (editingProduct.format === 'book'
-            ? 'نسخه الکترونیک (PDF)'
-            : editingProduct.format === 'audio_series'
-            ? 'فایل صوتی دیجیتال (MP3)'
-            : 'بسته دیجیتال چندرسانه‌ای'),
-        supportsPhysical: Boolean(editingProduct.supportsPhysical),
-        physicalPrice: Number(editingProduct.physicalPrice ?? editingProduct.price ?? 0),
-        physicalFormatLabel:
-          editingProduct.physicalFormatLabel ||
-          (editingProduct.format === 'book'
-            ? 'نسخه چاپی فیزیکی'
-            : editingProduct.format === 'audio_series'
-            ? 'پکیج فیزیکی فلش/لوح صوتی'
-            : 'پکیج فیزیکی لوح فشرده چندرسانه‌ای'),
-        deliveryOptions:
-          editingProduct.deliveryOptions || JSON.parse(JSON.stringify(storeConfig.defaultDeliveryOptions)),
-        allowedPaymentMethod: editingProduct.allowedPaymentMethod || 'both',
-        pagesOrDuration: editingProduct.pagesOrDuration || '۳۵۰ صفحه',
-        publishedYear: editingProduct.publishedYear || '۱۴۰۴',
-        publisher: editingProduct.publisher || 'انتشارات مرکز فقه و حقوق اسلامی',
-        isbn: editingProduct.isbn || '',
-        coverImage: resolvedCover,
-        galleryImages: mergedGallery,
-        downloadLink: editingProduct.downloadLink || '',
-        badgeText: editingProduct.badgeText || '',
-        stock: Number(editingProduct.stock ?? 20),
-        displayOrder: Number(editingProduct.displayOrder ?? 0),
-        visibleToCustomer: editingProduct.visibleToCustomer !== false,
-        description: editingProduct.description || '',
-      });
-    } else {
-      setForm({
-        title: '',
-        subtitle: '',
-        shortDescription: '',
-        subjectIndex: 'فقه القضا · حقوق کاربردی',
-        authorOrPresenter: '',
-        format: 'book',
-        supportsDigital: true,
-        digitalPrice: 280000,
-        digitalFormatLabel: 'نسخه الکترونیک (PDF)',
-        supportsPhysical: true,
-        physicalPrice: 480000,
-        physicalFormatLabel: 'نسخه چاپی نفیس گالینگور',
-        deliveryOptions: JSON.parse(JSON.stringify(storeConfig.defaultDeliveryOptions)),
-        allowedPaymentMethod: 'both',
-        pagesOrDuration: '۳۵۰ صفحه',
-        publishedYear: '۱۴۰۴',
-        publisher: 'انتشارات مرکز فقه و حقوق اسلامی',
-        isbn: '',
-        coverImage: PRODUCT_STUDIO_IMAGES.book_jurisprudence,
-        galleryImages: [PRODUCT_STUDIO_IMAGES.book_jurisprudence],
-        downloadLink: '',
-        badgeText: '',
-        stock: 25,
-        displayOrder: 0,
-        visibleToCustomer: true,
-        description: '',
-      });
+        setForm({
+          title: editingProduct.title,
+          subtitle: editingProduct.subtitle || '',
+          shortDescription: editingProduct.shortDescription || '',
+          subjectIndex: editingProduct.subjectIndex || '',
+          presenters: initialPresenters.length > 0 ? initialPresenters : [''],
+          format: editingProduct.format || 'book',
+          supportsDigital: editingProduct.supportsDigital !== false,
+          digitalPrice: Number(editingProduct.digitalPrice ?? editingProduct.price ?? 0),
+          digitalFormatLabel:
+            editingProduct.digitalFormatLabel ||
+            (editingProduct.format === 'book'
+              ? 'نسخه الکترونیک (PDF)'
+              : editingProduct.format === 'audio_series'
+              ? 'فایل صوتی / ویدئویی جلسات درس‌گفتار'
+              : 'فایل صوتی و تصویری نشست'),
+          supportsPhysical: Boolean(editingProduct.supportsPhysical),
+          physicalPrice: Number(editingProduct.physicalPrice ?? editingProduct.price ?? 0),
+          physicalFormatLabel:
+            editingProduct.physicalFormatLabel ||
+            (editingProduct.format === 'book'
+              ? 'نسخه چاپی فیزیکی'
+              : editingProduct.format === 'audio_series'
+              ? 'پکیج فیزیکی لوح/فلش درس‌گفتار'
+              : 'پکیج فیزیکی لوح فشرده نشست'),
+          deliveryOptions:
+            editingProduct.deliveryOptions || JSON.parse(JSON.stringify(storeConfig.defaultDeliveryOptions)),
+          allowedPaymentMethod: editingProduct.allowedPaymentMethod || 'both',
+          pagesOrDuration: editingProduct.pagesOrDuration || '۳۵۰ صفحه',
+          publishedYear: editingProduct.publishedYear || '۱۴۰۴',
+          publisher: editingProduct.publisher || 'انتشارات مرکز فقه و حقوق اسلامی',
+          isbn: editingProduct.isbn || '',
+          coverImage: resolvedCover,
+          galleryImages: mergedGallery,
+          downloadLink: editingProduct.downloadLink || '',
+          mediaSessions: Array.isArray(editingProduct.mediaSessions)
+            ? editingProduct.mediaSessions.map(s => ({ ...s }))
+            : [],
+          badgeText: editingProduct.badgeText || '',
+          stock: Number(editingProduct.stock ?? 20),
+          displayOrder: Number(editingProduct.displayOrder ?? 0),
+          visibleToCustomer: editingProduct.visibleToCustomer !== false,
+          showInShowcase: editingProduct.showInShowcase !== false,
+          description: editingProduct.description || '',
+        });
+      } else {
+        setForm({
+          title: '',
+          subtitle: '',
+          shortDescription: '',
+          subjectIndex: 'فقه القضا · حقوق کاربردی',
+          presenters: [''],
+          format: 'book',
+          supportsDigital: true,
+          digitalPrice: 280000,
+          digitalFormatLabel: 'نسخه الکترونیک (PDF)',
+          supportsPhysical: true,
+          physicalPrice: 480000,
+          physicalFormatLabel: 'نسخه چاپی نفیس گالینگور',
+          deliveryOptions: JSON.parse(JSON.stringify(storeConfig.defaultDeliveryOptions)),
+          allowedPaymentMethod: 'both',
+          pagesOrDuration: '۳۵۰ صفحه',
+          publishedYear: '۱۴۰۴',
+          publisher: 'انتشارات مرکز فقه و حقوق اسلامی',
+          isbn: '',
+          coverImage: PRODUCT_STUDIO_IMAGES.book_jurisprudence,
+          galleryImages: [PRODUCT_STUDIO_IMAGES.book_jurisprudence],
+          downloadLink: '',
+          mediaSessions: [],
+          badgeText: '',
+          stock: 25,
+          displayOrder: 0,
+          visibleToCustomer: true,
+          showInShowcase: true,
+          description: '',
+        });
+      }
     }
+    wasOpenRef.current = isOpen;
   }, [editingProduct, isOpen, storeConfig.defaultDeliveryOptions]);
+
+  const categoriesList = getAllProductCategories(storeConfig);
 
   const handleUploadGalleryImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -201,11 +249,44 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
     }
   };
 
-  const handleFormatChange = (nextFormat: 'book' | 'multimedia' | 'audio_series') => {
+  const handleUploadProtectedMedia = async (targetKey: 'single' | string, file: File) => {
+    if (!file) return;
+    try {
+      setUploadingMediaTarget(targetKey);
+      setFormError(null);
+      const uploaded = await api.uploadFile(file, 'product_media');
+      const fileSizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      if (targetKey === 'single') {
+        setForm(prev => ({ ...prev, downloadLink: uploaded.url }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          mediaSessions: prev.mediaSessions.map(s =>
+            s.id === targetKey
+              ? {
+                  ...s,
+                  downloadUrl: uploaded.url,
+                  durationOrSize: s.durationOrSize || `${toPersianNumbers(fileSizeMb)} مگابایت`,
+                }
+              : s
+          ),
+        }));
+      }
+    } catch (err: any) {
+      setFormError(err?.message || 'خطا در آپلود فایل صوتی/ویدئویی/سند روی سرور');
+    } finally {
+      setUploadingMediaTarget(null);
+    }
+  };
+
+  const handleFormatChange = (nextFormat: string) => {
+    const cat = categoriesList.find(c => c.id === nextFormat);
+    const kind = cat?.kind || (nextFormat === 'multimedia' ? 'session' : nextFormat === 'audio_series' ? 'lecture' : 'book');
+
     const defaultCover =
-      nextFormat === 'multimedia'
+      kind === 'session' || kind === 'multimedia'
         ? PRODUCT_STUDIO_IMAGES.multimedia_software
-        : nextFormat === 'audio_series'
+        : kind === 'lecture'
         ? PRODUCT_STUDIO_IMAGES.audio_lectures
         : PRODUCT_STUDIO_IMAGES.book_jurisprudence;
 
@@ -213,16 +294,16 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
       ...prev,
       format: nextFormat,
       digitalFormatLabel:
-        nextFormat === 'book'
+        kind === 'book'
           ? 'نسخه الکترونیک (PDF)'
-          : nextFormat === 'audio_series'
-          ? 'فایل صوتی دیجیتال (MP3)'
-          : 'بسته دیجیتال چندرسانه‌ای (دانلودی/برخط)',
+          : kind === 'lecture'
+          ? 'دسترسی و دانلود جلسات درس‌گفتار (صوتی/تصویری)'
+          : 'فایل صوتی / تصویری نشست (دانلودی پس از ثبت‌نام)',
       physicalFormatLabel:
-        nextFormat === 'book'
+        kind === 'book'
           ? 'نسخه چاپی فیزیکی'
-          : nextFormat === 'audio_series'
-          ? 'پکیج فیزیکی فلش/لوح صوتی'
+          : kind === 'lecture'
+          ? 'پکیج فیزیکی فلش/لوح درس‌گفتار'
           : 'پکیج فیزیکی لوح فشرده چندرسانه‌ای',
       coverImage: editingProduct ? prev.coverImage : defaultCover,
       galleryImages: editingProduct
@@ -231,11 +312,102 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
     }));
   };
 
+  const handleCreateCategoryInline = async () => {
+    const label = newCategoryTitle.trim();
+    if (!label) {
+      setFormError('لطفاً نام دسته‌بندی یا عنوان ارائه جدید را وارد نمایید.');
+      return;
+    }
+    const slugId = `cat_${Date.now().toString(36)}`;
+    const nextCat: ProductCategoryConfig = {
+      id: slugId,
+      label,
+      shortLabel: label.length > 18 ? label.slice(0, 18) : label,
+      kind: newCategoryKind,
+      isEnabled: true,
+      isBuiltIn: false,
+    };
+    try {
+      setSavingCategory(true);
+      setFormError(null);
+      if (onUpdateStoreConfig) {
+        const mergedCats = [...categoriesList, nextCat];
+        await onUpdateStoreConfig({
+          enabledCategories: {
+            ...(storeConfig.enabledCategories || {}),
+            [slugId]: true,
+          },
+          customCategories: mergedCats,
+        });
+      }
+      setForm(prev => ({ ...prev, format: slugId }));
+      setNewCategoryTitle('');
+      setAddingCategoryOpen(false);
+    } catch (err: any) {
+      setFormError(err?.message || 'خطا در ثبت عنوان دسته‌بندی جدید');
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleAddPresenter = () => {
+    setForm(prev => ({ ...prev, presenters: [...prev.presenters, ''] }));
+  };
+
+  const handleChangePresenter = (idx: number, val: string) => {
+    setForm(prev => ({
+      ...prev,
+      presenters: prev.presenters.map((p, i) => (i === idx ? val : p)),
+    }));
+  };
+
+  const handleRemovePresenter = (idx: number) => {
+    setForm(prev => ({
+      ...prev,
+      presenters: prev.presenters.length > 1 ? prev.presenters.filter((_, i) => i !== idx) : prev.presenters,
+    }));
+  };
+
+  const handleAddMediaSession = () => {
+    const cat = categoriesList.find(c => c.id === form.format);
+    const defaultType: ProductMediaSession['mediaType'] =
+      cat?.kind === 'book' || form.format === 'book' ? 'document' : 'audio';
+    setForm(prev => ({
+      ...prev,
+      mediaSessions: [
+        ...prev.mediaSessions,
+        {
+          id: `session_${Date.now().toString(36)}_${prev.mediaSessions.length + 1}`,
+          title: `جلسه ${toPersianNumbers(prev.mediaSessions.length + 1)}`,
+          mediaType: defaultType,
+          downloadUrl: '',
+          durationOrSize: '',
+          description: '',
+        },
+      ],
+    }));
+  };
+
+  const handleUpdateMediaSession = (id: string, field: keyof ProductMediaSession, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      mediaSessions: prev.mediaSessions.map(s => (s.id === id ? { ...s, [field]: value } : s)),
+    }));
+  };
+
+  const handleRemoveMediaSession = (id: string) => {
+    setForm(prev => ({
+      ...prev,
+      mediaSessions: prev.mediaSessions.filter(s => s.id !== id),
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!form.title.trim() || !form.authorOrPresenter.trim() || !form.description.trim()) {
-      setFormError('لطفاً عنوان، نویسنده/ارائه‌دهنده و شرح کامل اثر را تکمیل کنید.');
+    const cleanedPresenters = form.presenters.map(p => p.trim()).filter(Boolean);
+    if (!form.title.trim() || cleanedPresenters.length === 0 || !form.description.trim()) {
+      setFormError('لطفاً عنوان، حداقل یک نویسنده/ارائه‌دهنده و شرح کامل اثر را تکمیل کنید.');
       return;
     }
     if (!form.supportsDigital && !form.supportsPhysical) {
@@ -243,19 +415,26 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
       return;
     }
 
-    const formatTitle =
-      form.format === 'book'
-        ? 'کتاب'
-        : form.format === 'multimedia'
-        ? 'محصول چندرسانه‌ای'
-        : 'صوت و درس‌گفتار';
+    const matchedCat = categoriesList.find(c => c.id === form.format);
+    const formatTitle = matchedCat?.label || form.format;
+
+    const cleanedMediaSessions = form.mediaSessions
+      .map((s, idx) => ({
+        ...s,
+        title: s.title.trim() || `جلسه / فایل ${idx + 1}`,
+        downloadUrl: s.downloadUrl.trim(),
+        durationOrSize: s.durationOrSize?.trim() || undefined,
+        description: s.description?.trim() || undefined,
+      }))
+      .filter(s => s.title || s.downloadUrl);
 
     const payload = {
       title: form.title.trim(),
       subtitle: form.subtitle.trim() || undefined,
       shortDescription: form.shortDescription.trim() || form.description.trim().slice(0, 140),
       subjectIndex: form.subjectIndex.trim() || undefined,
-      authorOrPresenter: form.authorOrPresenter.trim(),
+      authorOrPresenter: cleanedPresenters.join('، '),
+      presenters: cleanedPresenters,
       format: form.format,
       formatTitle,
       price: form.supportsPhysical ? Number(form.physicalPrice) : Number(form.digitalPrice),
@@ -275,10 +454,12 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
       coverImage: form.coverImage,
       galleryImages: form.galleryImages,
       downloadLink: form.downloadLink.trim() || undefined,
+      mediaSessions: cleanedMediaSessions,
       badgeText: form.badgeText.trim() || undefined,
       stock: Math.max(0, Number(form.stock || 0)),
       displayOrder: Number(form.displayOrder || 0),
       visibleToCustomer: form.visibleToCustomer,
+      showInShowcase: form.showInShowcase,
       isAvailable: true,
     };
 
@@ -312,10 +493,10 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
           <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
             <div>
               <span className="text-[11px] text-amber-400 font-bold block">
-                مدیریت کامل کتاب و محصولات چند رسانه‌ای
+                مدیریت کامل کتب، نشست‌ها (صوتی/تصویری)، درس‌گفتارها و عناوین ارائه
               </span>
               <h3 className="text-base font-black text-white">
-                {editingProduct ? 'ویرایش کامل کتاب / محصول' : 'انتشار کتاب، محصول چندرسانه‌ای یا صوت جدید'}
+                {editingProduct ? 'ویرایش کامل کتاب / محصول / نشست' : 'انتشار کتاب، نشست علمی، درس‌گفتار یا محصول جدید'}
               </h3>
             </div>
             <button
@@ -335,22 +516,35 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
               </div>
             )}
 
-            {/* Category + Core Metadata */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">دسته‌بندی محصول:</label>
+            {/* Category + Core Title */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">دسته‌بندی / عنوان ارائه:</label>
+                  {onUpdateStoreConfig && (
+                    <button
+                      type="button"
+                      onClick={() => setAddingCategoryOpen(v => !v)}
+                      className="text-[11px] font-black text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    >
+                      {addingCategoryOpen ? 'بستن' : '+ افزودن عنوان جدید'}
+                    </button>
+                  )}
+                </div>
                 <select
                   value={form.format}
-                  onChange={e => handleFormatChange(e.target.value as any)}
+                  onChange={e => handleFormatChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
                 >
-                  <option value="book">کتاب</option>
-                  <option value="multimedia">محصولات چندرسانه‌ای</option>
-                  <option value="audio_series">صوت و درس‌گفتار</option>
+                  {categoriesList.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.label}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">عنوان اثر / محصول:</label>
+              <div className="sm:col-span-7">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">عنوان اثر / نشست / درس‌گفتار:</label>
                 <input
                   type="text"
                   required
@@ -361,17 +555,80 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">نویسنده / پدیدآورنده / مدرس:</label>
+            {addingCategoryOpen && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                 <input
                   type="text"
-                  required
-                  value={form.authorOrPresenter}
-                  onChange={e => setForm(prev => ({ ...prev, authorOrPresenter: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                  value={newCategoryTitle}
+                  onChange={e => setNewCategoryTitle(e.target.value)}
+                  placeholder="نام عنوان جدید (مثلاً: کرسی‌های تخصصی / همایش فقهی)"
+                  className="sm:col-span-6 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
                 />
+                <select
+                  value={newCategoryKind}
+                  onChange={e => setNewCategoryKind(e.target.value as ProductCategoryConfig['kind'])}
+                  className="sm:col-span-3 px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold"
+                >
+                  <option value="custom">عنوان ارائه جدید</option>
+                  <option value="session">نشست صوتی/تصویری</option>
+                  <option value="lecture">درس‌گفتار</option>
+                  <option value="book">کتاب</option>
+                </select>
+                <button
+                  type="button"
+                  disabled={savingCategory}
+                  onClick={handleCreateCategoryInline}
+                  className="sm:col-span-3 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black cursor-pointer disabled:opacity-50"
+                >
+                  {savingCategory ? 'در حال ثبت...' : 'ثبت و انتخاب عنوان'}
+                </button>
               </div>
+            )}
+
+            {/* Multiple Presenters / Authors */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
+                  <Users className="w-4 h-4 text-amber-500" />
+                  <span>نویسندگان / اساتید / ارائه‌دهندگان نشست (پشتیبانی از چند ارائه‌دهنده):</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddPresenter}
+                  className="px-3 py-1 rounded-xl bg-slate-900 dark:bg-amber-500 text-white dark:text-stone-950 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>افزودن ارائه‌دهنده</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {form.presenters.map((presenter, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      required={idx === 0}
+                      value={presenter}
+                      onChange={e => handleChangePresenter(idx, e.target.value)}
+                      placeholder={`نام نویسنده / ارائه‌دهنده ${toPersianNumbers(idx + 1)}...`}
+                      className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium"
+                    />
+                    {form.presenters.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePresenter(idx)}
+                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 cursor-pointer shrink-0"
+                        title="حذف ارائه‌دهنده"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">نمایه موضوعی:</label>
                 <input
@@ -456,6 +713,119 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
                   className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
                 />
               </div>
+            </div>
+
+            {/* Multi-session Download Files (Audio / Video / Docs unlocked after registration/order confirmation) */}
+            <div className="p-4 rounded-2xl border border-indigo-500/25 bg-indigo-500/5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <Headphones className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-black text-slate-900 dark:text-white block">
+                      جلسات و فایل‌های دانلودی (صوت نشست / فیلم جلسه / جزوه PDF)
+                    </span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                      لینک دانلود این فایل‌ها به صورت امن در سرور محافظت می‌شود و پس از تکمیل ثبت‌نام / تایید سفارش برای خریدار نمایش داده می‌شود.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddMediaSession}
+                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>افزودن جلسه / فایل جدید</span>
+                </button>
+              </div>
+
+              {form.mediaSessions.length > 0 && (
+                <div className="space-y-2.5">
+                  {form.mediaSessions.map((session, sIdx) => (
+                    <div
+                      key={session.id}
+                      className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2"
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                        <div className="sm:col-span-5">
+                          <label className="block text-[10px] text-slate-500 mb-0.5">
+                            عنوان جلسه / فایل {toPersianNumbers(sIdx + 1)}:
+                          </label>
+                          <input
+                            type="text"
+                            value={session.title}
+                            onChange={e => handleUpdateMediaSession(session.id, 'title', e.target.value)}
+                            placeholder="مثلاً: صوت نشست اول — مبانی مسئولیت"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
+                          />
+                        </div>
+                        <div className="sm:col-span-4">
+                          <label className="block text-[10px] text-slate-500 mb-0.5">نوع فایل:</label>
+                          <select
+                            value={session.mediaType}
+                            onChange={e => handleUpdateMediaSession(session.id, 'mediaType', e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
+                          >
+                            {Object.entries(MEDIA_TYPE_LABELS).map(([k, lbl]) => (
+                              <option key={k} value={k}>
+                                {lbl}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] text-slate-500 mb-0.5">مدت / حجم:</label>
+                          <input
+                            type="text"
+                            value={session.durationOrSize || ''}
+                            onChange={e => handleUpdateMediaSession(session.id, 'durationOrSize', e.target.value)}
+                            placeholder="۴۵ دقیقه"
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                          />
+                        </div>
+                        <div className="sm:col-span-1 flex justify-end pt-3 sm:pt-0">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMediaSession(session.id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                            title="حذف این فایل/جلسه"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={session.downloadUrl}
+                          onChange={e => handleUpdateMediaSession(session.id, 'downloadUrl', e.target.value)}
+                          placeholder="نشانی فایل آپلودشده یا لینک مستقیم https://..."
+                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-mono text-[11px]"
+                        />
+                        <label className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                          {uploadingMediaTarget === session.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          <span>آپلود صوت / ویدئو / PDF</span>
+                          <input
+                            type="file"
+                            accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.mp4,.webm,.pdf,.doc,.docx,.zip"
+                            onChange={e => {
+                              const f = e.target.files?.[0];
+                              if (f) handleUploadProtectedMedia(session.id, f);
+                              e.target.value = '';
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Gallery & Cover Picker */}
@@ -549,10 +919,9 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
 
             {/* Dual Selling Formats & Pricing */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Digital Option */}
               <div className={`p-4 rounded-2xl border space-y-3 ${form.supportsDigital ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-slate-200 dark:border-slate-800 opacity-75'}`}>
                 <label className="flex items-center justify-between font-black text-slate-900 dark:text-white cursor-pointer">
-                  <span>فروش نسخه دیجیتال (PDF / فایل دانلودی)</span>
+                  <span>فروش نسخه دیجیتال (دانلود فایل / صوت / ویدئو)</span>
                   <input
                     type="checkbox"
                     checked={form.supportsDigital}
@@ -583,20 +952,45 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-0.5">لینک فایل / راهنمای دانلود (اختیاری):</label>
-                      <input
-                        type="text"
-                        value={form.downloadLink}
-                        onChange={e => setForm(prev => ({ ...prev, downloadLink: e.target.value }))}
-                        placeholder="https://..."
-                        className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono"
-                      />
+                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-0.5">لینک فایل اصلی / آرشیو (اختیاری):</label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={form.downloadLink}
+                          onChange={e => setForm(prev => ({ ...prev, downloadLink: e.target.value }))}
+                          placeholder="https://... یا آپلود فایل"
+                          className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono"
+                        />
+                        <input
+                          ref={singleFileInputRef}
+                          type="file"
+                          accept="audio/*,video/*,.pdf,.doc,.docx,.zip"
+                          onChange={e => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadProtectedMedia('single', f);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          disabled={uploadingMediaTarget === 'single'}
+                          onClick={() => singleFileInputRef.current?.click()}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                        >
+                          {uploadingMediaTarget === 'single' ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          <span>آپلود</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Physical Option */}
               <div className={`p-4 rounded-2xl border space-y-3 ${form.supportsPhysical ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-200 dark:border-slate-800 opacity-75'}`}>
                 <label className="flex items-center justify-between font-black text-slate-900 dark:text-white cursor-pointer">
                   <span>فروش نسخه فیزیکی (چاپی / پکیج / لوح)</span>
@@ -646,7 +1040,7 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
               </div>
             </div>
 
-            {/* Physical Delivery Options (3 methods) */}
+            {/* Physical Delivery Options */}
             {form.supportsPhysical && (
               <div className="p-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 space-y-3">
                 <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-300">
@@ -725,7 +1119,7 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
             )}
 
             {/* Payment Policy & Visibility */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">شیوه پرداخت مجاز برای خریدار:</label>
                 <select
@@ -738,15 +1132,28 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
                   <option value="receipt_only">صرفاً بارگذاری تصویر فیش بانکی</option>
                 </select>
               </div>
-              <label className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold cursor-pointer mt-4">
-                <input
-                  type="checkbox"
-                  checked={form.visibleToCustomer}
-                  onChange={e => setForm(prev => ({ ...prev, visibleToCustomer: e.target.checked }))}
-                  className="w-4 h-4 accent-amber-500 cursor-pointer"
-                />
-                <span>قابل نمایش برای حساب‌های مشتری (علاوه بر دانش‌آموختگان)</span>
-              </label>
+              <div className="space-y-2 pt-1">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.visibleToCustomer}
+                    onChange={e => setForm(prev => ({ ...prev, visibleToCustomer: e.target.checked }))}
+                    className="w-4 h-4 accent-amber-500 cursor-pointer"
+                  />
+                  <span>قابل نمایش برای حساب‌های مشتری (علاوه بر دانش‌آموختگان)</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.showInShowcase}
+                    onChange={e => setForm(prev => ({ ...prev, showInShowcase: e.target.checked }))}
+                    className="w-4 h-4 accent-emerald-600 cursor-pointer"
+                  />
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>نمایش پیش‌فرض در ویترین جامع خدمات (سربرگ محصولات)</span>
+                </label>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
@@ -762,8 +1169,8 @@ export const ProductBuilderModal: React.FC<ProductBuilderModalProps> = ({
                 disabled={submitting}
                 className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <Plus className="w-4 h-4" />
-                <span>{submitting ? 'در حال ثبت...' : editingProduct ? 'ذخیره تغییرات اثر' : 'انتشار محصول در بخش'}</span>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{submitting ? 'در حال ثبت...' : editingProduct ? 'ذخیره تغییرات اثر' : 'انتشار محصول در بخش و ویترین'}</span>
               </button>
             </div>
           </form>

@@ -150,8 +150,10 @@ export interface AppContextType {
   ) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'isOwned'>) => Promise<Product>;
   updateProduct: (productId: string, updates: Partial<Product>) => Promise<Product | void>;
+  toggleProductShowcase: (productId: string, showInShowcase: boolean) => Promise<Product | void>;
   softDeleteProduct: (productId: string) => Promise<void>;
   reorderProducts: (orderedIds: string[]) => Promise<void>;
+  refreshProducts: () => Promise<void>;
 
   // Counseling methods
   bookCounseling: (data: Omit<CounselingRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
@@ -480,8 +482,10 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     reviewProductOrder: products.reviewProductOrder,
     addProduct: products.addProduct,
     updateProduct: products.updateProduct,
+    toggleProductShowcase: products.toggleProductShowcase,
     softDeleteProduct: products.softDeleteProduct,
     reorderProducts: products.reorderProducts,
+    refreshProducts: products.refreshProducts,
 
     // Counseling
     consultants: counseling.consultants,

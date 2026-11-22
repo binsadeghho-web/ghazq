@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ProductsStoreConfig } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
-import { ProductShelfKey } from './productUiHelpers';
+import { ProductShelfKey, getAllProductCategories } from './productUiHelpers';
 import {
   BookOpen,
   MonitorPlay,
@@ -12,14 +12,13 @@ import {
   Plus,
   Layers,
   Receipt,
+  Tags,
 } from 'lucide-react';
 
 interface ProductStatsHeaderProps {
   storeConfig: ProductsStoreConfig;
   activeProductsCount: number;
-  booksCount: number;
-  multimediaCount: number;
-  audioCount: number;
+  categoryCounts: Record<string, number>;
   myOwnedCount: number;
   ordersCount: number;
   activeShelf: ProductShelfKey;
@@ -32,9 +31,7 @@ interface ProductStatsHeaderProps {
 export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
   storeConfig,
   activeProductsCount,
-  booksCount,
-  multimediaCount,
-  audioCount,
+  categoryCounts,
   myOwnedCount,
   ordersCount,
   activeShelf,
@@ -43,9 +40,16 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
   onOpenAddProduct,
   onOpenSettings,
 }) => {
-  const showBook = isOfficial || storeConfig.enabledCategories?.book !== false;
-  const showMultimedia = isOfficial || storeConfig.enabledCategories?.multimedia !== false;
-  const showAudio = isOfficial || storeConfig.enabledCategories?.audio_series !== false;
+  const categories = getAllProductCategories(storeConfig);
+
+  const getCategoryIcon = (kind: string, id: string) => {
+    if (kind === 'book' || id === 'book') return <BookOpen className="w-4 h-4 text-amber-600" />;
+    if (kind === 'session' || kind === 'multimedia' || id === 'multimedia') {
+      return <MonitorPlay className="w-4 h-4 text-indigo-600" />;
+    }
+    if (kind === 'lecture' || id === 'audio_series') return <Headphones className="w-4 h-4 text-sky-600" />;
+    return <Tags className="w-4 h-4 text-emerald-600" />;
+  };
 
   const allStats: Array<{
     key: ProductShelfKey;
@@ -64,33 +68,15 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
       icon: <Layers className="w-4 h-4 text-emerald-600" />,
       visible: true,
     },
-    {
-      key: 'book',
-      label: 'کتاب‌ها',
-      value: booksCount,
-      unit: 'جلد',
-      icon: <BookOpen className="w-4 h-4 text-amber-600" />,
-      visible: showBook,
-      disabledForUsers: storeConfig.enabledCategories?.book === false,
-    },
-    {
-      key: 'multimedia',
-      label: 'محصولات چندرسانه‌ای',
-      value: multimediaCount,
-      unit: 'بسته',
-      icon: <MonitorPlay className="w-4 h-4 text-indigo-600" />,
-      visible: showMultimedia,
-      disabledForUsers: storeConfig.enabledCategories?.multimedia === false,
-    },
-    {
-      key: 'audio_series',
-      label: 'صوت و درس‌گفتار',
-      value: audioCount,
-      unit: 'مجموعه',
-      icon: <Headphones className="w-4 h-4 text-sky-600" />,
-      visible: showAudio,
-      disabledForUsers: storeConfig.enabledCategories?.audio_series === false,
-    },
+    ...categories.map(cat => ({
+      key: cat.id,
+      label: cat.shortLabel || cat.label,
+      value: categoryCounts[cat.id] || 0,
+      unit: 'اثر',
+      icon: getCategoryIcon(cat.kind, cat.id),
+      visible: isOfficial || storeConfig.enabledCategories?.[cat.id] !== false,
+      disabledForUsers: storeConfig.enabledCategories?.[cat.id] === false,
+    })),
     {
       key: 'my_library',
       label: 'کتابخانه من',
@@ -124,7 +110,7 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             {storeConfig.storeSubtitle ||
-              'خرید مستقیم کتاب، محصولات چندرسانه‌ای و صوت با انتخاب نسخه دیجیتال یا فیزیکی و رهگیری آنی سفارش'}
+              'خرید مستقیم کتاب، نشست‌های علمی صوتی و تصویری و درس‌گفتارها با دسترسی آنی فایل‌ها پس از ثبت‌نام یا ارسال نسخه فیزیکی'}
           </p>
         </div>
 
@@ -136,7 +122,7 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
             >
               <Sliders className="w-4 h-4 text-amber-500" />
-              <span>تنظیمات بخش، درگاه و ارسال</span>
+              <span>تنظیمات بخش، عناوین و ارسال</span>
             </button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -146,7 +132,7 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
               className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/15 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>افزودن کتاب / محصول جدید</span>
+              <span>افزودن کتاب / نشست / محصول</span>
             </motion.button>
           </div>
         )}
@@ -167,8 +153,8 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
                   : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 hover:border-amber-400'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-[11px] font-bold ${isActive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500'}`}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className={`text-[11px] font-bold truncate ${isActive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500'}`}>
                   {stat.label}
                 </span>
                 {stat.icon}

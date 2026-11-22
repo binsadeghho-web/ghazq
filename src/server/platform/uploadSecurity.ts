@@ -12,6 +12,7 @@ import { UploadCategory } from './storage';
 
 export const MAX_CARTABLE_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
 export const MAX_GENERAL_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+export const MAX_PRODUCT_MEDIA_UPLOAD_BYTES = 45 * 1024 * 1024; // 45 MB
 
 const DANGEROUS_EXTENSIONS = new Set([
   '.html', '.htm', '.xhtml', '.svg', '.xml', '.js', '.mjs', '.cjs', '.ts', '.jsx', '.tsx',
@@ -21,11 +22,14 @@ const DANGEROUS_EXTENSIONS = new Set([
 ]);
 
 const CARTABLE_ALLOWED_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.doc', '.docx']);
+const PRODUCT_MEDIA_ALLOWED_EXTS = new Set([
+  '.mp3', '.wav', '.ogg', '.m4a', '.aac', '.mp4', '.webm', '.mov', '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'
+]);
 
 export interface ValidatedUploadInfo {
   canonicalExt: string;
   mimeType: string;
-  kind: 'image' | 'pdf' | 'word' | 'other';
+  kind: 'image' | 'pdf' | 'word' | 'audio' | 'video' | 'other';
 }
 
 function isJpeg(buf: Buffer): boolean {
@@ -106,6 +110,28 @@ function containsScriptableHead(buf: Buffer): boolean {
   );
 }
 
+function isMp3(buf: Buffer): boolean {
+  if (buf.length < 3) return false;
+  if (buf.toString('ascii', 0, 3) === 'ID3') return true;
+  return buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
+}
+
+function isWav(buf: Buffer): boolean {
+  return buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE';
+}
+
+function isOgg(buf: Buffer): boolean {
+  return buf.length >= 4 && buf.toString('ascii', 0, 4) === 'OggS';
+}
+
+function isFtypMedia(buf: Buffer): boolean {
+  return buf.length >= 12 && buf.toString('ascii', 4, 8) === 'ftyp';
+}
+
+function isWebm(buf: Buffer): boolean {
+  return buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3;
+}
+
 export function validateSecureUploadBuffer(
   category: UploadCategory,
   originalFilename: string,
@@ -123,7 +149,12 @@ export function validateSecureUploadBuffer(
     category === 'product_receipt' ||
     category === 'course_receipt' ||
     category === 'course_certificate';
-  const maxBytes = isStrictDocOrImage ? MAX_CARTABLE_UPLOAD_BYTES : MAX_GENERAL_UPLOAD_BYTES;
+  const isProductMedia = category === 'product_media';
+  const maxBytes = isProductMedia
+    ? MAX_PRODUCT_MEDIA_UPLOAD_BYTES
+    : isStrictDocOrImage
+    ? MAX_CARTABLE_UPLOAD_BYTES
+    : MAX_GENERAL_UPLOAD_BYTES;
   if (buffer.length > maxBytes) {
     const maxMb = Math.round(maxBytes / (1024 * 1024));
     throw AppError.badRequest(
@@ -191,6 +222,47 @@ export function validateSecureUploadBuffer(
 
     throw AppError.badRequest(
       'ساختار باینری فایل با فرمت‌های مجاز (تصویر JPG/PNG/WEBP، PDF یا Word DOC/DOCX) مطابقت ندارد.',
+      'MAGIC_BYTE_MISMATCH'
+    );
+  }
+
+  if (isProductMedia) {
+    if (origExt && !PRODUCT_MEDIA_ALLOWED_EXTS.has(origExt)) {
+      throw AppError.badRequest(
+        'در فایل‌های جلسات و محصولات صرفاً فرمت‌های صوتی (MP3, WAV, OGG, M4A, AAC)، ویدئویی (MP4, WEBM, MOV)، PDF، Word و تصویر مجاز است.',
+        'INVALID_PRODUCT_MEDIA_TYPE'
+      );
+    }
+    if (isJpeg(buffer)) return { canonicalExt: '.jpg', mimeType: 'image/jpeg', kind: 'image' };
+    if (isPng(buffer)) return { canonicalExt: '.png', mimeType: 'image/png', kind: 'image' };
+    if (isWebp(buffer)) return { canonicalExt: '.webp', mimeType: 'image/webp', kind: 'image' };
+    if (isPdf(buffer)) return { canonicalExt: '.pdf', mimeType: 'application/pdf', kind: 'pdf' };
+    if (isDocOle2(buffer)) return { canonicalExt: '.doc', mimeType: 'application/msword', kind: 'word' };
+    if (isDocxOoxml(buffer)) {
+      return {
+        canonicalExt: '.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        kind: 'word',
+      };
+    }
+    if (isWav(buffer)) return { canonicalExt: '.wav', mimeType: 'audio/wav', kind: 'audio' };
+    if (isOgg(buffer)) return { canonicalExt: '.ogg', mimeType: 'audio/ogg', kind: 'audio' };
+    if (isWebm(buffer)) return { canonicalExt: '.webm', mimeType: 'video/webm', kind: 'video' };
+    if (isFtypMedia(buffer)) {
+      if (origExt === '.m4a' || declaredMime?.startsWith('audio/')) {
+        return { canonicalExt: '.m4a', mimeType: 'audio/mp4', kind: 'audio' };
+      }
+      if (origExt === '.mov') {
+        return { canonicalExt: '.mov', mimeType: 'video/quicktime', kind: 'video' };
+      }
+      return { canonicalExt: '.mp4', mimeType: 'video/mp4', kind: 'video' };
+    }
+    if (isMp3(buffer)) {
+      if (origExt === '.aac') return { canonicalExt: '.aac', mimeType: 'audio/aac', kind: 'audio' };
+      return { canonicalExt: '.mp3', mimeType: 'audio/mpeg', kind: 'audio' };
+    }
+    throw AppError.badRequest(
+      'ساختار باینری فایل رسانه‌ای با فرمت‌های مجاز صوتی، ویدئویی یا مستندات مطابقت ندارد.',
       'MAGIC_BYTE_MISMATCH'
     );
   }

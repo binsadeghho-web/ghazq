@@ -147,8 +147,8 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
       id: 'Products',
       sectionId: 'products',
       title: 'کتاب و محصولات چند رسانه‌ای',
-      subtext: 'کتب مرجع، بسته‌های چندرسانه‌ای و صوت با خرید نسخه دیجیتال یا فیزیکی',
-      badge: 'انتشارات و رسانه',
+      subtext: 'کتب مرجع، نشست‌های علمی صوتی/تصویری و درس‌گفتارها با دانلود پس از ثبت‌نام یا ارسال پستی',
+      badge: !productsStoreConfig.isStoreEnabled ? 'موقتاً غیرفعال' : 'انتشارات و رسانه',
       tag: `${toPersianNumbers(products.length)} اثر علمی`,
       icon: BookOpen,
       accent: '#7C3AED',
@@ -211,16 +211,9 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     }
   ];
 
-  // Strict Menu Cloaking (Reform 57): Hide Alumni, Users, Admin from alumni & preview mode
+  // Strict Menu Cloaking: Hide Alumni, Users, Admin, Finance from alumni & preview mode
   const serviceCards = allServiceCards.filter(card => {
     if (!isStaff && (card.sectionId === 'alumni' || card.sectionId === 'users' || card.sectionId === 'admin' || card.sectionId === 'finance')) {
-      return false;
-    }
-    if (
-      card.sectionId === 'products' &&
-      !isStaff &&
-      !productsStoreConfig.isStoreEnabled
-    ) {
       return false;
     }
     return canViewSection(currentUser, card.sectionId, rolePolicies);

@@ -23,7 +23,7 @@ export const PRODUCT_STUDIO_IMAGES = {
 
 export function resolveProductCoverUrl(
   url?: string,
-  format: 'book' | 'multimedia' | 'audio_series' = 'book',
+  format: string = 'book',
   index = 0
 ): string {
   if (url && url.trim() && !url.includes('unsplash.com')) {

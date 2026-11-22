@@ -3,10 +3,39 @@ import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { fromIdBuffer } from '../../platform/uuidv7';
 import {
   Product,
+  ProductCategoryConfig,
   ProductDeliveryOptionsMap,
+  ProductMediaSession,
   ProductOrder,
   ProductsStoreConfig,
 } from '../../../types';
+
+export const DEFAULT_PRODUCT_CATEGORIES: ProductCategoryConfig[] = [
+  {
+    id: 'book',
+    label: 'کتب و منشورات علمی',
+    shortLabel: 'کتب',
+    kind: 'book',
+    isEnabled: true,
+    isBuiltIn: true,
+  },
+  {
+    id: 'multimedia',
+    label: 'نشست‌های علمی (صوتی و تصویری)',
+    shortLabel: 'نشست‌ها',
+    kind: 'session',
+    isEnabled: true,
+    isBuiltIn: true,
+  },
+  {
+    id: 'audio_series',
+    label: 'درس‌گفتارها و سلسله مباحث',
+    shortLabel: 'درس‌گفتارها',
+    kind: 'lecture',
+    isEnabled: true,
+    isBuiltIn: true,
+  },
+];
 
 export const DEFAULT_DELIVERY_OPTIONS: ProductDeliveryOptionsMap = {
   complexPickup: {
@@ -37,9 +66,10 @@ export const DEFAULT_PRODUCTS_STORE_CONFIG: ProductsStoreConfig = {
     multimedia: true,
     audio_series: true,
   },
+  customCategories: DEFAULT_PRODUCT_CATEGORIES,
   storeTitle: 'کتاب و محصولات چند رسانه‌ای',
   storeSubtitle:
-    'عرضه تخصصی کتب مرجع، بسته‌های چندرسانه‌ای و درس‌گفتارهای صوتی مرکز فقه و حقوق اسلامی با امکان انتخاب نسخه دیجیتال یا فیزیکی و پرداخت امن',
+    'عرضه تخصصی کتب مرجع، نشست‌های علمی صوتی و تصویری و درس‌گفتارهای مرکز فقه و حقوق اسلامی با امکان دسترسی دیجیتال پس از ثبت‌نام یا ارسال نسخه فیزیکی',
   gateways: [
     {
       id: 'gw_zarinpal',
@@ -78,6 +108,113 @@ export function parseJsonValue<T>(val: any, fallback: T): T {
   }
   if (typeof val === 'object') return val as T;
   return fallback;
+}
+
+/**
+ * Validates and sanitizes external/internal URLs to block javascript:, data:, vbscript:, etc.
+ */
+export function sanitizeMediaUrl(url: any): string {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  if (
+    raw.startsWith('/uploads/') ||
+    raw.startsWith('/api/storage/private/') ||
+    raw.startsWith('/assets/')
+  ) {
+    return raw;
+  }
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.toString();
+    }
+  } catch {
+    return '';
+  }
+  return '';
+}
+
+export function sanitizePresentersList(rawPresenters: any, legacyAuthor?: string): string[] {
+  const parsed = parseJsonValue<any[]>(rawPresenters, []);
+  const cleaned = Array.isArray(parsed)
+    ? parsed.map(p => String(p || '').trim()).filter(Boolean)
+    : [];
+  if (cleaned.length > 0) return cleaned;
+
+  const fallbackStr = String(legacyAuthor || '').trim();
+  if (!fallbackStr) return [];
+  return fallbackStr
+    .split(/[،,;؛\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+export function sanitizeMediaSessions(rawSessions: any): ProductMediaSession[] {
+  const parsed = parseJsonValue<any[]>(rawSessions, []);
+  if (!Array.isArray(parsed)) return [];
+  const allowedTypes = new Set(['audio', 'video', 'document', 'file']);
+  return parsed
+    .map((item, idx) => {
+      if (!item || typeof item !== 'object') return null;
+      const title = String(item.title || '').trim();
+      const downloadUrl = sanitizeMediaUrl(item.downloadUrl || item.url);
+      if (!title && !downloadUrl) return null;
+      const rawType = String(item.mediaType || 'audio').trim();
+      const mediaType = (allowedTypes.has(rawType) ? rawType : 'audio') as ProductMediaSession['mediaType'];
+      const durationOrSize = item.durationOrSize ? String(item.durationOrSize).trim() : undefined;
+      const description = item.description ? String(item.description).trim() : undefined;
+      return {
+        id: String(item.id || `session_${idx + 1}`),
+        title: title || `فایل / جلسه ${idx + 1}`,
+        mediaType,
+        downloadUrl,
+        ...(durationOrSize ? { durationOrSize } : {}),
+        ...(description ? { description } : {}),
+      } as ProductMediaSession;
+    })
+    .filter((s): s is ProductMediaSession => Boolean(s));
+}
+
+export function normalizeCustomCategories(
+  rawCategories: any,
+  enabledMap: Record<string, boolean> = {}
+): ProductCategoryConfig[] {
+  const saved = Array.isArray(rawCategories) ? rawCategories : [];
+  const byId = new Map<string, ProductCategoryConfig>();
+
+  for (const def of DEFAULT_PRODUCT_CATEGORIES) {
+    byId.set(def.id, {
+      ...def,
+      isEnabled: enabledMap[def.id] !== undefined ? Boolean(enabledMap[def.id]) : def.isEnabled,
+    });
+  }
+
+  for (const item of saved) {
+    if (!item || typeof item !== 'object') continue;
+    const id = String(item.id || '').trim();
+    const label = String(item.label || '').trim();
+    if (!id || !label) continue;
+    const existing = byId.get(id);
+    const kind =
+      item.kind === 'book' || item.kind === 'session' || item.kind === 'lecture' || item.kind === 'multimedia'
+        ? item.kind
+        : existing?.kind || 'custom';
+    byId.set(id, {
+      id,
+      label,
+      shortLabel: String(item.shortLabel || existing?.shortLabel || label).trim(),
+      kind,
+      isEnabled:
+        enabledMap[id] !== undefined
+          ? Boolean(enabledMap[id])
+          : item.isEnabled !== undefined
+          ? Boolean(item.isEnabled)
+          : true,
+      isBuiltIn: existing?.isBuiltIn || Boolean(item.isBuiltIn),
+    });
+  }
+
+  return Array.from(byId.values());
 }
 
 export function normalizeDeliveryOptions(
@@ -134,25 +271,34 @@ export function normalizeDeliveryOptions(
   };
 }
 
+export function getDefaultFormatTitle(format: string): string {
+  if (format === 'book') return 'کتاب';
+  if (format === 'multimedia') return 'نشست علمی (صوتی/تصویری)';
+  if (format === 'audio_series') return 'درس‌گفتار';
+  return 'محصول علمی';
+}
+
 export function getDefaultDigitalLabel(format: Product['format']): string {
   if (format === 'book') return 'نسخه الکترونیک (PDF)';
-  if (format === 'audio_series') return 'فایل صوتی دیجیتال (MP3)';
-  return 'بسته دیجیتال چندرسانه‌ای (دانلودی/برخط)';
+  if (format === 'audio_series') return 'دسترسی و دانلود جلسات درس‌گفتار';
+  if (format === 'multimedia') return 'دسترسی و دانلود فایل نشست (صوتی/تصویری)';
+  return 'دسترسی دیجیتال و فایل‌های دانلودی';
 }
 
 export function getDefaultPhysicalLabel(format: Product['format']): string {
   if (format === 'book') return 'نسخه چاپی فیزیکی (جلد گالینگور)';
-  if (format === 'audio_series') return 'پکیج فیزیکی لوح/فلش صوتی';
-  return 'پکیج فیزیکی لوح فشرده / حافظه چندرسانه‌ای';
+  if (format === 'audio_series') return 'پکیج فیزیکی لوح/فلش درس‌گفتار';
+  if (format === 'multimedia') return 'پکیج فیزیکی لوح فشرده / حافظه نشست';
+  return 'نسخه فیزیکی / پستی';
 }
 
 export function mapProductRow(
   row: any,
   isOwned = false,
-  ownedFormats: Array<'digital' | 'physical'> = []
+  ownedFormats: Array<'digital' | 'physical'> = [],
+  includeProtectedMedia = false
 ): Product & { version: number } {
-  const format: Product['format'] =
-    row.format === 'multimedia' || row.format === 'audio_series' ? row.format : 'book';
+  const format: string = String(row.format || 'book').trim() || 'book';
   const basePrice = Number(row.price || 0);
   const gallery = parseJsonValue<string[]>(row.gallery_images, []);
   const coverImage = row.cover_image || gallery[0] || undefined;
@@ -182,15 +328,37 @@ export function mapProductRow(
       ? basePrice
       : basePrice + 120000;
 
+  const presenters = sanitizePresentersList(row.presenters, row.author_or_presenter);
+  const authorOrPresenter =
+    String(row.author_or_presenter || '').trim() || presenters.join('، ');
+
+  const rawDownloadLink = row.download_link ? sanitizeMediaUrl(row.download_link) : '';
+  const allMediaSessions = sanitizeMediaSessions(row.media_sessions);
+  const hasLockedMedia = Boolean(
+    !includeProtectedMedia &&
+      (rawDownloadLink || allMediaSessions.some(s => Boolean(s.downloadUrl)))
+  );
+
+  const visibleMediaSessions: ProductMediaSession[] = allMediaSessions.map(s => ({
+    ...s,
+    downloadUrl: includeProtectedMedia ? s.downloadUrl : '',
+  }));
+
+  const showInShowcase =
+    row.show_in_showcase === undefined || row.show_in_showcase === null
+      ? true
+      : Boolean(row.show_in_showcase);
+
   return {
     id: fromIdBuffer(row.id),
     title: row.title || '',
     subtitle: row.subtitle || undefined,
     shortDescription: row.short_description || (row.description ? String(row.description).slice(0, 140) : ''),
     subjectIndex: row.subject_index || undefined,
-    authorOrPresenter: row.author_or_presenter || '',
+    authorOrPresenter,
+    presenters,
     format,
-    formatTitle: row.format_title || (format === 'book' ? 'کتاب' : format === 'multimedia' ? 'محصول چندرسانه‌ای' : 'صوت'),
+    formatTitle: row.format_title || getDefaultFormatTitle(format),
     price: supportsDigital && !supportsPhysical ? digitalPrice : supportsPhysical ? physicalPrice : basePrice,
     supportsDigital,
     digitalPrice,
@@ -206,13 +374,16 @@ export function mapProductRow(
     isbn: row.isbn || undefined,
     coverImage,
     galleryImages: mergedGallery,
-    downloadLink: row.download_link || undefined,
+    downloadLink: includeProtectedMedia ? (rawDownloadLink || undefined) : undefined,
+    mediaSessions: visibleMediaSessions,
+    hasLockedMedia,
     allowedPaymentMethod: (row.allowed_payment_method as any) || 'both',
     shippingMode: (row.shipping_mode as any) || 'both',
     shippingCostType: (row.shipping_cost_type as any) || 'free',
     shippingFixedFee: Number(row.shipping_fixed_fee || 0),
     pickupAddressNotice: row.pickup_address_notice || DEFAULT_DELIVERY_OPTIONS.complexPickup.notice,
     isAvailable: row.is_available !== undefined ? Boolean(row.is_available) : true,
+    showInShowcase,
     stock: Number(row.stock !== undefined && row.stock !== null ? row.stock : 20),
     displayOrder: Number(row.display_order || 0),
     badgeText: row.badge_text || undefined,
@@ -241,7 +412,7 @@ export function mapProductOrderRow(row: any): ProductOrder {
     id: fromIdBuffer(row.id),
     productId: fromIdBuffer(row.product_id),
     productTitle: row.product_title || '',
-    productFormat: (row.product_format as ProductOrder['productFormat']) || 'book',
+    productFormat: String(row.product_format || 'book'),
     purchaseFormat: (row.purchase_format as 'digital' | 'physical') || 'digital',
     deliveryMethod,
     userId: fromIdBuffer(row.user_id),
@@ -289,13 +460,22 @@ export async function loadProductsStoreConfig(): Promise<ProductsStoreConfig> {
   }
 
   const parsed = parseJsonValue<Partial<ProductsStoreConfig>>(rows[0].setting_value, {});
+  const mergedEnabled: Record<string, boolean> = {
+    ...DEFAULT_PRODUCTS_STORE_CONFIG.enabledCategories,
+    ...(parsed.enabledCategories || {}),
+  };
+  const customCategories = normalizeCustomCategories(parsed.customCategories, mergedEnabled);
+  for (const cat of customCategories) {
+    if (mergedEnabled[cat.id] === undefined) {
+      mergedEnabled[cat.id] = cat.isEnabled;
+    }
+  }
+
   return {
     ...DEFAULT_PRODUCTS_STORE_CONFIG,
     ...parsed,
-    enabledCategories: {
-      ...DEFAULT_PRODUCTS_STORE_CONFIG.enabledCategories,
-      ...(parsed.enabledCategories || {}),
-    },
+    enabledCategories: mergedEnabled,
+    customCategories,
     gateways:
       Array.isArray(parsed.gateways) && parsed.gateways.length > 0
         ? parsed.gateways

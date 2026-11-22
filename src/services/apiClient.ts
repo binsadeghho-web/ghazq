@@ -501,6 +501,13 @@ class ApiClient {
     });
   }
 
+  async toggleProductShowcase(productId: string, showInShowcase: boolean, expectedVersion?: number) {
+    return this.request<any>(`/api/products/${productId}/showcase`, {
+      method: 'PATCH',
+      body: JSON.stringify({ showInShowcase, expectedVersion }),
+    });
+  }
+
   async reorderProducts(orderedIds: string[]) {
     return this.request<{ success: boolean; orderedIds: string[] }>('/api/products/reorder', {
       method: 'PUT',

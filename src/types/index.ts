@@ -977,14 +977,29 @@ export interface ProductPaymentGateway {
   isActive: boolean;
 }
 
+export interface ProductMediaSession {
+  id: string;
+  title: string;
+  mediaType: 'audio' | 'video' | 'document' | 'file';
+  downloadUrl: string;
+  durationOrSize?: string;
+  description?: string;
+}
+
+export interface ProductCategoryConfig {
+  id: string;
+  label: string;
+  shortLabel?: string;
+  kind: 'book' | 'session' | 'lecture' | 'multimedia' | 'custom';
+  isEnabled: boolean;
+  isBuiltIn?: boolean;
+}
+
 export interface ProductsStoreConfig {
   isStoreEnabled: boolean;
   disabledNotice?: string;
-  enabledCategories: {
-    book: boolean;
-    multimedia: boolean;
-    audio_series: boolean;
-  };
+  enabledCategories: Record<string, boolean>;
+  customCategories?: ProductCategoryConfig[];
   storeTitle: string;
   storeSubtitle: string;
   gateways: ProductPaymentGateway[];
@@ -1003,7 +1018,8 @@ export interface Product {
   shortDescription?: string;
   subjectIndex?: string;
   authorOrPresenter: string;
-  format: 'book' | 'multimedia' | 'audio_series';
+  presenters?: string[];
+  format: string;
   formatTitle: string;
   price: number;
   supportsDigital?: boolean;
@@ -1021,12 +1037,15 @@ export interface Product {
   coverImage?: string;
   galleryImages?: string[];
   downloadLink?: string;
+  mediaSessions?: ProductMediaSession[];
+  hasLockedMedia?: boolean;
   allowedPaymentMethod?: 'both' | 'gateway_only' | 'receipt_only';
   shippingMode?: 'postal_only' | 'pickup_only' | 'both';
   shippingCostType?: 'free' | 'fixed' | 'calculated_later';
   shippingFixedFee?: number;
   pickupAddressNotice?: string;
   isAvailable: boolean;
+  showInShowcase?: boolean;
   stock?: number;
   displayOrder?: number;
   badgeText?: string;
@@ -1043,7 +1062,7 @@ export interface ProductOrder {
   id: string;
   productId: string;
   productTitle: string;
-  productFormat: 'book' | 'multimedia' | 'audio_series';
+  productFormat: string;
   purchaseFormat?: 'digital' | 'physical';
   deliveryMethod?: 'complex_pickup' | 'postal' | 'courier' | 'digital_instant';
   userId: string;

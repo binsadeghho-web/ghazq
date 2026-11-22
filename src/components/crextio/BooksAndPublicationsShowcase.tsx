@@ -1,34 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { api } from '../../services/apiClient';
 import { Product } from '../../types';
 import { resolveProductCoverUrl } from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
+  formatPresentersText,
+  formatTomans,
+  getAllProductCategories,
+  getProductCategoryLabel,
+} from '../products/subcomponents/productUiHelpers';
+import { ProductIntroModal } from '../products/subcomponents/ProductIntroModal';
+import { ProductCheckoutModal } from '../products/subcomponents/ProductCheckoutModal';
+import { ProductBuilderModal } from '../products/subcomponents/ProductBuilderModal';
+import { ProductLightboxModal } from '../products/subcomponents/ProductLightboxModal';
+import {
   ArrowUpRight,
   ChevronLeft,
   Edit3,
   X,
-  Plus,
-  Trash2,
   BookMarked,
-  Upload,
-  Loader2,
-  Camera,
-  AlertCircle,
+  Eye,
+  EyeOff,
+  Headphones,
 } from 'lucide-react';
 
 interface BooksAndPublicationsShowcaseProps {
   onNavigateToProducts?: () => void;
 }
-
-const FORMAT_LABELS: Record<Product['format'], string> = {
-  book: 'کتاب',
-  multimedia: 'چندرسانه‌ای',
-  audio_series: 'صوت',
-};
 
 export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcaseProps> = ({
   onNavigateToProducts,
@@ -36,9 +36,13 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
   const {
     products,
     productsStoreConfig,
+    updateProductsStoreConfig,
     currentUser,
     crextioConfig,
     updateCrextioConfig,
+    updateProduct,
+    toggleProductShowcase,
+    purchaseProduct,
     isAlumniPreview,
   } = useApp();
   const { rolePolicies } = useRbacPolicies();
@@ -46,154 +50,88 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
   const isAdmin =
     canManageAllInSection(currentUser, 'products', rolePolicies) && !isAlumniPreview;
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [activeCatFilter, setActiveCatFilter] = useState<'all' | Product['format']>('all');
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [activeCatFilter, setActiveCatFilter] = useState<string>('all');
+  const [introProduct, setIntroProduct] = useState<Product | null>(null);
+  const [purchasingProduct, setPurchasingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const selectedCategories: Array<Product['format']> =
-    Array.isArray(crextioConfig.booksShowcaseSelectedCategories) &&
-    crextioConfig.booksShowcaseSelectedCategories.length > 0
-      ? crextioConfig.booksShowcaseSelectedCategories
-      : ['book', 'multimedia', 'audio_series'];
+  const allCategories = useMemo(
+    () => getAllProductCategories(productsStoreConfig),
+    [productsStoreConfig]
+  );
 
   const title = crextioConfig.booksShowcaseTitle || 'ویترین کتاب و محصولات چند رسانه‌ای';
   const subtitle =
     crextioConfig.booksShowcaseSubtitle ||
-    'مجموعه کتب مرجع، محصولات چندرسانه‌ای و درس‌گفتارهای صوتی مرکز فقه و حقوق اسلامی با انتخاب نسخه دیجیتال یا فیزیکی';
+    'مجموعه کتب مرجع، نشست‌های علمی صوتی و تصویری و درس‌گفتارهای مرکز فقه و حقوق اسلامی با دسترسی دیجیتال و فیزیکی';
   const ctaLabel = crextioConfig.booksShowcaseCtaText || 'ورود به کتاب و محصولات چند رسانه‌ای';
 
+  // Live catalog driven directly from database products (new items default to showInShowcase: true)
   const visibleCatalogProducts = useMemo(() => {
-    return products.filter(p => {
-      if (p.isDeleted) return false;
-      if (!selectedCategories.includes(p.format)) return false;
-      if (!isAdmin && productsStoreConfig.enabledCategories?.[p.format] === false) return false;
-      return true;
-    });
-  }, [products, selectedCategories, isAdmin, productsStoreConfig.enabledCategories]);
+    return [...products]
+      .filter(p => {
+        if (p.isDeleted || !p.isAvailable) return false;
+        if (currentUser?.role === 'customer' && p.visibleToCustomer === false) return false;
+        if (!isAdmin) {
+          if (p.showInShowcase === false) return false;
+          if (productsStoreConfig.enabledCategories?.[p.format] === false) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  }, [products, currentUser?.role, isAdmin, productsStoreConfig.enabledCategories]);
 
-  const defaultItems = useMemo(
+  const displayedProducts = useMemo(() => {
+    if (activeCatFilter === 'all') return visibleCatalogProducts;
+    return visibleCatalogProducts.filter(p => p.format === activeCatFilter);
+  }, [visibleCatalogProducts, activeCatFilter]);
+
+  const availableFilterCats = useMemo(
     () =>
-      visibleCatalogProducts.slice(0, 6).map((p, idx) => ({
-        id: p.id,
-        productId: p.id,
-        format: p.format,
-        title: p.title,
-        author: p.authorOrPresenter,
-        price: Number(p.digitalPrice ?? p.price ?? 0),
-        physicalPrice: Number(p.physicalPrice ?? p.price ?? 0),
-        supportsDigital: p.supportsDigital !== false,
-        supportsPhysical: Boolean(p.supportsPhysical),
-        discountPercent: 0,
-        coverImage: resolveProductCoverUrl(p.coverImage, p.format, idx),
-        tag: FORMAT_LABELS[p.format],
-        shortDescription: p.shortDescription || p.description,
-      })),
-    [visibleCatalogProducts]
+      allCategories.filter(
+        cat => isAdmin || productsStoreConfig.enabledCategories?.[cat.id] !== false
+      ),
+    [allCategories, isAdmin, productsStoreConfig.enabledCategories]
   );
-
-  const savedItems =
-    crextioConfig.booksCustomItems && crextioConfig.booksCustomItems.length > 0
-      ? crextioConfig.booksCustomItems.map((item, idx) => {
-          const fmt: Product['format'] =
-            item.format === 'multimedia' || item.format === 'audio_series' ? item.format : 'book';
-          return {
-            ...item,
-            format: fmt,
-            coverImage: resolveProductCoverUrl(item.coverImage, fmt, idx),
-          };
-        })
-      : defaultItems;
-
-  const displayedItems = useMemo(() => {
-    return savedItems.filter(item => {
-      const fmt: Product['format'] =
-        item.format === 'multimedia' || item.format === 'audio_series' ? item.format : 'book';
-      if (!selectedCategories.includes(fmt)) return false;
-      if (!isAdmin && productsStoreConfig.enabledCategories?.[fmt] === false) return false;
-      if (activeCatFilter !== 'all' && fmt !== activeCatFilter) return false;
-      return true;
-    });
-  }, [savedItems, selectedCategories, isAdmin, productsStoreConfig.enabledCategories, activeCatFilter]);
 
   const [editTitle, setEditTitle] = useState(title);
   const [editSubtitle, setEditSubtitle] = useState(subtitle);
-  const [editCategories, setEditCategories] = useState<Array<Product['format']>>(selectedCategories);
-  const [customItems, setCustomItems] = useState(savedItems);
 
   useEffect(() => {
     setEditTitle(title);
     setEditSubtitle(subtitle);
-    setEditCategories(selectedCategories);
-    setCustomItems(savedItems);
-  }, [title, subtitle, crextioConfig.booksCustomItems, products.length]);
+  }, [title, subtitle]);
 
-  // Reform 30: Hide completely for non-official users when section is disabled
+  // Hide completely for non-official users when section is disabled
   if (!productsStoreConfig.isStoreEnabled && !isAdmin) {
     return null;
   }
 
-  const handleUpdateItem = (id: string, field: string, value: any) => {
-    setCustomItems(prev => prev.map(item => (item.id === id ? { ...item, [field]: value } : item)));
-  };
-
-  const handleUploadImage = async (id: string, file: File) => {
-    if (!file) return;
-    setUploadingId(id);
-    setUploadError(null);
-    try {
-      const res = await api.uploadFile(file, 'product');
-      if (res?.url) {
-        if (id === '__showcase_banner__') {
-          updateCrextioConfig({
-            showcaseImageOverrides: {
-              ...(crextioConfig.showcaseImageOverrides || {}),
-              books_showcase: res.url,
-            },
-          });
-        } else {
-          handleUpdateItem(id, 'coverImage', res.url);
-        }
-      }
-    } catch (err: any) {
-      setUploadError(err?.message || 'خطا در آپلود تصویر روی سرور');
-    } finally {
-      setUploadingId(null);
-    }
-  };
-
-  const handleAddItem = () => {
-    setCustomItems(prev => [
-      ...prev,
-      {
-        id: `prd-custom-${Date.now()}`,
-        format: 'book',
-        title: 'موسوعه یا محصول علمی جدید',
-        author: 'مرکز فقه و حقوق اسلامی',
-        price: 350000,
-        physicalPrice: 520000,
-        supportsDigital: true,
-        supportsPhysical: true,
-        discountPercent: 0,
-        coverImage: resolveProductCoverUrl(undefined, 'book', prev.length),
-        tag: 'کتاب',
-      },
-    ]);
-  };
-
-  const handleSave = () => {
+  const handleSaveSettings = () => {
     updateCrextioConfig({
       booksShowcaseTitle: editTitle,
       booksShowcaseSubtitle: editSubtitle,
-      booksShowcaseSelectedCategories: editCategories.length > 0 ? editCategories : ['book', 'multimedia', 'audio_series'],
-      booksCustomItems: customItems,
     });
-    setIsEditModalOpen(false);
+    setIsSettingsModalOpen(false);
   };
 
-  const availableFilterCats = (['book', 'multimedia', 'audio_series'] as const).filter(
-    cat => selectedCategories.includes(cat) && (isAdmin || productsStoreConfig.enabledCategories?.[cat] !== false)
-  );
+  const handleToggleShowcase = async (prod: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setTogglingId(prod.id);
+      await toggleProductShowcase(prod.id, prod.showInShowcase === false);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const activeIntroProduct = introProduct
+    ? products.find(p => p.id === introProduct.id) || introProduct
+    : null;
 
   return (
     <div className="w-full relative overflow-hidden rounded-[28px] bg-[#FCFCFA] border border-stone-200/90 shadow-xs p-5 sm:p-7 text-stone-900 space-y-5">
@@ -216,12 +154,12 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Interactive Category Switcher for all 3 categories */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold">
+          {/* Dynamic Category Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => setActiveCatFilter('all')}
-              className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
+              className={`px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
                 activeCatFilter === 'all' ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
               }`}
             >
@@ -229,14 +167,14 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
             </button>
             {availableFilterCats.map(cat => (
               <button
-                key={cat}
+                key={cat.id}
                 type="button"
-                onClick={() => setActiveCatFilter(cat)}
-                className={`px-2.5 py-1 rounded-lg cursor-pointer transition-colors ${
-                  activeCatFilter === cat ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
+                onClick={() => setActiveCatFilter(cat.id)}
+                className={`px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
+                  activeCatFilter === cat.id ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
                 }`}
               >
-                {FORMAT_LABELS[cat]}
+                {cat.shortLabel || cat.label}
               </button>
             ))}
           </div>
@@ -244,11 +182,11 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
           {isAdmin && (
             <button
               type="button"
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={() => setIsSettingsModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
-              <span>چینش و ویرایش ویترین</span>
+              <span>عنوان ویترین</span>
             </button>
           )}
 
@@ -264,125 +202,136 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
       </div>
 
       {/* Product Showcase Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {displayedItems.slice(0, 4).map((item, idx) => {
-          const fmt: Product['format'] =
-            item.format === 'multimedia' || item.format === 'audio_series' ? item.format : 'book';
-          const coverUrl = resolveProductCoverUrl(item.coverImage, fmt, idx);
-          const discountedPrice = Math.round(item.price * (1 - (item.discountPercent || 0) / 100));
+      {displayedProducts.length === 0 ? (
+        <div className="p-8 text-center text-xs text-stone-500 rounded-2xl bg-stone-50 border border-stone-200">
+          هیچ محصول فعالی در این دسته‌بندی برای نمایش در ویترین وجود ندارد.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {displayedProducts.slice(0, 8).map((prod, idx) => {
+            const coverUrl = resolveProductCoverUrl(prod.coverImage, prod.format, idx);
+            const displayPrice =
+              prod.supportsDigital !== false
+                ? Number(prod.digitalPrice ?? prod.price ?? 0)
+                : Number(prod.physicalPrice ?? prod.price ?? 0);
+            const isShown = prod.showInShowcase !== false;
+            const sessionsCount = Array.isArray(prod.mediaSessions) ? prod.mediaSessions.length : 0;
 
-          return (
-            <motion.div
-              key={item.id}
-              whileHover={{ y: -3 }}
-              onClick={onNavigateToProducts}
-              className="group p-3.5 rounded-2xl bg-white border border-stone-200/90 hover:border-purple-300 transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md"
-            >
-              <div className="space-y-2.5">
-                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
-                  <img
-                    src={coverUrl}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-stone-900/85 text-white text-[10px] font-black">
-                    {item.tag || FORMAT_LABELS[fmt]}
-                  </span>
+            return (
+              <motion.div
+                key={prod.id}
+                whileHover={{ y: -3 }}
+                onClick={() => setIntroProduct(prod)}
+                className={`group p-3.5 rounded-2xl bg-white border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${
+                  !isShown ? 'border-dashed border-stone-300 opacity-70' : 'border-stone-200/90 hover:border-purple-300'
+                }`}
+              >
+                <div className="space-y-2.5">
+                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
+                    <img
+                      src={coverUrl}
+                      alt={prod.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-stone-900/85 text-white text-[10px] font-black">
+                      {getProductCategoryLabel(prod.format, prod.formatTitle, productsStoreConfig)}
+                    </span>
+                    {sessionsCount > 0 && (
+                      <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-indigo-900/85 text-white text-[10px] font-bold flex items-center gap-1 tabular-nums">
+                        <Headphones className="w-3 h-3" />
+                        {toPersianNumbers(sessionsCount)}
+                      </span>
+                    )}
+                    {isAdmin && !isShown && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black">
+                        مخفی از ویترین
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-black text-xs sm:text-sm text-stone-900 group-hover:text-purple-900 transition-colors line-clamp-1">
+                      {prod.title}
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-1 line-clamp-1 font-medium">
+                      {formatPresentersText(prod)}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <h4 className="font-black text-xs sm:text-sm text-stone-900 group-hover:text-purple-900 transition-colors line-clamp-1">
-                    {item.title}
-                  </h4>
-                  <p className="text-[11px] text-stone-500 mt-1 line-clamp-1 font-medium">
-                    {item.author}
-                  </p>
+                <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs sm:text-sm font-black text-amber-700 tabular-nums">
+                      {formatTomans(displayPrice)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {isAdmin && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={togglingId === prod.id}
+                          onClick={e => handleToggleShowcase(prod, e)}
+                          title={isShown ? 'غیرفعال در ویترین' : 'فعال در ویترین'}
+                          className={`p-1.5 rounded-lg border cursor-pointer ${
+                            isShown
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-stone-200 bg-stone-100 text-stone-500'
+                          }`}
+                        >
+                          {isShown ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setEditingProduct(prod);
+                            setBuilderOpen(true);
+                          }}
+                          title="ویرایش محصول"
+                          className="p-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-amber-50 text-amber-700 cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    <span className="text-xs text-purple-800 font-extrabold flex items-center gap-0.5 group-hover:underline">
+                      <span>مشاهده</span>
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between">
-                <div>
-                  <span className="text-xs sm:text-sm font-black text-amber-700 tabular-nums">
-                    {toPersianNumbers(discountedPrice.toLocaleString('fa-IR'))}
-                  </span>
-                  <span className="text-[10px] text-stone-500 mr-1">تومان</span>
-                </div>
-
-                <span className="text-xs text-purple-800 font-extrabold flex items-center gap-0.5 group-hover:underline">
-                  <span>مشاهده و خرید</span>
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Admin Edit Modal */}
+      {/* Showcase Title Edit Modal */}
       <AnimatePresence>
-        {isEditModalOpen && (
+        {isSettingsModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl w-full max-w-2xl border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-5 max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl w-full max-w-lg border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-5"
             >
               <div className="flex items-center justify-between border-b border-stone-200 pb-3">
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-purple-700" />
                   <h4 className="font-black text-sm text-stone-900">
-                    تنظیم ویترین کتاب و محصولات چند رسانه‌ای (هر سه دسته)
+                    تنظیم عنوان و توضیح ویترین محصولات
                   </h4>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsEditModalOpen(false)}
+                  onClick={() => setIsSettingsModalOpen(false)}
                   className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
-              </div>
-
-              {uploadError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{uploadError}</span>
-                </div>
-              )}
-
-              {/* Category selector for showcase (Reforms 24 & 29) */}
-              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
-                <span className="font-black text-stone-800 block">
-                  دسته‌های مجاز برای نمایش در ویترین داشبورد:
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['book', 'multimedia', 'audio_series'] as const).map(cat => {
-                    const checked = editCategories.includes(cat);
-                    return (
-                      <label
-                        key={cat}
-                        className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer font-bold ${
-                          checked ? 'bg-white border-purple-400 text-purple-900' : 'bg-stone-100 border-stone-200 text-stone-500'
-                        }`}
-                      >
-                        <span>{FORMAT_LABELS[cat]}</span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={e =>
-                            setEditCategories(prev =>
-                              e.target.checked
-                                ? Array.from(new Set([...prev, cat]))
-                                : prev.filter(c => c !== cat)
-                            )
-                          }
-                          className="accent-purple-700"
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
               </div>
 
               <div className="space-y-3 text-xs">
@@ -406,158 +355,70 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2 border-t border-stone-200 text-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h5 className="font-black text-xs text-stone-900">آثار برگزیده ویترین (کتاب، چندرسانه‌ای، صوت):</h5>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      onChange={e => {
-                        const selectedP = products.find(p => p.id === e.target.value);
-                        if (selectedP) {
-                          setCustomItems(prev => [
-                            ...prev,
-                            {
-                              id: `prd-${Date.now()}`,
-                              productId: selectedP.id,
-                              format: selectedP.format,
-                              title: selectedP.title,
-                              author: selectedP.authorOrPresenter,
-                              price: Number(selectedP.digitalPrice ?? selectedP.price ?? 0),
-                              physicalPrice: Number(selectedP.physicalPrice ?? selectedP.price ?? 0),
-                              discountPercent: 0,
-                              coverImage: resolveProductCoverUrl(selectedP.coverImage, selectedP.format),
-                              tag: FORMAT_LABELS[selectedP.format],
-                            },
-                          ]);
-                        }
-                        e.target.value = '';
-                      }}
-                      className="p-1.5 rounded-xl bg-stone-100 border border-stone-300 text-xs font-bold text-stone-800"
-                    >
-                      <option value="">+ افزودن از محصولات موجود (همه دسته‌ها)...</option>
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>
-                          [{FORMAT_LABELS[p.format]}] {p.title}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={handleAddItem}
-                      className="flex items-center gap-1 text-xs font-bold text-purple-700 hover:underline cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" /> افزودن دستی
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {customItems.map((item, idx) => (
-                    <div key={item.id} className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-200 space-y-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-stone-500 block">دسته اثر:</label>
-                          <select
-                            value={item.format || 'book'}
-                            onChange={e => handleUpdateItem(item.id, 'format', e.target.value)}
-                            className="w-full p-1.5 text-xs font-bold bg-white rounded-lg border border-stone-300"
-                          >
-                            <option value="book">کتاب</option>
-                            <option value="multimedia">محصول چندرسانه‌ای</option>
-                            <option value="audio_series">صوت</option>
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="text-[10px] text-stone-500 block">عنوان اثر:</label>
-                          <input
-                            type="text"
-                            value={item.title}
-                            onChange={e => handleUpdateItem(item.id, 'title', e.target.value)}
-                            className="w-full p-1.5 text-xs font-bold bg-white rounded-lg border border-stone-300"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-stone-500 block">نویسنده / ارائه‌دهنده:</label>
-                          <input
-                            type="text"
-                            value={item.author}
-                            onChange={e => handleUpdateItem(item.id, 'author', e.target.value)}
-                            className="w-full p-1.5 text-xs bg-white rounded-lg border border-stone-300"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-stone-500 block">قیمت نمایشی (تومان):</label>
-                          <input
-                            type="number"
-                            value={item.price}
-                            onChange={e => handleUpdateItem(item.id, 'price', parseInt(e.target.value, 10) || 0)}
-                            className="w-full p-1.5 text-xs bg-white rounded-lg border border-stone-300 font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-stone-500 block">برچسب:</label>
-                          <input
-                            type="text"
-                            value={item.tag}
-                            onChange={e => handleUpdateItem(item.id, 'tag', e.target.value)}
-                            className="w-full p-1.5 text-xs bg-white rounded-lg border border-stone-300"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={resolveProductCoverUrl(item.coverImage, (item.format as any) || 'book', idx)}
-                          alt={item.title}
-                          className="w-10 h-10 rounded-lg object-cover border border-purple-200 shrink-0"
-                        />
-                        <label className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-900 text-white font-bold text-[10px] cursor-pointer shrink-0">
-                          {uploadingId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-                          <span>آپلود تصویر جلد</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={e => e.target.files?.[0] && handleUploadImage(item.id, e.target.files[0])}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setCustomItems(prev => prev.filter(i => i.id !== item.id))}
-                          className="text-red-600 hover:text-red-800 text-[11px] font-bold flex items-center gap-1 mr-auto cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> حذف
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
                 <button
                   type="button"
-                  onClick={() => setIsEditModalOpen(false)}
+                  onClick={() => setIsSettingsModalOpen(false)}
                   className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="button"
-                  onClick={handleSave}
+                  onClick={handleSaveSettings}
                   className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md cursor-pointer"
                 >
-                  ذخیره دائمی ویترین
+                  ذخیره تغییرات
                 </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Product Interactive Modals */}
+      <ProductIntroModal
+        product={activeIntroProduct}
+        storeConfig={productsStoreConfig}
+        isOfficial={isAdmin}
+        onClose={() => setIntroProduct(null)}
+        onOpenPurchase={setPurchasingProduct}
+        onOpenLightbox={setLightboxImage}
+      />
+
+      <ProductCheckoutModal
+        product={purchasingProduct}
+        currentUser={currentUser}
+        storeConfig={productsStoreConfig}
+        onClose={() => setPurchasingProduct(null)}
+        onSubmitPurchase={payload => {
+          if (!purchasingProduct) {
+            return Promise.reject(new Error('محصول انتخاب نشده است'));
+          }
+          return purchaseProduct(purchasingProduct.id, payload);
+        }}
+      />
+
+      <ProductBuilderModal
+        isOpen={builderOpen}
+        editingProduct={editingProduct}
+        storeConfig={productsStoreConfig}
+        onClose={() => {
+          setBuilderOpen(false);
+          setEditingProduct(null);
+        }}
+        onSave={async (payload, editingId) => {
+          if (editingId) {
+            await updateProduct(editingId, payload);
+          }
+        }}
+        onUpdateStoreConfig={updateProductsStoreConfig}
+      />
+
+      <ProductLightboxModal
+        image={lightboxImage}
+        onClose={() => setLightboxImage(null)}
+      />
     </div>
   );
 };

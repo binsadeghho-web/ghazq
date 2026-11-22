@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import { Product } from '../../types';
+import { resolveProductCoverUrl, resolveShowcaseImageUrl } from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import {
+  formatPresentersText,
+  formatTomans,
+  getProductCategoryLabel,
+} from '../products/subcomponents/productUiHelpers';
+import { ProductIntroModal } from '../products/subcomponents/ProductIntroModal';
+import { ProductCheckoutModal } from '../products/subcomponents/ProductCheckoutModal';
+import { ProductBuilderModal } from '../products/subcomponents/ProductBuilderModal';
+import { ProductLightboxModal } from '../products/subcomponents/ProductLightboxModal';
 import {
   Scale,
   Compass,
@@ -17,6 +27,10 @@ import {
   CheckCircle2,
   Pause,
   Play,
+  Eye,
+  EyeOff,
+  Edit3,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface UnifiedShowcaseHubProps {
@@ -62,13 +76,26 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
   onOpenEditor,
 }) => {
   const {
+    currentUser,
     crextioConfig,
     rulings,
     researchMentorships,
     courses,
     consultants,
     products,
+    productsStoreConfig,
+    updateProductsStoreConfig,
+    updateProduct,
+    toggleProductShowcase,
+    purchaseProduct,
   } = useApp();
+
+  const [introProduct, setIntroProduct] = useState<Product | null>(null);
+  const [purchasingProduct, setPurchasingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+  const [togglingShowcaseId, setTogglingShowcaseId] = useState<string | null>(null);
 
   const includedKeys = useMemo(() => {
     const list = crextioConfig.unifiedShowcaseIncludedKeys;
@@ -83,6 +110,39 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
     if (isAdmin) return sorted;
     return sorted.filter(r => r.status === 'selected' && r.isVisibleToAlumni !== false);
   }, [rulings, isAdmin]);
+
+  // Showcase products: newly added products appear here by default (showInShowcase !== false)
+  // Admins see all active products so they can activate, deactivate, or edit them right in the showcase
+  const showcaseProducts = useMemo(() => {
+    return [...products]
+      .filter(p => {
+        if (p.isDeleted || !p.isAvailable) return false;
+        if (currentUser?.role === 'customer' && p.visibleToCustomer === false) return false;
+        if (!isAdmin) {
+          if (!productsStoreConfig.isStoreEnabled) return false;
+          if (p.showInShowcase === false) return false;
+          if (productsStoreConfig.enabledCategories?.[p.format] === false) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  }, [
+    products,
+    currentUser?.role,
+    isAdmin,
+    productsStoreConfig.isStoreEnabled,
+    productsStoreConfig.enabledCategories,
+  ]);
+
+  const activeShowcaseProductsCount = useMemo(
+    () => showcaseProducts.filter(p => p.showInShowcase !== false).length,
+    [showcaseProducts]
+  );
+
+  const activeIntroProduct = useMemo(() => {
+    if (!introProduct) return null;
+    return products.find(p => p.id === introProduct.id) || introProduct;
+  }, [introProduct, products]);
 
   const catalog: ShowcaseMetaItem[] = useMemo(
     () => [
@@ -238,27 +298,35 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
       },
       {
         key: 'books_showcase',
-        shortLabel: 'کتاب و چندرسانه‌ای',
-        kicker: 'مرکز نشر و رسانه نخبگان',
+        shortLabel: 'محصولات',
+        kicker: 'کتب، نشست‌ها و درس‌گفتارها',
         title:
           crextioConfig.booksShowcaseTitle ||
           'کتاب و محصولات چند رسانه‌ای',
         description:
           crextioConfig.booksShowcaseSubtitle ||
-          'عرضه کتب مرجع، محصولات چندرسانه‌ای و درس‌گفتارهای صوتی با امکان خرید دیجیتال و فیزیکی.',
+          'عرضه کتب مرجع، نشست‌های علمی صوتی و تصویری و درس‌گفتارها با لینک دانلود فایل‌ها پس از ثبت‌نام یا ارسال نسخه فیزیکی.',
         highlights: [
-          crextioConfig.booksShowcaseDiscountNotice || 'تخفیف ویژه دانش‌آموختگان',
-          products[0]?.title || 'موسوعه‌ها، چندرسانه‌ای و صوت تخصصی قضا',
-          'تحویل آنی دیجیتال و ارسال پستی، پیک یا حضوری در مجتمع',
+          showcaseProducts[0]?.title || crextioConfig.booksShowcaseDiscountNotice || 'تخفیف ویژه دانش‌آموختگان',
+          showcaseProducts[1]?.title || 'موسوعه‌ها، نشست‌های صوتی/تصویری و درس‌گفتارها',
+          'دریافت آنی لینک دانلود جلسات پس از ثبت‌نام و تایید سفارش',
         ],
         targetNav: 'Products',
-        ctaLabel: 'مشاهده کتاب و محصولات چند رسانه‌ای',
+        ctaLabel: 'مشاهده همه محصولات',
         icon: BookMarked,
         toneClass: 'text-purple-700 dark:text-purple-400',
-        statLabel: `${toPersianNumbers(products.length)} اثر تخصصی`,
+        statLabel: `${toPersianNumbers(activeShowcaseProductsCount)} محصول در ویترین`,
       },
     ],
-    [crextioConfig, visibleRulings, researchMentorships, courses, consultants, products]
+    [
+      crextioConfig,
+      visibleRulings,
+      researchMentorships,
+      courses,
+      consultants,
+      showcaseProducts,
+      activeShowcaseProductsCount,
+    ]
   );
 
   const activeItems = useMemo(
@@ -277,9 +345,10 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
   const autoplaySeconds = Math.max(1, Number(crextioConfig.unifiedShowcaseAutoplaySeconds) || 4);
   const isMicro = scale === 'micro';
   const isCompactScale = scale === 'compact' || isMicro;
+  const modalOpen = Boolean(introProduct || purchasingProduct || builderOpen || lightboxImage);
 
   useEffect(() => {
-    if (!autoplay || paused || activeItems.length <= 1 || styleMode !== 'cinematic') return;
+    if (!autoplay || paused || modalOpen || activeItems.length <= 1 || styleMode !== 'cinematic') return;
     const timer = setInterval(() => {
       setSelectedKey(prev => {
         const idx = activeItems.findIndex(i => i.key === prev);
@@ -288,12 +357,152 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
       });
     }, autoplaySeconds * 1000);
     return () => clearInterval(timer);
-  }, [autoplay, paused, activeItems, styleMode, autoplaySeconds]);
+  }, [autoplay, paused, modalOpen, activeItems, styleMode, autoplaySeconds]);
 
   if (activeItems.length === 0) return null;
 
   const CurrentIcon = currentItem.icon;
   const imgUrl = resolveShowcaseImageUrl(currentItem.key, crextioConfig.showcaseImageOverrides);
+
+  const handleToggleProductInShowcase = async (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setTogglingShowcaseId(product.id);
+      await toggleProductShowcase(product.id, product.showInShowcase === false);
+    } finally {
+      setTogglingShowcaseId(null);
+    }
+  };
+
+  const handleOpenEditProduct = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingProduct(product);
+    setBuilderOpen(true);
+  };
+
+  const renderShowcaseProductsGrid = (compact = false) => {
+    if (showcaseProducts.length === 0) {
+      return (
+        <div
+          className={`p-4 rounded-2xl border text-center text-xs ${
+            darkSurface ? 'bg-white/5 border-white/10 text-stone-300' : 'bg-stone-50 border-stone-200 text-stone-500'
+          }`}
+        >
+          در حال حاضر محصول فعالی برای نمایش در ویترین وجود ندارد.
+        </div>
+      );
+    }
+
+    const visibleSlice = showcaseProducts.slice(0, compact ? 4 : 6);
+
+    return (
+      <div className={`grid grid-cols-1 ${compact ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 xl:grid-cols-3'} gap-3`}>
+        {visibleSlice.map((prod, idx) => {
+          const prodCover = resolveProductCoverUrl(prod.coverImage, prod.format, idx);
+          const displayPrice =
+            prod.supportsDigital !== false
+              ? Number(prod.digitalPrice ?? prod.price ?? 0)
+              : Number(prod.physicalPrice ?? prod.price ?? 0);
+          const isShown = prod.showInShowcase !== false;
+
+          return (
+            <div
+              key={prod.id}
+              onClick={() => setIntroProduct(prod)}
+              className={`group rounded-2xl border p-3 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                !isShown ? 'opacity-65 border-dashed ' : ''
+              }${
+                darkSurface
+                  ? 'bg-[#172822] border-white/10 hover:border-amber-400/50 text-white'
+                  : 'bg-white border-stone-200 hover:border-emerald-600/40 text-stone-900 shadow-2xs hover:shadow-sm'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <img
+                  src={prodCover}
+                  alt={prod.title}
+                  className="w-14 h-14 rounded-xl object-cover shrink-0 border border-black/10"
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center justify-between gap-1 text-[10px] font-bold">
+                    <span className={darkSurface ? 'text-amber-300' : 'text-amber-700'}>
+                      {getProductCategoryLabel(prod.format, prod.formatTitle, productsStoreConfig)}
+                    </span>
+                    {isAdmin && !isShown && (
+                      <span className="text-rose-500 font-black">مخفی از ویترین</span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-black line-clamp-1 leading-snug group-hover:text-amber-500 transition-colors">
+                    {prod.title}
+                  </h4>
+                  <p className={`text-[11px] line-clamp-1 ${darkSurface ? 'text-stone-400' : 'text-stone-500'}`}>
+                    {formatPresentersText(prod)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-black/5 dark:border-white/10 flex items-center justify-between gap-2">
+                <strong className={`text-xs font-black tabular-nums ${darkSurface ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                  {formatTomans(displayPrice)}
+                </strong>
+
+                <div className="flex items-center gap-1">
+                  {isAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={togglingShowcaseId === prod.id}
+                        onClick={e => handleToggleProductInShowcase(prod, e)}
+                        title={isShown ? 'غیرفعال کردن در ویترین' : 'فعال کردن در ویترین'}
+                        className={`p-1.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
+                          isShown
+                            ? darkSurface
+                              ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : darkSurface
+                            ? 'border-white/15 bg-white/5 text-stone-400'
+                            : 'border-stone-200 bg-stone-100 text-stone-500'
+                        }`}
+                      >
+                        {isShown ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={e => handleOpenEditProduct(prod, e)}
+                        title="ویرایش محصول"
+                        className={`p-1.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
+                          darkSurface
+                            ? 'border-white/15 bg-white/5 text-amber-300 hover:bg-white/10'
+                            : 'border-stone-200 bg-stone-50 text-amber-700 hover:bg-amber-50'
+                        }`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setPurchasingProduct(prod);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 cursor-pointer ${
+                      darkSurface
+                        ? 'bg-amber-400 hover:bg-amber-300 text-stone-950'
+                        : 'bg-emerald-900 hover:bg-emerald-950 text-white'
+                    }`}
+                  >
+                    <ShoppingBag className="w-3 h-3" />
+                    <span>مشاهده</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <section
@@ -329,7 +538,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                   darkSurface ? 'text-white' : 'text-stone-900'
                 }`}
               >
-                {crextioConfig.unifiedShowcaseTitle || 'نمایشگاه جامع خدمات، پژوهش، آموزش و تالارها'}
+                {crextioConfig.unifiedShowcaseTitle || 'نمایشگاه جامع خدمات، پژوهش، آموزش و محصولات'}
               </h2>
               {span === 'full' && !isMicro && (
                 <p
@@ -377,7 +586,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
           </div>
         </div>
 
-        {/* Interactive Selector Tabs with Spring Underline */}
+        {/* Interactive Selector Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
           {activeItems.map(item => {
             const Icon = item.icon;
@@ -416,64 +625,131 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
 
       {/* Body Stage */}
       {styleMode === 'tabbed_grid' ? (
-        <div className={`${isMicro ? 'p-3 gap-2.5' : isCompactScale ? 'p-4 gap-3' : 'p-5 gap-4'} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3`}>
-          {activeItems.map(item => {
-            const Icon = item.icon;
-            const thumb = resolveShowcaseImageUrl(item.key, crextioConfig.showcaseImageOverrides);
-            return (
-              <div
-                key={item.key}
-                onClick={() => onNavigateTab?.(item.targetNav)}
-                className={`group rounded-2xl border overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 ${
-                  darkSurface
-                    ? 'bg-[#172822] border-white/10 hover:border-emerald-500/40'
-                    : 'bg-stone-50/70 border-stone-200 hover:border-emerald-600/40 hover:bg-white'
-                }`}
-              >
-                {thumb && (
-                  <div className={`relative ${isMicro ? 'h-20' : isCompactScale ? 'h-24' : 'h-28'} w-full overflow-hidden`}>
-                    <img
-                      src={thumb}
-                      alt={item.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    <span className="absolute bottom-2 right-3 text-[11px] font-bold text-amber-300">
-                      {item.kicker}
-                    </span>
-                  </div>
-                )}
-                <div className="p-3.5 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Icon className={`w-4 h-4 shrink-0 ${item.toneClass}`} />
-                      <h3 className="text-xs font-extrabold truncate">{item.title}</h3>
+        <div className="space-y-4">
+          <div className={`${isMicro ? 'p-3 gap-2.5' : isCompactScale ? 'p-4 gap-3' : 'p-5 gap-4'} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3`}>
+            {activeItems.map(item => {
+              const Icon = item.icon;
+              const thumb = resolveShowcaseImageUrl(item.key, crextioConfig.showcaseImageOverrides);
+              return (
+                <div
+                  key={item.key}
+                  onClick={() => onNavigateTab?.(item.targetNav)}
+                  className={`group rounded-2xl border overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 ${
+                    darkSurface
+                      ? 'bg-[#172822] border-white/10 hover:border-emerald-500/40'
+                      : 'bg-stone-50/70 border-stone-200 hover:border-emerald-600/40 hover:bg-white'
+                  }`}
+                >
+                  {thumb && (
+                    <div className={`relative ${isMicro ? 'h-20' : isCompactScale ? 'h-24' : 'h-28'} w-full overflow-hidden`}>
+                      <img
+                        src={thumb}
+                        alt={item.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      <span className="absolute bottom-2 right-3 text-[11px] font-bold text-amber-300">
+                        {item.kicker}
+                      </span>
+                    </div>
+                  )}
+                  <div className="p-3.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className={`w-4 h-4 shrink-0 ${item.toneClass}`} />
+                        <h3 className="text-xs font-extrabold truncate">{item.title}</h3>
+                      </div>
+                    </div>
+                    <p
+                      className={`text-[11px] line-clamp-2 leading-relaxed ${
+                        darkSurface ? 'text-stone-400' : 'text-stone-600'
+                      }`}
+                    >
+                      {item.description}
+                    </p>
+                    <div className="pt-2 flex items-center justify-between text-[11px] font-bold">
+                      <span className={darkSurface ? 'text-stone-400' : 'text-stone-500'}>
+                        {item.statLabel}
+                      </span>
+                      <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                        <span>{item.ctaLabel}</span>
+                        <ArrowLeft className="w-3 h-3" />
+                      </span>
                     </div>
                   </div>
-                  <p
-                    className={`text-[11px] line-clamp-2 leading-relaxed ${
-                      darkSurface ? 'text-stone-400' : 'text-stone-600'
-                    }`}
-                  >
-                    {item.description}
-                  </p>
-                  <div className="pt-2 flex items-center justify-between text-[11px] font-bold">
-                    <span className={darkSurface ? 'text-stone-400' : 'text-stone-500'}>
-                      {item.statLabel}
-                    </span>
-                    <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                      <span>{item.ctaLabel}</span>
-                      <ArrowLeft className="w-3 h-3" />
-                    </span>
-                  </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {includedKeys.includes('books_showcase') && showcaseProducts.length > 0 && (
+            <div className={`px-5 pb-5 space-y-3 border-t pt-4 ${darkSurface ? 'border-white/10' : 'border-stone-100'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs sm:text-sm font-black">
+                  محصولات، کتب، نشست‌ها و درس‌گفتارهای فعال در ویترین
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab?.('Products')}
+                  className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 cursor-pointer hover:underline"
+                >
+                  <span>مشاهده بخش کامل</span>
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                </button>
               </div>
-            );
-          })}
+              {renderShowcaseProductsGrid(true)}
+            </div>
+          )}
         </div>
+      ) : currentItem.key === 'books_showcase' ? (
+        /* Interactive Live Products Showcase Stage inside UnifiedShowcaseHub */
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="books_showcase_live"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className={`${isMicro ? 'p-3.5 space-y-3' : isCompactScale ? 'p-4 space-y-3.5' : 'p-5 sm:p-6 space-y-4'}`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                    {currentItem.kicker}
+                  </span>
+                  <span className="text-[11px] opacity-60">· {currentItem.statLabel}</span>
+                </div>
+                <h3 className={`font-black ${isMicro ? 'text-sm' : 'text-base sm:text-lg'} ${darkSurface ? 'text-white' : 'text-stone-900'}`}>
+                  {currentItem.title}
+                </h3>
+                {!isMicro && (
+                  <p className={`text-xs ${darkSurface ? 'text-stone-300' : 'text-stone-600'}`}>
+                    {currentItem.description}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onNavigateTab?.('Products')}
+                className={`${isMicro ? 'px-3 py-1.5 text-[11px]' : 'px-4 py-2 text-xs'} rounded-xl font-black flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+                  darkSurface
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
+                    : 'bg-emerald-900 hover:bg-emerald-950 text-white'
+                }`}
+              >
+                <span>{currentItem.ctaLabel}</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {renderShowcaseProductsGrid(isCompactScale || span === 'half')}
+          </motion.div>
+        </AnimatePresence>
       ) : (
-        /* Cinematic Stage View */
+        /* Cinematic Stage View for other tabs */
         <AnimatePresence mode="wait">
           <motion.div
             key={currentItem.key}
@@ -616,6 +892,50 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
           </motion.div>
         </AnimatePresence>
       )}
+
+      {/* Interactive Product Modals launched directly from Showcase */}
+      <ProductIntroModal
+        product={activeIntroProduct}
+        storeConfig={productsStoreConfig}
+        isOfficial={isAdmin}
+        onClose={() => setIntroProduct(null)}
+        onOpenPurchase={setPurchasingProduct}
+        onOpenLightbox={setLightboxImage}
+      />
+
+      <ProductCheckoutModal
+        product={purchasingProduct}
+        currentUser={currentUser}
+        storeConfig={productsStoreConfig}
+        onClose={() => setPurchasingProduct(null)}
+        onSubmitPurchase={payload => {
+          if (!purchasingProduct) {
+            return Promise.reject(new Error('محصول انتخاب نشده است'));
+          }
+          return purchaseProduct(purchasingProduct.id, payload);
+        }}
+      />
+
+      <ProductBuilderModal
+        isOpen={builderOpen}
+        editingProduct={editingProduct}
+        storeConfig={productsStoreConfig}
+        onClose={() => {
+          setBuilderOpen(false);
+          setEditingProduct(null);
+        }}
+        onSave={async (payload, editingId) => {
+          if (editingId) {
+            await updateProduct(editingId, payload);
+          }
+        }}
+        onUpdateStoreConfig={updateProductsStoreConfig}
+      />
+
+      <ProductLightboxModal
+        image={lightboxImage}
+        onClose={() => setLightboxImage(null)}
+      />
     </section>
   );
 };

@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
+  ProductCategoryConfig,
   ProductPaymentGateway,
   ProductsStoreConfig,
 } from '../../../types';
+import {
+  CATEGORY_KIND_LABELS,
+  getAllProductCategories,
+} from './productUiHelpers';
 import {
   X,
   Sliders,
@@ -14,6 +19,7 @@ import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
+  Tags,
 } from 'lucide-react';
 
 interface ProductStoreSettingsModalProps {
@@ -34,15 +40,92 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [newGatewayName, setNewGatewayName] = useState('');
   const [newGatewayDesc, setNewGatewayDesc] = useState('');
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [newCategoryKind, setNewCategoryKind] = useState<ProductCategoryConfig['kind']>('custom');
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setForm(JSON.parse(JSON.stringify(config)));
+    if (isOpen && !wasOpenRef.current) {
+      const cloned: ProductsStoreConfig = JSON.parse(JSON.stringify(config));
+      cloned.customCategories = getAllProductCategories(cloned);
+      setForm(cloned);
       setErrorMsg(null);
+      setNewCategoryLabel('');
+      setNewCategoryKind('custom');
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, config]);
 
   if (!isOpen) return null;
+
+  const categoriesList = getAllProductCategories(form);
+
+  const handleAddCategory = () => {
+    const label = newCategoryLabel.trim();
+    if (!label) return;
+    const slugId = `cat_${Date.now().toString(36)}`;
+    const nextCat: ProductCategoryConfig = {
+      id: slugId,
+      label,
+      shortLabel: label.length > 18 ? label.slice(0, 18) : label,
+      kind: newCategoryKind,
+      isEnabled: true,
+      isBuiltIn: false,
+    };
+    setForm(prev => {
+      const currentCats = getAllProductCategories(prev);
+      return {
+        ...prev,
+        enabledCategories: {
+          ...(prev.enabledCategories || {}),
+          [slugId]: true,
+        },
+        customCategories: [...currentCats, nextCat],
+      };
+    });
+    setNewCategoryLabel('');
+  };
+
+  const handleRemoveCustomCategory = (catId: string) => {
+    setForm(prev => {
+      const nextEnabled = { ...(prev.enabledCategories || {}) };
+      delete nextEnabled[catId];
+      const nextCats = getAllProductCategories(prev).filter(c => c.id !== catId || c.isBuiltIn);
+      return {
+        ...prev,
+        enabledCategories: nextEnabled,
+        customCategories: nextCats,
+      };
+    });
+  };
+
+  const handleToggleCategory = (catId: string, checked: boolean) => {
+    setForm(prev => {
+      const nextCats = getAllProductCategories(prev).map(c =>
+        c.id === catId ? { ...c, isEnabled: checked } : c
+      );
+      return {
+        ...prev,
+        enabledCategories: {
+          ...(prev.enabledCategories || {}),
+          [catId]: checked,
+        },
+        customCategories: nextCats,
+      };
+    });
+  };
+
+  const handleRenameCategory = (catId: string, label: string) => {
+    setForm(prev => {
+      const nextCats = getAllProductCategories(prev).map(c =>
+        c.id === catId ? { ...c, label, shortLabel: label.length > 18 ? label.slice(0, 18) : label } : c
+      );
+      return {
+        ...prev,
+        customCategories: nextCats,
+      };
+    });
+  };
 
   const handleAddGateway = () => {
     const trimmed = newGatewayName.trim();
@@ -65,7 +148,10 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
     try {
       setSaving(true);
       setErrorMsg(null);
-      await onSave(form);
+      await onSave({
+        ...form,
+        customCategories: getAllProductCategories(form),
+      });
       onClose();
     } catch (err: any) {
       setErrorMsg(err?.message || 'خطا در ذخیره تنظیمات بخش محصولات');
@@ -96,11 +182,12 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
                   تنظیمات بخش کتاب و محصولات چند رسانه‌ای
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  کنترل فعال‌سازی بخش و دسته‌بندی‌ها (اصلاح ۳۰)، درگاه‌های پرداخت و تعرفه‌های پیش‌فرض ارسال
+                  کنترل وضعیت کل بخش، عناوین دسته‌بندی (کتب، نشست‌ها، درس‌گفتارها و عناوین جدید)، درگاه‌های پرداخت و تعرفه‌های ارسال
                 </p>
               </div>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
             >
@@ -116,17 +203,17 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
               </div>
             )}
 
-            {/* 1. Master Store Switch & Category Switches (Reform 30) */}
+            {/* 1. Master Store Switch & Presentation Categories */}
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Power className={`w-4 h-4 ${form.isStoreEnabled ? 'text-emerald-600' : 'text-rose-500'}`} />
                   <div>
                     <h4 className="font-black text-slate-900 dark:text-white text-sm">
-                      وضعیت فعال‌سازی کل بخش «کتاب و محصولات چند رسانه‌ای»
+                      وضعیت فعال‌سازی کل بخش «کتاب و محصولات چند رسانه‌ای» برای همه کاربران
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      در صورت خاموش شدن، دسترسی خرید و مشاهده بخش برای دانش‌آموختگان و مشتریان متوقف می‌شود (مدیران همچنان دسترسی مدیریتی دارند).
+                      با روشن بودن این گزینه، کلیه دستگاه‌ها و کاربران مجاز در RBAC به بخش و محصولات دسترسی فوری خواهند داشت.
                     </p>
                   </div>
                 </div>
@@ -138,7 +225,7 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
                     className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
                   />
                   <span className={`font-black ${form.isStoreEnabled ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {form.isStoreEnabled ? 'بخش فعال است' : 'کل بخش غیرفعال'}
+                    {form.isStoreEnabled ? 'بخش برای همه فعال است' : 'کل بخش غیرفعال'}
                   </span>
                 </label>
               </div>
@@ -157,44 +244,88 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
                 </div>
               )}
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
-                <span className="block font-black text-slate-800 dark:text-slate-200 mb-2">
-                  کنترل مستقل فعال/غیرفعال‌سازی هر دسته‌بندی (اصلاح ۳۰):
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { key: 'book' as const, label: 'فروش بخش کتاب' },
-                    { key: 'multimedia' as const, label: 'فروش محصولات چندرسانه‌ای' },
-                    { key: 'audio_series' as const, label: 'فروش بخش صوت و درس‌گفتار' },
-                  ].map(cat => {
-                    const checked = form.enabledCategories?.[cat.key] !== false;
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Tags className="w-4 h-4 text-amber-500" />
+                  <span className="font-black text-slate-800 dark:text-slate-200">
+                    عناوین دسته‌بندی و نوع ارائه (کتب، نشست‌ها، درس‌گفتارها و عناوین جدید):
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {categoriesList.map(cat => {
+                    const checked = form.enabledCategories?.[cat.id] !== false;
                     return (
-                      <label
-                        key={cat.key}
-                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
+                      <div
+                        key={cat.id}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border transition-colors ${
                           checked
-                            ? 'bg-white dark:bg-slate-900 border-emerald-500/40'
+                            ? 'bg-white dark:bg-slate-900 border-emerald-500/35'
                             : 'bg-rose-500/5 border-rose-500/30 opacity-80'
                         }`}
                       >
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{cat.label}</span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={e =>
-                            setForm(prev => ({
-                              ...prev,
-                              enabledCategories: {
-                                ...prev.enabledCategories,
-                                [cat.key]: e.target.checked,
-                              },
-                            }))
-                          }
-                          className="w-4 h-4 accent-emerald-600 cursor-pointer"
-                        />
-                      </label>
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={e => handleToggleCategory(cat.id, e.target.checked)}
+                            className="w-4 h-4 accent-emerald-600 cursor-pointer shrink-0"
+                          />
+                          <input
+                            type="text"
+                            value={cat.label}
+                            onChange={e => handleRenameCategory(cat.id, e.target.value)}
+                            className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold text-slate-800 dark:text-slate-100"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            {CATEGORY_KIND_LABELS[cat.kind || 'custom']}
+                            {cat.isBuiltIn ? ' · پیش‌فرض' : ' · سفارشی'}
+                          </span>
+                          {!cat.isBuiltIn && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomCategory(cat.id)}
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                              title="حذف عنوان سفارشی"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2 border-t border-slate-200/70 dark:border-slate-800">
+                  <input
+                    type="text"
+                    value={newCategoryLabel}
+                    onChange={e => setNewCategoryLabel(e.target.value)}
+                    placeholder="عنوان دسته‌بندی جدید (مثلاً: کرسی‌های نظریه‌پردازی / همایش ملی)..."
+                    className="sm:col-span-6 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
+                  />
+                  <select
+                    value={newCategoryKind}
+                    onChange={e => setNewCategoryKind(e.target.value as ProductCategoryConfig['kind'])}
+                    className="sm:col-span-3 px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold"
+                  >
+                    <option value="custom">عنوان ارائه جدید</option>
+                    <option value="session">نوع نشست (صوتی/تصویری)</option>
+                    <option value="lecture">نوع درس‌گفتار</option>
+                    <option value="book">نوع کتاب / مکتوب</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    className="sm:col-span-3 px-3 py-2 rounded-xl bg-slate-900 dark:bg-amber-500 text-white dark:text-stone-950 font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>افزودن عنوان جدید</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -221,7 +352,7 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
               </div>
             </div>
 
-            {/* 3. Payment Gateways & Bank Card Info (Reform 26) */}
+            {/* 3. Payment Gateways & Bank Card Info */}
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-amber-500" />
@@ -323,7 +454,7 @@ export const ProductStoreSettingsModal: React.FC<ProductStoreSettingsModalProps>
               </div>
             </div>
 
-            {/* 4. Default Physical Delivery Options (Reform 26) */}
+            {/* 4. Default Physical Delivery Options */}
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-sky-500" />

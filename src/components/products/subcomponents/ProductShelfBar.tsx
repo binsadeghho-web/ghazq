@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProductsStoreConfig } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
-import { ProductShelfKey } from './productUiHelpers';
+import { ProductShelfKey, getAllProductCategories } from './productUiHelpers';
 import {
   BookOpen,
   MonitorPlay,
@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Receipt,
   Search,
+  Tags,
 } from 'lucide-react';
 
 interface ProductShelfBarProps {
@@ -18,9 +19,7 @@ interface ProductShelfBarProps {
   storeConfig: ProductsStoreConfig;
   isOfficial: boolean;
   allCount: number;
-  booksCount: number;
-  multimediaCount: number;
-  audioCount: number;
+  categoryCounts: Record<string, number>;
   myOwnedCount: number;
   ordersCount: number;
   searchQuery: string;
@@ -33,14 +32,23 @@ export const ProductShelfBar: React.FC<ProductShelfBarProps> = ({
   storeConfig,
   isOfficial,
   allCount,
-  booksCount,
-  multimediaCount,
-  audioCount,
+  categoryCounts,
   myOwnedCount,
   ordersCount,
   searchQuery,
   onSearchChange,
 }) => {
+  const categories = getAllProductCategories(storeConfig);
+
+  const getCategoryIcon = (kind: string, id: string) => {
+    if (kind === 'book' || id === 'book') return <BookOpen className="w-3.5 h-3.5 text-amber-500" />;
+    if (kind === 'session' || kind === 'multimedia' || id === 'multimedia') {
+      return <MonitorPlay className="w-3.5 h-3.5 text-indigo-500" />;
+    }
+    if (kind === 'lecture' || id === 'audio_series') return <Headphones className="w-3.5 h-3.5 text-sky-500" />;
+    return <Tags className="w-3.5 h-3.5 text-emerald-500" />;
+  };
+
   const allTabs: Array<{
     key: ProductShelfKey;
     label: string;
@@ -56,30 +64,14 @@ export const ProductShelfBar: React.FC<ProductShelfBarProps> = ({
       icon: <Layers className="w-3.5 h-3.5 text-emerald-500" />,
       visible: true,
     },
-    {
-      key: 'book',
-      label: 'کتاب',
-      count: booksCount,
-      icon: <BookOpen className="w-3.5 h-3.5 text-amber-500" />,
-      visible: isOfficial || storeConfig.enabledCategories?.book !== false,
-      disabledTag: storeConfig.enabledCategories?.book === false,
-    },
-    {
-      key: 'multimedia',
-      label: 'محصولات چندرسانه‌ای',
-      count: multimediaCount,
-      icon: <MonitorPlay className="w-3.5 h-3.5 text-indigo-500" />,
-      visible: isOfficial || storeConfig.enabledCategories?.multimedia !== false,
-      disabledTag: storeConfig.enabledCategories?.multimedia === false,
-    },
-    {
-      key: 'audio_series',
-      label: 'صوت و درس‌گفتار',
-      count: audioCount,
-      icon: <Headphones className="w-3.5 h-3.5 text-sky-500" />,
-      visible: isOfficial || storeConfig.enabledCategories?.audio_series !== false,
-      disabledTag: storeConfig.enabledCategories?.audio_series === false,
-    },
+    ...categories.map(cat => ({
+      key: cat.id,
+      label: cat.label,
+      count: categoryCounts[cat.id] || 0,
+      icon: getCategoryIcon(cat.kind, cat.id),
+      visible: isOfficial || storeConfig.enabledCategories?.[cat.id] !== false,
+      disabledTag: storeConfig.enabledCategories?.[cat.id] === false,
+    })),
     {
       key: 'my_library',
       label: 'کتابخانه من',
@@ -122,13 +114,13 @@ export const ProductShelfBar: React.FC<ProductShelfBarProps> = ({
         ))}
       </div>
 
-      <div className="relative w-full xl:w-80">
+      <div className="relative w-full xl:w-80 shrink-0">
         <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder="جستجو در عنوان، نویسنده، نمایه یا کد رهگیری..."
+          placeholder="جستجو در عنوان، ارائه‌دهندگان، نمایه یا کد رهگیری..."
           className="w-full pr-9 pl-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-400"
         />
       </div>

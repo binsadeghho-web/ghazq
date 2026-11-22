@@ -4,6 +4,10 @@ import { toPersianNumbers } from '../../utils/persianNumbers';
 import { resolveProductCoverUrl } from '../../data/showcaseImages';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
+  formatPresentersText,
+  getProductCategoryLabel,
+} from '../products/subcomponents/productUiHelpers';
+import {
   ShoppingBag,
   ArrowUpRight,
   ChevronLeft,
@@ -25,7 +29,12 @@ export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
   }
 
   const featuredProducts = products
-    .filter(p => !p.isDeleted && (isOfficial || productsStoreConfig.enabledCategories?.[p.format] !== false))
+    .filter(
+      p =>
+        !p.isDeleted &&
+        p.isAvailable &&
+        (isOfficial || (p.showInShowcase !== false && productsStoreConfig.enabledCategories?.[p.format] !== false))
+    )
     .slice(0, 2);
   const featuredConsumables = consumables.slice(0, 2);
 
@@ -41,7 +50,7 @@ export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
               کتاب، محصولات چند رسانه‌ای و تعاونی اعضا
             </h4>
             <p className="text-[11px] text-stone-500 mt-0.5">
-              کتب مرجع، بسته‌های چندرسانه‌ای، صوت‌های تخصصی و سبدهای مصرفی اعضای مرکز
+              کتب مرجع، نشست‌های علمی، درس‌گفتارها و سبدهای مصرفی اعضای مرکز
             </p>
           </div>
         </div>
@@ -71,11 +80,7 @@ export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-purple-900/85 text-white text-[10px] font-black">
-                  {item.format === 'book'
-                    ? 'کتاب'
-                    : item.format === 'multimedia'
-                    ? 'چندرسانه‌ای'
-                    : 'صوت'}
+                  {getProductCategoryLabel(item.format, item.formatTitle, productsStoreConfig)}
                 </span>
               </div>
 
@@ -84,7 +89,7 @@ export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
                   {item.title}
                 </h5>
                 <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                  {item.authorOrPresenter}
+                  {formatPresentersText(item)}
                 </p>
               </div>
             </div>

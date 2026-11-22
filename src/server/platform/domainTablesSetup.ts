@@ -851,6 +851,11 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN shipping_fixed_fee DECIMAL(19,4) NOT NULL DEFAULT 0.0000`,
       `ADD COLUMN pickup_address_notice VARCHAR(512) NULL`,
       `ADD COLUMN display_order INT NOT NULL DEFAULT 0`,
+      `ADD COLUMN stock INT NOT NULL DEFAULT 20`,
+      `MODIFY COLUMN format VARCHAR(64) NOT NULL DEFAULT 'book'`,
+      `ADD COLUMN presenters JSON NULL`,
+      `ADD COLUMN media_sessions JSON NULL`,
+      `ADD COLUMN show_in_showcase TINYINT(1) NOT NULL DEFAULT 1`,
       `ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0`,
       `ADD COLUMN deleted_at DATETIME(3) NULL`,
       `ADD COLUMN deleted_by VARCHAR(128) NULL`,
@@ -861,9 +866,11 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
     }
     try { await p.query(`CREATE INDEX idx_products_del_order ON products (is_deleted, is_available, display_order);`); } catch {}
     try { await p.query(`CREATE INDEX idx_products_fmt_del ON products (format, is_deleted, display_order);`); } catch {}
+    try { await p.query(`CREATE INDEX idx_products_showcase ON products (show_in_showcase, is_available, is_deleted, display_order);`); } catch {}
 
     const productOrderAlters = [
-      `ADD COLUMN product_format VARCHAR(32) NOT NULL DEFAULT 'book'`,
+      `MODIFY COLUMN product_format VARCHAR(64) NOT NULL DEFAULT 'book'`,
+      `ADD COLUMN product_format VARCHAR(64) NOT NULL DEFAULT 'book'`,
       `ADD COLUMN purchase_format VARCHAR(32) NOT NULL DEFAULT 'digital'`,
       `ADD COLUMN delivery_method VARCHAR(32) NOT NULL DEFAULT 'digital_instant'`,
       `ADD COLUMN base_amount DECIMAL(19,4) NOT NULL DEFAULT 0.0000`,
