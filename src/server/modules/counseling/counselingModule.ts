@@ -155,7 +155,7 @@ export class CounselingService {
     if (authCtx.role === 'general_observer') {
       throw AppError.forbidden('نقش ناظر کل مجاز به ثبت یا ویرایش مشاور نیست.');
     }
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -218,7 +218,7 @@ export class CounselingService {
     if (authCtx.role === 'general_observer') {
       throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش مشاور نیست.');
     }
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -301,7 +301,7 @@ export class CounselingService {
     if (authCtx.role === 'general_observer') {
       throw AppError.forbidden('نقش ناظر کل مجاز به حذف مشاور نیست.');
     }
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -332,22 +332,39 @@ export class CounselingService {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
     await ensureCounselingRequestsSchema();
-    let sql = `SELECT * FROM counseling_requests WHERE deleted_at IS NULL`;
+    let sql = `
+      SELECT cr.*, u.phone AS account_phone
+      FROM counseling_requests cr
+      LEFT JOIN users u ON (u.id = cr.applicant_id)
+      WHERE cr.deleted_at IS NULL
+    `;
     const params: any[] = [];
 
-    if (typeFilter === 'general' || typeFilter === 'specialized_career') {
-      sql += ` AND counseling_type = ?`;
+    if (authCtx.role === 'psychologist_counselor') {
+      sql += ` AND cr.counseling_type = 'general'`;
+    } else if (typeFilter === 'general' || typeFilter === 'specialized_career') {
+      sql += ` AND cr.counseling_type = ?`;
       params.push(typeFilter);
     }
 
     if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
-      sql += ` AND (applicant_id = ? OR applicant_id = ?)`;
+      sql += ` AND (cr.applicant_id = ? OR cr.applicant_id = ?)`;
       params.push(toIdBuffer(authCtx.userId), authCtx.userId);
     }
-    sql += ` ORDER BY created_at DESC`;
+    sql += ` ORDER BY cr.created_at DESC`;
 
     const rows = await selectWithTimeout<any>(sql, params, 4000);
-    return (rows || []).map(mapCounselingRequestRow);
+    return (rows || []).map((row: any) => {
+      const mapped = mapCounselingRequestRow({
+        ...row,
+        user_phone: row.user_phone || row.account_phone || undefined,
+      });
+      if (authCtx.role === 'psychologist_counselor') {
+        delete mapped.userNationalId;
+        delete mapped.userRoleTitle;
+      }
+      return mapped;
+    });
   }
 
   async getRequestById(authCtx: AuthContext, id: string): Promise<(CounselingRequest & { version: number }) | undefined> {
@@ -356,14 +373,27 @@ export class CounselingService {
     await ensureCounselingRequestsSchema();
     const idBuf = toIdBuffer(id);
     const rows = await selectWithTimeout<any>(
-      `SELECT * FROM counseling_requests WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
+      `SELECT cr.*, u.phone AS account_phone
+       FROM counseling_requests cr
+       LEFT JOIN users u ON (u.id = cr.applicant_id)
+       WHERE (cr.id = ? OR cr.id = ?) AND cr.deleted_at IS NULL LIMIT 1`,
       [idBuf, id],
       3000
     );
     if (!rows || rows.length === 0) return undefined;
-    const item = mapCounselingRequestRow(rows[0]);
+    const item = mapCounselingRequestRow({
+      ...rows[0],
+      user_phone: rows[0].user_phone || rows[0].account_phone || undefined,
+    });
+    if (authCtx.role === 'psychologist_counselor' && item.counselingType === 'specialized_career') {
+      throw AppError.forbidden('نقش روانشناس و مشاور مرکز صرفاً مجاز به دسترسی پرونده‌های مشاوره عمومی و روان‌شناختی است.');
+    }
     if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       AuthorizationPolicy.assertOwnership(authCtx, item.applicantId, 'درخواست مشاوره');
+    }
+    if (authCtx.role === 'psychologist_counselor') {
+      delete item.userNationalId;
+      delete item.userRoleTitle;
     }
     return item;
   }
@@ -475,7 +505,7 @@ export class CounselingService {
     if (authCtx.role === 'general_observer') {
       throw AppError.forbidden('نقش ناظر کل مجاز به حذف درخواست مشاوره نیست.');
     }
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
     await ensureCounselingRequestsSchema();
@@ -621,6 +651,35 @@ export class CounselingService {
 export function createCounselingRouter(): Router {
   const router = Router();
   const service = new CounselingService();
+
+  router.get('/clients-basic', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      const u = getCurrentUser(req);
+      AuthorizationPolicy.requireRole(
+        { userId: u.id, role: u.role, fullName: u.fullName },
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor', 'general_observer']
+      );
+      const search = req.query.search ? String(req.query.search).trim() : '';
+      let sql = `SELECT id, full_name, phone FROM users WHERE is_active = 1`;
+      const params: any[] = [];
+      if (search) {
+        sql += ` AND (full_name LIKE ? OR phone LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`);
+      }
+      sql += ` ORDER BY full_name ASC LIMIT 1000`;
+      const rows = await selectWithTimeout<any>(sql, params, 3000);
+      res.json(
+        (rows || []).map((r: any) => ({
+          id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
+          fullName: String(r.full_name || 'بدون نام'),
+          phone: String(r.phone || ''),
+        }))
+      );
+    } catch (err) {
+      next(err);
+    }
+  });
 
   router.get('/consultants', async (req: Request, res: Response, next) => {
     try {

@@ -51,6 +51,7 @@ function resolveUploadCategory(rawCategoryInput: string): UploadCategory {
     'course_receipt',
     'course_certificate',
     'course_file',
+    'counseling_media',
     'misc',
   ];
 
@@ -61,6 +62,7 @@ function resolveUploadCategory(rawCategoryInput: string): UploadCategory {
   if (rawCategory === 'course_receipts') return 'course_receipt';
   if (rawCategory === 'course_certificates') return 'course_certificate';
   if (rawCategory === 'course_files') return 'course_file';
+  if (rawCategory === 'counseling_medias') return 'counseling_media';
   if (validCategories.includes(rawCategory as UploadCategory)) return rawCategory as UploadCategory;
   return 'misc';
 }
@@ -127,8 +129,9 @@ export function createMasterRouter(): Router {
           (category === 'product_media' ||
             category === 'course_certificate' ||
             category === 'course_file' ||
+            category === 'counseling_media' ||
             category === 'cartable_officials') &&
-          !isOrganizationalUserRole(user?.role)
+          (!isOrganizationalUserRole(user?.role) || user?.role === 'general_observer')
         ) {
           return res.status(403).json({
             type: 'forbidden',
@@ -240,6 +243,16 @@ export function createMasterRouter(): Router {
           title: 'عدم دسترسی',
           status: 403,
           detail: 'بارگذاری فایل‌های دانلودی دوره صرفاً برای مدیران و مسئولین آموزش مجاز است.',
+          code: 'FORBIDDEN_UPLOAD_CATEGORY',
+        });
+      }
+
+      if (category === 'counseling_media' && (!isOrganizationalUserRole(user?.role) || user?.role === 'general_observer')) {
+        return res.status(403).json({
+          type: 'forbidden',
+          title: 'عدم دسترسی',
+          status: 403,
+          detail: 'بارگذاری فایل‌های کارگاه‌ها و اطلاعیه‌های مشاوره صرفاً برای مسئولین مشاوره و مدیران مجاز است.',
           code: 'FORBIDDEN_UPLOAD_CATEGORY',
         });
       }

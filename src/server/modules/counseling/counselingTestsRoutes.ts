@@ -21,6 +21,35 @@ function parseJsonSafe<T>(val: any, fallback: T): T {
   return val as T;
 }
 
+function validateSafeExternalUrl(rawUrl: string): string {
+  const trimmed = String(rawUrl || '').trim();
+  if (!trimmed) {
+    throw AppError.badRequest('آدرس لینک تست روان‌شناختی الزامی است.');
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw AppError.badRequest('فرمت لینک تست معتبر نیست. لینک باید با https:// یا http:// شروع شود.');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw AppError.badRequest('فقط لینک‌های با پروتکل امن http:// یا https:// مجاز هستند.');
+  }
+  return parsed.toString();
+}
+
+async function getUserPhoneMap(): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const rows = await selectWithTimeout<any>(`SELECT id, phone FROM users`, [], 2500);
+    for (const r of rows || []) {
+      const uid = fromIdBuffer(r.id);
+      if (uid && r.phone) map.set(uid, String(r.phone));
+    }
+  } catch {}
+  return map;
+}
+
 function mapTestRow(row: any): PsychologicalTest {
   return {
     id: fromIdBuffer(row.id),
@@ -36,19 +65,23 @@ function mapTestRow(row: any): PsychologicalTest {
   };
 }
 
-function mapAssignmentRow(row: any): PsychologicalTestAssignment {
+function mapAssignmentRow(row: any, redactNationalId = false): PsychologicalTestAssignment {
   return {
     id: fromIdBuffer(row.id),
-    testId: fromIdBuffer(row.test_id),
-    testTitle: row.test_title || undefined,
-    testCategory: row.test_category || undefined,
+    testId: row.test_id ? fromIdBuffer(row.test_id) : undefined,
+    testTitle: row.external_test_title || row.test_title || (row.external_test_url ? 'تست اختصاصی روان‌شناختی' : undefined),
+    testCategory: row.test_category || (row.external_test_url ? 'آزمون بیرونی' : undefined),
     testDescription: row.test_description || undefined,
-    estimatedMinutes: row.estimated_minutes !== undefined ? Number(row.estimated_minutes) : undefined,
+    estimatedMinutes: row.estimated_minutes !== undefined && row.estimated_minutes !== null ? Number(row.estimated_minutes) : undefined,
     instructions: row.test_instructions || undefined,
     questions: row.test_questions ? parseJsonSafe(row.test_questions, []) : undefined,
+    externalTestUrl: row.external_test_url || undefined,
+    externalTestTitle: row.external_test_title || undefined,
+    isVisibleToUser: row.is_visible_to_user !== undefined && row.is_visible_to_user !== null ? Boolean(row.is_visible_to_user) : true,
     userId: String(row.user_id),
     userName: row.user_name,
-    userNationalId: row.user_national_id || undefined,
+    userPhone: row.user_phone || row.account_phone || undefined,
+    userNationalId: redactNationalId ? undefined : (row.user_national_id || undefined),
     assignedById: row.assigned_by_id || undefined,
     assignedByName: row.assigned_by_name,
     requestId: row.request_id || undefined,
@@ -62,7 +95,7 @@ function mapAssignmentRow(row: any): PsychologicalTestAssignment {
   };
 }
 
-function mapResultRow(row: any): PsychologicalTestResult {
+function mapResultRow(row: any, redactNationalId = false): PsychologicalTestResult {
   return {
     id: fromIdBuffer(row.id),
     assignmentId: fromIdBuffer(row.assignment_id),
@@ -70,7 +103,7 @@ function mapResultRow(row: any): PsychologicalTestResult {
     testTitle: row.test_title || undefined,
     userId: String(row.user_id),
     userName: row.user_name,
-    userNationalId: row.user_national_id || undefined,
+    userNationalId: redactNationalId ? undefined : (row.user_national_id || undefined),
     answers: parseJsonSafe(row.answers, []),
     rawScore: row.raw_score !== null && row.raw_score !== undefined ? Number(row.raw_score) : undefined,
     scoreSummary: row.score_summary || '',
@@ -108,9 +141,12 @@ export function registerCounselingTestsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ایجاد آزمون نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const b = req.body || {};
@@ -161,9 +197,12 @@ export function registerCounselingTestsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش آزمون نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const expectedVersion = extractExpectedVersion(req, true);
@@ -231,9 +270,12 @@ export function registerCounselingTestsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به حذف آزمون نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const idBuf = toIdBuffer(req.params.id);
@@ -259,13 +301,14 @@ export function registerCounselingTestsRoutes(router: Router): void {
     }
   });
 
-  // List Test Assignments (Unlocked tests per alumnus)
+  // List Test Assignments (Personalized external test links & unlocked tests per alumnus)
   router.get('/test-assignments', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
       const isStaff = isOrganizationalUserRole(user.role);
+      const redactNationalId = user.role === 'psychologist_counselor';
 
       let sql = `
         SELECT a.*,
@@ -280,7 +323,7 @@ export function registerCounselingTestsRoutes(router: Router): void {
       const params: any[] = [];
 
       if (!isStaff) {
-        sql += ` AND a.user_id = ?`;
+        sql += ` AND a.user_id = ? AND a.is_visible_to_user = 1`;
         params.push(user.id);
       } else if (req.query.userId) {
         sql += ` AND a.user_id = ?`;
@@ -288,53 +331,97 @@ export function registerCounselingTestsRoutes(router: Router): void {
       }
 
       sql += ` ORDER BY a.assigned_at DESC LIMIT 300`;
-      const rows = await selectWithTimeout<any>(sql, params, 4000);
-      res.json((rows || []).map(mapAssignmentRow));
+      const [rows, phoneMap] = await Promise.all([
+        selectWithTimeout<any>(sql, params, 4000),
+        isStaff ? getUserPhoneMap() : Promise.resolve(new Map<string, string>()),
+      ]);
+      res.json(
+        (rows || []).map((r: any) =>
+          mapAssignmentRow(
+            { ...r, account_phone: phoneMap.get(String(r.user_id)) },
+            redactNationalId
+          )
+        )
+      );
     } catch (err) {
       next(err);
     }
   });
 
-  // Unlock / Assign Test to Specific Alumnus
+  // Unlock / Assign Test or Personalized External Test Link to Specific Alumnus
   router.post('/test-assignments', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به تخصیص یا ارسال لینک تست نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
-      const { testId, userId, userName, userNationalId, requestId, adminNote } = req.body || {};
-      if (!testId || !userId || !userName) {
-        throw AppError.badRequest('انتخاب آزمون و دانش‌آموخته الزامی است.');
+      const {
+        testId,
+        externalTestUrl,
+        externalTestTitle,
+        isVisibleToUser,
+        userId,
+        userName,
+        userNationalId,
+        requestId,
+        adminNote,
+      } = req.body || {};
+
+      if (!userId || !userName) {
+        throw AppError.badRequest('انتخاب دانش‌آموخته / مراجع الزامی است.');
       }
 
-      const testBuf = toIdBuffer(String(testId));
-      const testRows = await selectWithTimeout<any>(
-        `SELECT * FROM psychological_tests WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
-        [testBuf, testId],
-        3000
-      );
-      if (!testRows || testRows.length === 0) {
-        throw AppError.notFound('آزمون انتخاب‌شده');
+      let testIdBuf: Buffer | null = null;
+      let cleanExternalUrl: string | null = null;
+      let cleanExternalTitle: string | null = externalTestTitle ? String(externalTestTitle).trim() : null;
+
+      if (externalTestUrl && String(externalTestUrl).trim()) {
+        cleanExternalUrl = validateSafeExternalUrl(String(externalTestUrl));
+        if (!cleanExternalTitle) {
+          cleanExternalTitle = 'تست روان‌شناختی اختصاصی';
+        }
+      } else if (testId) {
+        const testBuf = toIdBuffer(String(testId));
+        const testRows = await selectWithTimeout<any>(
+          `SELECT * FROM psychological_tests WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
+          [testBuf, testId],
+          3000
+        );
+        if (!testRows || testRows.length === 0) {
+          throw AppError.notFound('آزمون انتخاب‌شده');
+        }
+        testIdBuf = testRows[0].id;
+      } else {
+        throw AppError.badRequest('وارد کردن لینک اختصاصی تست یا انتخاب آزمون الزامی است.');
       }
 
       const id = generateUUIDv7();
       const idBuf = toIdBuffer(id);
       const p = getPool();
+      const visibleFlag = isVisibleToUser === false ? 0 : 1;
+      const redactNationalId = u.role === 'psychologist_counselor';
 
       await p.query(
         `INSERT INTO psychological_test_assignments (
-          id, test_id, user_id, user_name, user_national_id, assigned_by_id, assigned_by_name, request_id, status, admin_note, version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'unlocked', ?, 1)`,
+          id, test_id, external_test_url, external_test_title, is_visible_to_user,
+          user_id, user_name, user_national_id, assigned_by_id, assigned_by_name, request_id, status, admin_note, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unlocked', ?, 1)`,
         [
           idBuf,
-          testRows[0].id,
+          testIdBuf,
+          cleanExternalUrl,
+          cleanExternalTitle,
+          visibleFlag,
           String(userId),
           String(userName).trim(),
-          userNationalId ? String(userNationalId).trim() : null,
+          redactNationalId ? null : (userNationalId ? String(userNationalId).trim() : null),
           u.id,
           u.fullName,
           requestId ? String(requestId) : null,
@@ -342,17 +429,23 @@ export function registerCounselingTestsRoutes(router: Router): void {
         ]
       );
 
-      const rows = await selectWithTimeout<any>(
-        `SELECT a.*,
-                t.title AS test_title, t.category AS test_category, t.description AS test_description,
-                t.estimated_minutes AS estimated_minutes, t.instructions AS test_instructions, t.questions AS test_questions
-         FROM psychological_test_assignments a
-         LEFT JOIN psychological_tests t ON t.id = a.test_id
-         WHERE a.id = ? LIMIT 1`,
-        [idBuf],
-        3000
+      const [rows, phoneMap] = await Promise.all([
+        selectWithTimeout<any>(
+          `SELECT a.*,
+                  t.title AS test_title, t.category AS test_category, t.description AS test_description,
+                  t.estimated_minutes AS estimated_minutes, t.instructions AS test_instructions, t.questions AS test_questions
+           FROM psychological_test_assignments a
+           LEFT JOIN psychological_tests t ON t.id = a.test_id
+           WHERE a.id = ? LIMIT 1`,
+          [idBuf],
+          3000
+        ),
+        getUserPhoneMap(),
+      ]);
+      const created = mapAssignmentRow(
+        { ...rows[0], account_phone: phoneMap.get(String(rows[0]?.user_id)) },
+        redactNationalId
       );
-      const created = mapAssignmentRow(rows[0]);
 
       outbox.enqueue('counseling.test_assigned', {
         id,
@@ -366,6 +459,123 @@ export function registerCounselingTestsRoutes(router: Router): void {
       });
 
       res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Toggle "Show to Alumnus" (نمایش به دانش‌آموخته) / Update External Link
+  router.patch('/test-assignments/:id/visibility', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به تغییر وضعیت نمایش لینک نیست.');
+      }
+      AuthorizationPolicy.requireRole(
+        { userId: u.id, role: u.role, fullName: u.fullName },
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
+      );
+
+      const idBuf = toIdBuffer(req.params.id);
+      const p = getPool();
+      const isVisible = Boolean(req.body?.isVisibleToUser);
+      const cleanUrl = req.body?.externalTestUrl !== undefined
+        ? (req.body.externalTestUrl ? validateSafeExternalUrl(String(req.body.externalTestUrl)) : null)
+        : undefined;
+      const cleanTitle = req.body?.externalTestTitle !== undefined
+        ? String(req.body.externalTestTitle || '').trim()
+        : undefined;
+
+      const [upd]: any = await p.query(
+        `UPDATE psychological_test_assignments
+         SET is_visible_to_user = ?,
+             external_test_url = COALESCE(?, external_test_url),
+             external_test_title = COALESCE(?, external_test_title),
+             version = version + 1
+         WHERE (id = ? OR id = ?) AND deleted_at IS NULL`,
+        [
+          isVisible ? 1 : 0,
+          cleanUrl !== undefined ? cleanUrl : null,
+          cleanTitle !== undefined ? cleanTitle : null,
+          idBuf,
+          req.params.id,
+        ]
+      );
+
+      if (upd && upd.affectedRows === 0) {
+        throw AppError.notFound('تخصیص لینک تست');
+      }
+
+      const redactNationalId = u.role === 'psychologist_counselor';
+      const [rows, phoneMap] = await Promise.all([
+        selectWithTimeout<any>(
+          `SELECT a.*,
+                  t.title AS test_title, t.category AS test_category, t.description AS test_description,
+                  t.estimated_minutes AS estimated_minutes, t.instructions AS test_instructions, t.questions AS test_questions
+           FROM psychological_test_assignments a
+           LEFT JOIN psychological_tests t ON t.id = a.test_id
+           WHERE (a.id = ? OR a.id = ?) LIMIT 1`,
+          [idBuf, req.params.id],
+          3000
+        ),
+        getUserPhoneMap(),
+      ]);
+      const updated = mapAssignmentRow(
+        { ...rows[0], account_phone: phoneMap.get(String(rows[0]?.user_id)) },
+        redactNationalId
+      );
+
+      outbox.enqueue('counseling.test_assigned', {
+        id: updated.id,
+        resourceId: updated.id,
+        userId: updated.userId,
+        applicantId: updated.userId,
+        version: updated.version,
+        updates: updated,
+        actorId: u.id,
+        actorName: u.fullName,
+      });
+
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Soft Delete Test Assignment / External Link
+  router.delete('/test-assignments/:id', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به حذف لینک تست نیست.');
+      }
+      AuthorizationPolicy.requireRole(
+        { userId: u.id, role: u.role, fullName: u.fullName },
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
+      );
+
+      const idBuf = toIdBuffer(req.params.id);
+      const p = getPool();
+      const [upd]: any = await p.query(
+        `UPDATE psychological_test_assignments SET deleted_at = NOW(3), version = version + 1 WHERE (id = ? OR id = ?) AND deleted_at IS NULL`,
+        [idBuf, req.params.id]
+      );
+      if (upd && upd.affectedRows === 0) {
+        throw AppError.notFound('تخصیص لینک تست');
+      }
+
+      outbox.enqueue('counseling.test_assignment_deleted', {
+        id: req.params.id,
+        resourceId: req.params.id,
+        actorId: u.id,
+        actorName: u.fullName,
+      });
+
+      res.json({ success: true, id: req.params.id });
     } catch (err) {
       next(err);
     }
@@ -450,7 +660,7 @@ export function registerCounselingTestsRoutes(router: Router): void {
         [resultBuf],
         3000
       );
-      const createdResult = mapResultRow(resRows);
+      const createdResult = mapResultRow(resRows, u.role === 'psychologist_counselor');
 
       outbox.enqueue('counseling.test_submitted', {
         id: resultId,
@@ -501,8 +711,9 @@ export function registerCounselingTestsRoutes(router: Router): void {
       }
 
       sql += ` ORDER BY r.submitted_at DESC LIMIT 300`;
+      const redactNationalId = u.role === 'psychologist_counselor';
       const rows = await selectWithTimeout<any>(sql, params, 4000);
-      res.json((rows || []).map(mapResultRow));
+      res.json((rows || []).map((r: any) => mapResultRow(r, redactNationalId)));
     } catch (err) {
       next(err);
     }
@@ -514,9 +725,12 @@ export function registerCounselingTestsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ثبت نظر بالینی نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'cultural_educational_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const expectedVersion = extractExpectedVersion(req, true);
@@ -554,7 +768,7 @@ export function registerCounselingTestsRoutes(router: Router): void {
         [idBuf, req.params.id],
         3000
       );
-      const updated = mapResultRow(rows[0]);
+      const updated = mapResultRow(rows[0], u.role === 'psychologist_counselor');
 
       await p.query(
         `UPDATE psychological_test_assignments SET status = 'reviewed', version = version + 1 WHERE id = ? AND deleted_at IS NULL`,

@@ -155,7 +155,8 @@ export function validateSecureUploadBuffer(
     category === 'course_certificate';
   const isProductMedia = category === 'product_media';
   const isCourseFile = category === 'course_file';
-  const maxBytes = isCourseFile
+  const isCounselingMedia = category === 'counseling_media';
+  const maxBytes = isCourseFile || isCounselingMedia
     ? MAX_COURSE_FILE_UPLOAD_BYTES
     : isProductMedia
     ? MAX_PRODUCT_MEDIA_UPLOAD_BYTES
@@ -178,7 +179,7 @@ export function validateSecureUploadBuffer(
     throw AppError.badRequest('نام فایل حاوی کاراکتر غیرمجاز است.', 'INVALID_FILENAME');
   }
 
-  if (DANGEROUS_EXTENSIONS.has(origExt) && !(isCourseFile && origExt === '.zip')) {
+  if (DANGEROUS_EXTENSIONS.has(origExt) && !((isCourseFile || isCounselingMedia) && origExt === '.zip')) {
     throw AppError.badRequest(
       `بارگذاری فایل با پسوند غیرمجاز (${origExt}) به دلایل امنیتی مسدود است.`,
       'DANGEROUS_FILE_EXTENSION'
@@ -233,12 +234,12 @@ export function validateSecureUploadBuffer(
     );
   }
 
-  if (isProductMedia || isCourseFile) {
-    const allowedSet = isCourseFile ? COURSE_FILE_ALLOWED_EXTS : PRODUCT_MEDIA_ALLOWED_EXTS;
+  if (isProductMedia || isCourseFile || isCounselingMedia) {
+    const allowedSet = (isCourseFile || isCounselingMedia) ? COURSE_FILE_ALLOWED_EXTS : PRODUCT_MEDIA_ALLOWED_EXTS;
     if (origExt && !allowedSet.has(origExt)) {
       throw AppError.badRequest(
-        isCourseFile
-          ? 'در پوشه فایل‌های دوره، فرمت‌های صوتی، ویدئویی، PDF، Word، PowerPoint، Excel، تصویر، TXT و بسته فشرده ZIP مجاز است.'
+        (isCourseFile || isCounselingMedia)
+          ? 'در این بخش فرمت‌های صوتی، ویدئویی، PDF، Word، PowerPoint، Excel، تصویر، TXT و بسته فشرده ZIP مجاز است.'
           : 'در فایل‌های جلسات و محصولات صرفاً فرمت‌های صوتی (MP3, WAV, OGG, M4A, AAC)، ویدئویی (MP4, WEBM, MOV)، PDF، Word و تصویر مجاز است.',
         'INVALID_PRODUCT_MEDIA_TYPE'
       );
@@ -248,7 +249,7 @@ export function validateSecureUploadBuffer(
     if (isWebp(buffer)) return { canonicalExt: '.webp', mimeType: 'image/webp', kind: 'image' };
     if (isPdf(buffer)) return { canonicalExt: '.pdf', mimeType: 'application/pdf', kind: 'pdf' };
     if (isDocOle2(buffer)) {
-      if (isCourseFile && origExt === '.ppt') {
+      if ((isCourseFile || isCounselingMedia) && origExt === '.ppt') {
         return { canonicalExt: '.ppt', mimeType: 'application/vnd.ms-powerpoint', kind: 'other' };
       }
       return { canonicalExt: '.doc', mimeType: 'application/msword', kind: 'word' };
@@ -260,14 +261,14 @@ export function validateSecureUploadBuffer(
       buffer[2] === 0x03 &&
       buffer[3] === 0x04
     ) {
-      if (isCourseFile && origExt === '.pptx') {
+      if ((isCourseFile || isCounselingMedia) && origExt === '.pptx') {
         return {
           canonicalExt: '.pptx',
           mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
           kind: 'other',
         };
       }
-      if (isCourseFile && origExt === '.xlsx') {
+      if ((isCourseFile || isCounselingMedia) && origExt === '.xlsx') {
         return {
           canonicalExt: '.xlsx',
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -281,7 +282,7 @@ export function validateSecureUploadBuffer(
           kind: 'word',
         };
       }
-      if (isCourseFile && origExt === '.zip') {
+      if ((isCourseFile || isCounselingMedia) && origExt === '.zip') {
         return { canonicalExt: '.zip', mimeType: 'application/zip', kind: 'other' };
       }
     }
@@ -301,7 +302,7 @@ export function validateSecureUploadBuffer(
       if (origExt === '.aac') return { canonicalExt: '.aac', mimeType: 'audio/aac', kind: 'audio' };
       return { canonicalExt: '.mp3', mimeType: 'audio/mpeg', kind: 'audio' };
     }
-    if (isCourseFile && origExt === '.txt') {
+    if ((isCourseFile || isCounselingMedia) && origExt === '.txt') {
       return { canonicalExt: '.txt', mimeType: 'text/plain; charset=utf-8', kind: 'other' };
     }
     throw AppError.badRequest(

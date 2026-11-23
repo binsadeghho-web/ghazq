@@ -1020,6 +1020,33 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // 11. External Psychological Test Links (Reform 67) & Workshop Registrations (Reform 66)
+    const pTestAssignmentAlters = [
+      `MODIFY COLUMN test_id BINARY(16) NULL`,
+      `ADD COLUMN external_test_url VARCHAR(1024) NULL`,
+      `ADD COLUMN external_test_title VARCHAR(255) NULL`,
+      `ADD COLUMN is_visible_to_user TINYINT(1) NOT NULL DEFAULT 1`,
+    ];
+    for (const clause of pTestAssignmentAlters) {
+      try { await p.query(`ALTER TABLE psychological_test_assignments ${clause};`); } catch {}
+    }
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS counseling_workshop_registrations (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        workshop_id VARCHAR(96) NOT NULL,
+        workshop_title VARCHAR(255) NOT NULL,
+        user_id VARCHAR(64) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(32) NULL,
+        notes TEXT NULL,
+        deleted_at DATETIME(3) NULL DEFAULT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        UNIQUE KEY uq_workshop_user (workshop_id, user_id),
+        INDEX idx_cws_reg_ws (workshop_id, deleted_at, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');
   } catch (err: any) {

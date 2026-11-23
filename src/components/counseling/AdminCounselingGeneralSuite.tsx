@@ -17,6 +17,8 @@ import {
   MapPin,
   Clock,
   Phone,
+  LayoutGrid,
+  Copy,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingRequest } from '../../types';
@@ -24,6 +26,7 @@ import { CounselingFormBuilderTab } from './CounselingFormBuilderTab';
 import { GeneralCounselingTariffsTab } from './GeneralCounselingTariffsTab';
 import { PsychologicalTestsTab } from './PsychologicalTestsTab';
 import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossierSuite';
+import { CounselingGeneralShowcaseEditorModal } from '../crextio/CounselingGeneralShowcaseEditorModal';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { isReadOnlyObserverRole } from '../../utils/rbacPolicy';
 
@@ -40,6 +43,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
     currentUser,
     consultants,
     counselingRequests,
+    counselingClientsBasic,
     generalConfig,
     counselingFields,
     updateCounselingStatus,
@@ -51,6 +55,18 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
   } = useApp();
 
   const isObserver = isReadOnlyObserverRole(currentUser?.role);
+  const isPsychologistRole = currentUser?.role === 'psychologist_counselor';
+  const [showcaseEditorOpen, setShowcaseEditorOpen] = useState(false);
+  const [contactModalClient, setContactModalClient] = useState<{ fullName: string; phone: string } | null>(null);
+  const [copiedPhone, setCopiedPhone] = useState(false);
+
+  const clientPhoneByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    counselingClientsBasic.forEach(c => {
+      if (c.id && c.phone) map.set(c.id, c.phone);
+    });
+    return map;
+  }, [counselingClientsBasic]);
 
   const [activeTab, setActiveTab] = useState<'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder'>(initialTab);
   useEffect(() => {
@@ -275,14 +291,27 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onSwitchToStudentPreview}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold cursor-pointer shrink-0"
-          >
-            <Eye className="w-4 h-4 text-amber-300" />
-            <span>مشاهده پیش‌نمایش دانش‌آموخته</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {!isObserver && (
+              <button
+                type="button"
+                onClick={() => setShowcaseEditorOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black cursor-pointer shrink-0 transition-colors"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span>مدیریت ویترین ۳ بخشی داشبورد</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onSwitchToStudentPreview}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold cursor-pointer shrink-0"
+            >
+              <Eye className="w-4 h-4 text-amber-300" />
+              <span>مشاهده پیش‌نمایش دانش‌آموخته</span>
+            </button>
+          </div>
         </div>
 
         {/* Dynamic DB KPI Cards */}
@@ -457,9 +486,9 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-mono">
                             <span className="inline-flex items-center gap-1">
                               <Phone className="w-3 h-3" />
-                              {toPersianNumbers(req.userPhone || '---')}
+                              {toPersianNumbers(req.userPhone || clientPhoneByUserId.get(req.applicantId) || '---')}
                             </span>
-                            {req.userNationalId && (
+                            {!isPsychologistRole && req.userNationalId && (
                               <span>· کد ملی: {toPersianNumbers(req.userNationalId)}</span>
                             )}
                             <span>· {req.meetingMode}</span>
@@ -522,6 +551,21 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                           >
                             <Calendar className="w-3.5 h-3.5" />
                             <span>{isPending ? 'تعیین زمان و ویرایش' : 'ویرایش و زمان‌بندی'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setContactModalClient({
+                                fullName: req.applicantName,
+                                phone: req.userPhone || clientPhoneByUserId.get(req.applicantId) || '',
+                              })
+                            }
+                            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center gap-1 cursor-pointer"
+                            title="نمایش نام و شماره تماس مراجع"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>اطلاعات تماس مراجع</span>
                           </button>
 
                           {!isAttended && req.status !== 'cancelled' && (
@@ -991,6 +1035,86 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
           </div>
         )}
       </AnimatePresence>
+
+      {/* Minimal-PII Client Contact Modal (Full Name & Phone Only) */}
+      {contactModalClient && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          dir="rtl"
+          onClick={() => setContactModalClient(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-xs"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <Phone className="w-4 h-4 text-emerald-600" />
+                <span>اطلاعات تماس مراجع</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setContactModalClient(null)}
+                className="text-slate-400 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 space-y-2.5">
+              <div>
+                <span className="text-[11px] text-slate-500 block">نام و نام خانوادگی:</span>
+                <span className="font-black text-sm text-slate-900 dark:text-white">
+                  {contactModalClient.fullName}
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-500 block">شماره تماس (موبایل):</span>
+                {contactModalClient.phone ? (
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <a
+                      href={`tel:${contactModalClient.phone}`}
+                      className="font-mono font-black text-sm text-emerald-800 dark:text-emerald-300 hover:underline"
+                    >
+                      {toPersianNumbers(contactModalClient.phone)}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(contactModalClient.phone).catch(() => {});
+                        setCopiedPhone(true);
+                        setTimeout(() => setCopiedPhone(false), 2000);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-emerald-200 text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedPhone ? 'کپی شد' : 'کپی شماره'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-slate-400 font-bold">شماره تماس ثبت نشده است</span>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setContactModalClient(null)}
+              className="w-full py-2 rounded-xl bg-slate-900 text-white font-bold cursor-pointer"
+            >
+              بستن
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3-Section General Counseling Showcase Editor Modal */}
+      {!isObserver && (
+        <CounselingGeneralShowcaseEditorModal
+          isOpen={showcaseEditorOpen}
+          onClose={() => setShowcaseEditorOpen(false)}
+        />
+      )}
     </div>
   );
 };

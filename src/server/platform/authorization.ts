@@ -16,6 +16,7 @@ export const ORGANIZATIONAL_ROLES: UserRole[] = [
   'education_deputy',
   'cultural_educational_officer',
   'research_deputy',
+  'psychologist_counselor',
   'supervisor',
 ];
 
@@ -38,10 +39,23 @@ const ELEVATED_ADMIN_ROLES: UserRole[] = [
   'research_deputy',
 ];
 
+const GENERAL_SUPERVISOR_ALIASES: UserRole[] = [
+  'admin',
+  'super_admin',
+  'general_observer',
+  'alumni_manager',
+  'admin_finance_officer',
+  'education_deputy',
+  'cultural_educational_officer',
+  'research_deputy',
+  'supervisor',
+];
+
 export class AuthorizationPolicy {
   /**
-   * Enforces role requirements (RBAC) across all 9 organizational roles.
+   * Enforces role requirements (RBAC) across organizational roles.
    * Note: 'general_observer' is strictly blocked from mutations by rbacEnforcementMiddleware.
+   * 'psychologist_counselor' is strictly scoped to counseling endpoints that explicitly include it.
    */
   static requireRole(ctx: AuthContext | { role: UserRole }, allowedRoles: UserRole[]): void {
     const userRole = ctx.role;
@@ -55,8 +69,8 @@ export class AuthorizationPolicy {
       return;
     }
 
-    // If 'supervisor' is in allowedRoles, organizational roles (whose section permission is verified by rbacEnforcementMiddleware) are permitted
-    if (allowedRoles.includes('supervisor') && ORGANIZATIONAL_ROLES.includes(userRole)) {
+    // If 'supervisor' is in allowedRoles, general organizational roles (excluding single-domain scoped roles like psychologist_counselor) are permitted
+    if (allowedRoles.includes('supervisor') && GENERAL_SUPERVISOR_ALIASES.includes(userRole)) {
       return;
     }
 
@@ -77,7 +91,7 @@ export class AuthorizationPolicy {
   /**
    * Centralized BOLA / IDOR Ownership Guard (Section 10)
    * Ensures that regular users (alumni / customer) can only read/mutate entities they own,
-   * while organizational roles have oversight where permitted by their section policy.
+   * while general organizational roles have oversight where permitted by their section policy.
    */
   static assertOwnership(
     ctx: AuthContext | { id: string; role: UserRole },
@@ -87,7 +101,7 @@ export class AuthorizationPolicy {
   ): void {
     const userId = (ctx as any).userId || (ctx as any).id;
     if (ctx.role === 'admin' || ctx.role === 'super_admin') return;
-    if (allowSupervisor && ORGANIZATIONAL_ROLES.includes(ctx.role)) return;
+    if (allowSupervisor && GENERAL_SUPERVISOR_ALIASES.includes(ctx.role)) return;
     if (userId === resourceOwnerId) return;
 
     throw AppError.forbidden(

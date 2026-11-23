@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ClipboardCheck,
   Unlock,
@@ -10,10 +10,16 @@ import {
   UserCheck,
   Send,
   Trash2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Phone,
+  Link2,
+  Copy,
+  Search,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
-  PsychologicalTest,
   PsychologicalTestAssignment,
   PsychologicalTestQuestion,
   PsychologicalTestResult,
@@ -24,6 +30,16 @@ interface PsychologicalTestsTabProps {
   isPsychologistMode?: boolean;
 }
 
+function isSafeHttpUrl(raw?: string): boolean {
+  if (!raw || typeof raw !== 'string') return false;
+  try {
+    const parsed = new URL(raw.trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
   isPsychologistMode = false,
 }) => {
@@ -31,26 +47,37 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
     currentUser,
     users,
     counselingRequests,
+    counselingClientsBasic,
     psychologicalTests,
     testAssignments,
     testResults,
     createPsychologicalTest,
     deletePsychologicalTest,
     assignPsychologicalTest,
+    toggleTestAssignmentVisibility,
+    deleteTestAssignment,
     submitPsychologicalTest,
     reviewPsychologicalTestResult,
   } = useApp();
 
-  // Psychologist Sub-tabs: assign_unlock | results_review | catalog
+  // Psychologist Sub-tabs: assign_unlock (External Link & Visibility) | results_review | catalog
   const [psychSubTab, setPsychSubTab] = useState<'assign_unlock' | 'results_review' | 'catalog'>('assign_unlock');
+  const [assignmentMode, setAssignmentMode] = useState<'external_link' | 'internal_bank'>('external_link');
 
-  // Assign / Unlock Test Form
-  const [selectedTestId, setSelectedTestId] = useState<string>(psychologicalTests[0]?.id || '');
+  // External Link Assignment Form State
+  const [clientSearch, setClientSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [externalTestUrl, setExternalTestUrl] = useState('');
+  const [externalTestTitle, setExternalTestTitle] = useState('');
+  const [showImmediately, setShowImmediately] = useState(true);
+  const [selectedTestId, setSelectedTestId] = useState<string>(psychologicalTests[0]?.id || '');
   const [assignNote, setAssignNote] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmDeleteAssignmentId, setConfirmDeleteAssignmentId] = useState<string | null>(null);
 
-  // Create New Test Form
+  // Create New Legacy Internal Test Form
   const [newTestOpen, setNewTestOpen] = useState(false);
   const [newTestTitle, setNewTestTitle] = useState('');
   const [newTestCategory, setNewTestCategory] = useState('ارزیابی روان‌شناختی');
@@ -71,42 +98,107 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
   const [scoreSummaryInput, setScoreSummaryInput] = useState('');
   const [savingReview, setSavingReview] = useState(false);
 
-  // Alumni Test Taking Modal
+  // Alumni Legacy In-App Test Taking Modal
   const [takingAssignment, setTakingAssignment] = useState<PsychologicalTestAssignment | null>(null);
   const [answerMap, setAnswerMap] = useState<Record<string, string>>({});
   const [submittingTest, setSubmittingTest] = useState(false);
 
-  // Combine alumni from `users` + applicants from `counselingRequests` so psychologist can pick any alumnus reliably
-  const candidateUsersMap = new Map<string, { id: string; name: string; nationalId?: string }>();
-  for (const u of users) {
-    if (u.role === 'alumni' || u.role === 'customer' || u.id) {
-      candidateUsersMap.set(u.id, { id: u.id, name: u.fullName, nationalId: u.nationalId });
+  // Strict PII-Minimized Client Picker: ONLY id + fullName + phone
+  const candidateUsers = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; phone: string }>();
+
+    for (const c of counselingClientsBasic) {
+      if (c.id) {
+        map.set(c.id, { id: c.id, name: c.fullName, phone: c.phone || '' });
+      }
     }
-  }
-  for (const r of counselingRequests) {
-    if (r.applicantId && !candidateUsersMap.has(r.applicantId)) {
-      candidateUsersMap.set(r.applicantId, {
-        id: r.applicantId,
-        name: r.applicantName,
-        nationalId: r.userNationalId,
-      });
+    for (const r of counselingRequests) {
+      if (r.applicantId && !map.has(r.applicantId)) {
+        map.set(r.applicantId, {
+          id: r.applicantId,
+          name: r.applicantName,
+          phone: r.userPhone || '',
+        });
+      }
     }
-  }
-  const candidateUsers = Array.from(candidateUsersMap.values());
+    // Fallback only if users loaded (for non-psychologist admins)
+    for (const u of users) {
+      if (u.id && !map.has(u.id)) {
+        map.set(u.id, {
+          id: u.id,
+          name: u.fullName,
+          phone: u.phone || '',
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [counselingClientsBasic, counselingRequests, users]);
+
+  const filteredCandidates = useMemo(() => {
+    const q = clientSearch.trim();
+    if (!q) return candidateUsers;
+    return candidateUsers.filter(
+      u => (u.name || '').includes(q) || (u.phone || '').includes(q)
+    );
+  }, [candidateUsers, clientSearch]);
+
+  const activeTargetUser =
+    candidateUsers.find(u => u.id === selectedUserId) || filteredCandidates[0] || candidateUsers[0];
+
+  const handleCopyText = (id: string, text: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => {});
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetTestId = selectedTestId || psychologicalTests[0]?.id;
-    const targetUser = candidateUsers.find(u => u.id === selectedUserId) || candidateUsers[0];
-    if (!targetTestId || !targetUser) return;
+    setFormError(null);
+    if (!activeTargetUser) {
+      setFormError('لطفاً ابتدا دانش‌آموخته مورد نظر را انتخاب نمایید.');
+      return;
+    }
 
+    if (assignmentMode === 'external_link') {
+      const cleanedUrl = externalTestUrl.trim();
+      if (!isSafeHttpUrl(cleanedUrl)) {
+        setFormError('آدرس لینک تست باید معتبر و با پیشوند https:// یا http:// باشد.');
+        return;
+      }
+
+      setAssigning(true);
+      try {
+        const res = await assignPsychologicalTest({
+          externalTestUrl: cleanedUrl,
+          externalTestTitle: externalTestTitle.trim() || 'ارزیابی و تست روان‌شناختی اختصاصی',
+          isVisibleToUser: showImmediately,
+          userId: activeTargetUser.id,
+          userName: activeTargetUser.name,
+          adminNote: assignNote.trim() || undefined,
+        });
+        if (res) {
+          setExternalTestUrl('');
+          setExternalTestTitle('');
+          setAssignNote('');
+        }
+      } finally {
+        setAssigning(false);
+      }
+      return;
+    }
+
+    // Legacy Internal Test Bank assignment
+    const targetTestId = selectedTestId || psychologicalTests[0]?.id;
+    if (!targetTestId) return;
     setAssigning(true);
     try {
       await assignPsychologicalTest({
         testId: targetTestId,
-        userId: targetUser.id,
-        userName: targetUser.name,
-        userNationalId: targetUser.nationalId,
+        isVisibleToUser: showImmediately,
+        userId: activeTargetUser.id,
+        userName: activeTargetUser.name,
         adminNote: assignNote.trim() || undefined,
       });
       setAssignNote('');
@@ -170,10 +262,12 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
   };
 
   // =========================================================================
-  // ALUMNI VIEW: My Unlocked Tests & Completed Results
+  // ALUMNI VIEW: My Personalized Visible Tests (External Links + Legacy)
   // =========================================================================
   if (!isPsychologistMode) {
-    const myAssignments = testAssignments.filter(a => a.userId === currentUser?.id);
+    const myAssignments = testAssignments.filter(
+      a => a.userId === currentUser?.id && a.isVisibleToUser !== false
+    );
     const myResults = testResults.filter(r => r.userId === currentUser?.id);
 
     return (
@@ -181,10 +275,10 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
         <div className="bg-gradient-to-l from-slate-900 to-indigo-950 text-white rounded-3xl p-6 space-y-2 shadow-md">
           <h2 className="text-base font-black flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-amber-400" />
-            <span>بخش تست‌ها و سنجش‌های روان‌شناختی من</span>
+            <span>تست‌ها و سنجش‌های روان‌شناختی اختصاصی شما</span>
           </h2>
           <p className="text-slate-300 leading-relaxed max-w-2xl">
-            آزمون‌هایی که توسط روان‌شناس مرکز متناسب با جلسه مشاوره برای شما فعال («باز») شده است در این قسمت قرار می‌گیرند. پاسخ‌ها صرفاً توسط روان‌شناس پرونده قابل مشاهده است.
+            لینک تست‌ها یا آزمون‌هایی که توسط روان‌شناس مرکز اختصاصاً برای پرونده شما صادر و فعال شده‌اند در این بخش نمایش داده می‌شوند.
           </p>
         </div>
 
@@ -192,17 +286,20 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 space-y-2">
             <ClipboardCheck className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="font-bold text-slate-700 dark:text-slate-200">
-              در حال حاضر هیچ تست روان‌شناختی‌ای برای شما فعال نشده است
+              در حال حاضر تستی برای شما فعال نشده است
             </h3>
             <p className="text-slate-500 dark:text-slate-400">
-              در صورت نیاز به ارزیابی استاندارد، روان‌شناس مرکز آزمون مرتبط را مستقیماً در کارتابل شما فعال خواهد کرد.
+              در صورت تجویز تست روان‌شناختی توسط مشاور، لینک اختصاصی شما بلافاصله در همین صفحه نمایش داده خواهد شد.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {myAssignments.map(a => {
+              const hasExternalUrl = isSafeHttpUrl(a.externalTestUrl);
               const relatedRes = myResults.find(r => r.assignmentId === a.id);
               const isCompleted = a.status === 'completed' || a.status === 'reviewed';
+              const displayTitle =
+                a.externalTestTitle || a.testTitle || 'تست روان‌شناختی اختصاصی';
 
               return (
                 <div
@@ -213,15 +310,17 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                          {a.testCategory || 'تست روان‌شناختی'}
+                          {hasExternalUrl
+                            ? 'تست اختصاصی برون‌سایتی'
+                            : a.testCategory || 'آزمون روان‌شناختی'}
                         </span>
                         <h3 className="font-black text-sm text-slate-900 dark:text-white mt-0.5">
-                          {a.testTitle || 'آزمون روان‌شناسی'}
+                          {displayTitle}
                         </h3>
                       </div>
 
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0 ${
                           a.status === 'reviewed'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : a.status === 'completed'
@@ -229,21 +328,33 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                             : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}
                       >
-                        {a.status === 'reviewed' ? 'بررسی‌شده توسط روان‌شناس' : a.status === 'completed' ? 'تکمیل‌شده' : 'آماده پاسخگویی'}
+                        {hasExternalUrl
+                          ? 'آماده انجام'
+                          : a.status === 'reviewed'
+                          ? 'بررسی‌شده توسط روان‌شناس'
+                          : a.status === 'completed'
+                          ? 'تکمیل‌شده'
+                          : 'آماده پاسخگویی'}
                       </span>
                     </div>
 
                     {a.testDescription && (
-                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{a.testDescription}</p>
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {a.testDescription}
+                      </p>
                     )}
 
                     <div className="text-[11px] text-slate-500 flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>حدود {toPersianNumbers(a.estimatedMinutes || 15)} دقیقه</span>
-                      </span>
-                      <span>·</span>
                       <span>تجویزکننده: {a.assignedByName}</span>
+                      {!hasExternalUrl && (
+                        <>
+                          <span>·</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>حدود {toPersianNumbers(a.estimatedMinutes || 15)} دقیقه</span>
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {a.adminNote && (
@@ -268,18 +379,30 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                     )}
                   </div>
 
-                  {!isCompleted && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTakingAssignment(a);
-                        setAnswerMap({});
-                      }}
-                      className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center justify-center gap-2 cursor-pointer"
+                  {hasExternalUrl ? (
+                    <a
+                      href={a.externalTestUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 px-4 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-black flex items-center justify-center gap-2 transition-colors"
                     >
-                      <Unlock className="w-4 h-4" />
-                      <span>شروع و پاسخگویی به تست</span>
-                    </button>
+                      <ExternalLink className="w-4 h-4" />
+                      <span>ورود به سایت و انجام تست</span>
+                    </a>
+                  ) : (
+                    !isCompleted && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTakingAssignment(a);
+                          setAnswerMap({});
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Unlock className="w-4 h-4" />
+                        <span>شروع و پاسخگویی به تست</span>
+                      </button>
+                    )
                   )}
                 </div>
               );
@@ -287,7 +410,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
           </div>
         )}
 
-        {/* Take Test Modal */}
+        {/* Take Legacy In-App Test Modal */}
         {takingAssignment && (
           <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
             <form
@@ -378,15 +501,15 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
   }
 
   // =========================================================================
-  // PSYCHOLOGIST / ADMIN VIEW: Unlock Test + Review Results + Manage Catalog
+  // PSYCHOLOGIST / ADMIN VIEW: Personalized External Links + Legacy Tests
   // =========================================================================
   return (
     <div className="space-y-6 text-xs">
       <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
         {[
-          { id: 'assign_unlock', label: `باز کردن تست برای دانش‌آموخته (${toPersianNumbers(testAssignments.length)})`, icon: Unlock },
-          { id: 'results_review', label: `نتایج و پاسخ‌نامه‌های ثبت‌شده (${toPersianNumbers(testResults.length)})`, icon: FileText },
-          { id: 'catalog', label: `بانک آزمون‌های روان‌شناختی (${toPersianNumbers(psychologicalTests.length)})`, icon: ClipboardCheck },
+          { id: 'assign_unlock', label: `ارسال و نمایش لینک تست اختصاصی (${toPersianNumbers(testAssignments.length)})`, icon: Link2 },
+          { id: 'results_review', label: `پاسخ‌نامه‌های داخلی (${toPersianNumbers(testResults.length)})`, icon: FileText },
+          { id: 'catalog', label: `بانک آزمون‌های داخلی (${toPersianNumbers(psychologicalTests.length)})`, icon: ClipboardCheck },
         ].map(t => {
           const Icon = t.icon;
           const active = psychSubTab === t.id;
@@ -408,52 +531,154 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
         })}
       </div>
 
-      {/* Sub-tab 1: Unlock Specific Test for Specific Alumnus */}
+      {/* Sub-tab 1: Personalized External Test Link + Visibility Toggle */}
       {psychSubTab === 'assign_unlock' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <form
             onSubmit={handleAssignSubmit}
             className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs"
           >
-            <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-600" />
-              <span>فعال‌سازی (باز کردن) تست برای دانش‌آموخته مشخص</span>
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                <span>اختصاص تست به دانش‌آموخته</span>
+              </h3>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">۱. انتخاب دانش‌آموخته:</label>
+              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setAssignmentMode('external_link')}
+                  className={`px-2.5 py-1 rounded-lg cursor-pointer ${
+                    assignmentMode === 'external_link' ? 'bg-white dark:bg-slate-700 text-emerald-800 dark:text-white shadow-2xs' : 'text-slate-500'
+                  }`}
+                >
+                  لینک سایت تست
+                </button>
+                {psychologicalTests.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAssignmentMode('internal_bank')}
+                    className={`px-2.5 py-1 rounded-lg cursor-pointer ${
+                      assignmentMode === 'internal_bank' ? 'bg-white dark:bg-slate-700 text-emerald-800 dark:text-white shadow-2xs' : 'text-slate-500'
+                    }`}
+                  >
+                    بانک داخلی
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {formError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-bold">
+                {formError}
+              </div>
+            )}
+
+            {/* Alumnus Search + Picker (Minimal PII: FullName + Phone ONLY) */}
+            <div className="space-y-2">
+              <label className="block font-bold text-slate-700 dark:text-slate-300">
+                ۱. انتخاب دانش‌آموخته / مراجع:
+              </label>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                  placeholder="جستجو با نام یا شماره موبایل..."
+                  className="w-full pr-9 pl-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                />
+              </div>
               <select
                 required
-                value={selectedUserId || candidateUsers[0]?.id || ''}
+                value={activeTargetUser?.id || ''}
                 onChange={e => setSelectedUserId(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
               >
-                {candidateUsers.map(u => (
+                {filteredCandidates.map(u => (
                   <option key={u.id} value={u.id}>
-                    {u.name} {u.nationalId ? `(${u.nationalId})` : ''}
+                    {u.name} {u.phone ? `(${toPersianNumbers(u.phone)})` : ''}
                   </option>
                 ))}
               </select>
+
+              {activeTargetUser && (
+                <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-900 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold block">
+                      اطلاعات تماس مراجع انتخاب‌شده:
+                    </span>
+                    <span className="font-black text-slate-900 dark:text-white">
+                      {activeTargetUser.name}
+                    </span>
+                  </div>
+                  {activeTargetUser.phone ? (
+                    <a
+                      href={`tel:${activeTargetUser.phone}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-200 text-emerald-800 dark:text-emerald-300 font-mono font-bold"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>{toPersianNumbers(activeTargetUser.phone)}</span>
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-slate-400">شماره تماس ثبت نشده</span>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">۲. انتخاب تست روان‌شناختی:</label>
-              <select
-                required
-                value={selectedTestId || psychologicalTests[0]?.id || ''}
-                onChange={e => setSelectedTestId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
-              >
-                {psychologicalTests.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.title} ({t.category})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {assignmentMode === 'external_link' ? (
+              <>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    ۲. آدرس لینک اختصاصی تست در سایت آزمون *
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    dir="ltr"
+                    value={externalTestUrl}
+                    onChange={e => setExternalTestUrl(e.target.value)}
+                    placeholder="https://test-platform.example.com/session/..."
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    عنوان تست (اختیاری):
+                  </label>
+                  <input
+                    type="text"
+                    value={externalTestTitle}
+                    onChange={e => setExternalTestTitle(e.target.value)}
+                    placeholder="مثال: پرسشنامه شخصیت‌شناسی نئو / آزمون سازگاری زوجین"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">۲. انتخاب تست از بانک داخلی:</label>
+                <select
+                  required
+                  value={selectedTestId || psychologicalTests[0]?.id || ''}
+                  onChange={e => setSelectedTestId(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
+                >
+                  {psychologicalTests.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.title} ({t.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">توضیح یا دستورالعمل اختصاصی برای این عضو (اختیاری):</label>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                توضیح یا راهنمای کوتاه برای دانش‌آموخته (اختیاری):
+              </label>
               <textarea
                 rows={2}
                 value={assignNote}
@@ -463,53 +688,148 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
               />
             </div>
 
+            <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 cursor-pointer font-bold">
+              <input
+                type="checkbox"
+                checked={showImmediately}
+                onChange={e => setShowImmediately(e.target.checked)}
+              />
+              <span>بلافاصله به این دانش‌آموخته نمایش داده شود</span>
+            </label>
+
             <button
               type="submit"
-              disabled={assigning || psychologicalTests.length === 0 || candidateUsers.length === 0}
+              disabled={assigning || candidateUsers.length === 0}
               className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <Unlock className="w-4 h-4" />
-              <span>{assigning ? 'در حال فعال‌سازی...' : 'باز کردن تست در کارتابل دانش‌آموخته'}</span>
+              {showImmediately ? <Eye className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+              <span>
+                {assigning
+                  ? 'در حال ثبت...'
+                  : showImmediately
+                  ? 'نمایش به دانش‌آموخته و ثبت لینک'
+                  : 'ثبت لینک به صورت مخفی (ذخیره)'}
+              </span>
             </button>
           </form>
 
+          {/* Assigned External Links & Tests List */}
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-3 shadow-2xs">
             <h3 className="font-black text-sm text-slate-900 dark:text-white">
-              فهرست تست‌های بازشده برای مراجعان
+              فهرست تست‌ها و لینک‌های اختصاصی مراجعان ({toPersianNumbers(testAssignments.length)})
             </h3>
 
             {testAssignments.length === 0 ? (
-              <p className="text-slate-500 py-8 text-center">هنوز تستی برای مراجعان باز نشده است.</p>
+              <p className="text-slate-500 py-8 text-center">هنوز لینک یا تستی برای مراجعان ثبت نشده است.</p>
             ) : (
               <div className="space-y-2.5">
-                {testAssignments.map(a => (
-                  <div
-                    key={a.id}
-                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                  >
-                    <div>
-                      <div className="font-black text-slate-900 dark:text-white">
-                        {a.userName} — <span className="text-emerald-700 dark:text-emerald-400">{a.testTitle}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        فعال‌سازی توسط: {a.assignedByName}
-                        {a.scoreSummary ? ` · ${a.scoreSummary}` : ''}
-                      </div>
-                    </div>
+                {testAssignments.map(a => {
+                  const matchedClient = candidateUsers.find(c => c.id === a.userId);
+                  const phone = a.userPhone || matchedClient?.phone || '';
+                  const isVisible = a.isVisibleToUser !== false;
+                  const title = a.externalTestTitle || a.testTitle || 'تست روان‌شناختی اختصاصی';
 
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-black self-start sm:self-center ${
-                        a.status === 'reviewed'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : a.status === 'completed'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
+                  return (
+                    <div
+                      key={a.id}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2.5"
                     >
-                      {a.status === 'reviewed' ? 'تحلیل ثبت شد' : a.status === 'completed' ? 'پاسخ ثبت‌شده' : 'باز برای کاربر'}
-                    </span>
-                  </div>
-                ))}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-1.5">
+                            <span>{a.userName}</span>
+                            {phone && (
+                              <a
+                                href={`tel:${phone}`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 font-mono text-[11px]"
+                              >
+                                <Phone className="w-3 h-3" />
+                                {toPersianNumbers(phone)}
+                              </a>
+                            )}
+                            <span className="text-slate-400">—</span>
+                            <span className="text-indigo-700 dark:text-indigo-400">{title}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            ثبت توسط: {a.assignedByName}
+                            {a.scoreSummary ? ` · ${a.scoreSummary}` : ''}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 self-start sm:self-center shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggleTestAssignmentVisibility(a.id, { isVisibleToUser: !isVisible })
+                            }
+                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 cursor-pointer transition-colors border ${
+                              isVisible
+                                ? 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200'
+                                : 'bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300'
+                            }`}
+                            title={isVisible ? 'مخفی کردن از کارتابل دانش‌آموخته' : 'نمایش به دانش‌آموخته'}
+                          >
+                            {isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            <span>{isVisible ? 'نمایش به دانش‌آموخته' : 'مخفی'}</span>
+                          </button>
+
+                          {confirmDeleteAssignmentId === a.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await deleteTestAssignment(a.id);
+                                  setConfirmDeleteAssignmentId(null);
+                                }}
+                                className="px-2 py-1.5 rounded-xl bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
+                              >
+                                حذف
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteAssignmentId(null)}
+                                className="px-2 py-1.5 rounded-xl bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer"
+                              >
+                                لغو
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteAssignmentId(a.id)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                              title="حذف تست"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {a.externalTestUrl && isSafeHttpUrl(a.externalTestUrl) && (
+                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                          <a
+                            href={a.externalTestUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            dir="ltr"
+                            className="text-[11px] font-mono text-indigo-700 dark:text-indigo-400 hover:underline truncate flex-1 text-left"
+                          >
+                            {a.externalTestUrl}
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(a.id, a.externalTestUrl || '')}
+                            className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>{copiedId === a.id ? 'کپی شد' : 'کپی لینک'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -521,7 +841,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
         <div className="space-y-3">
           {testResults.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200 dark:border-slate-800 text-slate-500">
-              هنوز هیچ پاسخ‌نامه‌ای توسط دانش‌آموختگان ثبت نشده است.
+              هنوز هیچ پاسخ‌نامه داخلی‌ای ثبت نشده است.
             </div>
           ) : (
             testResults.map(res => (
@@ -573,7 +893,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
         </div>
       )}
 
-      {/* Sub-tab 3: Manage Tests Catalog */}
+      {/* Sub-tab 3: Manage Internal Tests Catalog */}
       {psychSubTab === 'catalog' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -599,7 +919,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                   required
                   value={newTestTitle}
                   onChange={e => setNewTestTitle(e.target.value)}
-                  placeholder="عنوان تست (مثال: آزمون تاب‌آوری کانر-دیویدسون)"
+                  placeholder="عنوان تست"
                   className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
                 />
                 <input

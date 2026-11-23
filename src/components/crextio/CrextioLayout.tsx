@@ -75,6 +75,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const [customizerInitialTab, setCustomizerInitialTab] = useState<CustomizerTab>('modules');
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState<boolean>(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
+  const [generalBookingAutoOpenNonce, setGeneralBookingAutoOpenNonce] = useState<number>(0);
   const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const completionPct = calculateProfileCompletion(currentUser).percentage;
 
@@ -547,7 +548,13 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         {/* WARM ELEGANT CONTENT CANVAS */}
         <main className={`${canvasBgClass} rounded-[40px] p-6 sm:p-8 lg:p-10 shadow-2xl border text-stone-900 min-h-[700px] transition-colors duration-500`}>
           {activeNav === 'Dashboard' || (!effectiveStaff && (activeNav === 'Finance' || activeNav === 'Alumni' || activeNav === 'Users' || activeNav === 'Admin' || activeNav === 'Setting')) ? (
-            <CrextioDashboard onNavigateTab={setActiveNav} />
+            <CrextioDashboard
+              onNavigateTab={setActiveNav}
+              onBookGeneralCounseling={() => {
+                setGeneralBookingAutoOpenNonce(n => n + 1);
+                setActiveNav('CounselingGeneral');
+              }}
+            />
           ) : activeNav === 'Finance' ? (
             <FinanceSection />
           ) : activeNav === 'Alumni' ? (
@@ -561,7 +568,11 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
               <AdminControlCenter />
             </Suspense>
           ) : (
-            <CrextioSubViews activeNav={activeNav} onNavigate={setActiveNav} />
+            <CrextioSubViews
+              activeNav={activeNav}
+              onNavigate={setActiveNav}
+              autoOpenGeneralBookingNonce={generalBookingAutoOpenNonce}
+            />
           )}
         </main>
 

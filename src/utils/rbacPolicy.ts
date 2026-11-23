@@ -238,6 +238,34 @@ export const DEFAULT_ROLE_POLICIES: Record<UserRole, RoleAccessPolicy> = {
       welfare_cooperative: true,
     },
   },
+  psychologist_counselor: {
+    roleId: 'psychologist_counselor',
+    roleTitle: 'روانشناس و مشاور مرکز',
+    description: 'مسئولیت انحصاری مدیریت بخش مشاوره عمومی و روان‌شناختی، تست‌های روان‌شناختی، کارگاه‌ها و اطلاع‌رسانی کلینیک؛ بدون دسترسی به سایر بخش‌ها و با دسترسی محدود صرفاً به نام و شماره تماس مراجعان.',
+    badgeColor: 'bg-teal-100 text-teal-900 border-teal-300',
+    isReadOnlyRole: false,
+    sectionPermissions: {
+      dashboard: 'view_all',
+      cartable: 'none',
+      courses: 'none',
+      products: 'none',
+      counseling: 'manage_all',
+      specialized_counseling: 'none',
+      research: 'none',
+      rulings: 'none',
+      welfare: 'none',
+      synergy: 'none',
+      alumni: 'none',
+      users: 'none',
+      finance: 'none',
+      admin: 'none',
+    },
+    subSectionPermissions: {
+      welfare_loans: false,
+      welfare_accommodations: false,
+      welfare_cooperative: false,
+    },
+  },
   supervisor: {
     roleId: 'supervisor',
     roleTitle: 'مسئول اجرایی سامانه',
@@ -389,8 +417,16 @@ export const NINE_ORGANIZATIONAL_ROLES: {
     description: 'پیش‌فرض دسترسی کامل؛ دارای کلید محدودسازی آنی به «راهبری پژوهش» و «مشاوره تحصیلی»',
   },
   {
-    id: 'alumni',
+    id: 'psychologist_counselor',
     number: 8,
+    title: 'روانشناس و مشاور مرکز',
+    shortTitle: 'روانشناس و مشاور',
+    badgeColor: 'bg-teal-100 text-teal-900 border-teal-300',
+    description: 'مسئول اختصاصی بخش مشاوره عمومی و روان‌شناختی (بدون دسترسی به سایر بخش‌ها، صرفاً مشاهده نام و موبایل مراجعان)',
+  },
+  {
+    id: 'alumni',
+    number: 9,
     title: 'دانش‌آموختگان',
     shortTitle: 'دانش‌آموخته',
     badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
@@ -398,7 +434,7 @@ export const NINE_ORGANIZATIONAL_ROLES: {
   },
   {
     id: 'customer',
-    number: 9,
+    number: 10,
     title: 'کاربران مشتری',
     shortTitle: 'کاربر مشتری',
     badgeColor: 'bg-rose-50 text-rose-800 border-rose-200',
@@ -493,7 +529,8 @@ export function canConfigureCustomerAndAlumniVisibility(user?: User | null): boo
 }
 
 export function getRoleMetadata(role?: UserRole | string | null) {
-  if (!role) return NINE_ORGANIZATIONAL_ROLES[7];
+  const alumniFallback = NINE_ORGANIZATIONAL_ROLES.find(r => r.id === 'alumni') || NINE_ORGANIZATIONAL_ROLES[7];
+  if (!role) return alumniFallback;
   if (role === 'super_admin') return NINE_ORGANIZATIONAL_ROLES[0];
   return (
     NINE_ORGANIZATIONAL_ROLES.find(r => r.id === role) || {

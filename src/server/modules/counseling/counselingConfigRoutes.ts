@@ -13,7 +13,85 @@ import {
   GeneralCounselingPortalConfig,
   CounselingFieldItem,
   GeneralCounselingTariffItem,
+  CounselingGeneralShowcaseConfig,
 } from '../../../types';
+
+function sanitizeMediaOrExternalUrl(raw?: string): string | undefined {
+  if (!raw || !String(raw).trim()) return undefined;
+  const trimmed = String(raw).trim();
+  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('/assets/')) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.toString();
+    }
+  } catch {}
+  throw AppError.badRequest('لینک وارد شده معتبر نیست. صرفاً لینک‌های http://، https:// یا فایل بارگذاری‌شده در سامانه مجاز هستند.');
+}
+
+export const DEFAULT_GENERAL_SHOWCASE_CONFIG: CounselingGeneralShowcaseConfig = {
+  sectionBadge: 'آرامش روانی، سلامت خانواده و توانمندسازی',
+  sectionTitle: 'ویترین خدمات مشاوره عمومی، خانواده و روان‌شناختی',
+  sectionSubtitle: 'کارگاه‌های آموزشی، اطلاعیه‌های دوره‌های روان‌شناسی و معرفی مشاورین مرکز',
+  showWorkshopsCard: true,
+  showAnnouncementsCard: true,
+  showFeaturedConsultantCard: true,
+  workshopsCardTitle: 'کارگاه‌های آموزشی و آرشیو جلسات',
+  workshopsCardSubtitle: 'شرکت در کارگاه‌های پیش‌رو و دانلود صوت یا ویدئوی نشست‌های برگزارشده',
+  announcementsCardTitle: 'اطلاعیه‌های دوره‌های روان‌شناسی',
+  announcementsCardSubtitle: 'فراخوان دوره‌های تخصصی روان‌شناسی درون‌مرکزی و برون‌مرکزی',
+  consultantCardTitle: 'مشاورین مرکز',
+  consultantCardCtaLabel: 'رزرو وقت مشاوره',
+  featuredConsultantIds: [],
+  workshops: [
+    {
+      id: 'ws_sample_upcoming_1',
+      title: 'کارگاه مهارت‌های گفت‌وگو و حل تعارض در خانواده',
+      mode: 'upcoming',
+      presenter: 'دکتر محمدحسین رضایی',
+      topic: 'تحکیم خانواده و زوج‌درمانی',
+      scheduleText: 'پنج‌شنبه · ساعت ۱۶:۰۰ تا ۱۸:۰۰',
+      description: 'بررسی الگوهای ارتباطی موثر در خانواده و روش‌های عملی کاهش تنش‌های روزمره برای خانواده‌های طلاب و قضات.',
+      capacityLabel: 'ظرفیت محدود · حضوری و برخط',
+      isActive: true,
+      displayOrder: 1,
+      mediaFiles: [],
+    },
+    {
+      id: 'ws_sample_archive_1',
+      title: 'نشست پیشگیری از فرسودگی شغلی و مدیریت استرس قضایی',
+      mode: 'archive',
+      presenter: 'دکتر سارا کریمی',
+      topic: 'سلامت روان شغلی',
+      scheduleText: 'آرشیو جلسه برگزارشده · ۹۰ دقیقه',
+      description: 'مجموعه صوت و جزوه کارگاه برگزارشده ویژه قضات و پژوهشگران پرکار.',
+      isActive: true,
+      displayOrder: 2,
+      mediaFiles: [],
+    },
+  ],
+  announcements: [
+    {
+      id: 'ann_sample_1',
+      title: 'فراخوان دوره تربیت مشاور و مهارت‌های فرزندپروری آگاهانه',
+      subtitle: 'ویژه خانواده‌های دانش‌آموختگان با گواهی معتبر',
+      organizerType: 'internal',
+      organizerName: 'کلینیک مشاوره مرکز فقه و قضا',
+      scheduleText: 'شروع دوره: نیمه دوم ماه جاری',
+      description: 'دوره کاربردی ۶ جلسه‌ای با رویکرد تلفیقی روان‌شناسی تحولی و آموزه‌های تربیتی اسلام.',
+      topics: [
+        'روان‌شناسی رشد و نیازهای عاطفی کودک و نوجوان',
+        'اصول ارتباط بدون تنش در محیط خانه',
+        'شناخت اختلالات رایج و راهکار ارجاع به‌موقع',
+      ],
+      bannerUrl: '/assets/showcase/counseling-general-fallback.jpg',
+      isActive: true,
+      displayOrder: 1,
+    },
+  ],
+};
 
 export const DEFAULT_OTHER_COUNSELING_CITIES: string[] = [
   'تهران',
@@ -316,12 +394,16 @@ export function registerCounselingConfigRoutes(router: Router): void {
       if (u.role === 'general_observer') {
         throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش تنظیمات مشاوره نیست.');
       }
+      const type = req.params.type === 'specialized_career' ? 'specialized_career' : 'general';
+      if (u.role === 'psychologist_counselor' && type === 'specialized_career') {
+        throw AppError.forbidden('نقش روانشناس و مشاور مرکز صرفاً مجاز به مدیریت بخش مشاوره عمومی و روان‌شناختی است.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
+        type === 'general'
+          ? ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
+          : ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
       );
-
-      const type = req.params.type === 'specialized_career' ? 'specialized_career' : 'general';
       const key =
         type === 'specialized_career'
           ? 'specialized_counseling_portal_config'
@@ -427,19 +509,22 @@ export function registerCounselingConfigRoutes(router: Router): void {
       if (u.role === 'general_observer') {
         throw AppError.forbidden('نقش ناظر کل مجاز به ایجاد زمینه مشاوره نیست.');
       }
+      const { counselingType, title, subtitle, description, iconName, accentColor, isActive, displayOrder } = req.body || {};
+      const type = counselingType === 'specialized_career' ? 'specialized_career' : 'general';
+      if (u.role === 'psychologist_counselor' && type === 'specialized_career') {
+        throw AppError.forbidden('نقش روانشناس و مشاور مرکز مجاز به تغییر زمینه‌های مشاوره تخصصی شغلی نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
       );
 
-      const { counselingType, title, subtitle, description, iconName, accentColor, isActive, displayOrder } = req.body || {};
       if (!title || !String(title).trim()) {
         throw AppError.badRequest('عنوان زمینه مشاوره الزامی است.');
       }
 
       const id = generateUUIDv7();
       const idBuf = toIdBuffer(id);
-      const type = counselingType === 'specialized_career' ? 'specialized_career' : 'general';
       const p = getPool();
 
       await p.query(
@@ -486,7 +571,7 @@ export function registerCounselingConfigRoutes(router: Router): void {
       }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
       );
 
       const expectedVersion = extractExpectedVersion(req, true);
@@ -502,6 +587,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
         throw AppError.notFound('زمینه مشاوره');
       }
       const ex = existingRows[0];
+      if (u.role === 'psychologist_counselor' && ex.counseling_type === 'specialized_career') {
+        throw AppError.forbidden('نقش روانشناس و مشاور مرکز مجاز به ویرایش زمینه‌های مشاوره تخصصی نیست.');
+      }
       const b = req.body || {};
 
       const [upd]: any = await p.query(
@@ -558,11 +646,21 @@ export function registerCounselingConfigRoutes(router: Router): void {
       }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
       );
 
       const idBuf = toIdBuffer(req.params.id);
       const p = getPool();
+      if (u.role === 'psychologist_counselor') {
+        const chk = await selectWithTimeout<any>(
+          `SELECT counseling_type FROM counseling_fields WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
+          [idBuf, req.params.id],
+          3000
+        );
+        if (chk?.[0]?.counseling_type === 'specialized_career') {
+          throw AppError.forbidden('نقش روانشناس و مشاور مرکز مجاز به حذف زمینه‌های مشاوره تخصصی نیست.');
+        }
+      }
       const [upd]: any = await p.query(
         `UPDATE counseling_fields SET deleted_at = NOW(3), is_active = 0, version = version + 1 WHERE (id = ? OR id = ?) AND deleted_at IS NULL`,
         [idBuf, req.params.id]
@@ -612,7 +710,7 @@ export function registerCounselingConfigRoutes(router: Router): void {
       }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const b = req.body || {};
@@ -668,7 +766,7 @@ export function registerCounselingConfigRoutes(router: Router): void {
       }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const expectedVersion = extractExpectedVersion(req, true);
@@ -741,7 +839,7 @@ export function registerCounselingConfigRoutes(router: Router): void {
       }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
-        ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager']
+        ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager', 'psychologist_counselor']
       );
 
       const idBuf = toIdBuffer(req.params.id);
@@ -763,6 +861,280 @@ export function registerCounselingConfigRoutes(router: Router): void {
       });
 
       res.json({ success: true, id: req.params.id });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // 4. General Psychological Counseling 3-Card Showcase (Reform 66)
+  router.get('/general-showcase', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const u = (req as any).user;
+      const record = await adminSettingsRepo.getRecord<any>('counseling_general_showcase_config');
+      const base: CounselingGeneralShowcaseConfig = {
+        ...DEFAULT_GENERAL_SHOWCASE_CONFIG,
+        ...(record?.value || {}),
+        version: Number(record?.version || 1),
+      };
+
+      const countMap = new Map<string, number>();
+      const myWorkshopIds: string[] = [];
+      try {
+        const countRows = await selectWithTimeout<any>(
+          `SELECT workshop_id, COUNT(*) AS cnt FROM counseling_workshop_registrations WHERE deleted_at IS NULL GROUP BY workshop_id`,
+          [],
+          2500
+        );
+        for (const r of countRows || []) {
+          countMap.set(String(r.workshop_id), Number(r.cnt || 0));
+        }
+        if (u?.id) {
+          const myRows = await selectWithTimeout<any>(
+            `SELECT workshop_id FROM counseling_workshop_registrations WHERE user_id = ? AND deleted_at IS NULL`,
+            [String(u.id)],
+            2500
+          );
+          for (const r of myRows || []) {
+            myWorkshopIds.push(String(r.workshop_id));
+          }
+        }
+      } catch {}
+
+      res.json({
+        ...base,
+        workshops: (base.workshops || []).map(w => ({
+          ...w,
+          registrationsCount: countMap.get(w.id) || 0,
+        })),
+        myRegisteredWorkshopIds: myWorkshopIds,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/general-showcase', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش ویترین مشاوره نیست.');
+      }
+      AuthorizationPolicy.requireRole(
+        { userId: u.id, role: u.role, fullName: u.fullName },
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
+      );
+
+      const key = 'counseling_general_showcase_config';
+      const expectedVersion = extractExpectedVersion(req, false);
+      const existing = await adminSettingsRepo.getRecord<any>(key);
+
+      if (existing && expectedVersion !== undefined && Number(existing.version) !== Number(expectedVersion)) {
+        throw AppError.conflict(
+          'تنظیمات ویترین مشاوره عمومی هم‌زمان توسط مدیر دیگری تغییر یافته است.',
+          'CONCURRENT_MODIFICATION_CONFLICT'
+        );
+      }
+
+      const raw = req.body || {};
+      const sanitizedWorkshops = (Array.isArray(raw.workshops) ? raw.workshops : DEFAULT_GENERAL_SHOWCASE_CONFIG.workshops).map(
+        (ws: any, idx: number) => ({
+          id: String(ws.id || generateUUIDv7()),
+          title: String(ws.title || 'کارگاه روان‌شناسی').trim(),
+          mode: ws.mode === 'archive' ? 'archive' : 'upcoming',
+          presenter: ws.presenter ? String(ws.presenter).trim() : '',
+          topic: ws.topic ? String(ws.topic).trim() : '',
+          scheduleText: ws.scheduleText ? String(ws.scheduleText).trim() : '',
+          description: ws.description ? String(ws.description).trim() : '',
+          bannerUrl: sanitizeMediaOrExternalUrl(ws.bannerUrl) || '',
+          registrationUrl: sanitizeMediaOrExternalUrl(ws.registrationUrl) || '',
+          registrationNote: ws.registrationNote ? String(ws.registrationNote).trim() : '',
+          capacityLabel: ws.capacityLabel ? String(ws.capacityLabel).trim() : '',
+          isActive: ws.isActive !== false,
+          displayOrder: Number(ws.displayOrder ?? idx + 1),
+          mediaFiles: (Array.isArray(ws.mediaFiles) ? ws.mediaFiles : []).map((mf: any) => ({
+            id: String(mf.id || generateUUIDv7()),
+            title: String(mf.title || 'فایل جلسه').trim(),
+            mediaType: mf.mediaType === 'audio' || mf.mediaType === 'file' ? mf.mediaType : 'video',
+            url: sanitizeMediaOrExternalUrl(mf.url) || '',
+            sourceType: mf.sourceType === 'disk' ? 'disk' : 'external',
+            durationOrSize: mf.durationOrSize ? String(mf.durationOrSize).trim() : '',
+          })).filter((mf: any) => Boolean(mf.url)),
+        })
+      );
+
+      const sanitizedAnnouncements = (Array.isArray(raw.announcements) ? raw.announcements : DEFAULT_GENERAL_SHOWCASE_CONFIG.announcements).map(
+        (ann: any, idx: number) => ({
+          id: String(ann.id || generateUUIDv7()),
+          title: ann.title ? String(ann.title).trim() : '',
+          subtitle: ann.subtitle ? String(ann.subtitle).trim() : '',
+          organizerType: ann.organizerType === 'external' ? 'external' : 'internal',
+          organizerName: ann.organizerName ? String(ann.organizerName).trim() : '',
+          scheduleText: ann.scheduleText ? String(ann.scheduleText).trim() : '',
+          description: ann.description ? String(ann.description).trim() : '',
+          topics: Array.isArray(ann.topics)
+            ? ann.topics.map((t: any) => String(t || '').trim()).filter(Boolean)
+            : [],
+          bannerUrl: sanitizeMediaOrExternalUrl(ann.bannerUrl) || '/assets/showcase/counseling-general-fallback.jpg',
+          externalUrl: sanitizeMediaOrExternalUrl(ann.externalUrl) || '',
+          isActive: ann.isActive !== false,
+          displayOrder: Number(ann.displayOrder ?? idx + 1),
+        })
+      );
+
+      const merged: CounselingGeneralShowcaseConfig = {
+        sectionBadge: raw.sectionBadge !== undefined ? String(raw.sectionBadge).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.sectionBadge,
+        sectionTitle: raw.sectionTitle !== undefined ? String(raw.sectionTitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.sectionTitle,
+        sectionSubtitle: raw.sectionSubtitle !== undefined ? String(raw.sectionSubtitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.sectionSubtitle,
+        showWorkshopsCard: raw.showWorkshopsCard !== false,
+        showAnnouncementsCard: raw.showAnnouncementsCard !== false,
+        showFeaturedConsultantCard: raw.showFeaturedConsultantCard !== false,
+        workshopsCardTitle: raw.workshopsCardTitle !== undefined ? String(raw.workshopsCardTitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.workshopsCardTitle,
+        workshopsCardSubtitle: raw.workshopsCardSubtitle !== undefined ? String(raw.workshopsCardSubtitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.workshopsCardSubtitle,
+        announcementsCardTitle: raw.announcementsCardTitle !== undefined ? String(raw.announcementsCardTitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.announcementsCardTitle,
+        announcementsCardSubtitle: raw.announcementsCardSubtitle !== undefined ? String(raw.announcementsCardSubtitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.announcementsCardSubtitle,
+        consultantCardTitle: raw.consultantCardTitle !== undefined ? String(raw.consultantCardTitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.consultantCardTitle,
+        consultantCardCtaLabel: raw.consultantCardCtaLabel !== undefined ? String(raw.consultantCardCtaLabel).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.consultantCardCtaLabel,
+        featuredConsultantIds: Array.isArray(raw.featuredConsultantIds)
+          ? raw.featuredConsultantIds.map((idVal: any) => String(idVal)).filter(Boolean)
+          : [],
+        workshops: sanitizedWorkshops,
+        announcements: sanitizedAnnouncements,
+      };
+
+      let finalVersion = 1;
+      if (existing) {
+        const baseVer = expectedVersion !== undefined ? Number(expectedVersion) : Number(existing.version);
+        const upd = await adminSettingsRepo.updateOptimistic(key, merged, baseVer, u.fullName);
+        finalVersion = upd.newVersion;
+      } else {
+        await adminSettingsRepo.saveSetting(key, merged, 'Counseling general showcase 3-card config', u.fullName);
+        finalVersion = 1;
+      }
+      const saved = { ...merged, version: finalVersion };
+
+      outbox.enqueue('counseling.general_showcase_updated', {
+        version: saved.version,
+        config: saved,
+        actorId: u.id,
+        actorName: u.fullName,
+      });
+
+      res.json(saved);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Register current user in an upcoming workshop
+  router.post('/workshops/:workshopId/register', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل صرفاً جهت مشاهده است و امکان ثبت‌نام ندارد.');
+      }
+
+      const workshopId = String(req.params.workshopId || '').trim();
+      const record = await adminSettingsRepo.getRecord<any>('counseling_general_showcase_config');
+      const showcase: CounselingGeneralShowcaseConfig = {
+        ...DEFAULT_GENERAL_SHOWCASE_CONFIG,
+        ...(record?.value || {}),
+      };
+      const ws = (showcase.workshops || []).find(w => w.id === workshopId && w.isActive);
+      if (!ws) {
+        throw AppError.notFound('کارگاه آموزشی');
+      }
+
+      const p = getPool();
+      const existingReg = await selectWithTimeout<any>(
+        `SELECT id, workshop_id, workshop_title, user_id, user_name, user_phone, created_at
+         FROM counseling_workshop_registrations
+         WHERE workshop_id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1`,
+        [workshopId, u.id],
+        2500
+      );
+
+      let phone = '';
+      try {
+        const uRows = await selectWithTimeout<any>(
+          `SELECT phone FROM users WHERE id = ? OR id = ? LIMIT 1`,
+          [toIdBuffer(u.id), String(u.id)],
+          2000
+        );
+        phone = uRows?.[0]?.phone ? String(uRows[0].phone) : '';
+      } catch {}
+
+      if (!existingReg || existingReg.length === 0) {
+        const regId = toIdBuffer(generateUUIDv7());
+        await p.query(
+          `INSERT INTO counseling_workshop_registrations (id, workshop_id, workshop_title, user_id, user_name, user_phone, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE deleted_at = NULL, workshop_title = VALUES(workshop_title), user_name = VALUES(user_name), user_phone = VALUES(user_phone)`,
+          [regId, workshopId, ws.title, u.id, u.fullName, phone || null, req.body?.notes ? String(req.body.notes).trim() : null]
+        );
+      }
+
+      const countRows = await selectWithTimeout<any>(
+        `SELECT COUNT(*) AS cnt FROM counseling_workshop_registrations WHERE workshop_id = ? AND deleted_at IS NULL`,
+        [workshopId],
+        2500
+      );
+      const count = Number(countRows?.[0]?.cnt || 1);
+
+      outbox.enqueue('counseling.workshop_registered', {
+        workshopId,
+        userId: u.id,
+        registrationsCount: count,
+      });
+
+      res.status(201).json({
+        success: true,
+        workshopId,
+        workshopTitle: ws.title,
+        registrationsCount: count,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // View registrations for a workshop (minimal PII: fullName + phone only)
+  router.get('/workshops/:workshopId/registrations', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const u = getCurrentUser(req);
+      AuthorizationPolicy.requireRole(
+        { userId: u.id, role: u.role, fullName: u.fullName },
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor', 'general_observer']
+      );
+
+      const rows = await selectWithTimeout<any>(
+        `SELECT id, workshop_id, workshop_title, user_id, user_name, user_phone, notes, created_at
+         FROM counseling_workshop_registrations
+         WHERE workshop_id = ? AND deleted_at IS NULL
+         ORDER BY created_at DESC LIMIT 500`,
+        [String(req.params.workshopId)],
+        3000
+      );
+
+      res.json(
+        (rows || []).map((r: any) => ({
+          id: fromIdBuffer(r.id),
+          workshopId: String(r.workshop_id),
+          workshopTitle: r.workshop_title,
+          userId: String(r.user_id),
+          fullName: r.user_name,
+          phone: r.user_phone || '',
+          notes: r.notes || '',
+          createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+        }))
+      );
     } catch (err) {
       next(err);
     }

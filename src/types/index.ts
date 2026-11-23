@@ -11,6 +11,7 @@ export type UserRole =
   | 'education_deputy'
   | 'cultural_educational_officer'
   | 'research_deputy'
+  | 'psychologist_counselor'
   | 'supervisor'
   | 'alumni'
   | 'customer';
@@ -249,6 +250,7 @@ export interface CrextioDashboardConfig {
   counselingGeneralShowcaseDesc?: string;
   counselingGeneralShowcaseBtnText?: string;
   counselingGeneralShowcaseBullets?: string[];
+  counselingGeneralShowcaseConfig?: CounselingGeneralShowcaseConfig;
 
   // ویترین خدمات رفاهی و تسهیلات
   showWelfareShowcase?: boolean;
@@ -1432,15 +1434,19 @@ export interface PsychologicalTest {
 
 export interface PsychologicalTestAssignment {
   id: string;
-  testId: string;
+  testId?: string;
   testTitle?: string;
   testCategory?: string;
   testDescription?: string;
   estimatedMinutes?: number;
   instructions?: string;
   questions?: PsychologicalTestQuestion[];
+  externalTestUrl?: string;
+  externalTestTitle?: string;
+  isVisibleToUser?: boolean;
   userId: string;
   userName: string;
+  userPhone?: string;
   userNationalId?: string;
   assignedById?: string;
   assignedByName: string;
@@ -1452,6 +1458,74 @@ export interface PsychologicalTestAssignment {
   version: number;
   assignedAt: string;
   completedAt?: string;
+}
+
+export interface CounselingBasicClient {
+  id: string;
+  fullName: string;
+  phone: string;
+}
+
+export interface CounselingWorkshopMediaFile {
+  id: string;
+  title: string;
+  mediaType: 'video' | 'audio' | 'file';
+  url: string;
+  sourceType: 'disk' | 'external';
+  durationOrSize?: string;
+}
+
+export interface CounselingWorkshopItem {
+  id: string;
+  title: string;
+  mode: 'upcoming' | 'archive';
+  presenter?: string;
+  topic?: string;
+  scheduleText?: string;
+  description?: string;
+  bannerUrl?: string;
+  registrationUrl?: string;
+  registrationNote?: string;
+  capacityLabel?: string;
+  isActive: boolean;
+  displayOrder: number;
+  mediaFiles: CounselingWorkshopMediaFile[];
+  registrationsCount?: number;
+}
+
+export interface CounselingAnnouncementItem {
+  id: string;
+  title?: string;
+  subtitle?: string;
+  organizerType: 'internal' | 'external';
+  organizerName?: string;
+  scheduleText?: string;
+  description?: string;
+  topics?: string[];
+  bannerUrl: string;
+  externalUrl?: string;
+  isActive: boolean;
+  displayOrder: number;
+}
+
+export interface CounselingGeneralShowcaseConfig {
+  sectionBadge?: string;
+  sectionTitle?: string;
+  sectionSubtitle?: string;
+  showWorkshopsCard: boolean;
+  showAnnouncementsCard: boolean;
+  showFeaturedConsultantCard: boolean;
+  workshopsCardTitle: string;
+  workshopsCardSubtitle?: string;
+  announcementsCardTitle: string;
+  announcementsCardSubtitle?: string;
+  consultantCardTitle: string;
+  consultantCardCtaLabel: string;
+  featuredConsultantIds: string[];
+  workshops: CounselingWorkshopItem[];
+  announcements: CounselingAnnouncementItem[];
+  myRegisteredWorkshopIds?: string[];
+  version?: number;
 }
 
 export interface PsychologicalTestResult {

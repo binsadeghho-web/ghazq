@@ -48,9 +48,14 @@ import { CounselingSection } from '../counseling/CounselingSection';
 interface CrextioSubViewsProps {
   activeNav: string;
   onNavigate: (tab: string) => void;
+  autoOpenGeneralBookingNonce?: number;
 }
 
-export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onNavigate }) => {
+export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({
+  activeNav,
+  onNavigate,
+  autoOpenGeneralBookingNonce,
+}) => {
   const {
     currentUser,
     users,
@@ -122,7 +127,7 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({ activeNav, onN
      4. COUNSELING CLINIC (کلینیک مشاوره عمومی و تخصصی)
      ======================================================================== */
   if (activeNav === 'Apps' || activeNav === 'Counseling' || activeNav === 'CounselingGeneral') {
-    return <CounselingSection initialTab="request" />;
+    return <CounselingSection initialTab="request" autoOpenWizardNonce={autoOpenGeneralBookingNonce} />;
   }
   if (activeNav === 'SpecializedCounseling' || activeNav === 'CounselingSpecial' || activeNav === 'counseling_specialized') {
     return (

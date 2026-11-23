@@ -70,6 +70,7 @@ const ThemeCustomizerModal = lazy(() =>
 
 interface CrextioDashboardProps {
   onNavigateTab?: (tab: string) => void;
+  onBookGeneralCounseling?: () => void;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -142,7 +143,10 @@ const CrextioCard: React.FC<{
   );
 };
 
-export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTab }) => {
+export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
+  onNavigateTab,
+  onBookGeneralCounseling,
+}) => {
   const {
     currentUser,
     courses,
@@ -917,6 +921,13 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
               span={span}
               scale={scale}
               onNavigateToGeneral={() => onNavigateTab?.('CounselingGeneral')}
+              onBookGeneralCounseling={() => {
+                if (onBookGeneralCounseling) {
+                  onBookGeneralCounseling();
+                } else {
+                  onNavigateTab?.('CounselingGeneral');
+                }
+              }}
               onOpenQuickEdit={() => setQuickEditSectionKey('counseling_general_showcase')}
             />
           </div>

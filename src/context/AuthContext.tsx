@@ -22,8 +22,14 @@ const ORGANIZATIONAL_ROLES: UserRole[] = [
   'education_deputy',
   'cultural_educational_officer',
   'research_deputy',
+  'psychologist_counselor',
   'supervisor',
 ];
+
+// روانشناس و مشاور مرکز به هیچ عنوان نباید فهرست کامل کاربران (/api/admin/users) را دریافت کند
+const CAN_LOAD_ALL_USERS_ROLES = new Set<UserRole>(
+  ORGANIZATIONAL_ROLES.filter(r => r !== 'psychologist_counselor')
+);
 
 function notifyToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
   if (typeof window !== 'undefined') {
@@ -143,7 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         if (res?.success && res.user && !res.mustChangePassword) {
           setCurrentUser(res.user);
           await refreshAlumniProfileSettings();
-          if (ORGANIZATIONAL_ROLES.includes(res.user.role)) {
+          if (CAN_LOAD_ALL_USERS_ROLES.has(res.user.role)) {
             await refreshUsers();
           }
         } else {
@@ -181,7 +187,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         event.type === 'rbac.item_visibility_updated'
       ) {
         refreshRolePoliciesFromServer();
-        if (ORGANIZATIONAL_ROLES.includes(currentUser.role)) {
+        if (CAN_LOAD_ALL_USERS_ROLES.has(currentUser.role)) {
           refreshUsers();
         }
 
@@ -234,7 +240,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
               ...(version ? { version } : {}),
             });
           }
-        } else if (ORGANIZATIONAL_ROLES.includes(currentUser.role)) {
+        } else if (CAN_LOAD_ALL_USERS_ROLES.has(currentUser.role)) {
           refreshUsers();
         }
       }
@@ -253,7 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         const token = res.token || (res as any).accessToken;
         api.setAuthContext(res.user.id, res.user.role, res.user.fullName, token, res.refreshToken);
         await refreshAlumniProfileSettings();
-        if (ORGANIZATIONAL_ROLES.includes(res.user.role)) {
+        if (CAN_LOAD_ALL_USERS_ROLES.has(res.user.role)) {
           refreshUsers();
         }
         if (setDesignTheme && res.user.role === 'alumni') {

@@ -41,6 +41,8 @@ import {
   PsychologicalTest,
   PsychologicalTestAssignment,
   PsychologicalTestResult,
+  CounselingBasicClient,
+  CounselingGeneralShowcaseConfig,
 } from '../types';
 import { api } from '../services/apiClient';
 
@@ -90,6 +92,8 @@ export interface AppContextType {
   psychologicalTests: PsychologicalTest[];
   testAssignments: PsychologicalTestAssignment[];
   testResults: PsychologicalTestResult[];
+  counselingClientsBasic: CounselingBasicClient[];
+  generalShowcase: CounselingGeneralShowcaseConfig;
   researchMentorships: ResearchMentorship[];
   rulings: JudicialRuling[];
   welfareRequests: WelfareRequest[];
@@ -177,6 +181,8 @@ export interface AppContextType {
   deleteConsultant: (consultantId: string) => Promise<void>;
   updateSpecializedConfig: (updates: Partial<SpecializedCounselingPortalConfig>) => Promise<SpecializedCounselingPortalConfig | null>;
   updateGeneralConfig: (updates: Partial<GeneralCounselingPortalConfig>) => Promise<GeneralCounselingPortalConfig | null>;
+  updateGeneralShowcase: (updates: Partial<CounselingGeneralShowcaseConfig>) => Promise<CounselingGeneralShowcaseConfig | null>;
+  registerInWorkshop: (workshopId: string, notes?: string) => Promise<{ success: boolean; registrationsCount?: number } | null>;
   createCounselingField: (data: Omit<CounselingFieldItem, 'id' | 'version'>) => Promise<CounselingFieldItem | null>;
   updateCounselingField: (id: string, updates: Partial<CounselingFieldItem>) => Promise<CounselingFieldItem | null>;
   deleteCounselingField: (id: string) => Promise<void>;
@@ -187,13 +193,26 @@ export interface AppContextType {
   updatePsychologicalTest: (id: string, updates: Partial<PsychologicalTest>) => Promise<PsychologicalTest | null>;
   deletePsychologicalTest: (id: string) => Promise<void>;
   assignPsychologicalTest: (data: {
-    testId: string;
+    testId?: string;
+    externalTestUrl?: string;
+    externalTestTitle?: string;
+    isVisibleToUser?: boolean;
     userId: string;
     userName: string;
     userNationalId?: string;
     requestId?: string;
     adminNote?: string;
   }) => Promise<PsychologicalTestAssignment | null>;
+  toggleTestAssignmentVisibility: (
+    id: string,
+    payload: {
+      isVisibleToUser?: boolean;
+      externalTestUrl?: string;
+      externalTestTitle?: string;
+      adminNote?: string;
+    }
+  ) => Promise<PsychologicalTestAssignment | null>;
+  deleteTestAssignment: (id: string) => Promise<void>;
   submitPsychologicalTest: (
     assignmentId: string,
     answers: Array<{ questionId: string; questionText: string; answer: string }>,
@@ -503,6 +522,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     psychologicalTests: counseling.psychologicalTests,
     testAssignments: counseling.testAssignments,
     testResults: counseling.testResults,
+    counselingClientsBasic: counseling.counselingClientsBasic,
+    generalShowcase: counseling.generalShowcase,
     bookCounseling: counseling.bookCounseling,
     updateCounselingStatus: counseling.updateCounselingStatus,
     updateCounselingRequest: counseling.updateCounselingRequest,
@@ -512,6 +533,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     deleteConsultant: counseling.deleteConsultant,
     updateSpecializedConfig: counseling.updateSpecializedConfig,
     updateGeneralConfig: counseling.updateGeneralConfig,
+    updateGeneralShowcase: counseling.updateGeneralShowcase,
+    registerInWorkshop: counseling.registerInWorkshop,
     createCounselingField: counseling.createCounselingField,
     updateCounselingField: counseling.updateCounselingField,
     deleteCounselingField: counseling.deleteCounselingField,
@@ -522,6 +545,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     updatePsychologicalTest: counseling.updatePsychologicalTest,
     deletePsychologicalTest: counseling.deletePsychologicalTest,
     assignPsychologicalTest: counseling.assignPsychologicalTest,
+    toggleTestAssignmentVisibility: counseling.toggleTestAssignmentVisibility,
+    deleteTestAssignment: counseling.deleteTestAssignment,
     submitPsychologicalTest: counseling.submitPsychologicalTest,
     reviewPsychologicalTestResult: counseling.reviewPsychologicalTestResult,
 

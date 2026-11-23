@@ -10,6 +10,8 @@ import {
   PsychologicalTest,
   PsychologicalTestAssignment,
   PsychologicalTestResult,
+  CounselingBasicClient,
+  CounselingGeneralShowcaseConfig,
 } from '../types';
 import { api } from '../services/apiClient';
 
@@ -22,8 +24,29 @@ const STAFF_ROLES = new Set([
   'education_deputy',
   'cultural_educational_officer',
   'research_deputy',
+  'psychologist_counselor',
   'supervisor',
 ]);
+
+export const INITIAL_GENERAL_SHOWCASE_CONFIG: CounselingGeneralShowcaseConfig = {
+  sectionBadge: 'آرامش روانی، سلامت خانواده و توانمندسازی',
+  sectionTitle: 'ویترین خدمات مشاوره عمومی و کلینیک روان‌شناختی',
+  sectionSubtitle: 'کارگاه‌های آموزشی، اطلاعیه‌های دوره‌های روان‌شناسی و معرفی مشاورین مرکز',
+  showWorkshopsCard: true,
+  workshopsCardTitle: 'کارگاه‌های آموزشی و آرشیو جلسات',
+  workshopsCardSubtitle: 'ثبت‌نام در کارگاه‌های پیش‌رو و دسترسی به فایل‌های صوتی، تصویری و جزوات جلسات برگزارشده',
+  workshops: [],
+  showAnnouncementsCard: true,
+  announcementsCardTitle: 'اطلاعیه‌های دوره‌های روان‌شناسی',
+  announcementsCardSubtitle: 'اطلاع‌رسانی دوره‌های داخلی و برون‌مرکزی با امکان مشاهده بزرگ‌نمایی پوستر',
+  announcements: [],
+  showFeaturedConsultantCard: true,
+  consultantCardTitle: 'مشاورین مرکز و رزرو نوبت',
+  featuredConsultantIds: [],
+  consultantCardCtaLabel: 'رزرو وقت مشاوره',
+  myRegisteredWorkshopIds: [],
+  version: 1,
+};
 
 function notifyToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
   if (typeof window !== 'undefined') {
@@ -272,6 +295,8 @@ export interface CounselingContextType {
   psychologicalTests: PsychologicalTest[];
   testAssignments: PsychologicalTestAssignment[];
   testResults: PsychologicalTestResult[];
+  counselingClientsBasic: CounselingBasicClient[];
+  generalShowcase: CounselingGeneralShowcaseConfig;
   feedbackMessage: { text: string; type: 'success' | 'error' } | null;
   clearFeedbackMessage: () => void;
   bookCounseling: (data: Omit<CounselingRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
@@ -293,6 +318,8 @@ export interface CounselingContextType {
   deleteConsultant: (consultantId: string) => Promise<void>;
   updateSpecializedConfig: (updates: Partial<SpecializedCounselingPortalConfig>) => Promise<SpecializedCounselingPortalConfig | null>;
   updateGeneralConfig: (updates: Partial<GeneralCounselingPortalConfig>) => Promise<GeneralCounselingPortalConfig | null>;
+  updateGeneralShowcase: (updates: Partial<CounselingGeneralShowcaseConfig>) => Promise<CounselingGeneralShowcaseConfig | null>;
+  registerInWorkshop: (workshopId: string, notes?: string) => Promise<{ success: boolean; registrationsCount?: number } | null>;
   createCounselingField: (data: Omit<CounselingFieldItem, 'id' | 'version'>) => Promise<CounselingFieldItem | null>;
   updateCounselingField: (id: string, updates: Partial<CounselingFieldItem>) => Promise<CounselingFieldItem | null>;
   deleteCounselingField: (id: string) => Promise<void>;
@@ -303,13 +330,26 @@ export interface CounselingContextType {
   updatePsychologicalTest: (id: string, updates: Partial<PsychologicalTest>) => Promise<PsychologicalTest | null>;
   deletePsychologicalTest: (id: string) => Promise<void>;
   assignPsychologicalTest: (data: {
-    testId: string;
+    testId?: string;
+    externalTestUrl?: string;
+    externalTestTitle?: string;
+    isVisibleToUser?: boolean;
     userId: string;
     userName: string;
     userNationalId?: string;
     requestId?: string;
     adminNote?: string;
   }) => Promise<PsychologicalTestAssignment | null>;
+  toggleTestAssignmentVisibility: (
+    id: string,
+    payload: {
+      isVisibleToUser?: boolean;
+      externalTestUrl?: string;
+      externalTestTitle?: string;
+      adminNote?: string;
+    }
+  ) => Promise<PsychologicalTestAssignment | null>;
+  deleteTestAssignment: (id: string) => Promise<void>;
   submitPsychologicalTest: (
     assignmentId: string,
     answers: Array<{ questionId: string; questionText: string; answer: string }>,
@@ -341,6 +381,10 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
   const [psychologicalTests, setPsychologicalTests] = useState<PsychologicalTest[]>([]);
   const [testAssignments, setTestAssignments] = useState<PsychologicalTestAssignment[]>([]);
   const [testResults, setTestResults] = useState<PsychologicalTestResult[]>([]);
+  const [counselingClientsBasic, setCounselingClientsBasic] = useState<CounselingBasicClient[]>([]);
+  const [generalShowcase, setGeneralShowcase] = useState<CounselingGeneralShowcaseConfig>(
+    INITIAL_GENERAL_SHOWCASE_CONFIG
+  );
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const clearFeedbackMessage = useCallback(() => setFeedbackMessage(null), []);
@@ -362,10 +406,13 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       setPsychologicalTests([]);
       setTestAssignments([]);
       setTestResults([]);
+      setCounselingClientsBasic([]);
+      setGeneralShowcase(INITIAL_GENERAL_SHOWCASE_CONFIG);
       return;
     }
 
     const isStaff = STAFF_ROLES.has(currentUserRole);
+    const canViewBasicClients = isStaff && currentUserRole !== 'general_observer';
 
     try {
       const results = await Promise.allSettled([
@@ -378,6 +425,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
         api.getPsychologicalTests(),
         api.getPsychologicalTestAssignments(),
         api.getPsychologicalTestResults(),
+        api.getCounselingGeneralShowcase(),
+        canViewBasicClients ? api.getCounselingClientsBasic() : Promise.resolve([]),
       ]);
 
       if (results[0].status === 'fulfilled' && Array.isArray(results[0].value)) setConsultants(results[0].value);
@@ -389,6 +438,10 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) setPsychologicalTests(results[6].value);
       if (results[7].status === 'fulfilled' && Array.isArray(results[7].value)) setTestAssignments(results[7].value);
       if (results[8].status === 'fulfilled' && Array.isArray(results[8].value)) setTestResults(results[8].value);
+      if (results[9].status === 'fulfilled' && results[9].value) setGeneralShowcase(results[9].value);
+      if (results[10].status === 'fulfilled' && Array.isArray(results[10].value)) {
+        setCounselingClientsBasic(results[10].value);
+      }
     } catch {}
   }, [currentUserId, currentUserRole]);
 
@@ -465,11 +518,46 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
         setPsychologicalTests(prev => prev.map(t => (t.id === updated.id ? updated : t)));
       } else if (event.type === 'counseling.test_deleted' && rawData.resourceId) {
         setPsychologicalTests(prev => prev.filter(t => t.id !== rawData.resourceId));
-      } else if (event.type === 'counseling.test_assigned' && rawData.updates) {
-        const incoming = rawData.updates as PsychologicalTestAssignment;
-        setTestAssignments(prev =>
-          prev.some(a => a.id === incoming.id) ? prev : [incoming, ...prev]
-        );
+      } else if ((event.type === 'counseling.test_assigned' || event.type === 'counseling.test_assignment_updated') && rawData.updates) {
+        const updated = rawData.updates as PsychologicalTestAssignment;
+        const isStaff = STAFF_ROLES.has(currentUserRole || '');
+        setTestAssignments(prev => {
+          if (!isStaff && updated.userId !== currentUserId) return prev;
+          if (!isStaff && updated.isVisibleToUser === false) {
+            return prev.filter(a => a.id !== updated.id);
+          }
+          return prev.some(a => a.id === updated.id)
+            ? prev.map(a => (a.id === updated.id ? updated : a))
+            : [updated, ...prev];
+        });
+      } else if (event.type === 'counseling.test_assignment_deleted' && rawData.resourceId) {
+        setTestAssignments(prev => prev.filter(a => a.id !== rawData.resourceId));
+      } else if (event.type === 'counseling.general_showcase_updated' && (rawData.config || rawData.showcase)) {
+        const nextCfg = (rawData.config || rawData.showcase) as CounselingGeneralShowcaseConfig;
+        setGeneralShowcase(prev => ({
+          ...nextCfg,
+          myRegisteredWorkshopIds: prev.myRegisteredWorkshopIds || [],
+        }));
+      } else if (event.type === 'counseling.workshop_registered' && rawData.workshopId) {
+        setGeneralShowcase(prev => {
+          const prevIds = prev.myRegisteredWorkshopIds || [];
+          const nextIds =
+            rawData.userId === currentUserId && !prevIds.includes(rawData.workshopId)
+              ? [...prevIds, rawData.workshopId]
+              : prevIds;
+          return {
+            ...prev,
+            myRegisteredWorkshopIds: nextIds,
+            workshops: (prev.workshops || []).map(w =>
+              w.id === rawData.workshopId
+                ? {
+                    ...w,
+                    registrationsCount: rawData.registrationsCount ?? ((w.registrationsCount || 0) + 1),
+                  }
+                : w
+            ),
+          };
+        });
       } else if (event.type === 'counseling.test_submitted' && rawData.updates) {
         const result = rawData.updates as PsychologicalTestResult;
         setTestResults(prev =>
@@ -650,6 +738,53 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
     }
   }, [generalConfig, refreshCounseling, showFeedback]);
 
+  const updateGeneralShowcase = useCallback(async (updates: Partial<CounselingGeneralShowcaseConfig>) => {
+    try {
+      const merged = { ...generalShowcase, ...updates };
+      const saved = await api.updateCounselingGeneralShowcase(
+        merged,
+        Number(generalShowcase.version || 1)
+      );
+      setGeneralShowcase(saved);
+      showFeedback('تنظیمات ویترین ۳ بخشی خدمات مشاوره عمومی ذخیره شد.', 'success');
+      return saved;
+    } catch (err: any) {
+      if (err.status === 409) await refreshCounseling();
+      showFeedback(`خطا در ذخیره ویترین مشاوره عمومی: ${err.message}`, 'error');
+      return null;
+    }
+  }, [generalShowcase, refreshCounseling, showFeedback]);
+
+  const registerInWorkshop = useCallback(async (workshopId: string, notes?: string) => {
+    try {
+      const res = await api.registerCounselingWorkshop(workshopId, notes);
+      if (res?.success) {
+        setGeneralShowcase(prev => {
+          const prevIds = prev.myRegisteredWorkshopIds || [];
+          const nextIds = prevIds.includes(workshopId) ? prevIds : [...prevIds, workshopId];
+          return {
+            ...prev,
+            myRegisteredWorkshopIds: nextIds,
+            workshops: (prev.workshops || []).map(w =>
+              w.id === workshopId
+                ? {
+                    ...w,
+                    registrationsCount: res.registrationsCount ?? ((w.registrationsCount || 0) + 1),
+                  }
+                : w
+            ),
+          };
+        });
+        showFeedback(res.message || 'ثبت‌نام شما در کارگاه با موفقیت انجام شد.', 'success');
+        return { success: true, registrationsCount: res.registrationsCount };
+      }
+      return null;
+    } catch (err: any) {
+      showFeedback(`خطا در ثبت‌نام کارگاه: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
   const createCounselingField = useCallback(async (data: Omit<CounselingFieldItem, 'id' | 'version'>) => {
     try {
       const created = await api.createCounselingField(data);
@@ -759,7 +894,10 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
   }, [showFeedback]);
 
   const assignPsychologicalTest = useCallback(async (data: {
-    testId: string;
+    testId?: string;
+    externalTestUrl?: string;
+    externalTestTitle?: string;
+    isVisibleToUser?: boolean;
     userId: string;
     userName: string;
     userNationalId?: string;
@@ -769,11 +907,51 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
     try {
       const created = await api.assignPsychologicalTest(data);
       setTestAssignments(prev => (prev.some(a => a.id === created.id) ? prev : [created, ...prev]));
-      showFeedback(`آزمون برای «${data.userName}» با موفقیت باز و فعال شد.`, 'success');
+      const visibleMsg = data.isVisibleToUser === false
+        ? `لینک تست برای «${data.userName}» ثبت شد (فعلاً مخفی تا زمان نمایش).`
+        : `لینک/آزمون برای «${data.userName}» با موفقیت ثبت و نمایش داده شد.`;
+      showFeedback(visibleMsg, 'success');
       return created;
     } catch (err: any) {
-      showFeedback(`خطا در باز کردن آزمون برای دانش‌آموخته: ${err.message}`, 'error');
+      showFeedback(`خطا در ثبت لینک/تست برای دانش‌آموخته: ${err.message}`, 'error');
       return null;
+    }
+  }, [showFeedback]);
+
+  const toggleTestAssignmentVisibility = useCallback(async (
+    id: string,
+    payload: {
+      isVisibleToUser?: boolean;
+      externalTestUrl?: string;
+      externalTestTitle?: string;
+      adminNote?: string;
+    }
+  ) => {
+    try {
+      const updated = await api.toggleTestAssignmentVisibility(id, payload);
+      setTestAssignments(prev => prev.map(a => (a.id === id ? updated : a)));
+      if (payload.isVisibleToUser !== undefined) {
+        showFeedback(
+          updated.isVisibleToUser ? 'تست برای دانش‌آموخته قابل مشاهده شد.' : 'نمایش تست برای دانش‌آموخته مخفی گردید.',
+          'success'
+        );
+      } else {
+        showFeedback('اطلاعات تست اختصاصی به‌روزرسانی شد.', 'success');
+      }
+      return updated;
+    } catch (err: any) {
+      showFeedback(`خطا در تغییر وضعیت نمایش تست: ${err.message}`, 'error');
+      return null;
+    }
+  }, [showFeedback]);
+
+  const deleteTestAssignment = useCallback(async (id: string) => {
+    try {
+      await api.deleteTestAssignment(id);
+      setTestAssignments(prev => prev.filter(a => a.id !== id));
+      showFeedback('لینک/تست اختصاصی حذف گردید.', 'success');
+    } catch (err: any) {
+      showFeedback(`خطا در حذف تست: ${err.message}`, 'error');
     }
   }, [showFeedback]);
 
@@ -836,6 +1014,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       psychologicalTests,
       testAssignments,
       testResults,
+      counselingClientsBasic,
+      generalShowcase,
       feedbackMessage,
       clearFeedbackMessage,
       bookCounseling,
@@ -847,6 +1027,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       deleteConsultant,
       updateSpecializedConfig,
       updateGeneralConfig,
+      updateGeneralShowcase,
+      registerInWorkshop,
       createCounselingField,
       updateCounselingField,
       deleteCounselingField,
@@ -857,6 +1039,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       updatePsychologicalTest,
       deletePsychologicalTest,
       assignPsychologicalTest,
+      toggleTestAssignmentVisibility,
+      deleteTestAssignment,
       submitPsychologicalTest,
       reviewPsychologicalTestResult,
       refreshCounseling,
@@ -871,6 +1055,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       psychologicalTests,
       testAssignments,
       testResults,
+      counselingClientsBasic,
+      generalShowcase,
       feedbackMessage,
       clearFeedbackMessage,
       bookCounseling,
@@ -882,6 +1068,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       deleteConsultant,
       updateSpecializedConfig,
       updateGeneralConfig,
+      updateGeneralShowcase,
+      registerInWorkshop,
       createCounselingField,
       updateCounselingField,
       deleteCounselingField,
@@ -892,6 +1080,8 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
       updatePsychologicalTest,
       deletePsychologicalTest,
       assignPsychologicalTest,
+      toggleTestAssignmentVisibility,
+      deleteTestAssignment,
       submitPsychologicalTest,
       reviewPsychologicalTestResult,
       refreshCounseling,

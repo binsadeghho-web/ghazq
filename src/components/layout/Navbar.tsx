@@ -42,11 +42,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const getRoleLabel = (role: UserRole) => {
     switch (role) {
+      case 'super_admin':
+        return 'مدیر کل';
       case 'admin':
         return 'مدیر ارشد';
+      case 'general_observer':
+        return 'ناظر کل (مشاهده تمام بخش‌ها)';
+      case 'alumni_manager':
+        return 'مدیر دانش‌آموختگان';
+      case 'admin_finance_officer':
+        return 'مسئول اداری و مالی';
+      case 'education_deputy':
+        return 'معاونت آموزش';
+      case 'cultural_educational_officer':
+        return 'مسئول فرهنگی و آموزشی';
+      case 'research_deputy':
+        return 'معاونت پژوهش';
+      case 'psychologist_counselor':
+        return 'روانشناس و مشاور مرکز';
       case 'supervisor':
         return 'مسئول بخش';
+      case 'customer':
+        return 'مشتری';
       case 'alumni':
+      default:
         return 'دانش‌آموخته';
     }
   };

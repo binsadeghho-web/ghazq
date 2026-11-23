@@ -25,6 +25,7 @@ export type UploadCategory =
   | 'course_receipt'
   | 'course_certificate'
   | 'course_file'
+  | 'counseling_media'
   | 'misc';
 
 export interface StorageConfig {
@@ -68,6 +69,7 @@ export const storageConfig: StorageConfig = {
     course_receipt: { path: path.join(uploadsDir, 'course_receipts'), isPrivate: true, folderName: 'course_receipts' },
     course_certificate: { path: path.join(uploadsDir, 'course_certificates'), isPrivate: true, folderName: 'course_certificates' },
     course_file: { path: path.join(uploadsDir, 'course_files'), isPrivate: true, folderName: 'course_files' },
+    counseling_media: { path: path.join(uploadsDir, 'counseling_media'), isPrivate: false, folderName: 'counseling_media' },
     misc: { path: path.join(uploadsDir, 'misc'), isPrivate: false, folderName: 'misc' },
   },
   backupsDir: path.join(rootPath, 'backups'),
@@ -111,6 +113,7 @@ export async function initStorageDirectories(timeoutMs = 5000): Promise<boolean>
           storageConfig.categories.course_receipt.path,
           storageConfig.categories.course_certificate.path,
           storageConfig.categories.course_file.path,
+          storageConfig.categories.counseling_media.path,
           storageConfig.categories.misc.path,
           // Legacy backwards compatibility folder
           path.join(storageConfig.uploadsDir, 'PROFILE_PICTURE'),

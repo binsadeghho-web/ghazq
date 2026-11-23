@@ -722,7 +722,10 @@ class ApiClient {
   }
 
   async assignPsychologicalTest(data: {
-    testId: string;
+    testId?: string;
+    externalTestUrl?: string;
+    externalTestTitle?: string;
+    isVisibleToUser?: boolean;
     userId: string;
     userName: string;
     userNationalId?: string;
@@ -733,6 +736,58 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async toggleTestAssignmentVisibility(
+    id: string,
+    data: {
+      isVisibleToUser?: boolean;
+      externalTestUrl?: string;
+      externalTestTitle?: string;
+      adminNote?: string;
+    }
+  ) {
+    return this.request<any>(`/api/counseling/test-assignments/${id}/visibility`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTestAssignment(id: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/counseling/test-assignments/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getCounselingClientsBasic(search?: string) {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+    return this.request<Array<{ id: string; fullName: string; phone: string }>>(
+      `/api/counseling/clients-basic${qs}`
+    );
+  }
+
+  async getCounselingGeneralShowcase() {
+    return this.request<any>('/api/counseling/general-showcase');
+  }
+
+  async updateCounselingGeneralShowcase(config: any, expectedVersion?: number) {
+    return this.request<any>('/api/counseling/general-showcase', {
+      method: 'PUT',
+      body: JSON.stringify({ ...config, expectedVersion: expectedVersion ?? config?.version }),
+    });
+  }
+
+  async registerCounselingWorkshop(workshopId: string, notes?: string) {
+    return this.request<any>(`/api/counseling/workshops/${encodeURIComponent(workshopId)}/register`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    });
+  }
+
+  async getWorkshopRegistrations(workshopId: string) {
+    return this.request<Array<{ id: string; workshopId: string; userId: string; fullName: string; phone: string; notes: string; createdAt: string }>>(
+      `/api/counseling/workshops/${encodeURIComponent(workshopId)}/registrations`
+    );
   }
 
   async submitPsychologicalTest(assignmentId: string, answers: any[], scoreSummary?: string) {

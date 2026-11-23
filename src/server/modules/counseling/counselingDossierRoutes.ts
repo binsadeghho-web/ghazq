@@ -62,7 +62,13 @@ export function registerCounselingDossierRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      if (user.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ثبت پرونده مشاوره نیست.');
+      }
+      AuthorizationPolicy.requireRole(
+        { userId: user.id, role: user.role, fullName: user.fullName },
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
+      );
 
       const { requestId, applicantId, applicantName, consultantName, sessionNumber, sessionDate, summaryNotes, nextSteps, hideApplicantIdentity } = req.body;
       if (!requestId || !summaryNotes) {
@@ -127,7 +133,13 @@ export function registerCounselingDossierRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      if (user.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به تغییر محرمانگی پرونده نیست.');
+      }
+      AuthorizationPolicy.requireRole(
+        { userId: user.id, role: user.role, fullName: user.fullName },
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
+      );
 
       const expVer = extractExpectedVersion(req, true);
       const idBuf = toIdBuffer(req.params.id);
@@ -165,7 +177,13 @@ export function registerCounselingDossierRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      if (user.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به تغییر تقویم مشاور نیست.');
+      }
+      AuthorizationPolicy.requireRole(
+        { userId: user.id, role: user.role, fullName: user.fullName },
+        ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer', 'psychologist_counselor']
+      );
 
       const expVer = extractExpectedVersion(req, true);
       const idBuf = toIdBuffer(req.params.id);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   HeartHandshake,
@@ -32,9 +32,13 @@ import { useRbacPolicies, canManageAllInSection, isReadOnlyObserverRole } from '
 
 interface CounselingSectionProps {
   initialTab?: 'request' | 'consultants' | 'tariffs' | 'tests' | 'my_history';
+  autoOpenWizardNonce?: number;
 }
 
-export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab = 'request' }) => {
+export const CounselingSection: React.FC<CounselingSectionProps> = ({
+  initialTab = 'request',
+  autoOpenWizardNonce,
+}) => {
   const {
     currentUser,
     consultants,
@@ -60,6 +64,14 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
   const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
   const [selectedPsychologistModal, setSelectedPsychologistModal] = useState<Consultant | null>(null);
 
+  useEffect(() => {
+    if (autoOpenWizardNonce && autoOpenWizardNonce > 0) {
+      setActiveTab('request');
+      setPreselectedField(null);
+      setWizardOpen(true);
+    }
+  }, [autoOpenWizardNonce]);
+
   // Strict 100% Separation: Only general counseling fields, consultants, and requests
   const generalFields = useMemo(
     () =>
@@ -83,7 +95,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
   );
 
   const myUnlockedTestsCount = useMemo(
-    () => testAssignments.filter(a => a.userId === currentUser?.id).length,
+    () => testAssignments.filter(a => a.userId === currentUser?.id && a.isVisibleToUser !== false).length,
     [testAssignments, currentUser]
   );
 
