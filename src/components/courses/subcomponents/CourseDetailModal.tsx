@@ -55,10 +55,16 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
       ? course.remainingCapacity
       : Math.max(0, (course.capacity || 0) - (course.enrolledCount || 0));
 
-  const isEnrolled = Boolean(course.isEnrolled || (userEnrollment && userEnrollment.paymentStatus !== 'rejected'));
+  const isRemovedFromClass = Boolean(
+    userEnrollment?.classStatus === 'removed' || course.classStatus === 'removed'
+  );
+  const isEnrolled = Boolean(
+    !isRemovedFromClass &&
+      (course.isEnrolled || (userEnrollment && userEnrollment.paymentStatus !== 'rejected'))
+  );
   const enrollmentStatus = userEnrollment?.paymentStatus || course.enrollmentStatus;
-  const isConfirmed = enrollmentStatus === 'confirmed';
-  const isPendingReview = enrollmentStatus === 'pending_review';
+  const isConfirmed = enrollmentStatus === 'confirmed' && !isRemovedFromClass;
+  const isPendingReview = enrollmentStatus === 'pending_review' && !isRemovedFromClass;
   const isFull = remainingCapacity <= 0;
 
   return (
@@ -236,37 +242,129 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
               )}
             </div>
 
-            {/* 1. Instructor Resume Card */}
+            {/* 1. Instructors & Resumes Card (Multi-Instructor Support) */}
             {isVisible('instructorResume') && (
               <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center gap-3.5">
-                  {course.instructorAvatarUrl ? (
-                    <img
-                      src={course.instructorAvatarUrl}
-                      alt={course.instructor}
-                      className="w-14 h-14 rounded-2xl object-cover border border-slate-300 dark:border-slate-700 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-lg shrink-0">
-                      <UserCheck className="w-7 h-7" />
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold block">
-                      مدرس و استاد دوره
-                    </span>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white">{course.instructor}</h3>
-                    {course.instructorTitle && (
-                      <span className="text-xs text-slate-500 dark:text-slate-400">{course.instructorTitle}</span>
-                    )}
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-black">
+                    {course.instructors && course.instructors.length > 1
+                      ? `اساتید و مدرسان دوره (${toPersianNumbers(course.instructors.length)} مدرس)`
+                      : 'مدرس و استاد دوره'}
+                  </span>
                 </div>
-                {course.instructorResume && (
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                    <strong className="text-slate-900 dark:text-white block mb-1">رزومه و سوابق علمی استاد:</strong>
-                    {course.instructorResume}
+
+                {course.instructors && course.instructors.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {course.instructors.map((inst, idx) => (
+                      <div
+                        key={inst.id || idx}
+                        className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          {inst.avatarUrl ? (
+                            <img
+                              src={inst.avatarUrl}
+                              alt={inst.fullName}
+                              className="w-12 h-12 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black shrink-0">
+                              <UserCheck className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            {inst.roleLabel && (
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">
+                                {inst.roleLabel}
+                              </span>
+                            )}
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                              {inst.fullName}
+                            </h3>
+                            {inst.title && (
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                                {inst.title}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {inst.resume && (
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line pt-2 border-t border-slate-100 dark:border-slate-800">
+                            {inst.resume}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3.5">
+                      {course.instructorAvatarUrl ? (
+                        <img
+                          src={course.instructorAvatarUrl}
+                          alt={course.instructor}
+                          className="w-14 h-14 rounded-2xl object-cover border border-slate-300 dark:border-slate-700 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-lg shrink-0">
+                          <UserCheck className="w-7 h-7" />
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold block">
+                          مدرس و استاد دوره
+                        </span>
+                        <h3 className="text-base font-black text-slate-900 dark:text-white">{course.instructor}</h3>
+                        {course.instructorTitle && (
+                          <span className="text-xs text-slate-500 dark:text-slate-400">{course.instructorTitle}</span>
+                        )}
+                      </div>
+                    </div>
+                    {course.instructorResume && (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                        <strong className="text-slate-900 dark:text-white block mb-1">رزومه و سوابق علمی استاد:</strong>
+                        {course.instructorResume}
+                      </div>
+                    )}
+                  </>
                 )}
+              </div>
+            )}
+
+            {/* 1B. Multi-Session Structured Syllabus */}
+            {isVisible('sessions') && course.sessions && course.sessions.length > 0 && (
+              <div className="p-4 rounded-2xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 space-y-2.5">
+                <h4 className="text-xs font-black text-sky-900 dark:text-sky-300 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-sky-600" />
+                  <span>ساختار جلسات دوره ({toPersianNumbers(course.sessions.length)} جلسه):</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {course.sessions.map((sess, idx) => (
+                    <div
+                      key={sess.id || idx}
+                      className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-sky-200/80 dark:border-sky-800/50 space-y-1 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 text-[10px] font-black tabular-nums">
+                          جلسه {toPersianNumbers(sess.sessionNumber || idx + 1)}
+                        </span>
+                        {(sess.sessionDate || sess.startTime) && (
+                          <span className="text-[10px] text-slate-400 tabular-nums">
+                            {sess.sessionDate ? toPersianNumbers(sess.sessionDate) : ''}
+                            {sess.startTime ? ` · ${toPersianNumbers(sess.startTime)}` : ''}
+                          </span>
+                        )}
+                      </div>
+                      <strong className="text-slate-900 dark:text-white block">{sess.title}</strong>
+                      {sess.presenterMode !== 'unspecified' && sess.presenterName && (
+                        <span className="text-[11px] text-slate-500 block">
+                          ارائه‌دهنده: {sess.presenterName}
+                          {sess.presenterTitle ? ` (${sess.presenterTitle})` : ''}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -445,7 +543,13 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
             </button>
 
             <div className="flex items-center gap-2">
-              {(isConfirmed || course.archiveAccess === 'all' || isOfficial) && (
+              {isRemovedFromClass && (
+                <span className="px-4 py-2 rounded-xl bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-xs font-black">
+                  عضویت کلاسی شما توسط مدیر لغو شده است (سوابق مالی محفوظ)
+                </span>
+              )}
+
+              {(isConfirmed || (course.archiveAccess === 'all' && !isRemovedFromClass) || isOfficial) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -459,7 +563,7 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
                 </button>
               )}
 
-              {!isEnrolled && !isPendingReview && (
+              {!isEnrolled && !isPendingReview && !isRemovedFromClass && (
                 <button
                   type="button"
                   disabled={isFull}

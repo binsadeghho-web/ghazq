@@ -132,7 +132,7 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-400 mb-1">
             <Briefcase className="w-4 h-4" />
-            <span>سامانه هدایت حرفه‌ای و علمی دانش‌آموختگان</span>
+            <span>{specializedConfig.headerBadgeLabel || 'سامانه هدایت حرفه‌ای و علمی دانش‌آموختگان'}</span>
           </div>
           <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
             {specializedConfig.sectionTitle}
@@ -164,7 +164,7 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
           }`}
         >
           <Sparkles className="w-4 h-4 text-indigo-600" />
-          <span>معرفی، زمینه‌ها و ثبت درخواست</span>
+          <span>{specializedConfig.tabRequestLabel || 'معرفی، زمینه‌ها و ثبت درخواست'}</span>
         </button>
 
         <button
@@ -177,7 +177,7 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
           }`}
         >
           <Clock className="w-4 h-4 text-blue-600" />
-          <span>سوابق درخواست‌های من ({toPersianNumbers(mySpecializedRequests.length)})</span>
+          <span>{specializedConfig.tabHistoryLabel || 'سوابق درخواست‌های من'} ({toPersianNumbers(mySpecializedRequests.length)})</span>
         </button>
 
         {specializedConfig.showAdvisorsToStudents && (
@@ -191,7 +191,7 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
             }`}
           >
             <UserCheck className="w-4 h-4 text-emerald-600" />
-            <span>مشاوران تخصصی ({toPersianNumbers(specializedAdvisors.length)})</span>
+            <span>{specializedConfig.tabConsultantsLabel || 'مشاوران تخصصی'} ({toPersianNumbers(specializedAdvisors.length)})</span>
           </button>
         )}
       </div>
@@ -200,15 +200,25 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
       {activeTab === 'landing' && (
         <CounselingLandingHero
           variant="specialized"
-          badgeLabel="بخش مشاوره تخصصی شغلی و تحصیلی"
+          badgeLabel={specializedConfig.heroBadgeLabel || 'بخش مشاوره تخصصی شغلی و تحصیلی'}
           introTitle={specializedConfig.landingIntroTitle}
           introBody={specializedConfig.landingIntroBody}
+          historyButtonLabel={specializedConfig.heroHistoryButtonLabel}
+          calloutBadgeLabel={specializedConfig.calloutBadgeLabel}
           calloutTitle={specializedConfig.landingCalloutTitle}
           calloutSubtitle={specializedConfig.landingCalloutSubtitle}
           ctaButtonLabel={specializedConfig.ctaButtonLabel || 'در خواست مشاوره تخصصی شغلی/تحصیلی دارم'}
+          calloutSecondaryLinkLabel={specializedConfig.calloutSecondaryLinkLabel}
           descriptionButtonLabel={specializedConfig.descriptionButtonLabel || 'توضیحات'}
+          fieldsShowcaseBadgeLabel={specializedConfig.fieldsShowcaseBadgeLabel}
           fieldsSectionTitle={specializedConfig.fieldsSectionTitle || 'زمینه‌های مشاوره تخصصی'}
           fieldsSectionSubtitle={specializedConfig.fieldsSectionSubtitle}
+          fieldsShowcaseHelperText={specializedConfig.fieldsShowcaseHelperText}
+          fieldsCardCtaLabel={specializedConfig.fieldsCardCtaLabel}
+          fieldsShowcaseEmptyText={specializedConfig.fieldsShowcaseEmptyText}
+          landingInfoCardsTitle={specializedConfig.landingInfoCardsTitle}
+          landingInfoCardsSubtitle={specializedConfig.landingInfoCardsSubtitle}
+          landingInfoCards={specializedConfig.landingInfoCards}
           fields={specializedFields}
           myRequestsCount={mySpecializedRequests.length}
           onStartWizard={startWizard}
@@ -505,12 +515,26 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
         sectionTitle={specializedConfig.sectionTitle}
         descriptionButtonLabel={specializedConfig.descriptionButtonLabel || 'توضیحات'}
         onOpenDescriptionModal={() => setDescriptionModalOpen(true)}
+        submissionSuccessTitle={specializedConfig.submissionSuccessTitle}
         submissionSuccessMessage={specializedConfig.submissionSuccessMessage}
         wizardSteps={specializedConfig.wizardSteps}
         fieldsList={specializedFields}
         preselectedField={preselectedField}
         consultants={specializedAdvisors}
         showConsultantsSelection={specializedConfig.showAdvisorsToStudents}
+        showFieldsSelectionStep={specializedConfig.showFieldsSelectionStep}
+        wizardFieldStepTitle={specializedConfig.wizardFieldStepTitle}
+        wizardFieldStepSubtitle={specializedConfig.wizardFieldStepSubtitle}
+        wizardFieldNotice={specializedConfig.wizardFieldNotice}
+        fieldSelectionOptional={specializedConfig.fieldSelectionOptional ?? false}
+        skipFieldSelectionLabel={specializedConfig.skipFieldSelectionLabel}
+        otherCities={specializedConfig.otherCities}
+        includeFinalReviewStep={specializedConfig.includeFinalReviewStep ?? true}
+        showPhoneFieldInWizard={specializedConfig.showPhoneFieldInWizard ?? true}
+        showConsultantsInWizard={specializedConfig.showConsultantsInWizard ?? true}
+        submitButtonLabel={specializedConfig.submitButtonLabel}
+        nextButtonLabel={specializedConfig.nextButtonLabel}
+        prevButtonLabel={specializedConfig.prevButtonLabel}
         currentUser={currentUser}
         onSubmitBooking={bookCounseling}
         onDoneSuccess={() => setActiveTab('my_history')}

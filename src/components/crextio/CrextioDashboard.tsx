@@ -59,6 +59,10 @@ import { DashboardWidgetsSuite } from '../dashboard/DashboardWidgetsSuite';
 import { CANONICAL_DASHBOARD_SECTION_ORDER, reconcileDashboardSectionOrder } from '../../context/ThemeContext';
 import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
 import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
+import {
+  formatWelcomeBannerTitle,
+  formatWelcomeBannerSubtitle,
+} from '../../utils/welcomeBanner';
 
 const ThemeCustomizerModal = lazy(() =>
   import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal }))
@@ -345,26 +349,51 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
             : resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides));
 
         const rightSlotMode = crextioConfig.heroRightSlotMode || 'both';
-        const configuredQuickBtns = (
+        const allConfiguredQuickBtns =
           crextioConfig.heroQuickButtons && crextioConfig.heroQuickButtons.length > 0
             ? crextioConfig.heroQuickButtons
-            : DEFAULT_CREXTIO_CONFIG.heroQuickButtons || []
-        ).filter(b => {
-          if (b.visible === false) return false;
-          if (isAlumni && (b.targetNav === 'Alumni' || b.targetNav === 'Users' || b.targetNav === 'Admin' || b.targetNav === 'Setting' || b.targetNav === 'Finance')) {
+            : DEFAULT_CREXTIO_CONFIG.heroQuickButtons || [];
+        const roleFilteredQuickBtns = allConfiguredQuickBtns.filter(b => {
+          if (
+            isAlumni &&
+            (b.targetNav === 'Alumni' ||
+              b.targetNav === 'Users' ||
+              b.targetNav === 'Admin' ||
+              b.targetNav === 'Setting' ||
+              b.targetNav === 'Finance')
+          ) {
             return false;
           }
           return true;
         });
+        const visibleQuickBtns = roleFilteredQuickBtns.filter(b => b.visible !== false);
+        const configuredQuickBtns =
+          visibleQuickBtns.length > 0
+            ? visibleQuickBtns
+            : rightSlotMode === 'quick_actions'
+            ? roleFilteredQuickBtns.slice(0, 4)
+            : [];
 
         const showStatsSlot =
+          (rightSlotMode === 'stats' || rightSlotMode === 'both') &&
           crextioConfig.showKpiRow !== false &&
-          crextioConfig.showHeroStats !== false &&
-          (rightSlotMode === 'stats' || rightSlotMode === 'both');
+          crextioConfig.showHeroStats !== false;
         const showQuickSlot =
-          crextioConfig.showQuickActions !== false &&
-          (rightSlotMode === 'quick_actions' || rightSlotMode === 'both') &&
-          configuredQuickBtns.length > 0;
+          (rightSlotMode === 'quick_actions'
+            ? configuredQuickBtns.length > 0
+            : rightSlotMode === 'both'
+            ? crextioConfig.showQuickActions !== false && configuredQuickBtns.length > 0
+            : false);
+
+        const welcomeTitle = formatWelcomeBannerTitle(
+          crextioConfig.heroTitle,
+          crextioConfig.heroGreetingPrefix,
+          currentUser
+        );
+        const welcomeSubtitle = formatWelcomeBannerSubtitle(
+          crextioConfig.heroSubtitle,
+          currentUser
+        );
 
         if (heroScale === 'micro') {
           if (crextioConfig.showHeroBanner === false && !showPortrait) return null;
@@ -394,8 +423,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                       </span>
                     </div>
                     <h1 className="text-sm sm:text-base font-black text-stone-900 truncate">
-                      {crextioConfig.heroTitle ||
-                        `خوش آمدید، ${currentUser?.fullName || 'دانش‌آموخته گرامی'}`}
+                      {welcomeTitle}
                     </h1>
                   </div>
                 </div>
@@ -530,12 +558,10 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
 
                       <div>
                         <h1 className={`${heroTitleSizeClass} text-stone-900 leading-snug tracking-tight`}>
-                          {crextioConfig.heroTitle ||
-                            `خوش آمدید، ${currentUser?.fullName || 'دانش‌آموخته گرامی'}`}
+                          {welcomeTitle}
                         </h1>
                         <p className="text-xs text-stone-600 mt-1.5 leading-relaxed font-medium">
-                          {crextioConfig.heroSubtitle ||
-                            `${currentUser?.organization} · آماده پیگیری درخواست‌های الکترونیک، هم‌افزایی و پژوهش`}
+                          {welcomeSubtitle}
                         </p>
                       </div>
 
@@ -559,12 +585,13 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                     </div>
 
                     {/* Right Slot: Quick Actions Only, Stats Only, Both (Stats on Right), or None */}
-                    {(showStatsSlot || (rightSlotMode === 'quick_actions' && showQuickSlot)) && (
+                    {(isAdmin || showStatsSlot || (rightSlotMode === 'quick_actions' && showQuickSlot)) && (
                       <div className="flex flex-col gap-2 shrink-0">
                         {isAdmin && (
-                          <div className="flex justify-end gap-1.5">
+                          <div className="flex justify-end gap-1.5 flex-wrap">
                             {showStatsSlot && (
                               <button
+                                type="button"
                                 onClick={() => setIsHeroStatsModalOpen(true)}
                                 className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
                               >
@@ -573,6 +600,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({ onNavigateTa
                               </button>
                             )}
                             <button
+                              type="button"
                               onClick={() => {
                                 setStudioInitialTab('hero_quick');
                                 setIsStudioOpen(true);

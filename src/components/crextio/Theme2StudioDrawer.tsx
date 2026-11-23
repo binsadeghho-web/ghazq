@@ -14,6 +14,9 @@ import {
   UnifiedShowcaseManagerEditor,
 } from '../admin/theme_customizer_subcomponents/CustomizerHonorsUnifiedTab';
 import { ShowcaseImagesStudioPanel } from '../admin/theme_customizer_subcomponents/ShowcaseImagesStudioPanel';
+import { CustomizerNavigationTab } from '../admin/theme_customizer_subcomponents/CustomizerNavigationTab';
+import { formatWelcomeBannerTitle } from '../../utils/welcomeBanner';
+import { useApp } from '../../context/AppContext';
 import {
   X,
   Sparkles,
@@ -36,9 +39,15 @@ import {
   Plus,
   Trash2,
   Palette,
+  Menu,
 } from 'lucide-react';
 
-export type Theme2StudioTab = 'hero_quick' | 'all_banners' | 'layout_boxes' | 'honors_unified';
+export type Theme2StudioTab =
+  | 'hero_quick'
+  | 'navigation'
+  | 'all_banners'
+  | 'layout_boxes'
+  | 'honors_unified';
 
 interface Theme2StudioDrawerProps {
   isOpen: boolean;
@@ -173,6 +182,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
   crextioConfig,
   updateCrextioConfig,
 }) => {
+  const { currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<Theme2StudioTab>(initialTab);
   const [savedToast, setSavedToast] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -352,6 +362,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
           <div className="px-6 pt-3 bg-stone-50 border-b border-stone-200 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
             {[
               { id: 'hero_quick', label: 'بنر خوش‌آمد، برند و دسترسی سریع', icon: Palette },
+              { id: 'navigation', label: 'ناوبری عمودی، افقی و منو خدمات', icon: Menu },
               { id: 'all_banners', label: 'ویرایش ۱۰۰٪ متون و بنرها', icon: Type },
               { id: 'layout_boxes', label: 'چیدمان، جابه‌جایی ویجت‌ها و تقویم', icon: LayoutGrid },
               { id: 'honors_unified', label: 'افتخارات و ویترین جامع', icon: Award },
@@ -498,7 +509,24 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                         <button
                           key={opt.id}
                           type="button"
-                          onClick={() => commit({ heroRightSlotMode: opt.id as any })}
+                          onClick={() => {
+                            const mode = opt.id as 'both' | 'quick_actions' | 'stats' | 'none';
+                            const patch: Partial<CrextioDashboardConfig> = {
+                              heroRightSlotMode: mode,
+                              showHeroStats: mode === 'both' || mode === 'stats',
+                              showKpiRow: mode === 'both' || mode === 'stats',
+                              showQuickActions: mode === 'both' || mode === 'quick_actions',
+                            };
+                            if (mode === 'both' || mode === 'quick_actions') {
+                              const hasVisible = quickButtons.some(b => b.visible !== false);
+                              if (!hasVisible && quickButtons.length > 0) {
+                                patch.heroQuickButtons = quickButtons.map((b, idx) =>
+                                  idx < 4 ? { ...b, visible: true } : b
+                                );
+                              }
+                            }
+                            commit(patch);
+                          }}
                           className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
                             active
                               ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
@@ -509,6 +537,18 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                         </button>
                       );
                     })}
+                  </div>
+                  <div className="text-[11px] font-bold text-emerald-900/80 flex flex-wrap items-center gap-2 pt-1">
+                    <span>
+                      وضعیت فعال فعلی:{' '}
+                      {(crextioConfig.heroRightSlotMode || 'both') === 'both'
+                        ? 'نمایش هم‌زمان آمار زنده + دکمه‌های دسترسی سریع'
+                        : crextioConfig.heroRightSlotMode === 'quick_actions'
+                        ? 'فقط دکمه‌های دسترسی سریع در بخش مقابل'
+                        : crextioConfig.heroRightSlotMode === 'stats'
+                        ? 'فقط کارت‌های آمار زنده در بخش مقابل'
+                        : 'حالت حداقل‌گرا (بدون آمار و بدون دسترسی سریع)'}
+                    </span>
                   </div>
                 </div>
 
@@ -674,14 +714,49 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">عنوان اصلی بنر خوش‌آمدگویی (Hero Title)</label>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                        پیشوند خوش‌آمدگویی (برای نام پویا)
+                      </label>
                       <input
                         type="text"
-                        value={crextioConfig.heroTitle ?? ''}
-                        onChange={e => commit({ heroTitle: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-black"
+                        value={crextioConfig.heroGreetingPrefix ?? 'خوش آمدید'}
+                        onChange={e => commit({ heroGreetingPrefix: e.target.value })}
+                        placeholder="مثلاً: خوش آمدید، جناب آقای / سرکار خانم"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 font-bold"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                        الگوی عنوان بنر خوش‌آمدگویی (با {'{name}'} نام هر کاربر درج می‌شود)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={crextioConfig.heroTitle ?? 'خوش آمدید، {name}'}
+                          onChange={e => commit({ heroTitle: e.target.value })}
+                          placeholder="خوش آمدید، {name}"
+                          className="flex-1 px-3 py-2 rounded-xl border border-stone-300 font-black"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => commit({ heroTitle: 'خوش آمدید، {name}' })}
+                          className="px-2.5 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[10px] font-black shrink-0 cursor-pointer"
+                          title="بازگردانی به الگوی پویا با نام کاربر"
+                        >
+                          {'{name}'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-900 flex items-center justify-between gap-2">
+                      <span>پیش‌نمایش زنده برای کاربر فعلی:</span>
+                      <span className="font-black text-emerald-950">
+                        {formatWelcomeBannerTitle(
+                          crextioConfig.heroTitle,
+                          crextioConfig.heroGreetingPrefix,
+                          currentUser
+                        )}
+                      </span>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-[11px] font-bold text-stone-600 mb-1">زیرعنوان بنر خوش‌آمدگویی (Hero Subtitle)</label>
@@ -732,6 +807,15 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* TAB: NAVIGATION ORDER & LABELS CUSTOMIZER */}
+            {activeTab === 'navigation' && (
+              <CustomizerNavigationTab
+                crextioConfig={crextioConfig}
+                updateCrextioConfig={updateCrextioConfig}
+                triggerSuccess={pulseSaved}
+              />
             )}
 
             {/* TAB 2: ALL BANNERS, WIDGETS, BENTO & SHOWCASE TEXTS */}

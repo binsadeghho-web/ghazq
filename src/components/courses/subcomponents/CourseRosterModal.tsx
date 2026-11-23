@@ -12,7 +12,9 @@ import {
   Send,
   FileText,
   CheckCheck,
-  RefreshCw
+  RefreshCw,
+  UserMinus,
+  RotateCcw,
 } from 'lucide-react';
 
 interface CourseRosterModalProps {
@@ -20,6 +22,8 @@ interface CourseRosterModalProps {
   enrollments: CourseEnrollment[];
   onClose: () => void;
   onReviewEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
+  onRemoveFromClass?: (courseId: string, enrollmentId: string, reason?: string) => Promise<void>;
+  onRestoreToClass?: (courseId: string, enrollmentId: string) => Promise<void>;
   onSendCourseSms: (courseId: string, recipientPhone: string | 'all', message: string, recipientName?: string) => Promise<{ success: boolean; count: number; message: string }>;
   onInspectReceipt: (enr: CourseEnrollment) => void;
 }
@@ -29,6 +33,8 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
   enrollments,
   onClose,
   onReviewEnrollment,
+  onRemoveFromClass,
+  onRestoreToClass,
   onSendCourseSms,
   onInspectReceipt,
 }) => {
@@ -48,7 +54,7 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
   const [inlineAction, setInlineAction] = useState<{
     enrollmentId: string;
     userName: string;
-    mode: 'reject' | 'note';
+    mode: 'reject' | 'note' | 'remove_class';
     currentStatus: CourseEnrollment['paymentStatus'];
     text: string;
   } | null>(null);
@@ -220,6 +226,8 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                   <span className="font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
                     {inlineAction.mode === 'reject'
                       ? `علت رد ثبت‌نام ${inlineAction.userName}:`
+                      : inlineAction.mode === 'remove_class'
+                      ? `علت حذف ${inlineAction.userName} از کلاس (مالی محفوظ):`
                       : `یادداشت مدیر برای ${inlineAction.userName}:`}
                   </span>
                   <input
@@ -227,7 +235,13 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                     value={inlineAction.text}
                     onChange={e => setInlineAction({ ...inlineAction, text: e.target.value })}
                     className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
-                    placeholder={inlineAction.mode === 'reject' ? 'علت رد را بنویسید...' : 'متن یادداشت...'}
+                    placeholder={
+                      inlineAction.mode === 'reject'
+                        ? 'علت رد را بنویسید...'
+                        : inlineAction.mode === 'remove_class'
+                        ? 'علت حذف از کلاس...'
+                        : 'متن یادداشت...'
+                    }
                   />
                   <div className="flex items-center gap-2">
                     <button
@@ -236,28 +250,40 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                       onClick={async () => {
                         setSavingInlineAction(true);
                         try {
-                          const targetStatus =
-                            inlineAction.mode === 'reject'
-                              ? 'rejected'
-                              : inlineAction.currentStatus === 'rejected'
-                              ? 'rejected'
-                              : 'confirmed';
-                          await onReviewEnrollment(inlineAction.enrollmentId, targetStatus, inlineAction.text.trim());
+                          if (inlineAction.mode === 'remove_class' && onRemoveFromClass) {
+                            await onRemoveFromClass(course.id, inlineAction.enrollmentId, inlineAction.text.trim() || undefined);
+                          } else {
+                            const targetStatus =
+                              inlineAction.mode === 'reject'
+                                ? 'rejected'
+                                : inlineAction.currentStatus === 'rejected'
+                                ? 'rejected'
+                                : 'confirmed';
+                            await onReviewEnrollment(inlineAction.enrollmentId, targetStatus, inlineAction.text.trim());
+                          }
                           setInlineAction(null);
                         } finally {
                           setSavingInlineAction(false);
                         }
                       }}
-                      className={`px-3.5 py-1.5 rounded-xl font-black text-white disabled:opacity-50 ${
-                        inlineAction.mode === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                      className={`px-3.5 py-1.5 rounded-xl font-black text-white disabled:opacity-50 cursor-pointer ${
+                        inlineAction.mode === 'reject' || inlineAction.mode === 'remove_class'
+                          ? 'bg-rose-600 hover:bg-rose-700'
+                          : 'bg-emerald-600 hover:bg-emerald-700'
                       }`}
                     >
-                      {savingInlineAction ? 'در حال ثبت...' : inlineAction.mode === 'reject' ? 'ثبت رد' : 'ذخیره یادداشت'}
+                      {savingInlineAction
+                        ? 'در حال ثبت...'
+                        : inlineAction.mode === 'reject'
+                        ? 'ثبت رد'
+                        : inlineAction.mode === 'remove_class'
+                        ? 'تایید حذف از کلاس'
+                        : 'ذخیره یادداشت'}
                     </button>
                     <button
                       type="button"
                       onClick={() => setInlineAction(null)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold"
+                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
                     >
                       انصراف
                     </button>
@@ -272,9 +298,14 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                 filteredEnrollments.map(enr => (
                   <div key={enr.id} className="pt-2.5 first:pt-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <strong className="text-sm font-black text-slate-900 dark:text-white">{enr.userName}</strong>
                         <span className="text-[11px] text-slate-400">({enr.userRoleTitle})</span>
+                        {enr.classStatus === 'removed' && (
+                          <span className="px-2 py-0.5 rounded-lg bg-rose-500/15 text-rose-600 border border-rose-500/30 text-[10px] font-black">
+                            حذف‌شده از کلاس (مالی محفوظ)
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 dark:text-slate-300 font-medium">
@@ -350,7 +381,7 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                         </button>
                       )}
 
-                      {enr.paymentStatus !== 'rejected' && (
+                      {enr.paymentStatus !== 'rejected' && enr.classStatus !== 'removed' && (
                         <button
                           onClick={() =>
                             setInlineAction({
@@ -361,9 +392,38 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                               text: 'نقص در مدارک واریزی',
                             })
                           }
-                          className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/30 font-bold hover:bg-rose-500/20"
+                          className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/30 font-bold hover:bg-rose-500/20 cursor-pointer"
                         >
                           رد
+                        </button>
+                      )}
+
+                      {onRemoveFromClass && enr.paymentStatus === 'confirmed' && enr.classStatus !== 'removed' && (
+                        <button
+                          onClick={() =>
+                            setInlineAction({
+                              enrollmentId: enr.id,
+                              userName: enr.userName,
+                              mode: 'remove_class',
+                              currentStatus: enr.paymentStatus,
+                              text: 'حذف از کلاس با حفظ تراکنش‌های مالی',
+                            })
+                          }
+                          className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1 cursor-pointer"
+                          title="حذف از کلاس (تراکنش مالی محفوظ می‌ماند)"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                          <span>حذف از کلاس</span>
+                        </button>
+                      )}
+
+                      {onRestoreToClass && enr.classStatus === 'removed' && (
+                        <button
+                          onClick={() => onRestoreToClass(course.id, enr.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>بازگردانی به کلاس</span>
                         </button>
                       )}
 
@@ -377,7 +437,7 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                             text: enr.adminNote || '',
                           })
                         }
-                        className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                        className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
                         title="ویرایش یادداشت مدیر"
                       >
                         <FileText className="w-3.5 h-3.5" />

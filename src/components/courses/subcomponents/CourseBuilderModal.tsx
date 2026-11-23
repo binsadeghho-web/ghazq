@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Course, CourseCustomField, CourseInstallmentPlan } from '../../../types';
+import {
+  Course,
+  CourseCustomField,
+  CourseInstallmentPlan,
+  CourseInstructorItem,
+  CourseSessionItem,
+} from '../../../types';
 import { api } from '../../../services/apiClient';
-import { CourseBuilderAdvancedTabs } from './CourseBuilderAdvancedTabs';
+import { CourseBuilderAdvancedTabs, CourseOfflineFileEntry } from './CourseBuilderAdvancedTabs';
+import { compressImageFast, formatFileSizeLabel } from '../../../utils/imageCompression';
+import { toPersianNumbers } from '../../../utils/persianNumbers';
 import {
   X,
   Image as ImageIcon,
@@ -10,6 +18,7 @@ import {
   UploadCloud,
   Loader2,
   GraduationCap,
+  Trash2,
 } from 'lucide-react';
 
 interface CourseBuilderModalProps {
@@ -57,6 +66,9 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
   const courseCoverInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverPreviewLocal, setCoverPreviewLocal] = useState<string | null>(null);
+  const [coverStats, setCoverStats] = useState<string | null>(null);
+  const [draftFolderKey, setDraftFolderKey] = useState<string>(() => `new_${Date.now().toString(36)}`);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [builderForm, setBuilderForm] = useState<{
@@ -65,6 +77,10 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
     instructorTitle: string;
     instructorAvatarUrl: string;
     instructorResume: string;
+    instructors: CourseInstructorItem[];
+    sessions: CourseSessionItem[];
+    offlineDownloadGuide: string;
+    offlineDownloadFiles: CourseOfflineFileEntry[];
     category: string;
     level: string;
     hours: number;
@@ -106,6 +122,10 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
     instructorTitle: '',
     instructorAvatarUrl: '',
     instructorResume: '',
+    instructors: [],
+    sessions: [],
+    offlineDownloadGuide: '',
+    offlineDownloadFiles: [],
     category: 'فقه القضاء و فناوری',
     level: 'تخصصی عالی (سطح ۴ و دکتری)',
     hours: 20,
@@ -145,13 +165,35 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
 
   useEffect(() => {
     setSaveError(null);
+    setCoverPreviewLocal(null);
+    setCoverStats(null);
     if (courseToEdit) {
+      const initialInstructors: CourseInstructorItem[] =
+        courseToEdit.instructors && courseToEdit.instructors.length > 0
+          ? courseToEdit.instructors
+          : courseToEdit.instructor
+          ? [
+              {
+                id: `inst_primary_${courseToEdit.id}`,
+                fullName: courseToEdit.instructor,
+                title: courseToEdit.instructorTitle || undefined,
+                roleLabel: 'مدرس اصلی دوره',
+                avatarUrl: courseToEdit.instructorAvatarUrl || undefined,
+                resume: courseToEdit.instructorResume || undefined,
+                isPrimary: true,
+              },
+            ]
+          : [];
       setBuilderForm({
         title: courseToEdit.title,
         instructor: courseToEdit.instructor,
         instructorTitle: courseToEdit.instructorTitle || '',
         instructorAvatarUrl: courseToEdit.instructorAvatarUrl || '',
         instructorResume: courseToEdit.instructorResume || '',
+        instructors: initialInstructors,
+        sessions: courseToEdit.sessions || [],
+        offlineDownloadGuide: courseToEdit.offlineDownloadGuide || '',
+        offlineDownloadFiles: (courseToEdit.offlineDownloadFiles || []).map(f => ({ ...f })),
         category: courseToEdit.category || 'فقه القضاء و فناوری',
         level: courseToEdit.level,
         hours: courseToEdit.hours,
@@ -192,12 +234,17 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
         archiveAccess: courseToEdit.archiveAccess || 'enrolled_only',
       });
     } else if (isOpen) {
+      setDraftFolderKey(`new_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
       setBuilderForm({
         title: '',
         instructor: '',
         instructorTitle: '',
         instructorAvatarUrl: '',
         instructorResume: '',
+        instructors: [],
+        sessions: [],
+        offlineDownloadGuide: '',
+        offlineDownloadFiles: [],
         category: 'فقه القضاء و فناوری',
         level: 'تخصصی عالی (سطح ۴ و دکتری)',
         hours: 20,
@@ -240,12 +287,22 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
   if (!isOpen) return null;
 
   const handleCourseCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
     setSaveError(null);
     setUploadingCover(true);
+    const prevUrl = builderForm.coverImage;
     try {
-      const uploaded = await api.uploadFile(file, 'course');
+      const compressed = await compressImageFast(rawFile, 'cover');
+      setCoverPreviewLocal(compressed.previewUrl);
+      setCoverStats(
+        compressed.savedPercent > 0
+          ? `فشرده‌سازی ${toPersianNumbers(compressed.savedPercent)}٪ (${formatFileSizeLabel(compressed.compressedBytes)})`
+          : formatFileSizeLabel(compressed.compressedBytes)
+      );
+      const uploaded = await api.uploadFile(compressed.file, 'course', {
+        previousUrl: prevUrl && prevUrl.startsWith('/api/storage/') ? prevUrl : undefined,
+      });
       setBuilderForm(prev => ({
         ...prev,
         hasCoverImage: true,
@@ -255,6 +312,7 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
       setSaveError(err?.message || 'خطا در آپلود تصویر بنر دوره روی سرور.');
     } finally {
       setUploadingCover(false);
+      e.target.value = '';
     }
   };
 
@@ -263,12 +321,48 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
     setSaveError(null);
     try {
       setIsSubmitting(true);
+      const effectiveInstructors: CourseInstructorItem[] =
+        builderForm.instructors.length > 0
+          ? builderForm.instructors.map((inst, idx) =>
+              idx === 0 || inst.isPrimary
+                ? {
+                    ...inst,
+                    fullName: builderForm.instructor || inst.fullName,
+                    title: builderForm.instructorTitle || inst.title,
+                    avatarUrl: builderForm.instructorAvatarUrl || undefined,
+                    resume: builderForm.instructorResume || inst.resume,
+                  }
+                : inst
+            )
+          : builderForm.instructor.trim()
+          ? [
+              {
+                id: `inst_primary_${Date.now()}`,
+                fullName: builderForm.instructor.trim(),
+                title: builderForm.instructorTitle.trim() || undefined,
+                roleLabel: 'مدرس اصلی دوره',
+                avatarUrl: builderForm.instructorAvatarUrl || undefined,
+                resume: builderForm.instructorResume || undefined,
+                isPrimary: true,
+              },
+            ]
+          : [];
+
       await onSave({
         title: builderForm.title,
         instructor: builderForm.instructor,
         instructorTitle: builderForm.instructorTitle,
-        instructorAvatarUrl: builderForm.instructorAvatarUrl || undefined,
+        instructorAvatarUrl: builderForm.instructorAvatarUrl ? builderForm.instructorAvatarUrl : ('' as any),
         instructorResume: builderForm.instructorResume,
+        instructors: effectiveInstructors,
+        sessions: builderForm.sessions,
+        sessionsCount:
+          builderForm.sessions.length > 0
+            ? builderForm.sessions.length
+            : courseToEdit?.sessionsCount || 4,
+        offlineDownloadGuide: builderForm.offlineDownloadGuide,
+        offlineDownloadFiles: builderForm.offlineDownloadFiles,
+        ...(!courseToEdit ? { draftFolderKey } : {}),
         category: builderForm.category,
         level: builderForm.level,
         hours: builderForm.hours,
@@ -281,7 +375,10 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
         venueAddress: builderForm.venueAddress,
         meetingLink: builderForm.meetingLink,
         meetingAccessGuide: builderForm.meetingAccessGuide,
-        coverImage: builderForm.hasCoverImage && builderForm.coverImage ? builderForm.coverImage : undefined,
+        coverImage:
+          builderForm.hasCoverImage && builderForm.coverImage
+            ? builderForm.coverImage
+            : ('' as any),
         allowedPaymentMethod: builderForm.allowedPaymentMethod,
         price: builderForm.price,
         hasInstallments: builderForm.hasInstallments,
@@ -411,17 +508,18 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
                   <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div
                       onClick={() => {
-                        if (builderForm.coverImage) {
-                          onImagePreview({ url: builderForm.coverImage, title: 'پیش‌نمایش بنر دوره' });
+                        const previewSrc = coverPreviewLocal || builderForm.coverImage;
+                        if (previewSrc) {
+                          onImagePreview({ url: previewSrc, title: 'پیش‌نمایش بنر دوره' });
                         }
                       }}
                       className="w-32 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shrink-0 bg-slate-900 cursor-pointer relative group flex items-center justify-center"
                       title="جهت بزرگنمایی کلیک کنید"
                     >
-                      {builderForm.coverImage ? (
+                      {coverPreviewLocal || builderForm.coverImage ? (
                         <>
                           <img
-                            src={builderForm.coverImage}
+                            src={coverPreviewLocal || builderForm.coverImage}
                             alt="بنر دوره"
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                           />
@@ -443,15 +541,37 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
                           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-bold shadow-xs cursor-pointer disabled:opacity-60"
                         >
                           {uploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
-                          <span>{uploadingCover ? 'در حال آپلود روی دیسک...' : 'بارگذاری عکس بنر از دستگاه'}</span>
+                          <span>{uploadingCover ? 'در حال فشرده‌سازی و ذخیره...' : 'بارگذاری سریع بنر از دستگاه'}</span>
                         </button>
-                        <span className="text-[11px] text-slate-400">یا نشانی معتبر تصویر را وارد کنید:</span>
+                        {(coverPreviewLocal || builderForm.coverImage) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCoverPreviewLocal(null);
+                              setCoverStats(null);
+                              setBuilderForm(prev => ({ ...prev, coverImage: '', hasCoverImage: false }));
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 text-xs font-bold cursor-pointer"
+                            title="حذف بنر و پاکسازی از دیسک پس از ذخیره"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>حذف بنر</span>
+                          </button>
+                        )}
+                        {coverStats && (
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold tabular-nums">
+                            {coverStats}
+                          </span>
+                        )}
                       </div>
 
                       <input
                         type="text"
                         value={builderForm.coverImage}
-                        onChange={e => setBuilderForm({ ...builderForm, coverImage: e.target.value })}
+                        onChange={e => {
+                          setCoverPreviewLocal(null);
+                          setBuilderForm({ ...builderForm, coverImage: e.target.value });
+                        }}
                         placeholder="/api/storage/courses/..."
                         className="w-full px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono dir-ltr"
                       />
@@ -836,12 +956,24 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
             </div>
 
             <CourseBuilderAdvancedTabs
+              courseId={courseToEdit?.id}
+              draftFolderKey={draftFolderKey}
+              primaryInstructorName={builderForm.instructor}
+              onPrimaryInstructorNameChange={val => setBuilderForm(prev => ({ ...prev, instructor: val }))}
               instructorTitle={builderForm.instructorTitle}
               onInstructorTitleChange={val => setBuilderForm(prev => ({ ...prev, instructorTitle: val }))}
               instructorAvatarUrl={builderForm.instructorAvatarUrl}
               onInstructorAvatarChange={val => setBuilderForm(prev => ({ ...prev, instructorAvatarUrl: val }))}
               instructorResume={builderForm.instructorResume}
               onInstructorResumeChange={val => setBuilderForm(prev => ({ ...prev, instructorResume: val }))}
+              instructors={builderForm.instructors}
+              onInstructorsChange={val => setBuilderForm(prev => ({ ...prev, instructors: val }))}
+              sessions={builderForm.sessions}
+              onSessionsChange={val => setBuilderForm(prev => ({ ...prev, sessions: val }))}
+              offlineDownloadFiles={builderForm.offlineDownloadFiles}
+              onOfflineDownloadFilesChange={val => setBuilderForm(prev => ({ ...prev, offlineDownloadFiles: val }))}
+              offlineDownloadGuide={builderForm.offlineDownloadGuide}
+              onOfflineDownloadGuideChange={val => setBuilderForm(prev => ({ ...prev, offlineDownloadGuide: val }))}
               holdingTime={builderForm.holdingTime}
               onHoldingTimeChange={val => setBuilderForm(prev => ({ ...prev, holdingTime: val }))}
               necessity={builderForm.necessity}

@@ -16,6 +16,8 @@ import {
   Video,
   Award,
   MessageSquare,
+  Edit3,
+  MapPin,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingFieldItem } from '../../types';
@@ -26,18 +28,11 @@ import { GeneralCounselingTariffsTab } from './GeneralCounselingTariffsTab';
 import { PsychologicalTestsTab } from './PsychologicalTestsTab';
 import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossierSuite';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { useRbacPolicies, canManageAllInSection, isReadOnlyObserverRole } from '../../utils/rbacPolicy';
 
 interface CounselingSectionProps {
   initialTab?: 'request' | 'consultants' | 'tariffs' | 'tests' | 'my_history';
 }
-
-const STAFF_ROLES = new Set([
-  'admin',
-  'super_admin',
-  'supervisor',
-  'alumni_manager',
-  'cultural_educational_officer',
-]);
 
 export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab = 'request' }) => {
   const {
@@ -52,8 +47,12 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
     isAlumniPreview,
   } = useApp();
 
-  const isOfficial = Boolean(currentUser?.role && STAFF_ROLES.has(currentUser.role));
+  const { rolePolicies } = useRbacPolicies();
+  const canManageCounseling = canManageAllInSection(currentUser, 'counseling', rolePolicies);
+  const isObserver = isReadOnlyObserverRole(currentUser?.role);
+  const isOfficial = canManageCounseling || isObserver;
   const [previewStudentMode, setPreviewStudentMode] = useState(false);
+  const [adminStartTab, setAdminStartTab] = useState<'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder'>('queue');
 
   const [activeTab, setActiveTab] = useState<'request' | 'consultants' | 'tariffs' | 'tests' | 'my_history'>(initialTab);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -89,7 +88,12 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
   );
 
   if (isOfficial && !previewStudentMode && !isAlumniPreview) {
-    return <AdminCounselingGeneralSuite onSwitchToStudentPreview={() => setPreviewStudentMode(true)} />;
+    return (
+      <AdminCounselingGeneralSuite
+        initialTab={adminStartTab}
+        onSwitchToStudentPreview={() => setPreviewStudentMode(true)}
+      />
+    );
   }
 
   const startWizard = (field?: CounselingFieldItem) => {
@@ -100,28 +104,48 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
   return (
     <div className="space-y-6" dir="rtl">
       {isOfficial && previewStudentMode && (
-        <div className="bg-amber-100 border border-amber-300 text-amber-950 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
+        <div className="bg-amber-100 border border-amber-300 text-amber-950 rounded-2xl p-3 px-5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
           <span className="text-xs font-bold flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
             در حال مشاهده پیش‌نمایش دانش‌آموخته در بخش مشاوره عمومی و روان‌شناسان مرکز هستید.
           </span>
-          <button
-            type="button"
-            onClick={() => setPreviewStudentMode(false)}
-            className="px-4 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold cursor-pointer"
-          >
-            بازگشت به میز مدیریت روان‌شناسان
-          </button>
+          <div className="flex items-center gap-2">
+            {canManageCounseling && !isObserver && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminStartTab('form_builder');
+                  setPreviewStudentMode(false);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>ویرایش صفحه و فرم</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setAdminStartTab('queue');
+                setPreviewStudentMode(false);
+              }}
+              className="px-4 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold cursor-pointer"
+            >
+              بازگشت به میز مدیریت روان‌شناسان
+            </button>
+          </div>
         </div>
       )}
 
       {/* Header */}
       <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/90 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-            <HeartHandshake className="w-4 h-4" />
-            <span>بخش مستقل خدمات روان‌شناسی و سلامت روان مرکز</span>
-          </div>
+          {(generalConfig.headerBadgeLabel ?? 'بخش مستقل خدمات روان‌شناسی و سلامت روان مرکز') && (
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+              <HeartHandshake className="w-4 h-4" />
+              <span>{generalConfig.headerBadgeLabel || 'بخش مستقل خدمات روان‌شناسی و سلامت روان مرکز'}</span>
+            </div>
+          )}
           <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
             {generalConfig.sectionTitle}
           </h1>
@@ -152,7 +176,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
           }`}
         >
           <Sparkles className="w-4 h-4 text-emerald-600" />
-          <span>رزرو وقت و زمینه‌های مشاوره</span>
+          <span>{generalConfig.tabRequestLabel || 'رزرو وقت و زمینه‌های مشاوره'}</span>
         </button>
 
         <button
@@ -165,7 +189,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
           }`}
         >
           <UserCheck className="w-4 h-4 text-teal-600" />
-          <span>روان‌شناسان مرکز ({toPersianNumbers(generalConsultants.length)})</span>
+          <span>{generalConfig.tabConsultantsLabel || 'روان‌شناسان مرکز'} ({toPersianNumbers(generalConsultants.length)})</span>
         </button>
 
         <button
@@ -178,7 +202,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
           }`}
         >
           <DollarSign className="w-4 h-4 text-amber-600" />
-          <span>نرخ‌نامه</span>
+          <span>{generalConfig.tabTariffsLabel || 'نرخ‌نامه'}</span>
         </button>
 
         <button
@@ -191,7 +215,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
           }`}
         >
           <ClipboardCheck className="w-4 h-4 text-indigo-600" />
-          <span>تست‌ها ({toPersianNumbers(myUnlockedTestsCount)})</span>
+          <span>{generalConfig.tabTestsLabel || 'تست‌ها'} ({toPersianNumbers(myUnlockedTestsCount)})</span>
         </button>
 
         <button
@@ -204,7 +228,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
           }`}
         >
           <Clock className="w-4 h-4 text-blue-600" />
-          <span>سوابق مشاوره ({toPersianNumbers(myGeneralRequests.length)})</span>
+          <span>{generalConfig.tabHistoryLabel || 'سوابق مشاوره'} ({toPersianNumbers(myGeneralRequests.length)})</span>
         </button>
       </div>
 
@@ -212,15 +236,25 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
       {activeTab === 'request' && (
         <CounselingLandingHero
           variant="general"
-          badgeLabel="بخش روان‌شناسان و مشاوره عمومی مرکز"
+          badgeLabel={generalConfig.heroBadgeLabel ?? 'بخش روان‌شناسان و مشاوره عمومی مرکز'}
           introTitle={generalConfig.landingIntroTitle}
           introBody={generalConfig.landingIntroBody}
+          historyButtonLabel={generalConfig.heroHistoryButtonLabel}
+          calloutBadgeLabel={generalConfig.calloutBadgeLabel}
           calloutTitle={generalConfig.landingCalloutTitle}
           calloutSubtitle={generalConfig.landingCalloutSubtitle}
           ctaButtonLabel={generalConfig.ctaButtonLabel || 'رزرو وقت مشاوره'}
+          calloutSecondaryLinkLabel={generalConfig.calloutSecondaryLinkLabel}
           descriptionButtonLabel={generalConfig.descriptionButtonLabel || 'توضیحات'}
+          fieldsShowcaseBadgeLabel={generalConfig.fieldsShowcaseBadgeLabel}
           fieldsSectionTitle={generalConfig.fieldsSectionTitle || 'زمینه‌های مشاوره عمومی و روان‌شناختی'}
           fieldsSectionSubtitle={generalConfig.fieldsSectionSubtitle}
+          fieldsShowcaseHelperText={generalConfig.fieldsShowcaseHelperText}
+          fieldsCardCtaLabel={generalConfig.fieldsCardCtaLabel}
+          fieldsShowcaseEmptyText={generalConfig.fieldsShowcaseEmptyText}
+          landingInfoCardsTitle={generalConfig.landingInfoCardsTitle}
+          landingInfoCardsSubtitle={generalConfig.landingInfoCardsSubtitle}
+          landingInfoCards={generalConfig.landingInfoCards}
           fields={generalFields}
           myRequestsCount={myGeneralRequests.length}
           onStartWizard={startWizard}
@@ -382,6 +416,23 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
                     </div>
                   </div>
 
+                  {(req.formResponses?.counselingLocation || req.formResponses?.counselingTimePreference) && (
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      {req.formResponses?.counselingLocation && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900 font-bold">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>مکان درخواستی: {String(req.formResponses.counselingLocation)}</span>
+                        </span>
+                      )}
+                      {req.formResponses?.counselingTimePreference && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900 font-bold">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>زمان ترجیحی: {String(req.formResponses.counselingTimePreference)}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {req.description && (
                     <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
                       {req.description}
@@ -539,12 +590,26 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({ initialTab
         sectionTitle={generalConfig.sectionTitle}
         descriptionButtonLabel={generalConfig.descriptionButtonLabel || 'توضیحات'}
         onOpenDescriptionModal={() => setDescriptionModalOpen(true)}
+        submissionSuccessTitle={generalConfig.submissionSuccessTitle || 'درخواست شما ثبت شد'}
         submissionSuccessMessage={generalConfig.submissionSuccessMessage}
         wizardSteps={generalConfig.wizardSteps}
         fieldsList={generalFields}
         preselectedField={preselectedField}
         consultants={generalConsultants}
         showConsultantsSelection={true}
+        showFieldsSelectionStep={generalConfig.showFieldsSelectionStep}
+        wizardFieldStepTitle={generalConfig.wizardFieldStepTitle}
+        wizardFieldStepSubtitle={generalConfig.wizardFieldStepSubtitle}
+        wizardFieldNotice={generalConfig.wizardFieldNotice}
+        fieldSelectionOptional={generalConfig.fieldSelectionOptional ?? true}
+        skipFieldSelectionLabel={generalConfig.skipFieldSelectionLabel}
+        otherCities={generalConfig.otherCities}
+        includeFinalReviewStep={generalConfig.includeFinalReviewStep ?? false}
+        showPhoneFieldInWizard={generalConfig.showPhoneFieldInWizard ?? true}
+        showConsultantsInWizard={generalConfig.showConsultantsInWizard ?? false}
+        submitButtonLabel={generalConfig.submitButtonLabel || 'ثبت درخواست مشاوره'}
+        nextButtonLabel={generalConfig.nextButtonLabel || 'ادامه و مرحله بعد'}
+        prevButtonLabel={generalConfig.prevButtonLabel || 'مرحله قبل'}
         showRatesButtonInEnd={generalConfig.showRatesInWizardEnd}
         ratesButtonLabel={generalConfig.ratesButtonLabel || 'اطلاع از نرخ نامه مشاوره مرکز'}
         tariffs={counselingTariffs}

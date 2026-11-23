@@ -5,6 +5,10 @@ import { toPersianNumbers } from '../../utils/persianNumbers';
 import { AppSectionId } from '../../types';
 import { canViewSection, useRbacPolicies, isOrganizationalRole } from '../../utils/rbacPolicy';
 import {
+  applyNavigationCustomization,
+  getResolvedNavigationConfig,
+} from '../../utils/navigationConfig';
+import {
   LayoutGrid,
   Inbox,
   GraduationCap,
@@ -21,7 +25,8 @@ import {
   ArrowLeft,
   Search,
   X,
-  Home
+  Home,
+  Wallet
 } from 'lucide-react';
 
 interface CrextioServicesMegaMenuProps {
@@ -39,10 +44,22 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
   const menuRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { currentUser, cartableRequests, courses, rulings, products, consultants, researchMentorships, productsStoreConfig, isAlumniPreview } = useApp();
+  const {
+    currentUser,
+    cartableRequests,
+    courses,
+    rulings,
+    products,
+    consultants,
+    researchMentorships,
+    productsStoreConfig,
+    isAlumniPreview,
+    crextioConfig,
+  } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const pendingCartable = cartableRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length;
   const isStaff = isOrganizationalRole(currentUser?.role) && !isAlumniPreview;
+  const resolvedNav = getResolvedNavigationConfig(crextioConfig.navigationConfig);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -177,6 +194,17 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
       category: 'قضایی'
     },
     {
+      id: 'Finance',
+      sectionId: 'finance',
+      title: 'امور مالی، حسابداری و درآمدها',
+      subtext: 'مدیریت جامع درآمدها، فیش‌های واریزی و تسویه‌حساب‌ها',
+      badge: 'امور مالی',
+      tag: 'حسابداری و مالی',
+      icon: Wallet,
+      accent: '#059669',
+      category: 'مدیریت'
+    },
+    {
       id: 'Alumni',
       sectionId: 'alumni',
       title: 'بانک جامع دانش‌آموختگان',
@@ -211,8 +239,15 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     }
   ];
 
+  // Apply customized order, labels, subtexts, badges, and visibility overrides
+  const customizedCards = applyNavigationCustomization(
+    allServiceCards,
+    resolvedNav.servicesMenuItems,
+    { hideInvisible: true }
+  );
+
   // Strict Menu Cloaking: Hide Alumni, Users, Admin, Finance from alumni & preview mode
-  const serviceCards = allServiceCards.filter(card => {
+  const serviceCards = customizedCards.filter(card => {
     if (!isStaff && (card.sectionId === 'alumni' || card.sectionId === 'users' || card.sectionId === 'admin' || card.sectionId === 'finance')) {
       return false;
     }
@@ -309,7 +344,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
           <div className="text-right">
             <div className="flex items-center gap-2">
               <span className="text-xs sm:text-sm font-black text-stone-900 tracking-tight group-hover:text-emerald-900 transition-colors drop-shadow-xs">
-                منو و خدمات سامانه
+                {resolvedNav.servicesMenuTitle}
               </span>
               <motion.span
                 animate={{
@@ -320,7 +355,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
                 className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border shadow-xs"
               >
                 <Sparkles className="w-3 h-3 text-amber-600 animate-spin" style={{ animationDuration: '6s' }} />
-                <span>۱۱ بخش ویژه</span>
+                <span>{toPersianNumbers(serviceCards.length)} بخش فعال</span>
               </motion.span>
             </div>
           </div>

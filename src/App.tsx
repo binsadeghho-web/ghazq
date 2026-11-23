@@ -15,6 +15,8 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 import { ModuleFallback } from './components/common/ModuleFallback';
 import { ConcurrentConflictModal } from './components/common/ConcurrentConflictModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { getResolvedNavigationConfig } from './utils/navigationConfig';
+import { isOrganizationalRole, isReadOnlyObserverRole } from './utils/rbacPolicy';
 
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
 const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
@@ -103,7 +105,11 @@ const MainLayout: React.FC = () => {
           onOpenSessions={() => setSessionModalOpen(true)}
           mobileMenuOpen={mobileMenuOpen}
           setMobileMenuOpen={setMobileMenuOpen}
-          activeSectionTitle={tabTitles[activeTab]}
+          activeSectionTitle={
+            getResolvedNavigationConfig(crextioConfig.navigationConfig).verticalSidebar.find(
+              item => item.id === activeTab
+            )?.label || tabTitles[activeTab]
+          }
         />
       </div>
 
@@ -210,8 +216,8 @@ const MainLayout: React.FC = () => {
         onClose={() => setLoginModalOpen(false)}
       />
 
-      {/* Floating Theme Switcher Capsule (Only for Admin / Supervisor on Theme 1) */}
-      {currentUser && (currentUser.role === 'admin' || currentUser.role === 'supervisor') && (
+      {/* Floating Theme Switcher Capsule (For Organizational Staff / Admin / Alumni Manager on Theme 1) */}
+      {currentUser && isOrganizationalRole(currentUser.role) && !isReadOnlyObserverRole(currentUser.role) && (
         <div className="fixed bottom-6 left-6 z-50 flex items-center gap-1.5 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
           <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-slate-900 shadow-sm">
             تم ۱: پرتال

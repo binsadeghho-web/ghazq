@@ -10,6 +10,11 @@ import {
 } from '../../utils/rbacPolicy';
 import { AppSectionId, Theme3CustomizationConfig } from '../../types';
 import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  applyNavigationCustomization,
+  getResolvedNavigationConfig,
+} from '../../utils/navigationConfig';
+import { formatWelcomeBannerTitle } from '../../utils/welcomeBanner';
 import { MinimalShowcaseCard } from '../crextio/MinimalShowcaseCard';
 import { HonorsShowcase } from '../crextio/HonorsShowcase';
 import { UnifiedShowcaseHub } from '../crextio/UnifiedShowcaseHub';
@@ -195,7 +200,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
 
   // Studio Drawer State
   const [studioOpen, setStudioOpen] = useState(false);
-  const [studioTab, setStudioTab] = useState<'appearance' | 'texts_layout' | 'honors' | 'unified_boxes'>('appearance');
+  const [studioTab, setStudioTab] = useState<'appearance' | 'navigation' | 'texts_layout' | 'honors' | 'unified_boxes'>('appearance');
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
   const completionPct = calculateProfileCompletion(currentUser).percentage;
 
@@ -226,35 +231,37 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
       ? `${palette.cardBg}`
       : `${palette.cardBg} shadow-sm`;
 
-  const allPrimaryNav: Array<{ id: string; sectionId: AppSectionId; label: string }> = [
-    { id: 'Dashboard', sectionId: 'dashboard', label: 'میز کار' },
-    { id: 'People', sectionId: 'cartable', label: 'کارتابل' },
-    { id: 'Courses', sectionId: 'courses', label: 'دوره‌ها' },
-    { id: 'Products', sectionId: 'products', label: 'کتب و محصولات' },
-    { id: 'Research', sectionId: 'research', label: 'پژوهش' },
-    { id: 'Counseling', sectionId: 'counseling', label: 'مشاوره' },
-    { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء' },
-  ];
-  const primaryNav = allPrimaryNav.filter(item =>
-    canViewSection(currentUser, item.sectionId, rolePolicies)
-  );
-
-  const allSecondaryNav: Array<{ id: string; sectionId: AppSectionId; label: string; icon: any }> = [
+  const allTheme3NavCandidates: Array<{ id: string; sectionId: AppSectionId; label: string; icon: any }> = [
+    { id: 'Dashboard', sectionId: 'dashboard', label: 'میز کار', icon: LayoutGrid },
+    { id: 'People', sectionId: 'cartable', label: 'کارتابل', icon: Inbox },
+    { id: 'Courses', sectionId: 'courses', label: 'دوره‌ها', icon: GraduationCap },
+    { id: 'Products', sectionId: 'products', label: 'کتب و محصولات', icon: BookOpen },
+    { id: 'Research', sectionId: 'research', label: 'پژوهش', icon: Compass },
+    { id: 'Counseling', sectionId: 'counseling', label: 'مشاوره', icon: HeartHandshake },
+    { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء', icon: Scale },
     { id: 'SpecializedCounseling', sectionId: 'specialized_counseling', label: 'مشاوره تخصصی قضا', icon: Scale },
     { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی و تجارب', icon: Users2 },
     { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات و تسهیلات', icon: Gift },
-    { id: 'Products', sectionId: 'products', label: 'کتاب و محصولات چند رسانه‌ای', icon: BookOpen },
     { id: 'Alumni', sectionId: 'alumni', label: 'بانک دانش‌آموختگان', icon: GraduationCap },
     { id: 'Finance', sectionId: 'finance', label: 'امور مالی', icon: Wallet },
     { id: 'Users', sectionId: 'users', label: 'مدیریت کاربران', icon: Users },
     { id: 'Admin', sectionId: 'admin', label: 'پایش و امنیت', icon: ShieldCheck },
   ];
-  const secondaryNav = allSecondaryNav.filter(item => {
+
+  const resolvedNav = getResolvedNavigationConfig(crextioConfig.navigationConfig);
+  const customizedTheme3Nav = applyNavigationCustomization(
+    allTheme3NavCandidates,
+    resolvedNav.horizontalNavbar,
+    { hideInvisible: true, alwaysKeepVisibleIds: ['Dashboard'] }
+  );
+  const allowedTheme3Nav = customizedTheme3Nav.filter(item => {
     if (!isStaff && (item.id === 'Alumni' || item.id === 'Users' || item.id === 'Admin' || item.id === 'Finance')) {
       return false;
     }
     return canViewSection(currentUser, item.sectionId, rolePolicies);
   });
+  const primaryNav = allowedTheme3Nav.slice(0, 7);
+  const secondaryNav = allowedTheme3Nav.slice(7);
 
   const myRecentCartable = (
     isStaff
@@ -522,7 +529,7 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
       ? 'text-2xl sm:text-3xl lg:text-4xl'
       : 'text-xl sm:text-2xl lg:text-[28px]';
 
-  const openStudio = (tab: 'appearance' | 'texts_layout' | 'honors' | 'unified_boxes') => {
+  const openStudio = (tab: 'appearance' | 'navigation' | 'texts_layout' | 'honors' | 'unified_boxes') => {
     setStudioTab(tab);
     setStudioOpen(true);
   };
@@ -601,7 +608,9 @@ export const MinimalThemeLayout: React.FC<MinimalThemeLayoutProps> = ({ onSelect
                     className={`${effectiveTitleClass} font-black tracking-tight ${palette.textPrimary}`}
                     style={{ textWrap: 'balance' }}
                   >
-                    {t3.heroGreetingPrefix || 'سلام'}، {currentUser?.fullName}
+                    {t3.heroGreetingPrefix?.includes('{name}')
+                      ? formatWelcomeBannerTitle(t3.heroGreetingPrefix, 'سلام', currentUser)
+                      : formatWelcomeBannerTitle(undefined, t3.heroGreetingPrefix || 'سلام', currentUser)}
                   </h1>
 
                   <p

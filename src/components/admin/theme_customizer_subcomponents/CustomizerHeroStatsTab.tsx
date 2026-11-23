@@ -179,7 +179,22 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
                   key={opt.id}
                   type="button"
                   onClick={() => {
-                    updateCrextioConfig({ heroRightSlotMode: opt.id as any });
+                    const mode = opt.id as 'both' | 'quick_actions' | 'stats' | 'none';
+                    const patch: Partial<CrextioDashboardConfig> = {
+                      heroRightSlotMode: mode,
+                      showHeroStats: mode === 'both' || mode === 'stats',
+                      showKpiRow: mode === 'both' || mode === 'stats',
+                      showQuickActions: mode === 'both' || mode === 'quick_actions',
+                    };
+                    if (mode === 'both' || mode === 'quick_actions') {
+                      const hasVisible = quickButtons.some(b => b.visible !== false);
+                      if (!hasVisible && quickButtons.length > 0) {
+                        patch.heroQuickButtons = quickButtons.map((b, idx) =>
+                          idx < 4 ? { ...b, visible: true } : b
+                        );
+                      }
+                    }
+                    updateCrextioConfig(patch);
                     triggerSuccess();
                   }}
                   className={`p-2 rounded-xl border text-[11px] font-bold cursor-pointer ${
@@ -299,18 +314,36 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
               />
             </div>
 
-            <div>
-              <label className="font-bold text-stone-700 block mb-1 text-xs">عنوان اصلی هیرو:</label>
-              <input
-                type="text"
-                value={crextioConfig.heroTitle || ''}
-                onChange={e => {
-                  updateCrextioConfig({ heroTitle: e.target.value });
-                  triggerSuccess();
-                }}
-                placeholder="سامانه و ویترین خدمات دانش‌آموختگان فقه و قضا"
-                className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-black text-stone-900"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-stone-700 block mb-1 text-xs">پیشوند خوش‌آمدگویی:</label>
+                <input
+                  type="text"
+                  value={crextioConfig.heroGreetingPrefix ?? 'خوش آمدید'}
+                  onChange={e => {
+                    updateCrextioConfig({ heroGreetingPrefix: e.target.value });
+                    triggerSuccess();
+                  }}
+                  placeholder="خوش آمدید"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-bold text-stone-900"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-stone-700 block mb-1 text-xs">
+                  عنوان اصلی هیرو (از {'{name}'} برای نام کاربر استفاده کنید):
+                </label>
+                <input
+                  type="text"
+                  value={crextioConfig.heroTitle || 'خوش آمدید، {name}'}
+                  onChange={e => {
+                    updateCrextioConfig({ heroTitle: e.target.value });
+                    triggerSuccess();
+                  }}
+                  placeholder="خوش آمدید، {name}"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-black text-stone-900"
+                />
+              </div>
             </div>
 
             <div>
@@ -356,7 +389,13 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
                 <input
                   type="checkbox"
                   checked={crextioConfig.showHeroStats !== false}
-                  onChange={() => handleToggle('showHeroStats')}
+                  onChange={() => {
+                    const nextStats = crextioConfig.showHeroStats === false;
+                    const curQuick = crextioConfig.showQuickActions !== false;
+                    const nextMode = nextStats && curQuick ? 'both' : nextStats ? 'stats' : curQuick ? 'quick_actions' : 'none';
+                    updateCrextioConfig({ showHeroStats: nextStats, showKpiRow: nextStats, heroRightSlotMode: nextMode });
+                    triggerSuccess();
+                  }}
                   className="w-4 h-4 accent-amber-800 rounded cursor-pointer"
                 />
               </label>
@@ -366,7 +405,13 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
                 <input
                   type="checkbox"
                   checked={crextioConfig.showQuickActions !== false}
-                  onChange={() => handleToggle('showQuickActions')}
+                  onChange={() => {
+                    const nextQuick = crextioConfig.showQuickActions === false;
+                    const curStats = crextioConfig.showHeroStats !== false;
+                    const nextMode = curStats && nextQuick ? 'both' : nextQuick ? 'quick_actions' : curStats ? 'stats' : 'none';
+                    updateCrextioConfig({ showQuickActions: nextQuick, heroRightSlotMode: nextMode });
+                    triggerSuccess();
+                  }}
                   className="w-4 h-4 accent-amber-800 rounded cursor-pointer"
                 />
               </label>

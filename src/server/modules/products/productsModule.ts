@@ -49,7 +49,10 @@ export class ProductsService {
       return [];
     }
 
-    let sql = `SELECT * FROM products WHERE is_available = 1 AND (is_deleted = 0 OR is_deleted IS NULL) AND deleted_at IS NULL`;
+    let sql = `SELECT * FROM products WHERE (is_deleted = 0 OR is_deleted IS NULL) AND deleted_at IS NULL`;
+    if (!isOfficial) {
+      sql += ` AND is_available = 1`;
+    }
     if (authCtx?.role === 'customer') {
       sql += ` AND (visible_to_customer = 1 OR visible_to_customer IS NULL)`;
     }

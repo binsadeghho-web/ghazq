@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useApp } from '../../context/AppContext';
 import { NavTabId } from '../layout/Sidebar';
 import { ModernDashboardCard } from '../ModernDashboardCard';
@@ -6,6 +6,12 @@ import { toPersianNumbers } from '../../utils/persianNumbers';
 import { DashboardWidgetsSuite } from './DashboardWidgetsSuite';
 import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
 import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
+import { AppSectionId } from '../../types';
+import { canViewSection, useRbacPolicies } from '../../utils/rbacPolicy';
+import {
+  applyNavigationCustomization,
+  getResolvedNavigationConfig,
+} from '../../utils/navigationConfig';
 import {
   Inbox,
   GraduationCap,
@@ -22,11 +28,31 @@ import {
   Clock,
   Sparkles,
   Layers,
-  Wallet
+  Wallet,
+  Menu
 } from 'lucide-react';
+
+const ThemeCustomizerModal = lazy(() =>
+  import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal }))
+);
 
 interface DashboardSectionProps {
   onNavigate: (tabId: NavTabId) => void;
+}
+
+interface DashboardServiceCardDef {
+  id: string;
+  navTab: NavTabId;
+  sectionId: AppSectionId;
+  staffOnly?: boolean;
+  title: string;
+  subtext: string;
+  badge: string;
+  trendContext: string;
+  accent: 'indigo' | 'violet' | 'emerald' | 'rose' | 'amber' | 'cyan' | 'teal' | 'purple';
+  icon: React.ReactNode;
+  notificationCount?: number;
+  hasNotification?: boolean;
 }
 
 export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }) => {
@@ -42,13 +68,15 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
     welfareRequests,
     consumables,
     synergyPosts,
-    auditLogs,
+    crextioConfig,
   } = useApp();
+  const { rolePolicies } = useRbacPolicies();
 
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerMousePos, setHeaderMousePos] = useState({ x: 0, y: 0 });
   const [isAlumniPreview, setIsAlumniPreview] = useState(false);
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
+  const [isNavCustomizerOpen, setIsNavCustomizerOpen] = useState(false);
 
   const handleHeaderMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!headerRef.current) return;
@@ -63,7 +91,178 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
     r => r.status === 'pending' || r.status === 'need_info'
   ).length;
 
-  const showAdminCard = (currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'alumni_manager' || currentUser?.role === 'supervisor') && !isAlumniPreview;
+  const showAdminCard =
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'super_admin' ||
+      currentUser?.role === 'alumni_manager' ||
+      currentUser?.role === 'supervisor') &&
+    !isAlumniPreview;
+
+  const resolvedNav = getResolvedNavigationConfig(crextioConfig.navigationConfig);
+
+  const candidateCards: DashboardServiceCardDef[] = [
+    {
+      id: 'People',
+      navTab: 'cartable',
+      sectionId: 'cartable',
+      title: 'خدمات اداری و آموزشی',
+      subtext: 'پیگیری مطالبات اداری، ارتقای رتبه، صدور گواهی‌ها و تبادل اسناد رسمی',
+      badge: 'پرتال اداری',
+      trendContext:
+        pendingRequestsCount > 0
+          ? `${pendingRequestsCount} درخواست در انتظار پاسخ مسئول`
+          : 'کارتابل آماده و پاسخ‌گویی برخط',
+      accent: 'indigo',
+      icon: <Inbox className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+      notificationCount: pendingRequestsCount,
+      hasNotification: pendingRequestsCount > 0,
+    },
+    {
+      id: 'Courses',
+      navTab: 'courses',
+      sectionId: 'courses',
+      title: 'دوره‌های تخصصی',
+      subtext: 'کارگاه‌های عالی فقه کاربردی، اسناد و آرشیو صوتی جلسات آموزشی',
+      badge: 'آموزش تخصصی',
+      trendContext: `${courses.length} دوره آموزشی و کارگاه فعال`,
+      accent: 'violet',
+      icon: <GraduationCap className="w-6 h-6 text-violet-600 dark:text-violet-400" />,
+    },
+    {
+      id: 'Products',
+      navTab: 'products',
+      sectionId: 'products',
+      title: 'کتاب و محصولات چند رسانه‌ای',
+      subtext: 'دانشنامه‌های فقهی-حقوقی، نشست‌های علمی و متون مرجع قضایی',
+      badge: 'انتشارات مرجع',
+      trendContext: `${products.length} اثر و نشریه علمی منتشرشده`,
+      accent: 'emerald',
+      icon: <BookOpen className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'CounselingGeneral',
+      navTab: 'counseling',
+      sectionId: 'counseling',
+      title: 'خدمات مشاوره عمومی',
+      subtext: 'سلامت روان، تحکیم خانواده، مشاوره فردی، زوج‌درمانی و سبک زندگی',
+      badge: 'مشاوره عمومی',
+      trendContext: `${consultants.filter(c => c.counselingType !== 'specialized_career').length} روان‌شناس و مشاور ارشد`,
+      accent: 'rose',
+      icon: <HeartHandshake className="w-6 h-6 text-rose-600 dark:text-rose-400" />,
+    },
+    {
+      id: 'SpecializedCounseling',
+      navTab: 'specialized_counseling',
+      sectionId: 'specialized_counseling',
+      title: 'مشاوره تخصصی شغلی قضا',
+      subtext: 'هدایت شغلی-تحصیلی با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار',
+      badge: 'هدایت شغلی قضا',
+      trendContext: `${consultants.filter(c => c.counselingType === 'specialized_career').length} استاد و قاضی پیشکسوت`,
+      accent: 'amber',
+      icon: <Scale className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+    },
+    {
+      id: 'Research',
+      navTab: 'research',
+      sectionId: 'research',
+      title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+      subtext: 'پک کامل یا مشورت موردی پایان‌نامه و مقاله، اساتید مجرب و اسکان مطالعاتی قم',
+      badge: 'خدمات پژوهشی',
+      trendContext: `${researchMentorships.length} پرونده پژوهشی ثبت‌شده`,
+      accent: 'amber',
+      icon: <FileText className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+    },
+    {
+      id: 'Rulings',
+      navTab: 'rulings',
+      sectionId: 'rulings',
+      title: 'تالار رأی قضایی',
+      subtext: 'نقد موشکافانه احکام توسط قضات تجدیدنظر و دیوان عالی کشور',
+      badge: 'مباحثات فقهی',
+      trendContext: `${rulings.length} دادنامه نقدشده`,
+      accent: 'cyan',
+      icon: <Scale className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />,
+    },
+    {
+      id: 'Welfare',
+      navTab: 'welfare',
+      sectionId: 'welfare',
+      title: 'تسهیلات و رفاهیات',
+      subtext: 'وام قرض‌الحسنه صندوق حامی، اقامتگاه مشهد و قم، تعاونی مصرف',
+      badge: 'صندوق رفاهی',
+      trendContext: `${welfareRequests.length + consumables.length} طرح رفاهی آماده`,
+      accent: 'teal',
+      icon: <Gift className="w-6 h-6 text-teal-600 dark:text-teal-400" />,
+    },
+    {
+      id: 'Synergy',
+      navTab: 'synergy',
+      sectionId: 'synergy',
+      title: 'دیوار هم‌افزایی',
+      subtext: 'استعلام‌های رویه‌ای استانی با شناسه ناشناس و پویش‌های همدلی اعضا',
+      badge: 'تعاون همکاران',
+      trendContext: `${synergyPosts.length} گفتگو و استعلام رویه‌ای`,
+      accent: 'purple',
+      icon: <Users2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />,
+    },
+    {
+      id: 'Finance',
+      navTab: 'finance',
+      sectionId: 'finance',
+      staffOnly: true,
+      title: 'امور مالی و حسابداری',
+      subtext: 'مدیریت جامع درآمدها، تحلیل آماری، فیش‌های واریزی، دفترکل و تسویه‌حساب مشاوران',
+      badge: 'امور مالی کلان',
+      trendContext: 'درآمد کل، گزارشات و تسویه‌حساب‌ها',
+      accent: 'emerald',
+      icon: <Wallet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'Alumni',
+      navTab: 'alumni',
+      sectionId: 'alumni',
+      staffOnly: true,
+      title: 'دانش‌آموختگان',
+      subtext: 'بانک جامع سوابق هویتی، قضایی، پژوهشی، رساله‌ها و ثبت پرونده‌های تفصیلی',
+      badge: 'بانک دانش‌آموختگان',
+      trendContext: `${toPersianNumbers(users.filter(u => u.role === 'alumni' || u.judicialGrade).length)} پرونده ثبت‌شده دانش‌آموخته`,
+      accent: 'emerald',
+      icon: <GraduationCap className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'Users',
+      navTab: 'users',
+      sectionId: 'users',
+      staffOnly: true,
+      title: 'مدیریت کاربران {حساب‌های کاربری}',
+      subtext: 'مدیریت حساب‌های کاربری همه سطوح، رمزهای عبور، وضعیت نشست‌ها و سطوح دسترسی',
+      badge: 'حساب‌های کاربری و دسترسی‌ها',
+      trendContext: `${toPersianNumbers(users.length)} حساب کاربری فعال`,
+      accent: 'indigo',
+      icon: <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+    },
+    {
+      id: 'Admin',
+      navTab: 'admin',
+      sectionId: 'admin',
+      staffOnly: true,
+      title: 'مدیریت سایت و پایش امنیت',
+      subtext: 'اتاق فرماندهی سامانه (۱۲ ابزار OPS)، پایش سلامت سرور و زنجیره وقایع SHA-256',
+      badge: 'اتاق فرماندهی و امنیت',
+      trendContext: 'مرکز پایش ۱۲‌گانه و امنیت سیستم',
+      accent: 'amber',
+      icon: <ShieldCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+    },
+  ];
+
+  const customizedCards = applyNavigationCustomization(
+    candidateCards,
+    resolvedNav.servicesMenuItems,
+    { hideInvisible: true }
+  ).filter(card => {
+    if (card.staffOnly && !showAdminCard) return false;
+    return canViewSection(currentUser, card.sectionId, rolePolicies);
+  });
 
   return (
     <div className="space-y-6">
@@ -76,12 +275,8 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
       {/* Reform 56: Alumni Identity Completion Percentage Widget & My Identity Card Trigger */}
       <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
       <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
-      {/* 
-        ========================================================================
-        باکس بالای داشبورد با طیف رنگی انیمیشنی پویا و تغییرکننده (Aurora Spectrum Header)
-        طیف نوری چندلایه با امواج نوری ارگانیک، بلر کریستالی و فیزیک موس
-        ========================================================================
-      */}
+
+      {/* Aurora Spectrum Header */}
       <div
         ref={headerRef}
         onMouseMove={handleHeaderMouseMove}
@@ -91,24 +286,12 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           ['--mouse-y' as string]: `${headerMousePos.y}px`,
         }}
       >
-        {/* لایه ۱: زمینه اصلی شیشه‌ای مات عمیق */}
         <div className="absolute inset-0 bg-white/75 dark:bg-slate-900/80 backdrop-blur-2xl z-0 transition-colors" />
 
-        {/* 
-          لایه ۲: امواج طیف نوری انیمیشنی تغییرکننده (Fluid Aurora Spectrum Waves)
-          این گوی‌ها و امواج رنگی پیوسته با چرخش، تغییر اسکیل و پالس نرم جابه‌جا می‌شوند
-        */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-80 dark:opacity-90">
-          {/* موج رنگی ۱: نیلی و بنفش کهکشانی */}
           <div className="absolute -top-1/4 -right-1/4 w-[500px] h-[350px] rounded-full bg-gradient-to-tr from-indigo-500/35 via-violet-500/30 to-purple-500/25 blur-3xl animate-aurora-slow" />
-          
-          {/* موج رنگی ۲: فیروزه‌ای و زمردی درخشان */}
           <div className="absolute -bottom-1/3 left-1/4 w-[450px] h-[320px] rounded-full bg-gradient-to-br from-cyan-400/30 via-emerald-400/25 to-teal-500/25 blur-3xl animate-aurora-fast" />
-
-          {/* موج رنگی ۳: کهربایی طلایی و یاقوتی گرم */}
           <div className="absolute top-1/4 -left-1/4 w-[400px] h-[300px] rounded-full bg-gradient-to-r from-amber-400/25 via-rose-500/25 to-pink-500/20 blur-3xl animate-aurora-pulse" />
-
-          {/* نورافکن نوری تعقیب‌کننده نشانگر موس روی طیف نوری با حجم جمع‌وجور و دقیق */}
           <div
             className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
             style={{
@@ -117,10 +300,8 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
           />
         </div>
 
-        {/* لایه ۳: خط مویی بازتابی لبه سقف با برق کریستالی (Specular Hairline) */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/90 dark:via-white/30 to-transparent pointer-events-none z-10" />
 
-        {/* لایه ۴: گرید محتوای متن و اکشن‌های سربرگ */}
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -135,7 +316,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    داشبورد خدمات جامع دانش‌آموختگان فقه و قضا
+                    داشبورد خدمات جامع {currentUser?.fullName || 'دانش‌آموختگان فقه و قضا'}
                   </h1>
                   <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20">
                     <Sparkles className="w-3 h-3" />
@@ -149,8 +330,18 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
             </div>
           </div>
 
-          {/* نشانگرهای وضعیت زنده و تقویم رسمی */}
           <div className="flex items-center gap-3 shrink-0 flex-wrap text-xs">
+            {showAdminCard && (
+              <button
+                type="button"
+                onClick={() => setIsNavCustomizerOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-sm transition-colors cursor-pointer"
+              >
+                <Menu className="w-3.5 h-3.5" />
+                <span>ترتیب و نام ناوبری و منوها</span>
+              </button>
+            )}
+
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/80 dark:border-white/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs">
               <CheckCircle2 className="w-4 h-4" />
               <span>سامانه برخط و متصل</span>
@@ -163,176 +354,39 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 backdrop-blur-md border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold">
               <Layers className="w-3.5 h-3.5" />
-              <span>۸ درگاه تخصصی</span>
+              <span>{toPersianNumbers(customizedCards.length)} درگاه تخصصی</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 
-        شبکه واکنش‌گرای کارت‌های مدرن بخش‌های اصلی
-        Grid Breakpoints:
-        - Mobile: 1 column
-        - Tablet (sm/md): 2 columns
-        - Desktop (lg): 3 columns
-        - Ultra-wide (xl): 4 columns
-      */}
+      {/* Customized Responsive Service Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-        
-        {/* ۱. خدمات اداری و آموزشی (کارتابل) */}
-        <ModernDashboardCard
-          title="خدمات اداری و آموزشی"
-          accent="indigo"
-          icon={<Inbox className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />}
-          subValue="پیگیری مطالبات اداری، ارتقای رتبه، صدور گواهی‌ها و تبادل اسناد رسمی"
-          trendContext={pendingRequestsCount > 0 ? `${pendingRequestsCount} درخواست در انتظار پاسخ مسئول` : 'کارتابل آماده و پاسخ‌گویی برخط'}
-          badgeText="پرتال اداری"
-          notificationCount={pendingRequestsCount}
-          hasNotification={pendingRequestsCount > 0}
-          onClick={() => onNavigate('cartable')}
-        />
-
-        {/* ۲. دوره‌های تخصصی و کارگاه‌ها */}
-        <ModernDashboardCard
-          title="دوره‌های تخصصی"
-          accent="violet"
-          icon={<GraduationCap className="w-6 h-6 text-violet-600 dark:text-violet-400" />}
-          subValue="کارگاه‌های عالی فقه کاربردی، اسناد و آرشیو صوتی جلسات آموزشی"
-          trendContext={`${courses.length} دوره آموزشی و کارگاه فعال`}
-          badgeText="آموزش تخصصی"
-          onClick={() => onNavigate('courses')}
-        />
-
-        {/* ۳. محصولات و کتب تخصصی */}
-        <ModernDashboardCard
-          title="محصولات و کتب"
-          accent="emerald"
-          icon={<BookOpen className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />}
-          subValue="دانشنامه‌های فقهی-حقوقی، آرای وحدت رویه و متون مرجع قضایی"
-          trendContext={`${products.length} اثر و نشریه علمی منتشرشده`}
-          badgeText="انتشارات مرجع"
-          onClick={() => onNavigate('products')}
-        />
-
-        {/* ۴. خدمات روان‌شناختی و مشاوره عمومی */}
-        <ModernDashboardCard
-          title="خدمات مشاوره عمومی"
-          accent="rose"
-          icon={<HeartHandshake className="w-6 h-6 text-rose-600 dark:text-rose-400" />}
-          subValue="سلامت روان، تحکیم خانواده، مشاوره فردی، زوج‌درمانی و سبک زندگی"
-          trendContext={`${consultants.filter(c => c.counselingType !== 'specialized_career').length} روان‌شناس و مشاور ارشد`}
-          badgeText="مشاوره عمومی"
-          onClick={() => onNavigate('counseling')}
-        />
-
-        {/* ۴.۵. مشاوره تخصصی تحصیلی و شغلی قضا (کارت مستقل) */}
-        <ModernDashboardCard
-          title="مشاوره تخصصی شغلی قضا"
-          accent="amber"
-          icon={<Scale className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-          subValue="هدایت شغلی-تحصیلی با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار"
-          trendContext={`${consultants.filter(c => c.counselingType === 'specialized_career').length} استاد و قاضی پیشکسوت`}
-          badgeText="هدایت شغلی قضا"
-          onClick={() => onNavigate('specialized_counseling')}
-        />
-
-        {/* ۵. راهبری پژوهش و رساله‌ها */}
-        <ModernDashboardCard
-          title="راهبری پژوهش و مقاله (خدمات پژوهشی)"
-          accent="amber"
-          icon={<FileText className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-          subValue="پک کامل یا مشورت موردی پایان‌نامه و مقاله، اساتید مجرب و اسکان مطالعاتی قم"
-          trendContext={`${researchMentorships.length} پرونده پژوهشی ثبت‌شده`}
-          badgeText="خدمات پژوهشی"
-          onClick={() => onNavigate('research')}
-        />
-
-        {/* ۶. تالار رأی قضایی */}
-        <ModernDashboardCard
-          title="تالار رأی قضایی"
-          accent="cyan"
-          icon={<Scale className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />}
-          subValue="نقد موشکافانه احکام توسط قضات تجدیدنظر و دیوان عالی کشور"
-          trendContext={`${rulings.length} دادنامه نقدشده`}
-          badgeText="مباحثات فقهی"
-          onClick={() => onNavigate('rulings')}
-        />
-
-        {/* ۷. تسهیلات و رفاهیات */}
-        <ModernDashboardCard
-          title="تسهیلات و رفاهیات"
-          accent="teal"
-          icon={<Gift className="w-6 h-6 text-teal-600 dark:text-teal-400" />}
-          subValue="وام قرض‌الحسنه صندوق حامی، اقامتگاه مشهد و قم، تعاونی مصرف"
-          trendContext={`${welfareRequests.length + consumables.length} طرح رفاهی آماده`}
-          badgeText="صندوق رفاهی"
-          onClick={() => onNavigate('welfare')}
-        />
-
-        {/* ۸. دیوار هم‌افزایی شغلی و همدلی */}
-        <ModernDashboardCard
-          title="دیوار هم‌افزایی"
-          accent="purple"
-          icon={<Users2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />}
-          subValue="استعلام‌های رویه‌ای استانی با شناسه ناشناس و پویش‌های همدلی اعضا"
-          trendContext={`${synergyPosts.length} گفتگو و استعلام رویه‌ای`}
-          badgeText="تعاون همکاران"
-          onClick={() => onNavigate('synergy')}
-        />
-
-        {/* ۹.۵. کارت امور مالی و حسابداری (جدید) */}
-        {showAdminCard && (
+        {customizedCards.map(card => (
           <ModernDashboardCard
-            title="امور مالی و حسابداری"
-            accent="emerald"
-            icon={<Wallet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />}
-            subValue="مدیریت جامع درآمدها، تحلیل آماری، فیش‌های واریزی، دفترکل و تسویه‌حساب مشاوران"
-            trendContext="درآمد کل، گزارشات و تسویه‌حساب‌ها"
-            badgeText="امور مالی کلان"
-            onClick={() => onNavigate('finance')}
+            key={card.id}
+            title={card.title}
+            accent={card.accent}
+            icon={card.icon}
+            subValue={card.subtext}
+            trendContext={card.trendContext}
+            badgeText={card.badge}
+            notificationCount={card.notificationCount}
+            hasNotification={card.hasNotification}
+            onClick={() => onNavigate(card.navTab)}
           />
-        )}
-
-        {/* ۱۰. کارت ویژه دانش‌آموختگان (فقط برای ادمین و مسئولین) */}
-        {showAdminCard && (
-          <ModernDashboardCard
-            title="دانش‌آموختگان"
-            accent="emerald"
-            icon={<GraduationCap className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />}
-            subValue="بانک جامع سوابق هویتی، قضایی، پژوهشی، رساله‌ها و ثبت پرونده‌های تفصیلی"
-            trendContext={`${toPersianNumbers(users.filter(u => u.role === 'alumni' || u.judicialGrade).length)} پرونده ثبت‌شده دانش‌آموخته`}
-            badgeText="بانک دانش‌آموختگان"
-            onClick={() => onNavigate('alumni')}
-          />
-        )}
-
-        {/* ۱۰. کارت ویژه مدیریت کاربران {حساب‌های کاربری} */}
-        {showAdminCard && (
-          <ModernDashboardCard
-            title="مدیریت کاربران {حساب‌های کاربری}"
-            accent="indigo"
-            icon={<Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />}
-            subValue="مدیریت حساب‌های کاربری همه سطوح، رمزهای عبور، وضعیت نشست‌ها و سطوح دسترسی"
-            trendContext={`${toPersianNumbers(users.length)} حساب کاربری فعال`}
-            badgeText="حساب‌های کاربری و دسترسی‌ها"
-            onClick={() => onNavigate('users')}
-          />
-        )}
-
-        {/* ۱۱. کارت مدیریت سایت و پایش امنیت */}
-        {showAdminCard && (
-          <ModernDashboardCard
-            title="مدیریت سایت و پایش امنیت"
-            accent="amber"
-            icon={<ShieldCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-            subValue="اتاق فرماندهی سامانه (۱۲ ابزار OPS)، پایش سلامت سرور و زنجیره وقایع SHA-256"
-            trendContext="مرکز پایش ۱۲‌گانه و امنیت سیستم"
-            badgeText="اتاق فرماندهی و امنیت"
-            onClick={() => onNavigate('admin')}
-          />
-        )}
-
+        ))}
       </div>
+
+      {showAdminCard && (
+        <Suspense fallback={null}>
+          <ThemeCustomizerModal
+            isOpen={isNavCustomizerOpen}
+            initialTab="navigation"
+            onClose={() => setIsNavCustomizerOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

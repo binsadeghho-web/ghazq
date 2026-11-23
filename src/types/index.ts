@@ -317,6 +317,7 @@ export interface CrextioDashboardConfig {
 
   // ویترین هیرو، برند هدر، ویجت‌ها و بنر خوش‌آمدگویی
   heroBadgeText?: string;
+  heroGreetingPrefix?: string;
   showHeroStats?: boolean;
   heroBannerScale?: 'micro' | 'compact' | 'normal' | 'expanded';
   showHeroPortrait?: boolean;
@@ -327,6 +328,7 @@ export interface CrextioDashboardConfig {
     targetNav: string;
     visible: boolean;
   }>;
+  navigationConfig?: NavigationCustomizationConfig;
   brandMainTitle?: string;
   brandBadgeText?: string;
   brandSubtitleText?: string;
@@ -451,6 +453,21 @@ export interface CrextioDashboardConfig {
 
   // ویرایشگر جامع تم ۳ (مجمع مینیمال و هم‌افزایی)
   theme3Config?: Theme3CustomizationConfig;
+}
+
+export interface CustomNavItemConfig {
+  id: string;
+  label: string;
+  subtext?: string;
+  badge?: string;
+  visible?: boolean;
+}
+
+export interface NavigationCustomizationConfig {
+  verticalSidebar?: CustomNavItemConfig[];
+  horizontalNavbar?: CustomNavItemConfig[];
+  servicesMenuTitle?: string;
+  servicesMenuItems?: CustomNavItemConfig[];
 }
 
 export interface HonorAppointmentItem {
@@ -837,6 +854,52 @@ export interface CourseCertificateItem {
   version: number;
 }
 
+export interface CourseInstructorItem {
+  id: string;
+  fullName: string;
+  title?: string;
+  roleLabel?: string;
+  avatarUrl?: string;
+  resume?: string;
+  isPrimary?: boolean;
+}
+
+export type CourseSessionPresenterMode =
+  | 'course_instructor'
+  | 'custom_presenter'
+  | 'unspecified'
+  | 'panel';
+
+export interface CourseSessionItem {
+  id: string;
+  sessionNumber: number;
+  title: string;
+  presenterMode: CourseSessionPresenterMode;
+  presenterInstructorId?: string;
+  presenterName?: string;
+  presenterTitle?: string;
+  sessionDate?: string;
+  startTime?: string;
+  durationMinutes?: number;
+  holdingType?: 'online' | 'in_person' | 'hybrid' | 'offline_recorded';
+  meetingLink?: string;
+  description?: string;
+}
+
+export interface CourseAttendanceRecord {
+  id: string;
+  courseId: string;
+  userId: string;
+  userName: string;
+  sessionNumber: number;
+  sessionTitle?: string;
+  status: 'present' | 'absent' | 'excused' | 'late';
+  note?: string;
+  recordedBy?: string;
+  version?: number;
+  updatedAt?: string;
+}
+
 export interface Course {
   id: string;
   title: string;
@@ -844,6 +907,9 @@ export interface Course {
   instructorTitle?: string;
   instructorResume?: string; // رزومه علمی و حرفه‌ای استاد
   instructorAvatarUrl?: string; // تصویر استاد ذخیره شده روی دیسک
+  instructors?: CourseInstructorItem[]; // لیست چند مدرس و ارائه‌دهنده دوره
+  sessions?: CourseSessionItem[]; // برنامه جلسات دوره به همراه مدرس/ارائه‌دهنده هر جلسه
+  draftFolderKey?: string; // کلید موقت پوشه فایل‌ها در هنگام ساخت دوره جدید
   category?: string; // فقه القضاء، داوری تجاری، جزا و جرم‌شناسی، مهارت‌های قضایی، حقوق خصوصی
   level: string;
   hours: number;
@@ -883,6 +949,7 @@ export interface Course {
   deletedBy?: string;
   isEnrolled?: boolean;
   enrollmentStatus?: 'pending_review' | 'confirmed' | 'rejected';
+  classStatus?: 'active' | 'removed';
   hasArchiveAccess?: boolean;
   archiveNotes?: string;
 
@@ -916,9 +983,13 @@ export interface Course {
     url?: string;
     downloadUrl?: string;
     size?: string;
+    fileSizeBytes?: number;
     fileType?: string;
     format?: string;
     description?: string;
+    sessionNumber?: number;
+    sourceType?: 'upload' | 'disk' | 'external';
+    filename?: string;
   }>;
   visibleToCustomer?: boolean;
   sessionsCount?: number;
@@ -938,6 +1009,10 @@ export interface CourseEnrollment {
   enrolledAt: string;
   paymentMethod: 'online_gateway' | 'bank_receipt';
   paymentStatus: 'pending_review' | 'confirmed' | 'rejected';
+  classStatus?: 'active' | 'removed';
+  removedAt?: string;
+  removedBy?: string;
+  removalReason?: string;
   paymentPlanType?: 'full' | 'installment';
   discountCode?: string;
   discountAmount?: number;
@@ -1178,7 +1253,14 @@ export interface CounselingFieldItem {
   updatedAt?: string;
 }
 
-export type DynamicWizardFieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+export type DynamicWizardFieldType =
+  | 'text'
+  | 'textarea'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+  | 'location_city'
+  | 'time_preference';
 
 export interface DynamicWizardField {
   id: string;
@@ -1188,6 +1270,11 @@ export interface DynamicWizardField {
   placeholder?: string;
   helperText?: string;
   options?: string[];
+  primaryCityLabel?: string;
+  otherCitiesLabel?: string;
+  dayTimeOptions?: string[];
+  weekPeriodOptions?: string[];
+  undecidedLabel?: string;
   required: boolean;
   enabled: boolean;
   order: number;
@@ -1202,20 +1289,57 @@ export interface DynamicWizardStep {
   fields: DynamicWizardField[];
 }
 
+export interface CounselingLandingInfoCard {
+  id: string;
+  title: string;
+  body: string;
+  badge?: string;
+  enabled: boolean;
+}
+
 export interface SpecializedCounselingPortalConfig {
   sectionTitle: string;
   sectionSubtitle: string;
+  headerBadgeLabel?: string;
+  tabRequestLabel?: string;
+  tabConsultantsLabel?: string;
+  tabHistoryLabel?: string;
+  heroBadgeLabel?: string;
   landingIntroTitle: string;
   landingIntroBody: string;
+  heroHistoryButtonLabel?: string;
+  calloutBadgeLabel?: string;
   landingCalloutTitle: string;
   landingCalloutSubtitle: string;
   ctaButtonLabel: string;
+  calloutSecondaryLinkLabel?: string;
+  fieldsShowcaseBadgeLabel?: string;
   fieldsSectionTitle: string;
   fieldsSectionSubtitle: string;
+  fieldsShowcaseHelperText?: string;
+  fieldsCardCtaLabel?: string;
+  fieldsShowcaseEmptyText?: string;
+  landingInfoCardsTitle?: string;
+  landingInfoCardsSubtitle?: string;
+  landingInfoCards?: CounselingLandingInfoCard[];
   descriptionButtonLabel: string;
   descriptionModalTitle: string;
   descriptionModalBody: string;
   showAdvisorsToStudents: boolean;
+  showFieldsSelectionStep?: boolean;
+  wizardFieldStepTitle?: string;
+  wizardFieldStepSubtitle?: string;
+  wizardFieldNotice?: string;
+  fieldSelectionOptional?: boolean;
+  skipFieldSelectionLabel?: string;
+  otherCities?: string[];
+  includeFinalReviewStep?: boolean;
+  showPhoneFieldInWizard?: boolean;
+  showConsultantsInWizard?: boolean;
+  submitButtonLabel?: string;
+  nextButtonLabel?: string;
+  prevButtonLabel?: string;
+  submissionSuccessTitle?: string;
   submissionSuccessMessage: string;
   wizardSteps: DynamicWizardStep[];
   version: number;
@@ -1224,18 +1348,49 @@ export interface SpecializedCounselingPortalConfig {
 export interface GeneralCounselingPortalConfig {
   sectionTitle: string;
   sectionSubtitle: string;
+  headerBadgeLabel?: string;
+  tabRequestLabel?: string;
+  tabConsultantsLabel?: string;
+  tabTariffsLabel?: string;
+  tabTestsLabel?: string;
+  tabHistoryLabel?: string;
+  heroBadgeLabel?: string;
   landingIntroTitle: string;
   landingIntroBody: string;
+  heroHistoryButtonLabel?: string;
+  calloutBadgeLabel?: string;
   landingCalloutTitle: string;
   landingCalloutSubtitle: string;
   ctaButtonLabel: string;
+  calloutSecondaryLinkLabel?: string;
+  fieldsShowcaseBadgeLabel?: string;
   fieldsSectionTitle: string;
   fieldsSectionSubtitle: string;
+  fieldsShowcaseHelperText?: string;
+  fieldsCardCtaLabel?: string;
+  fieldsShowcaseEmptyText?: string;
+  landingInfoCardsTitle?: string;
+  landingInfoCardsSubtitle?: string;
+  landingInfoCards?: CounselingLandingInfoCard[];
   descriptionButtonLabel: string;
   descriptionModalTitle: string;
   descriptionModalBody: string;
+  showFieldsSelectionStep?: boolean;
+  wizardFieldStepTitle?: string;
+  wizardFieldStepSubtitle?: string;
+  wizardFieldNotice?: string;
+  fieldSelectionOptional?: boolean;
+  skipFieldSelectionLabel?: string;
+  otherCities?: string[];
+  includeFinalReviewStep?: boolean;
+  showPhoneFieldInWizard?: boolean;
+  showConsultantsInWizard?: boolean;
+  submitButtonLabel?: string;
+  nextButtonLabel?: string;
+  prevButtonLabel?: string;
   showRatesInWizardEnd: boolean;
   ratesButtonLabel: string;
+  submissionSuccessTitle?: string;
   submissionSuccessMessage: string;
   wizardSteps: DynamicWizardStep[];
   version: number;

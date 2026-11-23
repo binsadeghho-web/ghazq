@@ -107,7 +107,23 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
 
   if (!course) return null;
 
-  const courseEnrollments = enrollments.filter(e => e.courseId === course.id);
+  const courseEnrollments = enrollments.filter(
+    e => e.courseId === course.id && e.classStatus !== 'removed'
+  );
+  const removedEnrollmentsCount = enrollments.filter(
+    e => e.courseId === course.id && e.classStatus === 'removed'
+  ).length;
+
+  const structuredSessions =
+    course.sessions && course.sessions.length > 0
+      ? course.sessions
+      : Array.from({ length: sessionsCount }, (_, idx) => ({
+          id: `sess_${idx + 1}`,
+          sessionNumber: idx + 1,
+          title: `جلسه ${toPersianNumbers(idx + 1)}`,
+          presenterMode: 'course_instructor' as const,
+          presenterName: course.instructor,
+        }));
 
   const handleSaveOpsConfig = async (newSessionsCount: number, newWaitlistEnabled: boolean) => {
     try {
@@ -130,18 +146,20 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
   const handleSetAttendance = async (
     participant: { userId: string; userName: string },
     sessionNum: number,
-    status: 'present' | 'absent' | 'excused'
+    status: 'present' | 'late' | 'absent' | 'excused'
   ) => {
+    const sessObj = structuredSessions.find(s => Number(s.sessionNumber) === sessionNum);
     try {
       await api.recordCourseAttendance(course.id, {
         userId: participant.userId,
         userName: participant.userName,
         sessionNumber: sessionNum,
-        sessionTitle: `جلسه ${toPersianNumbers(sessionNum)}`,
+        sessionTitle: sessObj?.title || `جلسه ${toPersianNumbers(sessionNum)}`,
+        sessionId: sessObj?.id,
         status,
       });
       await loadCourseOpsData();
-      showToast(`وضعیت حضور «${participant.userName}» در جلسه ${toPersianNumbers(sessionNum)} ثبت گردید.`);
+      showToast(`وضعیت حضور «${participant.userName}» در ${sessObj?.title || `جلسه ${toPersianNumbers(sessionNum)}`} ثبت گردید.`);
     } catch (err: any) {
       showToast(`خطا در ثبت حضور و غیاب: ${err.message}`);
     }
@@ -368,27 +386,40 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                   </div>
                 )}
 
-                {/* Session Selector Pills (Session 1 .. N) */}
+                {/* Session Selector Pills (Uses structured sessions if configured) */}
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block">
-                    انتخاب جلسه جهت مشاهده یا ثبت حضور و غیاب:
-                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                      انتخاب جلسه جهت مشاهده یا ثبت حضور و غیاب:
+                    </span>
+                    {removedEnrollmentsCount > 0 && (
+                      <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                        {toPersianNumbers(removedEnrollmentsCount)} شرکت‌کننده حذف‌شده از کلاس مستثنی شده‌اند
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {Array.from({ length: sessionsCount }, (_, idx) => idx + 1).map(sessNum => (
-                      <button
-                        key={sessNum}
-                        type="button"
-                        onClick={() => setSelectedSession(sessNum)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                          selectedSession === sessNum
-                            ? 'bg-slate-900 dark:bg-emerald-500 text-white dark:text-stone-950 shadow-sm'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                        }`}
-                      >
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>جلسه {toPersianNumbers(sessNum)}</span>
-                      </button>
-                    ))}
+                    {structuredSessions.map(sess => {
+                      const sessNum = Number(sess.sessionNumber);
+                      return (
+                        <button
+                          key={sess.id || sessNum}
+                          type="button"
+                          onClick={() => setSelectedSession(sessNum)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                            selectedSession === sessNum
+                              ? 'bg-slate-900 dark:bg-emerald-500 text-white dark:text-stone-950 shadow-sm'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                          }`}
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{sess.title || `جلسه ${toPersianNumbers(sessNum)}`}</span>
+                          {sess.presenterMode !== 'unspecified' && sess.presenterName && (
+                            <span className="opacity-75 text-[10px]">({sess.presenterName})</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -422,7 +453,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                             a => a.userId === enr.userId && Number(a.sessionNumber) === selectedSession
                           );
                           const totalPresent = attendanceRecords.filter(
-                            a => a.userId === enr.userId && a.status === 'present'
+                            a => a.userId === enr.userId && (a.status === 'present' || a.status === 'late')
                           ).length;
                           const currentStatus = rec?.status || 'unrecorded';
 
@@ -435,6 +466,11 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                                 {currentStatus === 'present' && (
                                   <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-black">
                                     حاضر در جلسه
+                                  </span>
+                                )}
+                                {currentStatus === 'late' && (
+                                  <span className="px-2.5 py-1 rounded-lg bg-sky-500/15 text-sky-700 dark:text-sky-300 font-black">
+                                    حضور با تاخیر
                                   </span>
                                 )}
                                 {currentStatus === 'absent' && (
@@ -451,8 +487,8 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                                   <span className="text-slate-400">ثبت نشده</span>
                                 )}
                               </td>
-                              <td className="p-3.5 font-mono font-bold text-slate-600 dark:text-slate-300">
-                                {toPersianNumbers(totalPresent)} از {toPersianNumbers(sessionsCount)} جلسه
+                              <td className="p-3.5 font-mono font-bold tabular-nums text-slate-600 dark:text-slate-300">
+                                {toPersianNumbers(totalPresent)} از {toPersianNumbers(structuredSessions.length)} جلسه
                               </td>
                               {isOfficial && (
                                 <td className="p-3.5 text-center">
@@ -473,6 +509,23 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                                       }`}
                                     >
                                       حاضر
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleSetAttendance(
+                                          { userId: enr.userId, userName: enr.userName },
+                                          selectedSession,
+                                          'late'
+                                        )
+                                      }
+                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${
+                                        currentStatus === 'late'
+                                          ? 'bg-sky-600 text-white'
+                                          : 'bg-sky-500/10 text-sky-700 hover:bg-sky-500/20'
+                                      }`}
+                                    >
+                                      تاخیر
                                     </button>
                                     <button
                                       type="button"

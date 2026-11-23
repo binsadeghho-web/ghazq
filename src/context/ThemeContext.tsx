@@ -92,6 +92,42 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const mizanVersionRef = React.useRef<number>(1);
   const crextioStateRef = React.useRef<CrextioDashboardConfig>(DEFAULT_CREXTIO_CONFIG);
   const mizanStateRef = React.useRef<MizanDashboardConfig>(DEFAULT_MIZAN_CONFIG);
+  const crextioSavingRef = React.useRef<boolean>(false);
+  const crextioQueuedRef = React.useRef<boolean>(false);
+
+  const flushCrextioSaveQueue = useCallback(() => {
+    if (crextioSavingRef.current) {
+      crextioQueuedRef.current = true;
+      return;
+    }
+    crextioSavingRef.current = true;
+    crextioQueuedRef.current = false;
+
+    const latestConfig = crextioStateRef.current;
+    const baseVer = crextioVersionRef.current || (latestConfig as any)._baseVersion || 1;
+
+    api.saveThemeConfig({
+      _target: 'crextio',
+      _baseVersion: baseVer,
+      config: latestConfig,
+    }).then(res => {
+      if (res?.version) {
+        crextioVersionRef.current = Number(res.version);
+        setCrextioConfig(curr => {
+          const updated = { ...curr, _baseVersion: res.version };
+          crextioStateRef.current = updated;
+          return updated;
+        });
+      }
+    }).catch(() => {
+      // Keep UI responsive; avoid crashing on transient network errors
+    }).finally(() => {
+      crextioSavingRef.current = false;
+      if (crextioQueuedRef.current) {
+        flushCrextioSaveQueue();
+      }
+    });
+  }, []);
 
   const applyCrextioConfigPayload = useCallback((incoming: Partial<CrextioDashboardConfig>, version?: number) => {
     setCrextioConfig(prev => {
@@ -104,6 +140,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ...(DEFAULT_CREXTIO_CONFIG.theme3Config || {}),
           ...(prev.theme3Config || {}),
           ...(incoming.theme3Config || {}),
+        },
+        navigationConfig: {
+          ...(prev.navigationConfig || {}),
+          ...(incoming.navigationConfig || {}),
         },
         dashboardSectionOrder: reconciledOrder,
         showResearchPromoShowcase:
@@ -186,27 +226,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const next: CrextioDashboardConfig = {
       ...prev,
       ...updates,
+      navigationConfig:
+        updates.navigationConfig !== undefined
+          ? { ...(prev.navigationConfig || {}), ...updates.navigationConfig }
+          : prev.navigationConfig,
       dashboardSectionOrder: reconcileDashboardSectionOrder(updates.dashboardSectionOrder ?? prev.dashboardSectionOrder),
     };
     crextioStateRef.current = next;
     setCrextioConfig(next);
-
-    const baseVer = crextioVersionRef.current || (prev as any)._baseVersion || 1;
-    api.saveThemeConfig({
-      _target: 'crextio',
-      _baseVersion: baseVer,
-      config: next,
-    }).then(res => {
-      if (res?.version) {
-        crextioVersionRef.current = Number(res.version);
-        setCrextioConfig(curr => {
-          const updated = { ...curr, _baseVersion: res.version };
-          crextioStateRef.current = updated;
-          return updated;
-        });
-      }
-    }).catch(() => {});
-  }, []);
+    flushCrextioSaveQueue();
+  }, [flushCrextioSaveQueue]);
 
   const resetCrextioConfig = useCallback(() => {
     const baseVer = crextioVersionRef.current || 1;
@@ -216,21 +245,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     crextioStateRef.current = next;
     setCrextioConfig(next);
-    api.saveThemeConfig({
-      _target: 'crextio',
-      _baseVersion: baseVer,
-      config: DEFAULT_CREXTIO_CONFIG,
-    }).then(res => {
-      if (res?.version) {
-        crextioVersionRef.current = Number(res.version);
-        setCrextioConfig(curr => {
-          const updated = { ...curr, _baseVersion: res.version };
-          crextioStateRef.current = updated;
-          return updated;
-        });
-      }
-    }).catch(() => {});
-  }, []);
+    flushCrextioSaveQueue();
+  }, [flushCrextioSaveQueue]);
 
   const updateMizanConfig = useCallback((updates: Partial<MizanDashboardConfig>) => {
     const prev = mizanStateRef.current;

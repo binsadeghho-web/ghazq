@@ -19,6 +19,9 @@ import { ProductBuilderModal } from './subcomponents/ProductBuilderModal';
 import { ProductStoreSettingsModal } from './subcomponents/ProductStoreSettingsModal';
 import { ProductDeleteConfirmModal } from './subcomponents/ProductDeleteConfirmModal';
 import { ProductLightboxModal } from './subcomponents/ProductLightboxModal';
+import { ProductAdminConsole } from './subcomponents/ProductAdminConsole';
+import { ProductAdminDetailModal } from './subcomponents/ProductAdminDetailModal';
+import { ShieldCheck, Store } from 'lucide-react';
 
 export const ProductsSection: React.FC = () => {
   const {
@@ -39,6 +42,9 @@ export const ProductsSection: React.FC = () => {
   const { rolePolicies } = useRbacPolicies();
 
   const isOfficial = canManageAllInSection(currentUser, 'products', rolePolicies);
+
+  const [adminViewMode, setAdminViewMode] = useState<'admin' | 'storefront'>('admin');
+  const [inspectingProductId, setInspectingProductId] = useState<string | null>(null);
 
   const [activeShelf, setActiveShelf] = useState<ProductShelfKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,17 +77,23 @@ export const ProductsSection: React.FC = () => {
     }
   }, [activeShelf, isOfficial, productsStoreConfig.enabledCategories]);
 
-  // Keep introProduct fresh after purchase/edit
+  // Keep introProduct & inspectingProduct fresh after purchase/edit
   const activeIntroProduct = useMemo(() => {
     if (!introProduct) return null;
     return products.find(p => p.id === introProduct.id) || introProduct;
   }, [introProduct, products]);
+
+  const inspectingProduct = useMemo(() => {
+    if (!inspectingProductId) return null;
+    return products.find(p => p.id === inspectingProductId && !p.isDeleted) || null;
+  }, [inspectingProductId, products]);
 
   const activeProducts = useMemo(
     () =>
       products
         .filter(p => {
           if (p.isDeleted) return false;
+          if (p.isAvailable === false) return false;
           if (currentUser?.role === 'customer' && p.visibleToCustomer === false) return false;
           if (!isOfficial && productsStoreConfig.enabledCategories?.[p.format] === false) return false;
           return true;
@@ -205,11 +217,14 @@ export const ProductsSection: React.FC = () => {
   };
 
   const handleMoveOrder = async (productId: string, direction: 'up' | 'down') => {
-    const idx = activeProducts.findIndex(p => p.id === productId);
+    const orderedCatalog = products
+      .filter(p => !p.isDeleted)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    const idx = orderedCatalog.findIndex(p => p.id === productId);
     if (idx < 0) return;
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= activeProducts.length) return;
-    const nextOrder = [...activeProducts];
+    if (swapIdx < 0 || swapIdx >= orderedCatalog.length) return;
+    const nextOrder = [...orderedCatalog];
     const [moved] = nextOrder.splice(idx, 1);
     nextOrder.splice(swapIdx, 0, moved);
     try {
@@ -276,70 +291,152 @@ export const ProductsSection: React.FC = () => {
         </div>
       )}
 
-      <ProductStatsHeader
-        storeConfig={productsStoreConfig}
-        activeProductsCount={activeProducts.length}
-        categoryCounts={categoryCounts}
-        myOwnedCount={myOwnedProducts.length}
-        ordersCount={productOrders.length}
-        activeShelf={activeShelf}
-        onSelectShelf={setActiveShelf}
-        isOfficial={isOfficial}
-        onOpenAddProduct={() => handleOpenProductBuilder()}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
+      {isOfficial && (
+        <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-6 py-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+              {adminViewMode === 'admin'
+                ? 'حالت پنل مدیریت — نظارت بر سفارش‌ها، مدارک واریزی، موجودی و تبلیغات'
+                : 'حالت پیش‌نمایش فروشگاه دانش‌آموختگان'}
+            </div>
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              {productsStoreConfig.storeTitle || 'کتاب و محصولات چند رسانه‌ای'}
+            </h1>
+          </div>
 
-      <ProductShelfBar
-        activeShelf={activeShelf}
-        onSelectShelf={setActiveShelf}
-        storeConfig={productsStoreConfig}
-        isOfficial={isOfficial}
-        allCount={activeProducts.length}
-        categoryCounts={categoryCounts}
-        myOwnedCount={myOwnedProducts.length}
-        ordersCount={productOrders.length}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setAdminViewMode('admin')}
+                className={`px-3.5 py-2 rounded-lg flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                  adminViewMode === 'admin'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                <span>پنل مدیریت</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminViewMode('storefront')}
+                className={`px-3.5 py-2 rounded-lg flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors ${
+                  adminViewMode === 'storefront'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5 text-sky-500" />
+                <span>نمای دانش‌آموختگان</span>
+              </button>
+            </div>
 
-      {activeShelf === 'orders' ? (
-        <ProductOrdersView
-          orders={filteredOrders}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Sliders className="w-4 h-4 text-amber-500" />
+              <span>تنظیمات بخش و عناوین</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenProductBuilder()}
+              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <span>+ افزودن کتاب / نشست / محصول</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isOfficial && adminViewMode === 'admin' ? (
+        <ProductAdminConsole
           products={products}
+          orders={productOrders}
           storeConfig={productsStoreConfig}
-          isOfficial={isOfficial}
+          onInspectProduct={prod => setInspectingProductId(prod.id)}
+          onOpenAddProduct={() => handleOpenProductBuilder()}
+          onOpenEdit={handleOpenProductBuilder}
+          onOpenDelete={setProductToDelete}
+          onToggleShowcase={handleToggleShowcase}
+          onMoveOrder={handleMoveOrder}
           onReviewOrder={reviewProductOrder}
           onNotify={notify}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentShelfList.length === 0 ? (
-            <div className="col-span-full p-14 text-center text-xs text-slate-400 space-y-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <BookOpen className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" />
-              <p className="font-extrabold text-slate-700 dark:text-slate-300 text-sm">
-                هیچ اثری در این دسته‌بندی یا با عبارت جستجوی شما یافت نشد.
-              </p>
-            </div>
-          ) : (
-            currentShelfList.map((product, idx) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                index={idx}
-                totalCount={currentShelfList.length}
-                isOfficial={isOfficial}
-                storeConfig={productsStoreConfig}
-                onOpenLightbox={setLightboxImage}
-                onOpenIntro={setIntroProduct}
-                onOpenPurchase={setPurchasingProduct}
-                onOpenEdit={handleOpenProductBuilder}
-                onOpenDelete={setProductToDelete}
-                onMoveOrder={isOfficial && activeShelf === 'all' ? handleMoveOrder : undefined}
-                onToggleShowcase={isOfficial ? handleToggleShowcase : undefined}
-              />
-            ))
+        <>
+          {!isOfficial && (
+            <ProductStatsHeader
+              storeConfig={productsStoreConfig}
+              activeProductsCount={activeProducts.length}
+              categoryCounts={categoryCounts}
+              myOwnedCount={myOwnedProducts.length}
+              ordersCount={productOrders.length}
+              activeShelf={activeShelf}
+              onSelectShelf={setActiveShelf}
+              isOfficial={false}
+              onOpenAddProduct={() => handleOpenProductBuilder()}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
           )}
-        </div>
+
+          <ProductShelfBar
+            activeShelf={activeShelf}
+            onSelectShelf={setActiveShelf}
+            storeConfig={productsStoreConfig}
+            isOfficial={isOfficial}
+            allCount={activeProducts.length}
+            categoryCounts={categoryCounts}
+            myOwnedCount={myOwnedProducts.length}
+            ordersCount={productOrders.length}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+
+          {activeShelf === 'orders' ? (
+            <ProductOrdersView
+              orders={filteredOrders}
+              products={products}
+              storeConfig={productsStoreConfig}
+              isOfficial={isOfficial}
+              onReviewOrder={reviewProductOrder}
+              onNotify={notify}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {currentShelfList.length === 0 ? (
+                <div className="col-span-full p-14 text-center text-xs text-slate-400 space-y-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <BookOpen className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" />
+                  <p className="font-extrabold text-slate-700 dark:text-slate-300 text-sm">
+                    هیچ اثری در این دسته‌بندی یا با عبارت جستجوی شما یافت نشد.
+                  </p>
+                </div>
+              ) : (
+                currentShelfList.map((product, idx) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    index={idx}
+                    totalCount={currentShelfList.length}
+                    isOfficial={isOfficial}
+                    storeConfig={productsStoreConfig}
+                    onOpenLightbox={setLightboxImage}
+                    onOpenIntro={isOfficial && adminViewMode === 'admin' ? p => setInspectingProductId(p.id) : setIntroProduct}
+                    onOpenPurchase={setPurchasingProduct}
+                    onOpenEdit={handleOpenProductBuilder}
+                    onOpenDelete={setProductToDelete}
+                    onMoveOrder={isOfficial && activeShelf === 'all' ? handleMoveOrder : undefined}
+                    onToggleShowcase={isOfficial ? handleToggleShowcase : undefined}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <ProductIntroModal
@@ -393,6 +490,18 @@ export const ProductsSection: React.FC = () => {
       <ProductLightboxModal
         image={lightboxImage}
         onClose={() => setLightboxImage(null)}
+      />
+
+      <ProductAdminDetailModal
+        product={inspectingProduct}
+        orders={productOrders}
+        storeConfig={productsStoreConfig}
+        onClose={() => setInspectingProductId(null)}
+        onUpdateProduct={updateProduct}
+        onToggleShowcase={handleToggleShowcase}
+        onOpenFullEdit={handleOpenProductBuilder}
+        onReviewOrder={reviewProductOrder}
+        onNotify={notify}
       />
     </div>
   );

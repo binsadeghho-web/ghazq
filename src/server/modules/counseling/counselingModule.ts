@@ -152,7 +152,10 @@ export class CounselingService {
   }
 
   async createConsultant(authCtx: AuthContext, dto: Omit<Consultant, 'id'>): Promise<Consultant & { version: number }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به ثبت یا ویرایش مشاور نیست.');
+    }
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -212,7 +215,10 @@ export class CounselingService {
     updates: Partial<Consultant>,
     expectedVersion: number
   ): Promise<Consultant & { version: number }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش مشاور نیست.');
+    }
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -292,7 +298,10 @@ export class CounselingService {
   }
 
   async deleteConsultant(authCtx: AuthContext, id: string): Promise<{ success: boolean; id: string }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به حذف مشاور نیست.');
+    }
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -379,6 +388,9 @@ export class CounselingService {
     },
     expectedVersion: number
   ): Promise<CounselingRequest & { version: number }> {
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به تغییر وضعیت درخواست مشاوره نیست.');
+    }
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
     await ensureCounselingRequestsSchema();
@@ -388,7 +400,7 @@ export class CounselingService {
     const existing = await this.getRequestById(authCtx, id);
     if (!existing) throw AppError.notFound(`درخواست مشاوره با شناسه ${id}`);
 
-    if (authCtx.role === 'alumni') {
+    if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       AuthorizationPolicy.assertOwnership(authCtx, existing.applicantId, 'درخواست مشاوره');
     }
 
@@ -459,6 +471,47 @@ export class CounselingService {
     return updated;
   }
 
+  async deleteRequest(authCtx: AuthContext, id: string): Promise<{ success: boolean; id: string }> {
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به حذف درخواست مشاوره نیست.');
+    }
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']);
+    ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
+    await ensureCounselingRequestsSchema();
+
+    const idBuf = toIdBuffer(id);
+    const p = getPool();
+    const [res]: any = await p.query(
+      `UPDATE counseling_requests SET deleted_at = NOW(3), version = version + 1 WHERE (id = ? OR id = ?) AND deleted_at IS NULL`,
+      [idBuf, id]
+    );
+
+    if (res && res.affectedRows === 0) {
+      throw AppError.notFound('درخواست مشاوره');
+    }
+
+    auditChain.appendEntry({
+      eventType: 'SYSTEM_CONFIG_UPDATED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: `درخواست مشاوره با شناسه ${id} توسط مدیر حذف نرم شد.`,
+      severity: 'info',
+    });
+
+    outbox.enqueue('counseling.deleted', {
+      id,
+      requestId: id,
+      resourceId: id,
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+    });
+
+    return { success: true, id };
+  }
+
   async book(
     authCtx: AuthContext,
     dto: {
@@ -471,7 +524,7 @@ export class CounselingService {
       userPhone?: string;
       userNationalId?: string;
       userRoleTitle?: string;
-      description: string;
+      description?: string;
       meetingMode?: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی';
       preferredConsultantId?: string;
       preferredConsultantName?: string;
@@ -479,8 +532,12 @@ export class CounselingService {
       subsidyNotice?: string;
     }
   ): Promise<CounselingRequest & { version: number }> {
-    if (!dto.description && (!dto.formResponses || Object.keys(dto.formResponses).length === 0)) {
-      throw AppError.badRequest('شرح درخواست مشاوره الزامی است.');
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به ثبت درخواست مشاوره نیست.');
+    }
+    const hasFormResponses = Boolean(dto.formResponses && Object.keys(dto.formResponses).length > 0);
+    if (!dto.description && !hasFormResponses && !dto.userPhone) {
+      throw AppError.badRequest('تکمیل اطلاعات درخواست مشاوره الزامی است.');
     }
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
@@ -494,12 +551,13 @@ export class CounselingService {
     const cType: 'general' | 'specialized_career' =
       dto.counselingType === 'specialized_career' ? 'specialized_career' : 'general';
     const category = dto.category || (cType === 'specialized_career' ? 'academic' : 'individual');
+    const cleanSelectedFieldTitle = dto.selectedFieldTitle ? String(dto.selectedFieldTitle).trim() : '';
     const categoryTitle =
-      dto.categoryTitle ||
-      dto.selectedFieldTitle ||
-      (cType === 'specialized_career' ? 'مشاوره تخصصی شغلی و تحصیلی' : 'مشاوره عمومی و روان‌شناسی');
+      (dto.categoryTitle && String(dto.categoryTitle).trim()) ||
+      cleanSelectedFieldTitle ||
+      (cType === 'specialized_career' ? 'مشاوره تخصصی شغلی و تحصیلی' : 'مشاوره عمومی و روان‌شناختی');
     const meetingMode = dto.meetingMode || 'حضوری';
-    const descriptionText = (dto.description || '').trim() || categoryTitle;
+    const descriptionText = (dto.description || '').trim() || categoryTitle || 'ثبت درخواست مشاوره';
 
     await p.query(
       `INSERT INTO counseling_requests (
@@ -662,6 +720,17 @@ export function createCounselingRouter(): Router {
       const expectedVersion = extractExpectedVersion(req, true);
       const item = await service.updateRequest(authCtx, req.params.id, req.body, expectedVersion);
       res.json(item);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/requests/:id', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const resData = await service.deleteRequest(authCtx, req.params.id);
+      res.json(resData);
     } catch (err) {
       next(err);
     }

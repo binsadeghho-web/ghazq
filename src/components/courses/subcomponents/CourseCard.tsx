@@ -49,11 +49,17 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onStartDelete,
   onOpenCourseOps,
 }) => {
-  const isEnrolled = Boolean(course.isEnrolled || (userEnrollment && userEnrollment.paymentStatus !== 'rejected'));
+  const isRemovedFromClass = Boolean(
+    userEnrollment?.classStatus === 'removed' || course.classStatus === 'removed'
+  );
+  const isEnrolled = Boolean(
+    !isRemovedFromClass &&
+      (course.isEnrolled || (userEnrollment && userEnrollment.paymentStatus !== 'rejected'))
+  );
   const enrollmentStatus = userEnrollment?.paymentStatus || course.enrollmentStatus || (course.isEnrolled ? 'confirmed' : undefined);
-  const isConfirmed = enrollmentStatus === 'confirmed';
-  const isPendingReview = enrollmentStatus === 'pending_review';
-  const canAccessArchive = course.archiveAccess === 'all' || isOfficial || isConfirmed;
+  const isConfirmed = enrollmentStatus === 'confirmed' && !isRemovedFromClass;
+  const isPendingReview = enrollmentStatus === 'pending_review' && !isRemovedFromClass;
+  const canAccessArchive = !isRemovedFromClass && (course.archiveAccess === 'all' || isOfficial || isConfirmed);
 
   const hidden = new Set(course.hiddenFields || []);
   const isVisible = (key: string) => !hidden.has(key);
@@ -132,10 +138,20 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             )}
           </div>
 
-          {/* Instructor Avatar Badge */}
-          <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 text-white pointer-events-none max-w-[85%]">
+          {/* Instructor Avatar Badge (Multi-instructor summary) */}
+          <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 text-white pointer-events-none max-w-[88%]">
             <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-xs font-bold truncate">{course.instructor}</span>
+            <span className="text-xs font-bold truncate">
+              {course.instructor}
+              {course.instructors && course.instructors.length > 1
+                ? ` + ${toPersianNumbers(course.instructors.length - 1)} مدرس دیگر`
+                : ''}
+            </span>
+            {course.sessions && course.sessions.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-black shrink-0 tabular-nums">
+                {toPersianNumbers(course.sessions.length)} جلسه
+              </span>
+            )}
           </div>
         </div>
 
@@ -274,6 +290,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <Settings className="w-3.5 h-3.5 text-emerald-200" />
               <span>پنل مدیریت دوره</span>
             </motion.button>
+          ) : isRemovedFromClass ? (
+            <span className="px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-[11px] font-black">
+              لغو عضویت کلاسی (مالی محفوظ)
+            </span>
           ) : isEnrolled ? (
             isConfirmed ? (
               <motion.button

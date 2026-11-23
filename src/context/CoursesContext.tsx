@@ -15,6 +15,8 @@ export interface CoursesContextType {
   restoreCourse: (courseId: string) => Promise<{ success: boolean; message: string }>;
   sendCourseSms: (courseId: string, recipientPhone: string | 'all', message: string, recipientName?: string) => Promise<{ success: boolean; count: number; message: string }>;
   reviewCourseEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
+  removeCourseEnrollmentFromClass: (courseId: string, enrollmentId: string, reason?: string) => Promise<void>;
+  restoreCourseEnrollmentToClass: (courseId: string, enrollmentId: string) => Promise<void>;
   refreshCourses: () => Promise<void>;
   refreshMyInstallments: () => Promise<void>;
 }
@@ -162,6 +164,36 @@ export const CoursesProvider: React.FC<CoursesProviderProps> = ({
     await refreshMyInstallments();
   }, [courseEnrollments, currentUser, refreshMyInstallments]);
 
+  const removeCourseEnrollmentFromClass = useCallback(async (courseId: string, enrollmentId: string, reason?: string) => {
+    const existing = courseEnrollments.find(e => e.id === enrollmentId);
+    const expectedVersion = (existing as any)?.version || 1;
+    const res = await api.removeCourseEnrollmentFromClass(courseId, enrollmentId, reason, expectedVersion);
+    setCourseEnrollments(prev => prev.map(e => (e.id === enrollmentId ? res.enrollment : e)));
+    setCourses(prev => prev.map(c => {
+      if (c.id !== courseId) return c;
+      const isMe = res.enrollment.userId === currentUser?.id;
+      return {
+        ...res.course,
+        ...(isMe ? { isEnrolled: false, classStatus: 'removed' as const, hasArchiveAccess: c.archiveAccess === 'all' } : {}),
+      };
+    }));
+  }, [courseEnrollments, currentUser]);
+
+  const restoreCourseEnrollmentToClass = useCallback(async (courseId: string, enrollmentId: string) => {
+    const existing = courseEnrollments.find(e => e.id === enrollmentId);
+    const expectedVersion = (existing as any)?.version || 1;
+    const res = await api.restoreCourseEnrollmentToClass(courseId, enrollmentId, expectedVersion);
+    setCourseEnrollments(prev => prev.map(e => (e.id === enrollmentId ? res.enrollment : e)));
+    setCourses(prev => prev.map(c => {
+      if (c.id !== courseId) return c;
+      const isMe = res.enrollment.userId === currentUser?.id;
+      return {
+        ...res.course,
+        ...(isMe ? { isEnrolled: true, classStatus: 'active' as const, hasArchiveAccess: res.enrollment.paymentStatus === 'confirmed' } : {}),
+      };
+    }));
+  }, [courseEnrollments, currentUser]);
+
   const softDeleteCourse = useCallback(async (courseId: string, pin: string): Promise<{ success: boolean; message: string }> => {
     const res = await api.deleteCourse(courseId, pin);
     setCourses(prev =>
@@ -218,6 +250,8 @@ export const CoursesProvider: React.FC<CoursesProviderProps> = ({
     restoreCourse,
     sendCourseSms,
     reviewCourseEnrollment,
+    removeCourseEnrollmentFromClass,
+    restoreCourseEnrollmentToClass,
     refreshCourses,
     refreshMyInstallments,
   }), [
@@ -233,6 +267,8 @@ export const CoursesProvider: React.FC<CoursesProviderProps> = ({
     restoreCourse,
     sendCourseSms,
     reviewCourseEnrollment,
+    removeCourseEnrollmentFromClass,
+    restoreCourseEnrollmentToClass,
     refreshCourses,
     refreshMyInstallments,
   ]);

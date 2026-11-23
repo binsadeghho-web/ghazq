@@ -185,6 +185,8 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN offline_download_url VARCHAR(512) NULL`,
       `ADD COLUMN offline_download_guide TEXT NULL`,
       `ADD COLUMN offline_download_files JSON NULL`,
+      `ADD COLUMN instructors JSON NULL`,
+      `ADD COLUMN sessions JSON NULL`,
       `ADD COLUMN deleted_at DATETIME(3) NULL`,
       `ADD COLUMN deleted_by VARCHAR(255) NULL`
     ];
@@ -201,7 +203,11 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN receipt_bank_name VARCHAR(128) NULL`,
       `ADD COLUMN receipt_date VARCHAR(64) NULL`,
       `ADD COLUMN reviewed_by VARCHAR(255) NULL`,
-      `ADD COLUMN reviewed_at DATETIME(3) NULL`
+      `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+      `ADD COLUMN class_status VARCHAR(32) NOT NULL DEFAULT 'active'`,
+      `ADD COLUMN removed_at DATETIME(3) NULL`,
+      `ADD COLUMN removed_by VARCHAR(128) NULL`,
+      `ADD COLUMN removal_reason VARCHAR(512) NULL`
     ];
     for (const clause of enrollmentAlters) {
       try { await p.query(`ALTER TABLE course_enrollments ${clause};`); } catch {}
@@ -215,12 +221,80 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
         user_name VARCHAR(255) NOT NULL,
         session_number INT NOT NULL,
         session_title VARCHAR(128) NULL,
-        status ENUM('present', 'absent', 'excused') NOT NULL DEFAULT 'present',
+        status ENUM('present', 'absent', 'excused', 'late') NOT NULL DEFAULT 'present',
+        note VARCHAR(512) NULL,
+        session_id VARCHAR(64) NULL,
         recorded_by VARCHAR(128) NULL,
         version INT NOT NULL DEFAULT 1,
         updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
         UNIQUE KEY uq_course_user_session (course_id, user_id, session_number),
         INDEX idx_attendance_course_session (course_id, session_number)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    try { await p.query(`ALTER TABLE course_attendance MODIFY COLUMN status ENUM('present', 'absent', 'excused', 'late') NOT NULL DEFAULT 'present';`); } catch {}
+    try { await p.query(`ALTER TABLE course_attendance ADD COLUMN note VARCHAR(512) NULL;`); } catch {}
+    try { await p.query(`ALTER TABLE course_attendance ADD COLUMN session_id VARCHAR(64) NULL;`); } catch {}
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS course_instructors (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        course_id BINARY(16) NOT NULL,
+        instructor_key VARCHAR(64) NOT NULL,
+        sort_order INT NOT NULL DEFAULT 0,
+        full_name VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NULL,
+        role_label VARCHAR(128) NULL,
+        avatar_url VARCHAR(512) NULL,
+        resume TEXT NULL,
+        is_primary TINYINT(1) NOT NULL DEFAULT 0,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_course_instructors_course (course_id, sort_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS course_sessions (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        course_id BINARY(16) NOT NULL,
+        session_key VARCHAR(64) NOT NULL,
+        session_number INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        presenter_mode ENUM('course_instructor', 'custom_presenter', 'unspecified', 'panel') NOT NULL DEFAULT 'course_instructor',
+        presenter_instructor_key VARCHAR(64) NULL,
+        presenter_name VARCHAR(255) NULL,
+        presenter_title VARCHAR(255) NULL,
+        session_date VARCHAR(128) NULL,
+        start_time VARCHAR(128) NULL,
+        duration_minutes INT NULL,
+        holding_type VARCHAR(32) NULL,
+        meeting_link VARCHAR(512) NULL,
+        description TEXT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        UNIQUE KEY uq_course_session_num (course_id, session_number),
+        INDEX idx_course_sessions_course (course_id, session_number)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS course_files (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        course_id BINARY(16) NOT NULL,
+        file_key VARCHAR(64) NOT NULL,
+        session_number INT NULL,
+        title VARCHAR(255) NOT NULL,
+        url VARCHAR(512) NOT NULL,
+        filename VARCHAR(255) NULL,
+        file_size BIGINT NULL,
+        size_label VARCHAR(64) NULL,
+        format VARCHAR(32) NULL,
+        source_type ENUM('upload', 'disk', 'external') NOT NULL DEFAULT 'upload',
+        description VARCHAR(512) NULL,
+        uploaded_by VARCHAR(255) NULL,
+        deleted_at DATETIME(3) NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_course_files_course (course_id, deleted_at, created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
@@ -505,41 +579,54 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
           accent: 'amber',
           order: 3,
         },
-        // General Psychology Counseling Fields
-        {
-          type: 'general',
-          title: 'روان‌شناسی فردی و مدیریت فرسودگی شغلی',
-          subtitle: 'تاب‌آوری روانی و کنترل استرس حرفه‌ای',
-          description: 'جلسات تخصصی فردی برای پیشگیری و درمان فرسودگی ناشی از پرونده‌های حساس، مدیریت اضطراب و ارتقای آرامش درونی.',
-          icon: 'heart',
-          accent: 'teal',
-          order: 1,
-        },
-        {
-          type: 'general',
-          title: 'مشاوره خانواده، زوج‌درمانی و تربیت فرزند',
-          subtitle: 'تحکیم بنیان خانواده با رویکرد اسلامی-روان‌شناختی',
-          description: 'بهبود کیفیت ارتباط همسران، حل تعارضات خانوادگی و مدیریت تعادل میان مسئولیت‌های شغلی و زندگی خانوادگی.',
-          icon: 'users',
-          accent: 'emerald',
-          order: 2,
-        },
-        {
-          type: 'general',
-          title: 'مشاوره پیش از ازدواج و شناخت شخصیت',
-          subtitle: 'همراه با ارزیابی و تست‌های استاندارد شخصیت',
-          description: 'بررسی ملاک‌های همتایی فکری، رفتاری و خانوادگی با بهره‌گیری از مصاحبه بالینی و آزمون‌های روان‌شناختی.',
-          icon: 'sparkles',
-          accent: 'indigo',
-          order: 3,
-        },
+        // General Psychology Counseling Fields (6 exact categories, no descriptions)
+        { type: 'general', title: 'خانواده', subtitle: '', description: '', icon: 'heart', accent: 'emerald', order: 1 },
+        { type: 'general', title: 'ازدواج و زوج درمانی', subtitle: '', description: '', icon: 'sparkles', accent: 'rose', order: 2 },
+        { type: 'general', title: 'کودک و نوجوان', subtitle: '', description: '', icon: 'heart', accent: 'teal', order: 3 },
+        { type: 'general', title: 'تحصیلی', subtitle: '', description: '', icon: 'graduation', accent: 'indigo', order: 4 },
+        { type: 'general', title: 'استعداد سنجی', subtitle: '', description: '', icon: 'compass', accent: 'amber', order: 5 },
+        { type: 'general', title: 'درمانی', subtitle: '', description: '', icon: 'brain', accent: 'emerald', order: 6 },
       ];
       for (const f of defaultFields) {
         await p.query(
           `INSERT INTO counseling_fields (id, counseling_type, title, subtitle, description, icon_name, accent_color, is_active, display_order, version)
            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 1)`,
-          [toIdBuffer(generateUUIDv7()), f.type, f.title, f.subtitle, f.description, f.icon, f.accent, f.order]
+          [toIdBuffer(generateUUIDv7()), f.type, f.title, f.subtitle || null, f.description || '', f.icon, f.accent, f.order]
         );
+      }
+    } else {
+      // Non-destructive one-time upgrade: if general fields are still strictly the 3 legacy starter placeholders, replace them with the 6 exact fields
+      const [genRows]: any = await p.query(
+        `SELECT title FROM counseling_fields WHERE counseling_type = 'general' AND deleted_at IS NULL`
+      );
+      const legacyStarterTitles = new Set([
+        'روان‌شناسی فردی و مدیریت فرسودگی شغلی',
+        'مشاوره خانواده، زوج‌درمانی و تربیت فرزند',
+        'مشاوره پیش از ازدواج و شناخت شخصیت',
+      ]);
+      if (
+        Array.isArray(genRows) &&
+        genRows.length === 3 &&
+        genRows.every((r: any) => legacyStarterTitles.has(String(r.title || '').trim()))
+      ) {
+        await p.query(
+          `UPDATE counseling_fields SET deleted_at = NOW(3), is_active = 0 WHERE counseling_type = 'general' AND deleted_at IS NULL`
+        );
+        const sixGeneralFields = [
+          { title: 'خانواده', icon: 'heart', accent: 'emerald', order: 1 },
+          { title: 'ازدواج و زوج درمانی', icon: 'sparkles', accent: 'rose', order: 2 },
+          { title: 'کودک و نوجوان', icon: 'heart', accent: 'teal', order: 3 },
+          { title: 'تحصیلی', icon: 'graduation', accent: 'indigo', order: 4 },
+          { title: 'استعداد سنجی', icon: 'compass', accent: 'amber', order: 5 },
+          { title: 'درمانی', icon: 'brain', accent: 'emerald', order: 6 },
+        ];
+        for (const f of sixGeneralFields) {
+          await p.query(
+            `INSERT INTO counseling_fields (id, counseling_type, title, subtitle, description, icon_name, accent_color, is_active, display_order, version)
+             VALUES (?, 'general', ?, NULL, '', ?, ?, 1, ?, 1)`,
+            [toIdBuffer(generateUUIDv7()), f.title, f.icon, f.accent, f.order]
+          );
+        }
       }
     }
 

@@ -13,7 +13,8 @@ import {
   Sliders,
   Layout,
   Palette,
-  Award
+  Award,
+  Menu
 } from 'lucide-react';
 import { CustomizerTab } from '../ThemeCustomizerModal';
 
@@ -38,6 +39,18 @@ export const CustomizerTabBar: React.FC<CustomizerTabBarProps> = ({
       >
         <Layers className="w-4 h-4" />
         <span>ماژول‌ها، سایز و تصاویر باکس‌ها</span>
+      </button>
+
+      <button
+        onClick={() => onSelectTab('navigation')}
+        className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+          activeTab === 'navigation'
+            ? 'border-emerald-700 text-emerald-900'
+            : 'border-transparent text-stone-500 hover:text-stone-900'
+        }`}
+      >
+        <Menu className="w-4 h-4 text-emerald-700" />
+        <span>ناوبری عمودی، افقی و منو خدمات</span>
       </button>
 
       <button

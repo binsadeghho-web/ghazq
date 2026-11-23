@@ -133,6 +133,8 @@ export interface AppContextType {
   restoreCourse: (courseId: string) => Promise<{ success: boolean; message: string }>;
   sendCourseSms: (courseId: string, recipientPhone: string | 'all', message: string, recipientName?: string) => Promise<{ success: boolean; count: number; message: string }>;
   reviewCourseEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
+  removeCourseEnrollmentFromClass: (courseId: string, enrollmentId: string, reason?: string) => Promise<void>;
+  restoreCourseEnrollmentToClass: (courseId: string, enrollmentId: string) => Promise<void>;
   refreshCourses: () => Promise<void>;
   refreshMyInstallments: () => Promise<void>;
 
@@ -168,6 +170,8 @@ export interface AppContextType {
     preferredConsultantId?: string,
     preferredConsultantName?: string
   ) => Promise<void>;
+  updateCounselingRequest: (requestId: string, updates: Partial<CounselingRequest>) => Promise<CounselingRequest | null>;
+  deleteCounselingRequest: (requestId: string) => Promise<void>;
   updateConsultant: (consultantId: string, updates: Partial<Consultant>) => Promise<void>;
   addConsultant: (consultant: Omit<Consultant, 'id'>) => Promise<void>;
   deleteConsultant: (consultantId: string) => Promise<void>;
@@ -470,6 +474,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     restoreCourse: courses.restoreCourse,
     sendCourseSms: courses.sendCourseSms,
     reviewCourseEnrollment: courses.reviewCourseEnrollment,
+    removeCourseEnrollmentFromClass: courses.removeCourseEnrollmentFromClass,
+    restoreCourseEnrollmentToClass: courses.restoreCourseEnrollmentToClass,
     refreshCourses: courses.refreshCourses,
     refreshMyInstallments: courses.refreshMyInstallments,
 
@@ -499,6 +505,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     testResults: counseling.testResults,
     bookCounseling: counseling.bookCounseling,
     updateCounselingStatus: counseling.updateCounselingStatus,
+    updateCounselingRequest: counseling.updateCounselingRequest,
+    deleteCounselingRequest: counseling.deleteCounselingRequest,
     updateConsultant: counseling.updateConsultant,
     addConsultant: counseling.addConsultant,
     deleteConsultant: counseling.deleteConsultant,

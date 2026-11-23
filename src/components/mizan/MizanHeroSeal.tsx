@@ -111,7 +111,7 @@ export const MizanHeroSeal: React.FC<MizanHeroSealProps> = ({ onNavigate, onOpen
               className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight"
             >
               {mizanConfig.heroGreeting || 'سلام و درود،'}{' '}
-              <span className="text-[#DBB155]">{currentUser?.fullName || 'جناب آقای دکتر میرزایی'}</span>
+              <span className="text-[#DBB155]">{currentUser?.fullName || 'دانش‌آموخته گرامی'}</span>
             </motion.h1>
             <p className="text-xs sm:text-sm text-[#ACE7CC] font-normal leading-relaxed">
               {mizanConfig.heroSubtitle ||

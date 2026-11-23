@@ -156,6 +156,17 @@ export async function rbacEnforcementMiddleware(
 
     const isMutation = req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS';
 
+    if (isMutation && user.role === 'general_observer') {
+      res.status(403).json({
+        type: 'forbidden',
+        title: 'حالت ناظر کل (صرفاً مشاهده)',
+        status: 403,
+        detail: 'نقش «ناظر کل سامانه» صرفاً مجاز به مشاهده داده‌هاست و امکان ایجاد یا ویرایش تنظیمات و اطلاعات را ندارد.',
+        code: 'GENERAL_OBSERVER_READ_ONLY',
+      });
+      return;
+    }
+
     // 2. Super Admin has full access to all endpoints
     if (user.role === 'admin' || user.role === 'super_admin') {
       return next();

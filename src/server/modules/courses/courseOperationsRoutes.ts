@@ -1,15 +1,123 @@
 import { Router, Request, Response } from 'express';
-import { getPool, selectWithTimeout, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
+import fs from 'fs';
+import path from 'path';
+import { getPool, selectWithTimeout, withTx, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { AppError } from '../../platform/errors';
 import { AuthorizationPolicy } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { extractExpectedVersion } from '../../platform/httpUtils';
+import { storageConfig } from '../../platform/storage';
 import { outbox } from '../../platform/outbox';
 
+function formatReadableBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '۰ بایت';
+  if (bytes < 1024) return `${bytes} بایت`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} کیلوبایت`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} مگابایت`;
+}
+
+function resolveCourseDiskFolderName(rawCourseId: string): string {
+  const clean = String(rawCourseId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!clean) {
+    throw AppError.badRequest('شناسه دوره یا پوشه نامعتبر است.');
+  }
+  return clean.startsWith('draft_') || clean.startsWith('course_') ? clean : `course_${clean}`;
+}
+
 export function registerCourseOperationsRoutes(router: Router): void {
-  // Get Course Operations Data (Attendance, Waitlist, Certificates, Sessions Count & Waitlist Enabled)
+  // Scan / list physical files in a course's dedicated disk folder (`course_files/course_<id>/`)
+  router.get('/:courseId/disk-files', async (req: Request, res: Response, next) => {
+    try {
+      const user = getCurrentUser(req);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+
+      const folderName = resolveCourseDiskFolderName(req.params.courseId);
+      const baseDir = path.resolve(storageConfig.categories.course_file.path);
+      const targetDir = path.resolve(baseDir, folderName);
+      if (!targetDir.startsWith(baseDir + path.sep)) {
+        throw AppError.forbidden('مسیر پوشه غیرمجاز است.');
+      }
+
+      await fs.promises.mkdir(targetDir, { recursive: true, mode: 0o755 });
+      const entries = await fs.promises.readdir(targetDir, { withFileTypes: true });
+      const files: Array<{
+        filename: string;
+        sizeBytes: number;
+        sizeLabel: string;
+        format: string;
+        url: string;
+        modifiedAt: string;
+      }> = [];
+
+      for (const entry of entries) {
+        if (!entry.isFile() || entry.name.startsWith('.')) continue;
+        const full = path.join(targetDir, entry.name);
+        const st = await fs.promises.stat(full);
+        const ext = path.extname(entry.name).replace('.', '').toUpperCase() || 'FILE';
+        files.push({
+          filename: entry.name,
+          sizeBytes: st.size,
+          sizeLabel: formatReadableBytes(st.size),
+          format: ext,
+          url: `/api/storage/private/${storageConfig.categories.course_file.folderName}/${folderName}/${encodeURIComponent(entry.name)}`,
+          modifiedAt: st.mtime.toISOString(),
+        });
+      }
+
+      files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+
+      res.json({
+        courseId: req.params.courseId,
+        folderName,
+        relativeDiskPath: `storage/uploads/${storageConfig.categories.course_file.folderName}/${folderName}`,
+        files,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Delete a specific file from the course's dedicated disk folder
+  router.delete('/:courseId/disk-files/:filename', async (req: Request, res: Response, next) => {
+    try {
+      const user = getCurrentUser(req);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+
+      const folderName = resolveCourseDiskFolderName(req.params.courseId);
+      const safeFilename = path.basename(decodeURIComponent(req.params.filename || ''));
+      if (!safeFilename || safeFilename.includes('..')) {
+        throw AppError.badRequest('نام فایل نامعتبر است.');
+      }
+
+      const baseDir = path.resolve(storageConfig.categories.course_file.path);
+      const targetFile = path.resolve(baseDir, folderName, safeFilename);
+      if (!targetFile.startsWith(baseDir + path.sep)) {
+        throw AppError.forbidden('مسیر فایل غیرمجاز است.');
+      }
+
+      await fs.promises.unlink(targetFile).catch((err: any) => {
+        if (err?.code !== 'ENOENT') throw err;
+      });
+
+      if (!folderName.startsWith('draft_')) {
+        const cleanCourseId = folderName.startsWith('course_') ? folderName.slice('course_'.length) : folderName;
+        const p = getPool();
+        await p.query(
+          `UPDATE course_files SET deleted_at = CURRENT_TIMESTAMP(3)
+           WHERE (course_id = ? OR course_id = ?) AND filename = ? AND deleted_at IS NULL`,
+          [toIdBuffer(cleanCourseId), cleanCourseId, safeFilename]
+        ).catch(() => {});
+      }
+
+      res.json({ success: true, filename: safeFilename });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Get Course Operations Data (Attendance, Waitlist, Certificates, Sessions & Waitlist Enabled)
   router.get('/:courseId/operations', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
@@ -18,7 +126,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
       const cBuf = toIdBuffer(courseId);
 
       const [courseRows, attRows, waitRows, certRows] = await Promise.all([
-        selectWithTimeout<any>(`SELECT id, title, instructor, hours, sessions_count, waitlist_enabled, version FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000),
+        selectWithTimeout<any>(`SELECT id, title, instructor, hours, sessions_count, sessions, waitlist_enabled, version FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_attendance WHERE course_id = ? OR course_id = ? ORDER BY session_number ASC`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_waitlist WHERE course_id = ? OR course_id = ? ORDER BY created_at ASC`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_certificates WHERE (course_id = ? OR course_id = ?) AND deleted_at IS NULL ORDER BY issued_at DESC`, [cBuf, courseId], 3000),
@@ -28,10 +136,15 @@ export function registerCourseOperationsRoutes(router: Router): void {
         throw AppError.notFound('دوره آموزشی');
       }
       const cRow = courseRows[0];
+      let parsedSessions: any[] = [];
+      try {
+        parsedSessions = typeof cRow.sessions === 'string' ? JSON.parse(cRow.sessions) : Array.isArray(cRow.sessions) ? cRow.sessions : [];
+      } catch {}
 
       res.json({
         courseId: fromIdBuffer(cRow.id),
-        sessionsCount: Number(cRow.sessions_count || 4),
+        sessionsCount: parsedSessions.length > 0 ? parsedSessions.length : Number(cRow.sessions_count || 4),
+        sessions: parsedSessions,
         waitlistEnabled: cRow.waitlist_enabled !== undefined ? Boolean(cRow.waitlist_enabled) : true,
         version: Number(cRow.version || 1),
         attendance: (attRows || []).map((r: any) => ({
@@ -42,6 +155,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
           sessionNumber: Number(r.session_number),
           sessionTitle: r.session_title || `جلسه ${r.session_number}`,
           status: r.status,
+          note: r.note || undefined,
           recordedBy: r.recorded_by || undefined,
           version: Number(r.version || 1),
           updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
@@ -130,7 +244,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
     }
   });
 
-  // Record / Update Multi-Session Attendance
+  // Record / Update Single Attendance
   router.post('/:courseId/attendance', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
@@ -140,20 +254,30 @@ export function registerCourseOperationsRoutes(router: Router): void {
 
       const courseId = req.params.courseId;
       const cBuf = toIdBuffer(courseId);
-      const { userId, userName, sessionNumber, sessionTitle, status } = req.body;
+      const { userId, userName, sessionNumber, sessionTitle, status, note, sessionId } = req.body;
 
       if (!userId || !sessionNumber) {
         throw AppError.badRequest('شناسه دانش‌آموخته و شماره جلسه الزامی است.');
       }
+
+      const validStatuses = new Set(['present', 'absent', 'excused', 'late']);
+      const normalizedStatus = validStatuses.has(status) ? status : 'present';
 
       const uBuf = toIdBuffer(userId);
       const p = getPool();
       const id = generateUUIDv7();
 
       await p.query(
-        `INSERT INTO course_attendance (id, course_id, user_id, user_name, session_number, session_title, status, recorded_by, version)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE status = VALUES(status), session_title = VALUES(session_title), recorded_by = VALUES(recorded_by), version = version + 1, updated_at = CURRENT_TIMESTAMP(3)`,
+        `INSERT INTO course_attendance (id, course_id, user_id, user_name, session_number, session_title, status, note, session_id, recorded_by, version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE
+           status = VALUES(status),
+           session_title = VALUES(session_title),
+           note = VALUES(note),
+           session_id = VALUES(session_id),
+           recorded_by = VALUES(recorded_by),
+           version = version + 1,
+           updated_at = CURRENT_TIMESTAMP(3)`,
         [
           toIdBuffer(id),
           cBuf,
@@ -161,7 +285,9 @@ export function registerCourseOperationsRoutes(router: Router): void {
           userName || 'دانش‌آموخته',
           Number(sessionNumber),
           sessionTitle || `جلسه ${sessionNumber}`,
-          status || 'present',
+          normalizedStatus,
+          note || null,
+          sessionId || null,
           user.fullName,
         ]
       );
@@ -170,7 +296,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
         courseId,
         userId,
         sessionNumber: Number(sessionNumber),
-        status: status || 'present',
+        status: normalizedStatus,
       });
 
       res.json({
@@ -178,8 +304,67 @@ export function registerCourseOperationsRoutes(router: Router): void {
         courseId,
         userId,
         sessionNumber: Number(sessionNumber),
-        status: status || 'present',
+        status: normalizedStatus,
+        note: note || undefined,
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Bulk Record / Update Attendance for a Session (or multiple records) in a single transaction
+  router.post('/:courseId/attendance/bulk', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const user = getCurrentUser(req);
+      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+
+      const courseId = req.params.courseId;
+      const cBuf = toIdBuffer(courseId);
+      const records = Array.isArray(req.body?.records) ? req.body.records : [];
+      if (records.length === 0) {
+        throw AppError.badRequest('لیست رکوردهای حضور و غیاب خالی است.');
+      }
+
+      const validStatuses = new Set(['present', 'absent', 'excused', 'late']);
+      await withTx(async (conn) => {
+        for (const rec of records) {
+          if (!rec.userId || !rec.sessionNumber) continue;
+          const normalizedStatus = validStatuses.has(rec.status) ? rec.status : 'present';
+          await conn.query(
+            `INSERT INTO course_attendance (id, course_id, user_id, user_name, session_number, session_title, status, note, session_id, recorded_by, version)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+             ON DUPLICATE KEY UPDATE
+               status = VALUES(status),
+               session_title = VALUES(session_title),
+               note = VALUES(note),
+               session_id = VALUES(session_id),
+               recorded_by = VALUES(recorded_by),
+               version = version + 1,
+               updated_at = CURRENT_TIMESTAMP(3)`,
+            [
+              toIdBuffer(generateUUIDv7()),
+              cBuf,
+              toIdBuffer(rec.userId),
+              rec.userName || 'دانش‌آموخته',
+              Number(rec.sessionNumber),
+              rec.sessionTitle || `جلسه ${rec.sessionNumber}`,
+              normalizedStatus,
+              rec.note || null,
+              rec.sessionId || null,
+              user.fullName,
+            ]
+          );
+        }
+      });
+
+      outbox.enqueue('courses.attendance_updated', {
+        courseId,
+        bulkCount: records.length,
+      });
+
+      res.json({ success: true, count: records.length });
     } catch (err) {
       next(err);
     }

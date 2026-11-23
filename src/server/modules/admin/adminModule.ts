@@ -398,8 +398,20 @@ export class AdminService {
   }> {
     const record = await adminSettingsRepo.getRecord<any>('crextio_dashboard_config');
     const mizanRecord = await adminSettingsRepo.getRecord<any>('mizan_dashboard_config');
+    const rawCrextio = record?.value ? { ...record.value } : { ...DEFAULT_CREXTIO_CONFIG };
+    if (typeof rawCrextio.heroTitle === 'string' && rawCrextio.heroTitle.includes('میرزایی')) {
+      rawCrextio.heroTitle = 'خوش آمدید، {name}';
+    }
+    if (
+      typeof rawCrextio.heroSubtitle === 'string' &&
+      (rawCrextio.heroSubtitle.includes('مستشار دادگاه تجدیدنظر') ||
+        rawCrextio.heroSubtitle.includes('میرزایی'))
+    ) {
+      rawCrextio.heroSubtitle =
+        '{organization} · دسترسی سریع به کارتابل اداری، دوره‌های آموزشی، پژوهش و تالار آراء';
+    }
     return {
-      crextio: record?.value || DEFAULT_CREXTIO_CONFIG,
+      crextio: rawCrextio,
       mizan: mizanRecord?.value || DEFAULT_MIZAN_CONFIG,
       source: record || mizanRecord ? 'mysql' : 'default',
       isConnectedToMysql: isDatabaseConnected(),
@@ -422,7 +434,10 @@ export class AdminService {
     lastModifiedBy: string;
     lastModifiedAt: string;
   }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    if (authCtx.role === 'general_observer') {
+      throw AppError.forbidden('نقش ناظر کل مجاز به تغییر چیدمان و ناوبری سامانه نیست.');
+    }
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin', 'alumni_manager', 'supervisor']);
 
     const isMizanTarget =
       payload?._target === 'mizan' ||

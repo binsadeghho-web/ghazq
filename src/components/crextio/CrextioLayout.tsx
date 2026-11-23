@@ -11,7 +11,12 @@ import { ModuleFallback } from '../common/ModuleFallback';
 
 const AdminControlCenter = lazy(() => import('../admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
 const ThemeCustomizerModal = lazy(() => import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal })));
+import type { CustomizerTab } from '../admin/ThemeCustomizerModal';
 const AlumniDirectorySection = lazy(() => import('../alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
+import {
+  applyNavigationCustomization,
+  getResolvedNavigationConfig,
+} from '../../utils/navigationConfig';
 import {
   Bell,
   User as UserIcon,
@@ -36,7 +41,8 @@ import {
   Palette,
   Compass,
   Wallet,
-  IdCard
+  IdCard,
+  Menu
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { UserRole, AppSectionId } from '../../types';
@@ -66,6 +72,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
+  const [customizerInitialTab, setCustomizerInitialTab] = useState<CustomizerTab>('modules');
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState<boolean>(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
   const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -123,13 +130,22 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
   // Strict Menu Cloaking (Reform 57): Hide Alumni, Users, Admin, Setting, Finance from alumni & preview mode
   const effectiveStaff = isStaffMember && !isAlumniPreview;
-  const navItems = allNavCandidates.filter(item => {
+  const resolvedNav = getResolvedNavigationConfig(crextioConfig.navigationConfig);
+  const customizedNav = applyNavigationCustomization(allNavCandidates, resolvedNav.horizontalNavbar, {
+    hideInvisible: true,
+    alwaysKeepVisibleIds: ['Dashboard'],
+  });
+  const navItems = customizedNav.filter(item => {
     if (!effectiveStaff && (item.id === 'Alumni' || item.id === 'Users' || item.id === 'Admin' || item.id === 'Setting' || item.id === 'Finance')) {
       return false;
     }
     if (!item.sectionId) return effectiveStaff;
     return canViewSection(currentUser, item.sectionId, rolePolicies);
   });
+  const canCustomizeLayout =
+    ['admin', 'super_admin', 'alumni_manager', 'supervisor'].includes(currentUser?.role || '') &&
+    !isReadOnlyObserver &&
+    !isAlumniPreview;
 
   const canvasBgClass = 
     crextioConfig.canvasTheme === 'royal_emerald' 
@@ -206,15 +222,30 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                {isStaffMember && !isReadOnlyObserver && (
-                  <button
-                    onClick={() => setIsCustomizerOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
-                  >
-                    <Palette className="w-3.5 h-3.5 text-amber-600" />
-                    <span>شخصی‌سازی تم ۲</span>
-                  </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {canCustomizeLayout && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setCustomizerInitialTab('navigation');
+                        setIsCustomizerOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                    >
+                      <Menu className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>ترتیب و نام ناوبری و منو</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCustomizerInitialTab('modules');
+                        setIsCustomizerOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                    >
+                      <Palette className="w-3.5 h-3.5 text-amber-600" />
+                      <span>شخصی‌سازی تم ۲</span>
+                    </button>
+                  </>
                 )}
 
                 {isStaffMember && (
@@ -545,6 +576,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         <Suspense fallback={null}>
           <ThemeCustomizerModal
             isOpen={isCustomizerOpen}
+            initialTab={customizerInitialTab}
             onClose={() => setIsCustomizerOpen(false)}
           />
         </Suspense>

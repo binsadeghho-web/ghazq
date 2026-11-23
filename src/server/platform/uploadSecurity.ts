@@ -13,6 +13,7 @@ import { UploadCategory } from './storage';
 export const MAX_CARTABLE_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
 export const MAX_GENERAL_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 export const MAX_PRODUCT_MEDIA_UPLOAD_BYTES = 45 * 1024 * 1024; // 45 MB
+export const MAX_COURSE_FILE_UPLOAD_BYTES = 55 * 1024 * 1024; // 55 MB
 
 const DANGEROUS_EXTENSIONS = new Set([
   '.html', '.htm', '.xhtml', '.svg', '.xml', '.js', '.mjs', '.cjs', '.ts', '.jsx', '.tsx',
@@ -24,6 +25,9 @@ const DANGEROUS_EXTENSIONS = new Set([
 const CARTABLE_ALLOWED_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf', '.doc', '.docx']);
 const PRODUCT_MEDIA_ALLOWED_EXTS = new Set([
   '.mp3', '.wav', '.ogg', '.m4a', '.aac', '.mp4', '.webm', '.mov', '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'
+]);
+const COURSE_FILE_ALLOWED_EXTS = new Set([
+  '.mp3', '.wav', '.ogg', '.m4a', '.aac', '.mp4', '.webm', '.mov', '.pdf', '.doc', '.docx', '.pptx', '.ppt', '.xlsx', '.txt', '.zip', '.jpg', '.jpeg', '.png', '.webp'
 ]);
 
 export interface ValidatedUploadInfo {
@@ -150,7 +154,10 @@ export function validateSecureUploadBuffer(
     category === 'course_receipt' ||
     category === 'course_certificate';
   const isProductMedia = category === 'product_media';
-  const maxBytes = isProductMedia
+  const isCourseFile = category === 'course_file';
+  const maxBytes = isCourseFile
+    ? MAX_COURSE_FILE_UPLOAD_BYTES
+    : isProductMedia
     ? MAX_PRODUCT_MEDIA_UPLOAD_BYTES
     : isStrictDocOrImage
     ? MAX_CARTABLE_UPLOAD_BYTES
@@ -171,7 +178,7 @@ export function validateSecureUploadBuffer(
     throw AppError.badRequest('نام فایل حاوی کاراکتر غیرمجاز است.', 'INVALID_FILENAME');
   }
 
-  if (DANGEROUS_EXTENSIONS.has(origExt)) {
+  if (DANGEROUS_EXTENSIONS.has(origExt) && !(isCourseFile && origExt === '.zip')) {
     throw AppError.badRequest(
       `بارگذاری فایل با پسوند غیرمجاز (${origExt}) به دلایل امنیتی مسدود است.`,
       'DANGEROUS_FILE_EXTENSION'
@@ -226,10 +233,13 @@ export function validateSecureUploadBuffer(
     );
   }
 
-  if (isProductMedia) {
-    if (origExt && !PRODUCT_MEDIA_ALLOWED_EXTS.has(origExt)) {
+  if (isProductMedia || isCourseFile) {
+    const allowedSet = isCourseFile ? COURSE_FILE_ALLOWED_EXTS : PRODUCT_MEDIA_ALLOWED_EXTS;
+    if (origExt && !allowedSet.has(origExt)) {
       throw AppError.badRequest(
-        'در فایل‌های جلسات و محصولات صرفاً فرمت‌های صوتی (MP3, WAV, OGG, M4A, AAC)، ویدئویی (MP4, WEBM, MOV)، PDF، Word و تصویر مجاز است.',
+        isCourseFile
+          ? 'در پوشه فایل‌های دوره، فرمت‌های صوتی، ویدئویی، PDF، Word، PowerPoint، Excel، تصویر، TXT و بسته فشرده ZIP مجاز است.'
+          : 'در فایل‌های جلسات و محصولات صرفاً فرمت‌های صوتی (MP3, WAV, OGG, M4A, AAC)، ویدئویی (MP4, WEBM, MOV)، PDF، Word و تصویر مجاز است.',
         'INVALID_PRODUCT_MEDIA_TYPE'
       );
     }
@@ -237,13 +247,43 @@ export function validateSecureUploadBuffer(
     if (isPng(buffer)) return { canonicalExt: '.png', mimeType: 'image/png', kind: 'image' };
     if (isWebp(buffer)) return { canonicalExt: '.webp', mimeType: 'image/webp', kind: 'image' };
     if (isPdf(buffer)) return { canonicalExt: '.pdf', mimeType: 'application/pdf', kind: 'pdf' };
-    if (isDocOle2(buffer)) return { canonicalExt: '.doc', mimeType: 'application/msword', kind: 'word' };
-    if (isDocxOoxml(buffer)) {
-      return {
-        canonicalExt: '.docx',
-        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        kind: 'word',
-      };
+    if (isDocOle2(buffer)) {
+      if (isCourseFile && origExt === '.ppt') {
+        return { canonicalExt: '.ppt', mimeType: 'application/vnd.ms-powerpoint', kind: 'other' };
+      }
+      return { canonicalExt: '.doc', mimeType: 'application/msword', kind: 'word' };
+    }
+    if (
+      buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      buffer[2] === 0x03 &&
+      buffer[3] === 0x04
+    ) {
+      if (isCourseFile && origExt === '.pptx') {
+        return {
+          canonicalExt: '.pptx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          kind: 'other',
+        };
+      }
+      if (isCourseFile && origExt === '.xlsx') {
+        return {
+          canonicalExt: '.xlsx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          kind: 'other',
+        };
+      }
+      if (isDocxOoxml(buffer)) {
+        return {
+          canonicalExt: '.docx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          kind: 'word',
+        };
+      }
+      if (isCourseFile && origExt === '.zip') {
+        return { canonicalExt: '.zip', mimeType: 'application/zip', kind: 'other' };
+      }
     }
     if (isWav(buffer)) return { canonicalExt: '.wav', mimeType: 'audio/wav', kind: 'audio' };
     if (isOgg(buffer)) return { canonicalExt: '.ogg', mimeType: 'audio/ogg', kind: 'audio' };
@@ -261,8 +301,11 @@ export function validateSecureUploadBuffer(
       if (origExt === '.aac') return { canonicalExt: '.aac', mimeType: 'audio/aac', kind: 'audio' };
       return { canonicalExt: '.mp3', mimeType: 'audio/mpeg', kind: 'audio' };
     }
+    if (isCourseFile && origExt === '.txt') {
+      return { canonicalExt: '.txt', mimeType: 'text/plain; charset=utf-8', kind: 'other' };
+    }
     throw AppError.badRequest(
-      'ساختار باینری فایل رسانه‌ای با فرمت‌های مجاز صوتی، ویدئویی یا مستندات مطابقت ندارد.',
+      'ساختار باینری فایل رسانه‌ای با فرمت‌های مجاز مطابقت ندارد.',
       'MAGIC_BYTE_MISMATCH'
     );
   }

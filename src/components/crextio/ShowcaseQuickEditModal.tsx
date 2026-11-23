@@ -121,8 +121,8 @@ const CLASSIC_FIELDS_MAP: Record<string, TextFieldSpec[]> = {
     },
     {
       configKey: 'heroTitle',
-      label: 'تیتر اصلی بنر خوش‌آمدگویی',
-      defaultValue: 'سامانه و ویترین خدمات دانش‌آموختگان فقه و قضا',
+      label: 'تیتر اصلی بنر خوش‌آمدگویی (با {name} نام کاربر وارد می‌شود)',
+      defaultValue: 'خوش آمدید، {name}',
     },
     {
       configKey: 'heroSubtitle',

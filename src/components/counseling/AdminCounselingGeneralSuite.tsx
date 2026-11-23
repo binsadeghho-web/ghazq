@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   HeartHandshake,
@@ -14,6 +14,9 @@ import {
   DollarSign,
   ClipboardCheck,
   X,
+  MapPin,
+  Clock,
+  Phone,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingRequest } from '../../types';
@@ -22,12 +25,15 @@ import { GeneralCounselingTariffsTab } from './GeneralCounselingTariffsTab';
 import { PsychologicalTestsTab } from './PsychologicalTestsTab';
 import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossierSuite';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { isReadOnlyObserverRole } from '../../utils/rbacPolicy';
 
 interface AdminCounselingGeneralSuiteProps {
+  initialTab?: 'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder';
   onSwitchToStudentPreview: () => void;
 }
 
 export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuiteProps> = ({
+  initialTab = 'queue',
   onSwitchToStudentPreview,
 }) => {
   const {
@@ -35,25 +41,38 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
     consultants,
     counselingRequests,
     generalConfig,
+    counselingFields,
     updateCounselingStatus,
+    updateCounselingRequest,
+    deleteCounselingRequest,
     updateConsultant,
     addConsultant,
     deleteConsultant,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder'>('queue');
+  const isObserver = isReadOnlyObserverRole(currentUser?.role);
+
+  const [activeTab, setActiveTab] = useState<'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder'>(initialTab);
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'scheduled' | 'attended' | 'cancelled'>('all');
+  const [fieldFilter, setFieldFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
 
   const [editingRequest, setEditingRequest] = useState<CounselingRequest | null>(null);
   const [confirmCancelRequestId, setConfirmCancelRequestId] = useState<string | null>(null);
+  const [confirmDeleteRequestId, setConfirmDeleteRequestId] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState({
     status: 'scheduled' as CounselingRequest['status'],
     scheduledDate: '',
     scheduledTime: '۱۶:۰۰',
-    meetingMode: 'برخط (تصویری امن)' as 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی',
+    meetingMode: 'حضوری' as 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی',
     venueDetails: '',
     preferredConsultantId: '',
+    selectedFieldTitle: '',
     counselorNotes: '',
   });
 
@@ -86,20 +105,52 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
     [consultants]
   );
 
+  const generalFieldTitles = useMemo(() => {
+    const titles = new Set<string>();
+    counselingFields
+      .filter(f => f.counselingType === 'general')
+      .forEach(f => titles.add(f.title));
+    generalRequests.forEach(r => {
+      if (r.selectedFieldTitle) titles.add(r.selectedFieldTitle);
+    });
+    return Array.from(titles);
+  }, [counselingFields, generalRequests]);
+
+  const uniqueLocations = useMemo(() => {
+    const locs = new Set<string>();
+    generalRequests.forEach(r => {
+      const loc = r.formResponses?.counselingLocation;
+      if (loc && typeof loc === 'string' && loc.trim()) {
+        locs.add(loc.trim());
+      }
+    });
+    return Array.from(locs);
+  }, [generalRequests]);
+
   const filteredRequests = useMemo(
     () =>
       generalRequests.filter(r => {
         const q = searchQuery.trim();
+        const locStr = String(r.formResponses?.counselingLocation || '');
+        const timeStr = String(r.formResponses?.counselingTimePreference || '');
         const matchesSearch =
           !q ||
           (r.applicantName || '').includes(q) ||
           (r.userNationalId || '').includes(q) ||
+          (r.userPhone || '').includes(q) ||
           (r.selectedFieldTitle || '').includes(q) ||
-          (r.categoryTitle || '').includes(q);
+          (r.categoryTitle || '').includes(q) ||
+          locStr.includes(q) ||
+          timeStr.includes(q) ||
+          (r.description || '').includes(q);
         const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesField =
+          fieldFilter === 'all' ||
+          (fieldFilter === '__none__' ? !r.selectedFieldTitle : r.selectedFieldTitle === fieldFilter);
+        const matchesLocation = locationFilter === 'all' || locStr === locationFilter;
+        return matchesSearch && matchesStatus && matchesField && matchesLocation;
       }),
-    [generalRequests, searchQuery, statusFilter]
+    [generalRequests, searchQuery, statusFilter, fieldFilter, locationFilter]
   );
 
   const totalRequests = generalRequests.length;
@@ -108,37 +159,45 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
   const activePsychologistsCount = generalConsultants.filter(c => c.isActive !== false).length;
 
   const handleOpenScheduleModal = (req: CounselingRequest) => {
+    if (isObserver) return;
     setEditingRequest(req);
     setScheduleForm({
       status: req.status === 'pending' ? 'scheduled' : req.status,
       scheduledDate: req.scheduledDate || new Date().toLocaleDateString('fa-IR'),
       scheduledTime: req.scheduledTime || '۱۶:۳۰',
-      meetingMode: req.meetingMode || 'برخط (تصویری امن)',
+      meetingMode: req.meetingMode || 'حضوری',
       venueDetails: req.venueDetails || '',
       preferredConsultantId: req.preferredConsultantId || (generalConsultants[0]?.id || ''),
+      selectedFieldTitle: req.selectedFieldTitle || '',
       counselorNotes: req.counselorNotes || '',
     });
   };
 
   const handleSaveSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingRequest) return;
+    if (!editingRequest || isObserver) return;
     const consObj = generalConsultants.find(c => c.id === scheduleForm.preferredConsultantId);
-    await updateCounselingStatus(
-      editingRequest.id,
-      scheduleForm.status,
-      scheduleForm.scheduledDate,
-      scheduleForm.counselorNotes,
-      scheduleForm.scheduledTime,
-      scheduleForm.venueDetails,
-      scheduleForm.meetingMode,
-      scheduleForm.preferredConsultantId || undefined,
-      consObj?.name
+    const matchedField = counselingFields.find(
+      f => f.counselingType === 'general' && f.title === scheduleForm.selectedFieldTitle
     );
+    await updateCounselingRequest(editingRequest.id, {
+      status: scheduleForm.status,
+      scheduledDate: scheduleForm.scheduledDate,
+      scheduledTime: scheduleForm.scheduledTime,
+      meetingMode: scheduleForm.meetingMode,
+      venueDetails: scheduleForm.venueDetails,
+      counselorNotes: scheduleForm.counselorNotes,
+      preferredConsultantId: scheduleForm.preferredConsultantId || undefined,
+      preferredConsultantName: consObj?.name || undefined,
+      selectedFieldId: matchedField?.id || (scheduleForm.selectedFieldTitle ? editingRequest.selectedFieldId : undefined),
+      selectedFieldTitle: scheduleForm.selectedFieldTitle || undefined,
+      categoryTitle: scheduleForm.selectedFieldTitle || 'مشاوره عمومی و روان‌شناختی',
+    });
     setEditingRequest(null);
   };
 
   const openAddConsultantModal = () => {
+    if (isObserver) return;
     setSelectedConsultant(null);
     setConsultantForm({
       name: '',
@@ -158,6 +217,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
   };
 
   const openEditConsultantModal = (c: Consultant) => {
+    if (isObserver) return;
     setIsAddConsultantOpen(false);
     setSelectedConsultant(c);
     setConsultantForm(c);
@@ -166,6 +226,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
 
   const handleSaveConsultant = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isObserver) return;
     const parsedResume = resumeText
       .split('\n')
       .map(s => s.trim())
@@ -210,7 +271,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
               {generalConfig.sectionTitle}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              زمان‌بندی مراجعان، مدیریت کادر روان‌شناسان، فعال‌سازی تست‌ها برای دانش‌آموختگان، تنظیم نرخ‌نامه و سفارشی‌سازی زمینه‌ها و مراحل فرم
+              مدیریت کامل درخواست‌ها، زمان‌بندی مراجعان، کادر روان‌شناسان، تست‌ها، نرخ‌نامه و ویرایش کامل محتوای صفحه و مراحل فرم
             </p>
           </div>
 
@@ -272,7 +333,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
           },
           {
             id: 'form_builder',
-            label: 'طراح فرم و زمینه‌های مشاوره',
+            label: 'ویرایش صفحه، زمینه‌ها، شهرها و فرم',
             icon: Sliders,
           },
         ].map(tab => {
@@ -304,19 +365,46 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
       {/* Tab 1: General Counseling Queue */}
       {activeTab === 'queue' && (
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 w-full md:w-80">
-              <Search className="w-4 h-4 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="جستجو بر اساس نام، کد ملی یا زمینه..."
-                className="bg-transparent text-xs focus:outline-none w-full"
-              />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 w-full lg:w-80">
+                <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="جستجو بر اساس نام، کد ملی، موبایل، شهر یا زمینه..."
+                  className="bg-transparent text-xs focus:outline-none w-full"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <select
+                  value={fieldFilter}
+                  onChange={e => setFieldFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
+                >
+                  <option value="all">همه زمینه‌های مشاوره</option>
+                  <option value="__none__">بدون انتخاب زمینه</option>
+                  {generalFieldTitles.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={locationFilter}
+                  onChange={e => setLocationFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
+                >
+                  <option value="all">همه شهرها / مکان‌ها</option>
+                  {uniqueLocations.map(loc => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs pt-1">
               {[
                 { id: 'all', label: 'همه نوبت‌ها' },
                 { id: 'pending', label: 'در انتظار تایید' },
@@ -349,6 +437,8 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
               {filteredRequests.map(req => {
                 const isPending = req.status === 'pending';
                 const isAttended = req.status === 'attended' || req.status === 'completed';
+                const locVal = req.formResponses?.counselingLocation;
+                const timeVal = req.formResponses?.counselingTimePreference;
 
                 return (
                   <div
@@ -359,18 +449,25 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                   >
                     <div className="space-y-3 text-xs">
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="space-y-1">
                           <h4 className="font-black text-sm text-slate-900 dark:text-white">{req.applicantName}</h4>
-                          <p className="text-emerald-700 dark:text-emerald-400 font-bold mt-0.5">
-                            {req.selectedFieldTitle || req.categoryTitle}
+                          <p className="text-emerald-700 dark:text-emerald-400 font-bold">
+                            {req.selectedFieldTitle || 'بدون انتخاب زمینه (درخواست عمومی)'}
                           </p>
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            تماس: {toPersianNumbers(req.userPhone || '---')} · شیوه: {req.meetingMode}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-mono">
+                            <span className="inline-flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {toPersianNumbers(req.userPhone || '---')}
+                            </span>
+                            {req.userNationalId && (
+                              <span>· کد ملی: {toPersianNumbers(req.userNationalId)}</span>
+                            )}
+                            <span>· {req.meetingMode}</span>
+                          </div>
                         </div>
 
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0 ${
                             isPending
                               ? 'bg-amber-100 text-amber-900 border-amber-300'
                               : isAttended
@@ -384,6 +481,23 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                         </span>
                       </div>
 
+                      {(locVal || timeVal) && (
+                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                          {locVal && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900 font-bold">
+                              <MapPin className="w-3.5 h-3.5" />
+                              <span>مکان: {String(locVal)}</span>
+                            </span>
+                          )}
+                          {timeVal && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900 font-bold">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>زمان: {String(timeVal)}</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {req.description && (
                         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
                           {req.description}
@@ -391,69 +505,104 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                       )}
 
                       {req.scheduledDate && (
-                        <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
+                        <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
                           <span>زمان: {toPersianNumbers(req.scheduledDate)} {req.scheduledTime || ''}</span>
                           <span>روان‌شناس: {req.preferredConsultantName || 'تعیین‌نشده'}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenScheduleModal(req)}
-                          className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>{isPending ? 'تعیین زمان و روان‌شناس' : 'ویرایش زمان'}</span>
-                        </button>
-
-                        {!isAttended && (
+                    {!isObserver && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => updateCounselingStatus(req.id, 'attended')}
-                            className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-1 cursor-pointer"
+                            onClick={() => handleOpenScheduleModal(req)}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold flex items-center gap-1.5 cursor-pointer"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>ثبت حضور</span>
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>{isPending ? 'تعیین زمان و ویرایش' : 'ویرایش و زمان‌بندی'}</span>
                           </button>
-                        )}
+
+                          {!isAttended && req.status !== 'cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => updateCounselingStatus(req.id, 'attended')}
+                              className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 flex items-center gap-1 cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>ثبت حضور</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {req.status !== 'cancelled' && (
+                            confirmCancelRequestId === req.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await updateCounselingStatus(req.id, 'cancelled', undefined, 'لغو شده توسط مدیر');
+                                    setConfirmCancelRequestId(null);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-[11px] cursor-pointer"
+                                >
+                                  تایید لغو
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmCancelRequestId(null)}
+                                  className="px-2 py-1.5 rounded-xl bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
+                                >
+                                  انصراف
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmCancelRequestId(req.id)}
+                                className="p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 cursor-pointer"
+                                title="لغو نوبت"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )
+                          )}
+
+                          {confirmDeleteRequestId === req.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await deleteCounselingRequest(req.id);
+                                  setConfirmDeleteRequestId(null);
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-[11px] cursor-pointer"
+                              >
+                                حذف قطعی
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteRequestId(null)}
+                                className="px-2 py-1.5 rounded-xl bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
+                              >
+                                انصراف
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteRequestId(req.id)}
+                              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                              title="حذف درخواست"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      {req.status !== 'cancelled' && (
-                        confirmCancelRequestId === req.id ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await updateCounselingStatus(req.id, 'cancelled', undefined, 'لغو شده توسط مدیر');
-                                setConfirmCancelRequestId(null);
-                              }}
-                              className="px-2.5 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-[11px] cursor-pointer"
-                            >
-                              تایید لغو
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmCancelRequestId(null)}
-                              className="px-2 py-1.5 rounded-xl bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
-                            >
-                              انصراف
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmCancelRequestId(req.id)}
-                            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-                            title="لغو نوبت"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )
-                      )}
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -465,12 +614,12 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
       {/* Tab 2: Psychological Tests & Session Dossiers (Scoped to General) */}
       {activeTab === 'tests_dossiers' && (
         <div className="space-y-6">
-          <PsychologicalTestsTab isPsychologistMode={true} />
+          <PsychologicalTestsTab isPsychologistMode={!isObserver} />
           <CounselingCalendarAndDossierSuite
             currentUser={currentUser}
             consultants={generalConsultants}
             counselingRequests={generalRequests}
-            isOfficial={true}
+            isOfficial={!isObserver}
           />
         </div>
       )}
@@ -483,14 +632,16 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
               <h3 className="font-black text-sm text-slate-900 dark:text-white">کادر روان‌شناسان و مشاوران مرکز</h3>
               <p className="text-slate-500 mt-0.5">مدیریت مشخصات، رزومه تفصیلی و ساعات پاسخگویی روان‌شناسان</p>
             </div>
-            <button
-              type="button"
-              onClick={openAddConsultantModal}
-              className="px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>افزودن روان‌شناس جدید</span>
-            </button>
+            {!isObserver && (
+              <button
+                type="button"
+                onClick={openAddConsultantModal}
+                className="px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>افزودن روان‌شناس جدید</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -518,47 +669,49 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => openEditConsultantModal(c)}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 cursor-pointer"
-                    title="ویرایش"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-
-                  {confirmDeleteConsultantId === c.id ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await deleteConsultant(c.id);
-                          setConfirmDeleteConsultantId(null);
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-[11px] cursor-pointer"
-                      >
-                        تایید حذف
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteConsultantId(null)}
-                        className="px-2 py-1.5 rounded-xl bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
-                      >
-                        لغو
-                      </button>
-                    </div>
-                  ) : (
+                {!isObserver && (
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setConfirmDeleteConsultantId(c.id)}
-                      className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 cursor-pointer"
-                      title="حذف"
+                      onClick={() => openEditConsultantModal(c)}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 cursor-pointer"
+                      title="ویرایش"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Edit3 className="w-3.5 h-3.5" />
                     </button>
-                  )}
-                </div>
+
+                    {confirmDeleteConsultantId === c.id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await deleteConsultant(c.id);
+                            setConfirmDeleteConsultantId(null);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-rose-600 text-white font-bold text-[11px] cursor-pointer"
+                        >
+                          تایید حذف
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteConsultantId(null)}
+                          className="px-2 py-1.5 rounded-xl bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
+                        >
+                          لغو
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteConsultantId(c.id)}
+                        className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 cursor-pointer"
+                        title="حذف"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -566,12 +719,12 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
       )}
 
       {/* Tab 4: General Tariffs Admin Management */}
-      {activeTab === 'tariffs' && <GeneralCounselingTariffsTab isAdminMode={true} />}
+      {activeTab === 'tariffs' && <GeneralCounselingTariffsTab isAdminMode={!isObserver} />}
 
-      {/* Tab 5: Dynamic Form & Counseling Fields Builder */}
+      {/* Tab 5: Full Page, Fields, Cities & Dynamic Form Builder */}
       {activeTab === 'form_builder' && <CounselingFormBuilderTab counselingType="general" />}
 
-      {/* Schedule Request Modal */}
+      {/* Schedule & Edit Request Modal */}
       <AnimatePresence>
         {editingRequest && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
@@ -580,13 +733,13 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onSubmit={handleSaveSchedule}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xl text-xs"
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  تعیین زمان جلسه: {editingRequest.applicantName}
+                  تعیین زمان و ویرایش درخواست: {editingRequest.applicantName}
                 </h3>
-                <button type="button" onClick={() => setEditingRequest(null)} className="text-slate-400">
+                <button type="button" onClick={() => setEditingRequest(null)} className="text-slate-400 cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -621,6 +774,33 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                 </div>
 
                 <div>
+                  <label className="block font-bold mb-1">زمینه مشاوره:</label>
+                  <select
+                    value={scheduleForm.selectedFieldTitle}
+                    onChange={e => setScheduleForm({ ...scheduleForm, selectedFieldTitle: e.target.value })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  >
+                    <option value="">بدون انتخاب زمینه (عمومی)</option>
+                    {generalFieldTitles.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1">شیوه برگزاری:</label>
+                  <select
+                    value={scheduleForm.meetingMode}
+                    onChange={e => setScheduleForm({ ...scheduleForm, meetingMode: e.target.value as any })}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  >
+                    <option value="حضوری">حضوری</option>
+                    <option value="برخط (تصویری امن)">برخط (تصویری امن)</option>
+                    <option value="تلفنی">تلفنی</option>
+                  </select>
+                </div>
+
+                <div>
                   <label className="block font-bold mb-1">تاریخ جلسه:</label>
                   <input
                     type="text"
@@ -642,7 +822,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
               </div>
 
               <div>
-                <label className="block font-bold mb-1">محل جلسه یا لینک اختصاصی:</label>
+                <label className="block font-bold mb-1">محل جلسه / نام مرکز یا لینک اختصاصی:</label>
                 <input
                   type="text"
                   value={scheduleForm.venueDetails}
@@ -702,7 +882,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
                     setIsAddConsultantOpen(false);
                     setSelectedConsultant(null);
                   }}
-                  className="text-slate-400"
+                  className="text-slate-400 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>

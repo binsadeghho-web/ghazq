@@ -13,11 +13,16 @@ import {
   Phone,
   AlertCircle,
   Compass,
+  ShieldCheck,
+  MapPin,
+  Clock,
+  Building2,
 } from 'lucide-react';
 import {
   User,
   Consultant,
   CounselingFieldItem,
+  DynamicWizardField,
   DynamicWizardStep,
   GeneralCounselingTariffItem,
 } from '../../types';
@@ -30,12 +35,26 @@ interface CounselingDynamicWizardModalProps {
   sectionTitle: string;
   descriptionButtonLabel: string;
   onOpenDescriptionModal: () => void;
+  submissionSuccessTitle?: string;
   submissionSuccessMessage: string;
   wizardSteps: DynamicWizardStep[];
   fieldsList: CounselingFieldItem[];
   preselectedField?: CounselingFieldItem | null;
   consultants: Consultant[];
   showConsultantsSelection: boolean;
+  showFieldsSelectionStep?: boolean;
+  wizardFieldStepTitle?: string;
+  wizardFieldStepSubtitle?: string;
+  wizardFieldNotice?: string;
+  fieldSelectionOptional?: boolean;
+  skipFieldSelectionLabel?: string;
+  otherCities?: string[];
+  includeFinalReviewStep?: boolean;
+  showPhoneFieldInWizard?: boolean;
+  showConsultantsInWizard?: boolean;
+  submitButtonLabel?: string;
+  nextButtonLabel?: string;
+  prevButtonLabel?: string;
   showRatesButtonInEnd?: boolean;
   ratesButtonLabel?: string;
   tariffs?: GeneralCounselingTariffItem[];
@@ -51,12 +70,26 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   sectionTitle,
   descriptionButtonLabel,
   onOpenDescriptionModal,
+  submissionSuccessTitle = 'درخواست شما با موفقیت ثبت گردید',
   submissionSuccessMessage,
   wizardSteps,
   fieldsList,
   preselectedField,
   consultants,
   showConsultantsSelection,
+  showFieldsSelectionStep = true,
+  wizardFieldStepTitle = 'گام اول: انتخاب زمینه مشاوره',
+  wizardFieldStepSubtitle,
+  wizardFieldNotice = 'لطفاً زمینه مشاوره مورد نظر خود را انتخاب کنید:',
+  fieldSelectionOptional = false,
+  skipFieldSelectionLabel = 'انتخاب نمی‌کنم / ادامه بدون انتخاب زمینه',
+  otherCities = [],
+  includeFinalReviewStep = true,
+  showPhoneFieldInWizard = true,
+  showConsultantsInWizard = true,
+  submitButtonLabel = 'تایید و ثبت قطعی درخواست',
+  nextButtonLabel = 'ادامه و مرحله بعد',
+  prevButtonLabel = 'مرحله قبل',
   showRatesButtonInEnd = false,
   ratesButtonLabel = 'اطلاع از نرخ نامه مشاوره مرکز',
   tariffs = [],
@@ -65,7 +98,10 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   onDoneSuccess,
 }) => {
   const activeFieldsList = useMemo(
-    () => fieldsList.filter(f => f.counselingType === counselingType && f.isActive),
+    () =>
+      fieldsList
+        .filter(f => f.counselingType === counselingType && f.isActive)
+        .sort((a, b) => (a.displayOrder || 1) - (b.displayOrder || 1)),
     [fieldsList, counselingType]
   );
 
@@ -78,13 +114,25 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   );
 
   const activeConsultants = useMemo(
-    () => consultants.filter(c => c.isActive !== false && (counselingType === 'specialized_career' ? c.counselingType === 'specialized_career' : c.counselingType !== 'specialized_career')),
+    () =>
+      consultants.filter(
+        c =>
+          c.isActive !== false &&
+          (counselingType === 'specialized_career'
+            ? c.counselingType === 'specialized_career'
+            : c.counselingType !== 'specialized_career')
+      ),
     [consultants, counselingType]
   );
 
-  const totalStepsCount = (activeFieldsList.length > 0 ? 1 : 0) + activeSteps.length + 1; // +1 for Review & Contact step
+  const hasFieldSelectionStep = showFieldsSelectionStep !== false && activeFieldsList.length > 0;
+  const hasFinalReviewStep = includeFinalReviewStep !== false || ( !hasFieldSelectionStep && activeSteps.length === 0 );
+  const totalStepsCount = Math.max(
+    1,
+    (hasFieldSelectionStep ? 1 : 0) + activeSteps.length + (hasFinalReviewStep ? 1 : 0)
+  );
 
-  const [stepIndex, setStepIndex] = useState(0); // 0..totalStepsCount-1, and 'success' state via submitted flag
+  const [stepIndex, setStepIndex] = useState(0);
   const [selectedFieldId, setSelectedFieldId] = useState<string>('');
   const [selectedFieldTitle, setSelectedFieldTitle] = useState<string>('');
   const [preferredConsultantId, setPreferredConsultantId] = useState<string>('');
@@ -132,10 +180,10 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
       if (preselectedField) {
         setSelectedFieldId(preselectedField.id);
         setSelectedFieldTitle(preselectedField.title);
-        setStepIndex(activeFieldsList.length > 0 ? 1 : 0);
-      } else if (activeFieldsList.length > 0) {
-        setSelectedFieldId(activeFieldsList[0].id);
-        setSelectedFieldTitle(activeFieldsList[0].title);
+        setStepIndex(hasFieldSelectionStep && totalStepsCount > 1 ? 1 : 0);
+      } else if (!fieldSelectionOptional && hasFieldSelectionStep) {
+        setSelectedFieldId(activeFieldsList[0]?.id || '');
+        setSelectedFieldTitle(activeFieldsList[0]?.title || '');
         setStepIndex(0);
       } else {
         setSelectedFieldId('');
@@ -145,29 +193,31 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
       return;
     }
 
-    // While modal is already open, preserve stepIndex and user responses if background data refreshes
     setResponses(prev => ({ ...initDefaults, ...prev }));
-    setSelectedFieldId(prev => {
-      if (prev) return prev;
-      if (preselectedField) return preselectedField.id;
-      return activeFieldsList[0]?.id || '';
-    });
-    setSelectedFieldTitle(prev => {
-      if (prev) return prev;
-      if (preselectedField) return preselectedField.title;
-      return activeFieldsList[0]?.title || '';
-    });
+    if (!fieldSelectionOptional && hasFieldSelectionStep) {
+      setSelectedFieldId(prev => prev || preselectedField?.id || activeFieldsList[0]?.id || '');
+      setSelectedFieldTitle(prev => prev || preselectedField?.title || activeFieldsList[0]?.title || '');
+    }
     setUserPhone(prev => prev || currentUser?.phone || '');
-  }, [isOpen, preselectedField, activeFieldsList, activeSteps, currentUser]);
+  }, [
+    isOpen,
+    preselectedField,
+    activeFieldsList,
+    activeSteps,
+    currentUser,
+    fieldSelectionOptional,
+    hasFieldSelectionStep,
+    totalStepsCount,
+  ]);
 
   if (!isOpen) return null;
 
   const safeStepIndex = Math.min(stepIndex, Math.max(0, totalStepsCount - 1));
-  const hasFieldSelectionStep = activeFieldsList.length > 0;
   const isFieldStep = hasFieldSelectionStep && safeStepIndex === 0;
   const dynamicStepOffset = hasFieldSelectionStep ? 1 : 0;
-  const isReviewStep = safeStepIndex === dynamicStepOffset + activeSteps.length;
+  const isReviewStep = hasFinalReviewStep && safeStepIndex === dynamicStepOffset + activeSteps.length;
   const currentDynamicStep = !isFieldStep && !isReviewStep ? activeSteps[safeStepIndex - dynamicStepOffset] : null;
+  const isLastStep = safeStepIndex === totalStepsCount - 1;
 
   const handleToggleCheckbox = (key: string, opt: string) => {
     setResponses(prev => {
@@ -178,33 +228,65 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
     setErrorMsg('');
   };
 
+  const validateCurrentDynamicStep = (): string | null => {
+    if (!currentDynamicStep) return null;
+    const enabledFields = (currentDynamicStep.fields || []).filter(f => f.enabled);
+    for (const field of enabledFields) {
+      if (!field.required) continue;
+      const val = responses[field.key];
+      if (field.type === 'checkbox') {
+        if (!Array.isArray(val) || val.length === 0) {
+          return `لطفاً حداقل یک گزینه برای «${field.label}» انتخاب کنید.`;
+        }
+      } else if (field.type === 'location_city') {
+        const scope = responses[`${field.key}__scope`];
+        const city = responses[`${field.key}__city`];
+        if (!scope) {
+          return `لطفاً برای «${field.label}»، گزینه ${field.primaryCityLabel || 'قم'} یا ${field.otherCitiesLabel || 'سایر شهرها'} را انتخاب نمایید.`;
+        }
+        if (scope === 'other' && (!city || !String(city).trim())) {
+          return 'لطفاً شهر مورد نظر خود را از فهرست مراکز هماهنگی انتخاب نمایید.';
+        }
+      } else if (field.type === 'time_preference') {
+        const isUndecided = Boolean(responses[`${field.key}__undecided`]);
+        const dayPart = responses[`${field.key}__day`];
+        const weekPart = responses[`${field.key}__week`];
+        if (!isUndecided) {
+          if (!dayPart && !weekPart) {
+            return `لطفاً برای «${field.label}»، زمان مناسب یا گزینه «${field.undecidedLabel || 'فعلاً مشخص نیست'}» را انتخاب کنید.`;
+          }
+          if (!dayPart) {
+            return `لطفاً بازه روز (${(field.dayTimeOptions || ['صبح', 'عصر']).join(' یا ')}) را مشخص کنید یا «${field.undecidedLabel || 'فعلاً مشخص نیست'}» را برگزینید.`;
+          }
+          if (!weekPart) {
+            return `لطفاً زمان هفته (${(field.weekPeriodOptions || ['وسط هفته', 'آخر هفته']).join(' یا ')}) را مشخص کنید یا «${field.undecidedLabel || 'فعلاً مشخص نیست'}» را برگزینید.`;
+          }
+        }
+      } else if (!val || !String(val).trim()) {
+        return `تکمیل فیلد «${field.label}» الزامی است.`;
+      }
+    }
+    return null;
+  };
+
   const handleNext = () => {
     setErrorMsg('');
     if (isFieldStep) {
-      if (!selectedFieldId && activeFieldsList.length > 0) {
+      if (!fieldSelectionOptional && !selectedFieldId && activeFieldsList.length > 0) {
         setErrorMsg('لطفاً یکی از زمینه‌های مشاوره را انتخاب نمایید.');
         return;
       }
-      setStepIndex(prev => prev + 1);
+      setStepIndex(prev => Math.min(totalStepsCount - 1, prev + 1));
       return;
     }
 
     if (currentDynamicStep) {
-      const enabledFields = (currentDynamicStep.fields || []).filter(f => f.enabled);
-      for (const field of enabledFields) {
-        if (!field.required) continue;
-        const val = responses[field.key];
-        if (field.type === 'checkbox') {
-          if (!Array.isArray(val) || val.length === 0) {
-            setErrorMsg(`لطفاً حداقل یک گزینه برای «${field.label}» انتخاب کنید.`);
-            return;
-          }
-        } else if (!val || !String(val).trim()) {
-          setErrorMsg(`تکمیل فیلد «${field.label}» الزامی است.`);
-          return;
-        }
+      const err = validateCurrentDynamicStep();
+      if (err) {
+        setErrorMsg(err);
+        return;
       }
-      setStepIndex(prev => prev + 1);
+      setStepIndex(prev => Math.min(totalStepsCount - 1, prev + 1));
     }
   };
 
@@ -217,7 +299,21 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
 
   const handleFinalSubmit = async () => {
     if (!currentUser || submitting) return;
-    if (!userPhone.trim()) {
+
+    if (isFieldStep && !fieldSelectionOptional && !selectedFieldId && activeFieldsList.length > 0) {
+      setErrorMsg('لطفاً یکی از زمینه‌های مشاوره را انتخاب نمایید.');
+      return;
+    }
+
+    if (currentDynamicStep) {
+      const dynErr = validateCurrentDynamicStep();
+      if (dynErr) {
+        setErrorMsg(dynErr);
+        return;
+      }
+    }
+
+    if (showPhoneFieldInWizard !== false && !userPhone.trim()) {
       setErrorMsg('شماره تماس جهت هماهنگی الزامی است.');
       return;
     }
@@ -227,13 +323,14 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
     try {
       const selectedConsultant = activeConsultants.find(c => c.id === preferredConsultantId);
 
-      // Build readable summary from dynamic answers
       const summaryLines: string[] = [];
       if (selectedFieldTitle) {
         summaryLines.push(`زمینه مشاوره: ${selectedFieldTitle}`);
       }
+      let hasLocationField = false;
       for (const st of activeSteps) {
         for (const fl of (st.fields || []).filter(f => f.enabled)) {
+          if (fl.type === 'location_city') hasLocationField = true;
           const val = responses[fl.key];
           if (val !== undefined && val !== '' && (!Array.isArray(val) || val.length > 0)) {
             summaryLines.push(`${fl.label}: ${Array.isArray(val) ? val.join('، ') : val}`);
@@ -241,15 +338,28 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         }
       }
 
+      const cleanResponses: Record<string, any> = {};
+      Object.entries(responses).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') {
+          cleanResponses[k] = v;
+        }
+      });
+
       const modeVal = responses.meetingMode;
       const normalizedMode: 'حضوری' | 'برخط (تصویری امن)' | 'تلفنی' =
-        modeVal === 'حضوری' || modeVal === 'تلفنی' ? modeVal : 'برخط (تصویری امن)';
+        modeVal === 'حضوری' || modeVal === 'تلفنی'
+          ? modeVal
+          : modeVal === 'برخط (تصویری امن)'
+          ? modeVal
+          : hasLocationField
+          ? 'حضوری'
+          : 'برخط (تصویری امن)';
 
       await onSubmitBooking({
         applicantId: currentUser.id,
         applicantName: currentUser.fullName,
         userNationalId: currentUser.nationalId,
-        userPhone: userPhone.trim(),
+        userPhone: userPhone.trim() || currentUser.phone || undefined,
         userRoleTitle: currentUser.roleTitle,
         category: counselingType === 'specialized_career' ? 'academic' : 'individual',
         categoryTitle: selectedFieldTitle || sectionTitle,
@@ -259,8 +369,8 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         preferredConsultantId: selectedConsultant?.id,
         preferredConsultantName: selectedConsultant?.name,
         meetingMode: normalizedMode,
-        description: summaryLines.join('\n') || 'درخواست ثبت‌شده از طریق ویزارد گام‌به‌گام',
-        formResponses: responses,
+        description: summaryLines.join('\n') || 'درخواست ثبت‌شده از طریق سامانه مشاوره مرکز',
+        formResponses: cleanResponses,
       });
 
       setIsSubmitted(true);
@@ -272,6 +382,294 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
     }
   };
 
+  const renderLocationCityField = (field: DynamicWizardField) => {
+    const primaryLabel = field.primaryCityLabel || 'قم';
+    const otherLabel = field.otherCitiesLabel || 'سایر شهرها';
+    const citiesList = (otherCities && otherCities.length > 0 ? otherCities : field.options || []).filter(Boolean);
+    const scope = responses[`${field.key}__scope`] as 'primary' | 'other' | undefined;
+    const chosenCity = (responses[`${field.key}__city`] as string) || '';
+
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setResponses(prev => ({
+                ...prev,
+                [`${field.key}__scope`]: 'primary',
+                [`${field.key}__city`]: primaryLabel,
+                [field.key]: primaryLabel,
+              }));
+              setErrorMsg('');
+            }}
+            className={`p-4 rounded-2xl border text-right transition-all flex items-center justify-between gap-3 cursor-pointer ${
+              scope === 'primary'
+                ? 'border-emerald-500 bg-emerald-500/10 text-slate-900 dark:text-white font-black ring-2 ring-emerald-500/25'
+                : 'border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-black">{primaryLabel}</span>
+            </div>
+            {scope === 'primary' && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setResponses(prev => ({
+                ...prev,
+                [`${field.key}__scope`]: 'other',
+                [`${field.key}__city`]: '',
+                [field.key]: '',
+              }));
+              setErrorMsg('');
+            }}
+            className={`p-4 rounded-2xl border text-right transition-all flex items-center justify-between gap-3 cursor-pointer ${
+              scope === 'other'
+                ? 'border-emerald-500 bg-emerald-500/10 text-slate-900 dark:text-white font-black ring-2 ring-emerald-500/25'
+                : 'border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-black">{otherLabel}</span>
+            </div>
+            {scope === 'other' && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {scope === 'other' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  مراکز و شهرهایی که امکان هماهنگی و معرفی مشاور در آن‌ها وجود دارد:
+                </p>
+
+                {citiesList.length === 0 ? (
+                  <input
+                    type="text"
+                    value={chosenCity}
+                    onChange={e => {
+                      const c = e.target.value;
+                      setResponses(prev => ({
+                        ...prev,
+                        [`${field.key}__city`]: c,
+                        [field.key]: c.trim() ? `${otherLabel} - ${c.trim()}` : '',
+                      }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="نام شهر خود را وارد نمایید..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {citiesList.map(city => {
+                      const active = chosenCity === city;
+                      return (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => {
+                            setResponses(prev => ({
+                              ...prev,
+                              [`${field.key}__city`]: city,
+                              [field.key]: `${otherLabel} - ${city}`,
+                            }));
+                            setErrorMsg('');
+                          }}
+                          className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+                            active
+                              ? 'border-emerald-500 bg-emerald-600 text-white shadow-xs'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-emerald-400'
+                          }`}
+                        >
+                          <span className="truncate">{city}</span>
+                          {active && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const renderTimePreferenceField = (field: DynamicWizardField) => {
+    const dayOpts = field.dayTimeOptions && field.dayTimeOptions.length > 0 ? field.dayTimeOptions : ['صبح', 'عصر'];
+    const weekOpts =
+      field.weekPeriodOptions && field.weekPeriodOptions.length > 0 ? field.weekPeriodOptions : ['وسط هفته', 'آخر هفته'];
+    const undecidedLabel = field.undecidedLabel || 'فعلاً مشخص نیست';
+
+    const selectedDay = (responses[`${field.key}__day`] as string) || '';
+    const selectedWeek = (responses[`${field.key}__week`] as string) || '';
+    const isUndecided = Boolean(responses[`${field.key}__undecided`]);
+
+    const updateTimeParts = (nextDay: string, nextWeek: string, nextUndecided: boolean) => {
+      const combined = nextUndecided
+        ? undecidedLabel
+        : [nextDay, nextWeek].filter(Boolean).join(' · ');
+      setResponses(prev => ({
+        ...prev,
+        [`${field.key}__day`]: nextDay,
+        [`${field.key}__week`]: nextWeek,
+        [`${field.key}__undecided`]: nextUndecided,
+        [field.key]: combined,
+      }));
+      setErrorMsg('');
+    };
+
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Part 1: Day time (صبح / عصر) */}
+          <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
+              ساعت یا نوبت روز:
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {dayOpts.map(opt => {
+                const active = !isUndecided && selectedDay === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => updateTimeParts(opt, selectedWeek, false)}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      active
+                        ? 'border-emerald-500 bg-emerald-600 text-white shadow-xs'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span>{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Part 2: Week period (وسط هفته / آخر هفته) */}
+          <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
+              بازه روزهای هفته:
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {weekOpts.map(opt => {
+                const active = !isUndecided && selectedWeek === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => updateTimeParts(selectedDay, opt, false)}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      active
+                        ? 'border-emerald-500 bg-emerald-600 text-white shadow-xs'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    <span>{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Standalone Undecided option */}
+        <button
+          type="button"
+          onClick={() => updateTimeParts('', '', !isUndecided)}
+          className={`w-full py-2.5 px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+            isUndecided
+              ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 ring-2 ring-amber-500/20'
+              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <span>{undecidedLabel}</span>
+          {isUndecided && <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />}
+        </button>
+      </div>
+    );
+  };
+
+  const renderInlineCompletionExtras = () => (
+    <div className="space-y-4 pt-3 border-t border-slate-200/80 dark:border-slate-800">
+      {showConsultantsSelection && showConsultantsInWizard && activeConsultants.length > 0 && (
+        <div>
+          <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+            <UserCheck className="w-4 h-4 text-emerald-600" />
+            <span>انتخاب مشاور یا روان‌شناس ترجیحی (اختیاری):</span>
+          </label>
+          <select
+            value={preferredConsultantId}
+            onChange={e => setPreferredConsultantId(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+          >
+            <option value="">انتخاب هوشمند توسط دبیرخانه مرکز بر اساس موضوع</option>
+            {activeConsultants.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} — {c.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {showPhoneFieldInWizard !== false && (
+        <div>
+          <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+            <Phone className="w-4 h-4 text-emerald-600" />
+            <span>شماره تماس جهت هماهنگی مشاوران مرکز *</span>
+          </label>
+          <input
+            type="text"
+            value={userPhone}
+            onChange={e => {
+              setUserPhone(e.target.value);
+              setErrorMsg('');
+            }}
+            dir="ltr"
+            placeholder="0912..."
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-left"
+          />
+        </div>
+      )}
+
+      {showRatesButtonInEnd && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">
+            پیش از ثبت می‌توانید تعرفه‌های مصوب مرکز و یارانه اعضا را مشاهده فرمایید.
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTariffPopup(true)}
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <DollarSign className="w-3.5 h-3.5" />
+            <span>{ratesButtonLabel || 'اطلاع از نرخ نامه مشاوره مرکز'}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
       <motion.div
@@ -280,7 +678,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
       >
-        {/* Top Modal Header with Always-Accessible Description Button (Reform 46 / 50) */}
+        {/* Top Modal Header with Persistent Description Button */}
         <div className="p-5 sm:p-6 bg-gradient-to-l from-emerald-950 via-slate-900 to-slate-950 text-white flex items-center justify-between gap-3 shrink-0">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 text-[11px] text-amber-300 font-bold">
@@ -289,9 +687,9 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             </div>
             <h3 className="text-sm sm:text-base font-black truncate">
               {isSubmitted
-                ? 'ثبت نهایی درخواست مشاوره'
+                ? submissionSuccessTitle
                 : isFieldStep
-                ? 'گام اول: انتخاب زمینه مشاوره'
+                ? wizardFieldStepTitle || 'انتخاب زمینه مشاوره'
                 : isReviewStep
                 ? 'مرور نهایی اطلاعات و ثبت قطعی درخواست'
                 : currentDynamicStep?.title || 'تکمیل اطلاعات درخواست'}
@@ -319,15 +717,15 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         </div>
 
         {/* Stepper Progress Bar */}
-        {!isSubmitted && (
+        {!isSubmitted && totalStepsCount > 1 && (
           <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shrink-0">
             <span className="font-bold text-slate-600 dark:text-slate-300">
-              مرحله {toPersianNumbers(stepIndex + 1)} از {toPersianNumbers(totalStepsCount)}
+              مرحله {toPersianNumbers(safeStepIndex + 1)} از {toPersianNumbers(totalStepsCount)}
             </span>
             <div className="flex-1 max-w-xs h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
               <div
                 className="h-full bg-emerald-600 rounded-full transition-all duration-300"
-                style={{ width: `${Math.round(((stepIndex + 1) / totalStepsCount) * 100)}%` }}
+                style={{ width: `${Math.round(((safeStepIndex + 1) / totalStepsCount) * 100)}%` }}
               />
             </div>
           </div>
@@ -349,9 +747,9 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
               </div>
               <div className="space-y-2 max-w-md mx-auto">
                 <h4 className="text-base font-black text-slate-900 dark:text-white">
-                  درخواست شما با موفقیت ثبت گردید
+                  {submissionSuccessTitle}
                 </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 font-bold leading-relaxed whitespace-pre-line">
                   {submissionSuccessMessage}
                 </p>
               </div>
@@ -365,14 +763,21 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             </div>
           ) : isFieldStep ? (
             <div className="space-y-4">
-              <div className="space-y-1">
-                <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <Compass className="w-4 h-4 text-emerald-600" />
-                  <span>لطفاً زمینه مشاوره مورد نظر خود را انتخاب کنید:</span>
-                </h4>
-                <p className="text-slate-500 dark:text-slate-400">
-                  انتخاب زمینه به کارشناسان کمک می‌کند درخواست شما به مرتبط‌ترین متخصص ارجاع شود.
-                </p>
+              {/* Prominent Privacy & Optional Notice Banner */}
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-500/40 dark:border-emerald-700/60 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  {fieldSelectionOptional ? <ShieldCheck className="w-5 h-5" /> : <Compass className="w-5 h-5" />}
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-black text-xs sm:text-sm text-emerald-950 dark:text-emerald-200 leading-relaxed">
+                    {wizardFieldNotice}
+                  </h4>
+                  {wizardFieldStepSubtitle && (
+                    <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80">
+                      {wizardFieldStepSubtitle}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -383,8 +788,13 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                       key={f.id}
                       type="button"
                       onClick={() => {
-                        setSelectedFieldId(f.id);
-                        setSelectedFieldTitle(f.title);
+                        if (selected && fieldSelectionOptional) {
+                          setSelectedFieldId('');
+                          setSelectedFieldTitle('');
+                        } else {
+                          setSelectedFieldId(f.id);
+                          setSelectedFieldTitle(f.title);
+                        }
                         setErrorMsg('');
                       }}
                       className={`p-4 rounded-2xl border text-right transition-all space-y-1.5 cursor-pointer ${
@@ -394,15 +804,58 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-black text-xs">{f.title}</span>
+                        <span className="font-black text-xs sm:text-sm">{f.title}</span>
                         {selected && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
                       </div>
-                      {f.subtitle && <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">{f.subtitle}</p>}
-                      {f.description && <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">{f.description}</p>}
+                      {f.subtitle?.trim() && (
+                        <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">{f.subtitle}</p>
+                      )}
+                      {f.description?.trim() && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">{f.description}</p>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              {fieldSelectionOptional && (
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  {selectedFieldId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFieldId('');
+                        setSelectedFieldTitle('');
+                        setErrorMsg('');
+                      }}
+                      className="text-[11px] font-bold text-slate-500 hover:text-rose-600 cursor-pointer"
+                    >
+                      لغو انتخاب زمینه (ادامه بدون انتخاب)
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      انتخاب زمینه کاملاً اختیاری است؛ می‌توانید مستقیم به مرحله بعد بروید.
+                    </span>
+                  )}
+
+                  {!isLastStep && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFieldId('');
+                        setSelectedFieldTitle('');
+                        setErrorMsg('');
+                        setStepIndex(prev => Math.min(totalStepsCount - 1, prev + 1));
+                      }}
+                      className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold text-[11px] cursor-pointer shrink-0"
+                    >
+                      {skipFieldSelectionLabel}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {isLastStep && !isReviewStep && renderInlineCompletionExtras()}
             </div>
           ) : currentDynamicStep ? (
             <div className="space-y-5">
@@ -412,7 +865,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 </p>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {(currentDynamicStep.fields || [])
                   .filter(f => f.enabled)
                   .sort((a, b) => (a.order || 1) - (b.order || 1))
@@ -420,10 +873,14 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                     const val = responses[field.key];
                     return (
                       <div key={field.id} className="space-y-2">
-                        <label className="block font-bold text-slate-800 dark:text-slate-200">
+                        <label className="block font-black text-slate-800 dark:text-slate-200">
                           {field.label}
                           {field.required && <span className="text-rose-500 mr-1">*</span>}
                         </label>
+
+                        {field.helperText && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{field.helperText}</p>
+                        )}
 
                         {field.type === 'text' && (
                           <input
@@ -462,7 +919,9 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                           >
                             <option value="">انتخاب نمایید...</option>
                             {(field.options || []).map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
                             ))}
                           </select>
                         )}
@@ -521,15 +980,21 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                             })}
                           </div>
                         )}
+
+                        {field.type === 'location_city' && renderLocationCityField(field)}
+                        {field.type === 'time_preference' && renderTimePreferenceField(field)}
                       </div>
                     );
                   })}
               </div>
+
+              {/* If includeFinalReviewStep is false and this is the final step, show compact phone + submit extras inline */}
+              {isLastStep && !isReviewStep && renderInlineCompletionExtras()}
             </div>
           ) : (
             /* Final Review Step */
             <div className="space-y-4">
-              {showConsultantsSelection && activeConsultants.length > 0 && (
+              {showConsultantsSelection && showConsultantsInWizard && activeConsultants.length > 0 && (
                 <div>
                   <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
                     <UserCheck className="w-4 h-4 text-emerald-600" />
@@ -550,19 +1015,21 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 </div>
               )}
 
-              <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-emerald-600" />
-                  <span>شماره تماس جهت هماهنگی و ارسال زمان جلسه *</span>
-                </label>
-                <input
-                  type="text"
-                  value={userPhone}
-                  onChange={e => setUserPhone(e.target.value)}
-                  dir="ltr"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-left"
-                />
-              </div>
+              {showPhoneFieldInWizard !== false && (
+                <div>
+                  <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-emerald-600" />
+                    <span>شماره تماس جهت هماهنگی و ارسال زمان جلسه *</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={userPhone}
+                    onChange={e => setUserPhone(e.target.value)}
+                    dir="ltr"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-left"
+                  />
+                </div>
+              )}
 
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
                 <h4 className="font-black text-slate-900 dark:text-white">خلاصه مشخصات و پاسخ‌های شما</h4>
@@ -573,7 +1040,9 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                   </div>
                   <div>
                     <span className="text-slate-400">کد ملی: </span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{toPersianNumbers(currentUser?.nationalId || '')}</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {toPersianNumbers(currentUser?.nationalId || '')}
+                    </span>
                   </div>
                   {selectedFieldTitle && (
                     <div className="sm:col-span-2">
@@ -599,7 +1068,6 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 </div>
               </div>
 
-              {/* Reform 52: Clickable Tariff Notice in Wizard Final Step (General Counseling) */}
               {showRatesButtonInEnd && (
                 <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-3">
                   <div className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">
@@ -625,14 +1093,14 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             <button
               type="button"
               onClick={handleBack}
-              disabled={stepIndex === 0}
+              disabled={safeStepIndex === 0}
               className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
-              <span>مرحله قبل</span>
+              <span>{prevButtonLabel || 'مرحله قبل'}</span>
             </button>
 
-            {isReviewStep ? (
+            {isReviewStep || isLastStep ? (
               <button
                 type="button"
                 onClick={handleFinalSubmit}
@@ -640,7 +1108,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
-                <span>{submitting ? 'در حال ثبت...' : 'تایید و ثبت قطعی درخواست'}</span>
+                <span>{submitting ? 'در حال ثبت...' : submitButtonLabel || 'ثبت درخواست مشاوره'}</span>
               </button>
             ) : (
               <button
@@ -648,7 +1116,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 onClick={handleNext}
                 className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center gap-2 cursor-pointer shadow-md"
               >
-                <span>ادامه و مرحله بعد</span>
+                <span>{nextButtonLabel || 'ادامه و مرحله بعد'}</span>
                 <ChevronLeft className="w-4 h-4" />
               </button>
             )}
@@ -674,7 +1142,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 <button
                   type="button"
                   onClick={() => setShowTariffPopup(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>

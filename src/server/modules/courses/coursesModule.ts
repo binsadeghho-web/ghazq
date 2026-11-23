@@ -4,11 +4,12 @@ import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { AppError } from '../../platform/errors';
 import { AuthContext, AuthorizationPolicy } from '../../platform/authorization';
 import { getCurrentUser } from '../../platform/sessionAuth';
-import { Course, CourseEnrollment, CourseCustomField, CourseInstallmentPlan, CourseInstallmentRecord } from '../../../types';
+import { Course, CourseEnrollment, CourseCustomField, CourseInstallmentPlan, CourseInstallmentRecord, CourseInstructorItem, CourseSessionItem } from '../../../types';
 import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
 import { extractExpectedVersion } from '../../platform/httpUtils';
+import { deleteCourseImageIfUnreferenced, promoteDraftCourseFilesFolder } from '../../platform/storageCleanup';
 import { registerCourseOperationsRoutes } from './courseOperationsRoutes';
 import { registerCourseDiscountsRoutes, validateDiscountForCourse } from './courseDiscountsRoutes';
 import { registerCourseInstallmentsRoutes, mapInstallmentRow } from './courseInstallmentsRoutes';
@@ -25,6 +26,186 @@ function parseJsonField<T>(val: any, fallback: T): T {
   return val as T;
 }
 
+function normalizeCourseInstructors(
+  inputInstructors: CourseInstructorItem[] | undefined,
+  fallbackName?: string,
+  fallbackTitle?: string,
+  fallbackAvatarUrl?: string,
+  fallbackResume?: string
+): CourseInstructorItem[] {
+  let list = Array.isArray(inputInstructors)
+    ? inputInstructors
+        .filter(item => item && String(item.fullName || '').trim())
+        .map((item, idx) => ({
+          id: item.id || `inst_${Date.now()}_${idx}`,
+          fullName: String(item.fullName).trim(),
+          title: item.title ? String(item.title).trim() : undefined,
+          roleLabel: item.roleLabel ? String(item.roleLabel).trim() : undefined,
+          avatarUrl: item.avatarUrl ? String(item.avatarUrl).trim() : undefined,
+          resume: item.resume ? String(item.resume).trim() : undefined,
+          isPrimary: Boolean(item.isPrimary),
+        }))
+    : [];
+
+  if (list.length === 0 && fallbackName && fallbackName.trim()) {
+    list = [
+      {
+        id: 'inst_primary',
+        fullName: fallbackName.trim(),
+        title: fallbackTitle || undefined,
+        roleLabel: 'مدرس اصلی دوره',
+        avatarUrl: fallbackAvatarUrl || undefined,
+        resume: fallbackResume || undefined,
+        isPrimary: true,
+      },
+    ];
+  }
+
+  if (list.length > 0 && !list.some(i => i.isPrimary)) {
+    list[0] = { ...list[0], isPrimary: true };
+  }
+
+  return list;
+}
+
+function normalizeCourseSessions(
+  inputSessions: CourseSessionItem[] | undefined,
+  instructors: CourseInstructorItem[]
+): CourseSessionItem[] {
+  if (!Array.isArray(inputSessions)) return [];
+  const instMap = new Map(instructors.map(i => [i.id, i]));
+  const validModes = new Set(['course_instructor', 'custom_presenter', 'unspecified', 'panel']);
+
+  return inputSessions
+    .filter(s => s && String(s.title || '').trim())
+    .map((s, idx) => {
+      const mode = validModes.has(s.presenterMode) ? s.presenterMode : 'course_instructor';
+      const linkedInst = s.presenterInstructorId ? instMap.get(s.presenterInstructorId) : undefined;
+      let presenterName = s.presenterName ? String(s.presenterName).trim() : undefined;
+      let presenterTitle = s.presenterTitle ? String(s.presenterTitle).trim() : undefined;
+      if (mode === 'course_instructor' && linkedInst) {
+        presenterName = linkedInst.fullName;
+        presenterTitle = linkedInst.title;
+      } else if (mode === 'unspecified') {
+        presenterName = undefined;
+        presenterTitle = undefined;
+      }
+
+      return {
+        id: s.id || `sess_${idx + 1}`,
+        sessionNumber: Number(s.sessionNumber) > 0 ? Number(s.sessionNumber) : idx + 1,
+        title: String(s.title).trim(),
+        presenterMode: mode,
+        presenterInstructorId: mode === 'course_instructor' ? s.presenterInstructorId : undefined,
+        presenterName,
+        presenterTitle,
+        sessionDate: s.sessionDate ? String(s.sessionDate).trim() : undefined,
+        startTime: s.startTime ? String(s.startTime).trim() : undefined,
+        durationMinutes: s.durationMinutes ? Number(s.durationMinutes) : undefined,
+        holdingType: s.holdingType || undefined,
+        meetingLink: s.meetingLink ? String(s.meetingLink).trim() : undefined,
+        description: s.description ? String(s.description).trim() : undefined,
+      };
+    });
+}
+
+async function syncCourseNormalizedRelations(
+  conn: any,
+  courseId: string,
+  instructors: CourseInstructorItem[],
+  sessions: CourseSessionItem[],
+  offlineFiles: any[],
+  actorName: string
+): Promise<void> {
+  const cBuf = toIdBuffer(courseId);
+
+  // 1. Sync normalized course_instructors table
+  await conn.query(`DELETE FROM course_instructors WHERE course_id = ?`, [cBuf]);
+  for (let i = 0; i < instructors.length; i++) {
+    const inst = instructors[i];
+    await conn.query(
+      `INSERT INTO course_instructors (
+        id, course_id, instructor_key, sort_order, full_name, title, role_label, avatar_url, resume, is_primary
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        toIdBuffer(generateUUIDv7()),
+        cBuf,
+        inst.id || `inst_${i + 1}`,
+        i,
+        inst.fullName,
+        inst.title || null,
+        inst.roleLabel || null,
+        inst.avatarUrl || null,
+        inst.resume || null,
+        inst.isPrimary ? 1 : 0,
+      ]
+    );
+  }
+
+  // 2. Sync normalized course_sessions table
+  await conn.query(`DELETE FROM course_sessions WHERE course_id = ?`, [cBuf]);
+  for (let i = 0; i < sessions.length; i++) {
+    const sess = sessions[i];
+    await conn.query(
+      `INSERT INTO course_sessions (
+        id, course_id, session_key, session_number, title, presenter_mode, presenter_instructor_key,
+        presenter_name, presenter_title, session_date, start_time, duration_minutes, holding_type, meeting_link, description
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        toIdBuffer(generateUUIDv7()),
+        cBuf,
+        sess.id || `sess_${i + 1}`,
+        sess.sessionNumber || i + 1,
+        sess.title,
+        sess.presenterMode || 'course_instructor',
+        sess.presenterInstructorId || null,
+        sess.presenterName || null,
+        sess.presenterTitle || null,
+        sess.sessionDate || null,
+        sess.startTime || null,
+        sess.durationMinutes || null,
+        sess.holdingType || null,
+        sess.meetingLink || null,
+        sess.description || null,
+      ]
+    );
+  }
+
+  // 3. Sync normalized course_files table (preserving soft-deleted audit history)
+  await conn.query(`DELETE FROM course_files WHERE course_id = ? AND deleted_at IS NULL`, [cBuf]);
+  for (let i = 0; i < (offlineFiles || []).length; i++) {
+    const f = offlineFiles[i];
+    const url = String(f.url || f.downloadUrl || '').trim();
+    if (!url) continue;
+    const sourceType =
+      f.sourceType === 'disk' || f.sourceType === 'external' || f.sourceType === 'upload'
+        ? f.sourceType
+        : url.startsWith('/api/storage/private/course_files/')
+        ? 'upload'
+        : 'external';
+    await conn.query(
+      `INSERT INTO course_files (
+        id, course_id, file_key, session_number, title, url, filename, file_size, size_label, format, source_type, description, uploaded_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        toIdBuffer(generateUUIDv7()),
+        cBuf,
+        String(f.id || `file_${i + 1}`),
+        f.sessionNumber ? Number(f.sessionNumber) : null,
+        String(f.title || f.filename || 'فایل آموزشی'),
+        url,
+        f.filename || null,
+        f.fileSizeBytes ? Number(f.fileSizeBytes) : null,
+        f.size || null,
+        f.format || f.fileType || null,
+        sourceType,
+        f.description || null,
+        actorName,
+      ]
+    );
+  }
+}
+
 function mapCourseRow(row: any): Course & { version: number } {
   const topics = parseJsonField<string[]>(row.topics, []);
   const archiveResources = parseJsonField<any[]>(row.archive_resources, []);
@@ -34,18 +215,30 @@ function mapCourseRow(row: any): Course & { version: number } {
   const hiddenFields = parseJsonField<string[]>(row.hidden_fields, []);
   const installmentPlan = parseJsonField<CourseInstallmentPlan | undefined>(row.installment_plan, undefined);
   const offlineDownloadFiles = parseJsonField<any[]>(row.offline_download_files, []);
+  const rawInstructors = parseJsonField<CourseInstructorItem[]>(row.instructors, []);
+  const instructors = normalizeCourseInstructors(
+    rawInstructors,
+    row.instructor,
+    row.instructor_title,
+    row.instructor_avatar_url,
+    row.instructor_resume
+  );
+  const sessions = parseJsonField<CourseSessionItem[]>(row.sessions, []);
 
   const capacity = Number(row.capacity || 0);
   const enrolledCount = Number(row.enrolled_count || 0);
   const remainingCapacity = Math.max(0, capacity - enrolledCount);
+  const primaryInst = instructors.find(i => i.isPrimary) || instructors[0];
 
   return {
     id: fromIdBuffer(row.id),
     title: row.title,
-    instructor: row.instructor,
-    instructorTitle: row.instructor_title || undefined,
-    instructorResume: row.instructor_resume || undefined,
-    instructorAvatarUrl: row.instructor_avatar_url || undefined,
+    instructor: primaryInst?.fullName || row.instructor,
+    instructorTitle: primaryInst?.title || row.instructor_title || undefined,
+    instructorResume: primaryInst?.resume || row.instructor_resume || undefined,
+    instructorAvatarUrl: primaryInst?.avatarUrl || row.instructor_avatar_url || undefined,
+    instructors,
+    sessions,
     category: row.category || 'فقه القضاء',
     level: row.level || 'پیشرفته',
     hours: Number(row.hours ?? row.duration_hours ?? 0),
@@ -92,7 +285,7 @@ function mapCourseRow(row: any): Course & { version: number } {
     isDeleted: Boolean(row.is_deleted),
     deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
     deletedBy: row.deleted_by || undefined,
-    sessionsCount: Number(row.sessions_count || 4),
+    sessionsCount: sessions.length > 0 ? sessions.length : Number(row.sessions_count || 4),
     waitlistEnabled: row.waitlist_enabled !== undefined ? Boolean(row.waitlist_enabled) : true,
     visibleToCustomer: row.visible_to_customer !== undefined ? Boolean(row.visible_to_customer) : true,
     version: Number(row.version || 1),
@@ -112,6 +305,10 @@ function mapEnrollmentRow(row: any): CourseEnrollment & { version: number } {
     enrolledAt: row.enrolled_at ? new Date(row.enrolled_at).toISOString() : new Date().toISOString(),
     paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
+    classStatus: (row.class_status || 'active') as 'active' | 'removed',
+    removedAt: row.removed_at ? new Date(row.removed_at).toISOString() : undefined,
+    removedBy: row.removed_by || undefined,
+    removalReason: row.removal_reason || undefined,
     paymentPlanType: (row.payment_plan_type || 'full') as 'full' | 'installment',
     discountCode: row.discount_code || undefined,
     discountAmount: Number(row.discount_amount || 0),
@@ -165,7 +362,10 @@ export class CoursesService {
 
     return courses.map(course => {
       const userEnrollment = userEnrollmentsMap.get(course.id);
-      const isEnrolled = Boolean(userEnrollment && userEnrollment.paymentStatus !== 'rejected');
+      const isRemovedFromClass = userEnrollment?.classStatus === 'removed';
+      const isEnrolled = Boolean(
+        userEnrollment && userEnrollment.paymentStatus !== 'rejected' && !isRemovedFromClass
+      );
       const enrollmentStatus = userEnrollment?.paymentStatus;
 
       let hasArchiveAccess = false;
@@ -173,7 +373,7 @@ export class CoursesService {
         hasArchiveAccess = true;
       } else if (isStaff) {
         hasArchiveAccess = true;
-      } else if (userEnrollment?.paymentStatus === 'confirmed') {
+      } else if (userEnrollment?.paymentStatus === 'confirmed' && !isRemovedFromClass) {
         hasArchiveAccess = true;
       }
 
@@ -181,6 +381,7 @@ export class CoursesService {
         ...course,
         isEnrolled,
         enrollmentStatus,
+        classStatus: userEnrollment?.classStatus,
         hasArchiveAccess,
       };
     });
@@ -278,6 +479,12 @@ export class CoursesService {
     );
 
     if (existingRows && existingRows.length > 0) {
+      if (existingRows[0].class_status === 'removed') {
+        throw AppError.forbidden(
+          'دسترسی شما به کلاس این دوره توسط مدیر آموزش لغو شده است. جهت بازگردانی با واحد آموزش تماس بگیرید.',
+          'ENROLLMENT_REMOVED_FROM_CLASS'
+        );
+      }
       throw AppError.conflict('شما قبلاً در این دوره ثبت‌نام کرده‌اید.');
     }
 
@@ -681,64 +888,90 @@ export class CoursesService {
 
     const newId = generateUUIDv7();
     const idBuf = toIdBuffer(newId);
-    const p = getPool();
 
     const topics = data.topics && data.topics.length > 0 ? data.topics : ['مباحث نظری و فقهی', 'تحلیل رویه قضایی'];
     const archiveResources = data.archiveResources || [];
 
-    await p.query(
-      `INSERT INTO courses (
-        id, title, instructor, instructor_title, instructor_resume, instructor_avatar_url,
-        category, level, hours, capacity, enrolled_count, price, start_date, end_date,
-        holding_time, schedule, holding_format, venue_address, meeting_link, meeting_access_guide,
-        prerequisites, necessity, description, manager_notes,
-        target_audiences, custom_tags, custom_fields, hidden_fields,
-        has_installments, installment_details, installment_plan,
-        has_certificate, certificate_details,
-        status, topics, cover_image, allowed_payment_method, archive_access, archive_resources,
-        is_deleted, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
-      [
-        idBuf,
-        data.title || 'دوره جدید',
-        data.instructor || 'استاد محترم',
-        data.instructorTitle || null,
-        data.instructorResume || null,
-        data.instructorAvatarUrl || null,
-        data.category || 'فقه القضاء',
-        data.level || 'تخصصی عالی',
-        data.hours || 0,
-        data.capacity || 0,
-        data.price || 0,
-        data.startDate || '',
-        data.endDate || null,
-        data.holdingTime || null,
-        data.schedule || 'پنج‌شنبه‌ها',
-        data.holdingFormat || 'online',
-        data.venueAddress || null,
-        data.meetingLink || '',
-        data.meetingAccessGuide || null,
-        data.prerequisites || null,
-        data.necessity || null,
-        data.description || data.title || '',
-        data.managerNotes || null,
-        JSON.stringify(data.targetAudiences || ['طلاب', 'قضات', 'وکلا']),
-        JSON.stringify(data.customTags || []),
-        JSON.stringify(data.customFields || []),
-        JSON.stringify(data.hiddenFields || []),
-        data.hasInstallments ? 1 : 0,
-        data.installmentDetails || null,
-        data.installmentPlan ? JSON.stringify(data.installmentPlan) : null,
-        data.hasCertificate !== false ? 1 : 0,
-        data.certificateDetails || null,
-        data.status || 'enrolling',
-        JSON.stringify(topics),
-        data.coverImage || null,
-        data.allowedPaymentMethod || 'both',
-        data.archiveAccess || 'enrolled_only',
-        JSON.stringify(archiveResources),
-      ]
+    const instructors = normalizeCourseInstructors(
+      data.instructors,
+      data.instructor || 'استاد محترم',
+      data.instructorTitle,
+      data.instructorAvatarUrl,
+      data.instructorResume
     );
+    const primaryInst = instructors.find(i => i.isPrimary) || instructors[0];
+    const sessions = normalizeCourseSessions(data.sessions, instructors);
+    const effectiveSessionsCount = sessions.length > 0 ? sessions.length : Math.max(1, Number(data.sessionsCount || 4));
+
+    const promotedOfflineFiles = data.draftFolderKey
+      ? await promoteDraftCourseFilesFolder(data.draftFolderKey, newId, data.offlineDownloadFiles || [])
+      : (data.offlineDownloadFiles || []);
+
+    await withTx(async (conn) => {
+      await conn.query(
+        `INSERT INTO courses (
+          id, title, instructor, instructor_title, instructor_resume, instructor_avatar_url,
+          category, level, hours, capacity, enrolled_count, price, start_date, end_date,
+          holding_time, schedule, holding_format, venue_address, meeting_link, meeting_access_guide,
+          prerequisites, necessity, description, manager_notes,
+          target_audiences, custom_tags, custom_fields, hidden_fields,
+          has_installments, installment_details, installment_plan,
+          has_certificate, certificate_details,
+          status, topics, cover_image, allowed_payment_method, archive_access, archive_resources,
+          offline_download_url, offline_download_guide, offline_download_files,
+          instructors, sessions, sessions_count,
+          is_deleted, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+        [
+          idBuf,
+          data.title || 'دوره جدید',
+          primaryInst?.fullName || data.instructor || 'استاد محترم',
+          primaryInst?.title || data.instructorTitle || null,
+          primaryInst?.resume || data.instructorResume || null,
+          primaryInst?.avatarUrl || data.instructorAvatarUrl || null,
+          data.category || 'فقه القضاء',
+          data.level || 'تخصصی عالی',
+          data.hours || 0,
+          data.capacity || 0,
+          data.price || 0,
+          data.startDate || '',
+          data.endDate || null,
+          data.holdingTime || null,
+          data.schedule || 'پنج‌شنبه‌ها',
+          data.holdingFormat || 'online',
+          data.venueAddress || null,
+          data.meetingLink || '',
+          data.meetingAccessGuide || null,
+          data.prerequisites || null,
+          data.necessity || null,
+          data.description || data.title || '',
+          data.managerNotes || null,
+          JSON.stringify(data.targetAudiences || ['طلاب', 'قضات', 'وکلا']),
+          JSON.stringify(data.customTags || []),
+          JSON.stringify(data.customFields || []),
+          JSON.stringify(data.hiddenFields || []),
+          data.hasInstallments ? 1 : 0,
+          data.installmentDetails || null,
+          data.installmentPlan ? JSON.stringify(data.installmentPlan) : null,
+          data.hasCertificate !== false ? 1 : 0,
+          data.certificateDetails || null,
+          data.status || 'enrolling',
+          JSON.stringify(topics),
+          data.coverImage || null,
+          data.allowedPaymentMethod || 'both',
+          data.archiveAccess || 'enrolled_only',
+          JSON.stringify(archiveResources),
+          data.offlineDownloadUrl || null,
+          data.offlineDownloadGuide || null,
+          JSON.stringify(promotedOfflineFiles),
+          JSON.stringify(instructors),
+          JSON.stringify(sessions),
+          effectiveSessionsCount,
+        ]
+      );
+
+      await syncCourseNormalizedRelations(conn, newId, instructors, sessions, promotedOfflineFiles, authCtx.fullName);
+    });
 
     auditChain.appendEntry({
       eventType: 'RULING_APPROVED',
@@ -746,7 +979,7 @@ export class CoursesService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `دوره تخصصی جدید [${data.title}] توسط مسئول آموزش تعریف و منتشر گردید.`,
+      details: `دوره تخصصی جدید [${data.title}] با ${instructors.length} مدرس و ${sessions.length} جلسه تعریف و منتشر گردید.`,
       severity: 'info',
     });
 
@@ -772,7 +1005,6 @@ export class CoursesService {
     await ensureDomainTablesAndIndexes();
 
     const cBuf = toIdBuffer(courseId);
-    const p = getPool();
 
     const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
     if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
@@ -788,12 +1020,67 @@ export class CoursesService {
     }
     const expVer = Number(rawVersion);
 
+    // Collect old image URLs before applying updates so replaced images are removed from disk safely
+    const oldImageUrls = new Set<string>();
+    if (existing.coverImage) oldImageUrls.add(existing.coverImage);
+    if (existing.instructorAvatarUrl) oldImageUrls.add(existing.instructorAvatarUrl);
+    if (existing.postEnrollmentBanner) oldImageUrls.add(existing.postEnrollmentBanner);
+    (existing.instructors || []).forEach(inst => {
+      if (inst.avatarUrl) oldImageUrls.add(inst.avatarUrl);
+    });
+
+    // Resolve instructors & sessions keeping full sync
+    let nextInstructors: CourseInstructorItem[];
+    if (updates.instructors !== undefined) {
+      nextInstructors = normalizeCourseInstructors(
+        updates.instructors,
+        updates.instructor ?? existing.instructor,
+        updates.instructorTitle ?? existing.instructorTitle,
+        updates.instructorAvatarUrl !== undefined ? updates.instructorAvatarUrl : existing.instructorAvatarUrl,
+        updates.instructorResume ?? existing.instructorResume
+      );
+    } else {
+      const existingList = [...(existing.instructors || [])];
+      if (existingList.length > 0) {
+        const primaryIdx = Math.max(0, existingList.findIndex(i => i.isPrimary));
+        existingList[primaryIdx] = {
+          ...existingList[primaryIdx],
+          fullName: updates.instructor !== undefined ? updates.instructor : existingList[primaryIdx].fullName,
+          title: updates.instructorTitle !== undefined ? updates.instructorTitle : existingList[primaryIdx].title,
+          avatarUrl: updates.instructorAvatarUrl !== undefined ? updates.instructorAvatarUrl : existingList[primaryIdx].avatarUrl,
+          resume: updates.instructorResume !== undefined ? updates.instructorResume : existingList[primaryIdx].resume,
+        };
+      }
+      nextInstructors = normalizeCourseInstructors(
+        existingList,
+        updates.instructor ?? existing.instructor,
+        updates.instructorTitle ?? existing.instructorTitle,
+        updates.instructorAvatarUrl !== undefined ? updates.instructorAvatarUrl : existing.instructorAvatarUrl,
+        updates.instructorResume ?? existing.instructorResume
+      );
+    }
+
+    const primaryInst = nextInstructors.find(i => i.isPrimary) || nextInstructors[0];
+    const nextSessions = updates.sessions !== undefined
+      ? normalizeCourseSessions(updates.sessions, nextInstructors)
+      : normalizeCourseSessions(existing.sessions, nextInstructors);
+
+    const nextSessionsCount =
+      updates.sessions !== undefined
+        ? (nextSessions.length > 0 ? nextSessions.length : Number(updates.sessionsCount || existing.sessionsCount || 4))
+        : updates.sessionsCount !== undefined
+        ? Number(updates.sessionsCount)
+        : existing.sessionsCount || 4;
+
     const next = {
       title: updates.title !== undefined ? updates.title : existing.title,
-      instructor: updates.instructor !== undefined ? updates.instructor : existing.instructor,
-      instructorTitle: updates.instructorTitle !== undefined ? updates.instructorTitle : existing.instructorTitle,
-      instructorResume: updates.instructorResume !== undefined ? updates.instructorResume : existing.instructorResume,
-      instructorAvatarUrl: updates.instructorAvatarUrl !== undefined ? updates.instructorAvatarUrl : existing.instructorAvatarUrl,
+      instructor: primaryInst?.fullName || (updates.instructor !== undefined ? updates.instructor : existing.instructor),
+      instructorTitle: primaryInst?.title ?? (updates.instructorTitle !== undefined ? updates.instructorTitle : existing.instructorTitle),
+      instructorResume: primaryInst?.resume ?? (updates.instructorResume !== undefined ? updates.instructorResume : existing.instructorResume),
+      instructorAvatarUrl: primaryInst?.avatarUrl ?? (updates.instructorAvatarUrl !== undefined ? updates.instructorAvatarUrl : existing.instructorAvatarUrl),
+      instructors: nextInstructors,
+      sessions: nextSessions,
+      sessionsCount: nextSessionsCount,
       category: updates.category !== undefined ? updates.category : existing.category,
       level: updates.level !== undefined ? updates.level : existing.level,
       hours: updates.hours !== undefined ? updates.hours : existing.hours,
@@ -837,78 +1124,107 @@ export class CoursesService {
       offlineDownloadFiles: updates.offlineDownloadFiles !== undefined ? updates.offlineDownloadFiles : (existing.offlineDownloadFiles || []),
     };
 
-    const [res]: any = await p.query(
-      `UPDATE courses
-       SET title = ?, instructor = ?, instructor_title = ?, instructor_resume = ?, instructor_avatar_url = ?,
-           category = ?, level = ?, hours = ?, capacity = ?, price = ?, start_date = ?, end_date = ?,
-           holding_time = ?, schedule = ?, holding_format = ?, venue_address = ?, meeting_link = ?, meeting_access_guide = ?,
-           prerequisites = ?, necessity = ?, description = ?, manager_notes = ?,
-           target_audiences = ?, custom_tags = ?, custom_fields = ?, hidden_fields = ?,
-           has_installments = ?, installment_details = ?, installment_plan = ?,
-           has_certificate = ?, certificate_details = ?,
-           status = ?, topics = ?, cover_image = ?, allowed_payment_method = ?, archive_access = ?, archive_resources = ?,
-           post_enrollment_banner = ?, post_enrollment_message = ?, welcome_box_font_size = ?, welcome_box_bg_color = ?,
-           reminder_date = ?, reminder_schedule = ?, offline_download_url = ?, offline_download_guide = ?, offline_download_files = ?,
-           version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
-       WHERE (id = ? OR id = ?) AND version = ?`,
-      [
-        next.title,
-        next.instructor,
-        next.instructorTitle || null,
-        next.instructorResume || null,
-        next.instructorAvatarUrl || null,
-        next.category || null,
-        next.level || null,
-        next.hours,
-        next.capacity,
-        next.price,
-        next.startDate || '',
-        next.endDate || null,
-        next.holdingTime || null,
-        next.schedule || null,
-        next.holdingFormat || 'online',
-        next.venueAddress || null,
-        next.meetingLink || null,
-        next.meetingAccessGuide || null,
-        next.prerequisites || null,
-        next.necessity || null,
-        next.description || null,
-        next.managerNotes || null,
-        JSON.stringify(next.targetAudiences),
-        JSON.stringify(next.customTags),
-        JSON.stringify(next.customFields),
-        JSON.stringify(next.hiddenFields),
-        next.hasInstallments ? 1 : 0,
-        next.installmentDetails || null,
-        next.installmentPlan ? JSON.stringify(next.installmentPlan) : null,
-        next.hasCertificate ? 1 : 0,
-        next.certificateDetails || null,
-        next.status,
-        JSON.stringify(next.topics),
-        next.coverImage || null,
-        next.allowedPaymentMethod,
-        next.archiveAccess,
-        JSON.stringify(next.archiveResources),
-        next.postEnrollmentBanner || null,
-        next.postEnrollmentMessage || null,
-        next.welcomeBoxFontSize || null,
-        next.welcomeBoxBgColor || null,
-        next.reminderDate || null,
-        next.reminderSchedule || null,
-        next.offlineDownloadUrl || null,
-        next.offlineDownloadGuide || null,
-        JSON.stringify(next.offlineDownloadFiles),
-        cBuf,
-        courseId,
-        expVer,
-      ]
-    );
-
-    if (res && res.affectedRows === 0) {
-      throw AppError.conflict(
-        'اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
-        'CONCURRENT_MODIFICATION_CONFLICT'
+    await withTx(async (conn) => {
+      const [res]: any = await conn.query(
+        `UPDATE courses
+         SET title = ?, instructor = ?, instructor_title = ?, instructor_resume = ?, instructor_avatar_url = ?,
+             category = ?, level = ?, hours = ?, capacity = ?, price = ?, start_date = ?, end_date = ?,
+             holding_time = ?, schedule = ?, holding_format = ?, venue_address = ?, meeting_link = ?, meeting_access_guide = ?,
+             prerequisites = ?, necessity = ?, description = ?, manager_notes = ?,
+             target_audiences = ?, custom_tags = ?, custom_fields = ?, hidden_fields = ?,
+             has_installments = ?, installment_details = ?, installment_plan = ?,
+             has_certificate = ?, certificate_details = ?,
+             status = ?, topics = ?, cover_image = ?, allowed_payment_method = ?, archive_access = ?, archive_resources = ?,
+             post_enrollment_banner = ?, post_enrollment_message = ?, welcome_box_font_size = ?, welcome_box_bg_color = ?,
+             reminder_date = ?, reminder_schedule = ?, offline_download_url = ?, offline_download_guide = ?, offline_download_files = ?,
+             instructors = ?, sessions = ?, sessions_count = ?,
+             version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
+         WHERE (id = ? OR id = ?) AND version = ?`,
+        [
+          next.title,
+          next.instructor,
+          next.instructorTitle || null,
+          next.instructorResume || null,
+          next.instructorAvatarUrl || null,
+          next.category || null,
+          next.level || null,
+          next.hours,
+          next.capacity,
+          next.price,
+          next.startDate || '',
+          next.endDate || null,
+          next.holdingTime || null,
+          next.schedule || null,
+          next.holdingFormat || 'online',
+          next.venueAddress || null,
+          next.meetingLink || null,
+          next.meetingAccessGuide || null,
+          next.prerequisites || null,
+          next.necessity || null,
+          next.description || null,
+          next.managerNotes || null,
+          JSON.stringify(next.targetAudiences),
+          JSON.stringify(next.customTags),
+          JSON.stringify(next.customFields),
+          JSON.stringify(next.hiddenFields),
+          next.hasInstallments ? 1 : 0,
+          next.installmentDetails || null,
+          next.installmentPlan ? JSON.stringify(next.installmentPlan) : null,
+          next.hasCertificate ? 1 : 0,
+          next.certificateDetails || null,
+          next.status,
+          JSON.stringify(next.topics),
+          next.coverImage || null,
+          next.allowedPaymentMethod,
+          next.archiveAccess,
+          JSON.stringify(next.archiveResources),
+          next.postEnrollmentBanner || null,
+          next.postEnrollmentMessage || null,
+          next.welcomeBoxFontSize || null,
+          next.welcomeBoxBgColor || null,
+          next.reminderDate || null,
+          next.reminderSchedule || null,
+          next.offlineDownloadUrl || null,
+          next.offlineDownloadGuide || null,
+          JSON.stringify(next.offlineDownloadFiles),
+          JSON.stringify(next.instructors),
+          JSON.stringify(next.sessions),
+          next.sessionsCount,
+          cBuf,
+          courseId,
+          expVer,
+        ]
       );
+
+      if (res && res.affectedRows === 0) {
+        throw AppError.conflict(
+          'اطلاعات این بخش توسط مدیر یا کاربر دیگری تغییر یافته است. لطفاً صفحه را بازخوانی کرده و مجدداً تلاش نمایید.',
+          'CONCURRENT_MODIFICATION_CONFLICT'
+        );
+      }
+
+      await syncCourseNormalizedRelations(
+        conn,
+        existing.id,
+        next.instructors,
+        next.sessions,
+        next.offlineDownloadFiles,
+        authCtx.fullName
+      );
+    });
+
+    // Clean up replaced or cleared old images from disk safely after commit
+    const retainedImages = new Set<string>();
+    if (next.coverImage) retainedImages.add(next.coverImage);
+    if (next.instructorAvatarUrl) retainedImages.add(next.instructorAvatarUrl);
+    if (next.postEnrollmentBanner) retainedImages.add(next.postEnrollmentBanner);
+    (next.instructors || []).forEach(inst => {
+      if (inst.avatarUrl) retainedImages.add(inst.avatarUrl);
+    });
+    for (const oldUrl of oldImageUrls) {
+      if (!retainedImages.has(oldUrl)) {
+        await deleteCourseImageIfUnreferenced(oldUrl, existing.id);
+      }
     }
 
     auditChain.appendEntry({
@@ -1061,6 +1377,192 @@ export class CoursesService {
       message: `پیامک با موفقیت به ${targetPhones.length} شماره همراه تحویل داده شد.`,
     };
   }
+
+  /**
+   * Removes an enrolled/confirmed student from class access while strictly preserving all financial
+   * transaction records, installment schedules, payment amounts, and bank receipts.
+   */
+  async removeEnrollmentFromClass(
+    authCtx: AuthContext,
+    courseId: string,
+    enrollmentId: string,
+    reason?: string,
+    expectedVersion?: number
+  ): Promise<{ enrollment: CourseEnrollment & { version: number }; course: Course & { version: number } }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
+
+    const cBuf = toIdBuffer(courseId);
+    const eBuf = toIdBuffer(enrollmentId);
+
+    const eRows = await selectWithTimeout<any>(
+      `SELECT * FROM course_enrollments WHERE (id = ? OR id = ?) AND (course_id = ? OR course_id = ?) LIMIT 1`,
+      [eBuf, enrollmentId, cBuf, courseId],
+      3000
+    );
+    if (!eRows || eRows.length === 0) {
+      throw AppError.notFound(`ثبت‌نام با شناسه ${enrollmentId}`);
+    }
+    const existing = mapEnrollmentRow(eRows[0]);
+    if (existing.classStatus === 'removed') {
+      throw AppError.conflict('این شرکت‌کننده پیش‌تر از کلاس حذف شده است.', 'ALREADY_REMOVED_FROM_CLASS');
+    }
+
+    if (expectedVersion === undefined || expectedVersion === null || isNaN(Number(expectedVersion))) {
+      throw AppError.badRequest(
+        'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) الزامی است.',
+        'VERSION_REQUIRED'
+      );
+    }
+
+    const removalReason = (reason && reason.trim()) || 'حذف شرکت‌کننده از کلاس توسط مدیر آموزش (با حفظ کامل سوابق و تراکنش‌های مالی)';
+
+    return await withTx(async (conn) => {
+      const [res]: any = await conn.query(
+        `UPDATE course_enrollments
+         SET class_status = 'removed',
+             removed_at = CURRENT_TIMESTAMP(3),
+             removed_by = ?,
+             removal_reason = ?,
+             version = version + 1
+         WHERE (id = ? OR id = ?) AND (course_id = ? OR course_id = ?) AND version = ?`,
+        [authCtx.fullName, removalReason, eBuf, enrollmentId, cBuf, courseId, Number(expectedVersion)]
+      );
+
+      if (!res || res.affectedRows === 0) {
+        throw AppError.conflict('اطلاعات ثبت‌نام توسط مدیر دیگری تغییر یافته است.', 'CONCURRENT_MODIFICATION_CONFLICT');
+      }
+
+      if (existing.paymentStatus === 'confirmed' || existing.paymentStatus === 'pending_review') {
+        await conn.query(
+          `UPDATE courses SET enrolled_count = GREATEST(0, enrolled_count - 1), version = version + 1 WHERE id = ? OR id = ?`,
+          [cBuf, courseId]
+        );
+      }
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: authCtx.userId,
+        actorName: authCtx.fullName,
+        actorRole: authCtx.role,
+        ip: '127.0.0.1',
+        details: `حذف شرکت‌کننده [${existing.userName}] از کلاس دوره [${existing.courseTitle}] بدون حذف تراکنش‌های مالی (کد پیگیری: ${existing.trackingCode}). علت: ${removalReason}`,
+        severity: 'warning',
+      });
+
+      const [updatedEnrRows]: any = await conn.query(
+        `SELECT * FROM course_enrollments WHERE id = ? OR id = ? LIMIT 1`,
+        [eBuf, enrollmentId]
+      );
+      const [updatedCourseRows]: any = await conn.query(
+        `SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`,
+        [cBuf, courseId]
+      );
+      const updatedEnrollment = mapEnrollmentRow(updatedEnrRows[0]);
+      const updatedCourse = mapCourseRow(updatedCourseRows[0]);
+
+      outbox.enqueue('courses.enrollment_removed', {
+        courseId,
+        enrollmentId,
+        userId: updatedEnrollment.userId,
+        classStatus: 'removed',
+      });
+
+      return { enrollment: updatedEnrollment, course: updatedCourse };
+    });
+  }
+
+  /**
+   * Restores a previously removed participant back into the active class roster and capacity count.
+   */
+  async restoreEnrollmentToClass(
+    authCtx: AuthContext,
+    courseId: string,
+    enrollmentId: string,
+    expectedVersion?: number
+  ): Promise<{ enrollment: CourseEnrollment & { version: number }; course: Course & { version: number } }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    ensureDatabaseConnection();
+    await ensureDomainTablesAndIndexes();
+
+    const cBuf = toIdBuffer(courseId);
+    const eBuf = toIdBuffer(enrollmentId);
+
+    const eRows = await selectWithTimeout<any>(
+      `SELECT * FROM course_enrollments WHERE (id = ? OR id = ?) AND (course_id = ? OR course_id = ?) LIMIT 1`,
+      [eBuf, enrollmentId, cBuf, courseId],
+      3000
+    );
+    if (!eRows || eRows.length === 0) {
+      throw AppError.notFound(`ثبت‌نام با شناسه ${enrollmentId}`);
+    }
+    const existing = mapEnrollmentRow(eRows[0]);
+    if (existing.classStatus !== 'removed') {
+      throw AppError.conflict('این شرکت‌کننده در وضعیت فعال کلاس قرار دارد.', 'ALREADY_ACTIVE_IN_CLASS');
+    }
+
+    if (expectedVersion === undefined || expectedVersion === null || isNaN(Number(expectedVersion))) {
+      throw AppError.badRequest(
+        'شناسه نسخه معتبر (expectedVersion یا هدر If-Match) الزامی است.',
+        'VERSION_REQUIRED'
+      );
+    }
+
+    return await withTx(async (conn) => {
+      const [res]: any = await conn.query(
+        `UPDATE course_enrollments
+         SET class_status = 'active',
+             removed_at = NULL,
+             removed_by = NULL,
+             removal_reason = NULL,
+             version = version + 1
+         WHERE (id = ? OR id = ?) AND (course_id = ? OR course_id = ?) AND version = ?`,
+        [eBuf, enrollmentId, cBuf, courseId, Number(expectedVersion)]
+      );
+
+      if (!res || res.affectedRows === 0) {
+        throw AppError.conflict('اطلاعات ثبت‌نام توسط مدیر دیگری تغییر یافته است.', 'CONCURRENT_MODIFICATION_CONFLICT');
+      }
+
+      if (existing.paymentStatus === 'confirmed' || existing.paymentStatus === 'pending_review') {
+        await conn.query(
+          `UPDATE courses SET enrolled_count = enrolled_count + 1, version = version + 1 WHERE id = ? OR id = ?`,
+          [cBuf, courseId]
+        );
+      }
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: authCtx.userId,
+        actorName: authCtx.fullName,
+        actorRole: authCtx.role,
+        ip: '127.0.0.1',
+        details: `بازگردانی شرکت‌کننده [${existing.userName}] به کلاس فعال دوره [${existing.courseTitle}].`,
+        severity: 'info',
+      });
+
+      const [updatedEnrRows]: any = await conn.query(
+        `SELECT * FROM course_enrollments WHERE id = ? OR id = ? LIMIT 1`,
+        [eBuf, enrollmentId]
+      );
+      const [updatedCourseRows]: any = await conn.query(
+        `SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`,
+        [cBuf, courseId]
+      );
+      const updatedEnrollment = mapEnrollmentRow(updatedEnrRows[0]);
+      const updatedCourse = mapCourseRow(updatedCourseRows[0]);
+
+      outbox.enqueue('courses.enrollment_restored', {
+        courseId,
+        enrollmentId,
+        userId: updatedEnrollment.userId,
+        classStatus: 'active',
+      });
+
+      return { enrollment: updatedEnrollment, course: updatedCourse };
+    });
+  }
 }
 
 export function createCoursesRouter(): Router {
@@ -1174,6 +1676,41 @@ export function createCoursesRouter(): Router {
       const expectedVersion = extractExpectedVersion(req, true);
       const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote, expectedVersion);
       res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/enrollments/:enrollmentId/remove-from-class', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const expectedVersion = extractExpectedVersion(req, true);
+      const result = await service.removeEnrollmentFromClass(
+        authCtx,
+        req.params.id,
+        req.params.enrollmentId,
+        req.body?.reason,
+        expectedVersion
+      );
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/enrollments/:enrollmentId/restore-to-class', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const expectedVersion = extractExpectedVersion(req, true);
+      const result = await service.restoreEnrollmentToClass(
+        authCtx,
+        req.params.id,
+        req.params.enrollmentId,
+        expectedVersion
+      );
+      res.json(result);
     } catch (err) {
       next(err);
     }

@@ -2,6 +2,7 @@ import React from 'react';
 import { NavTabId } from './Sidebar';
 import { LayoutDashboard, Inbox, GraduationCap, Scale, Gift, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { getResolvedNavigationConfig } from '../../utils/navigationConfig';
 
 interface MobileBottomNavProps {
   activeTab: NavTabId;
@@ -14,8 +15,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   setActiveTab,
   onOpenMobileMenu,
 }) => {
-  const { cartableRequests } = useApp();
+  const { cartableRequests, crextioConfig } = useApp();
   const pendingCount = cartableRequests.filter(r => r.status === 'pending' || r.status === 'need_info').length;
+  const resolvedVertical = getResolvedNavigationConfig(crextioConfig.navigationConfig).verticalSidebar;
+  const labelMap = new Map(resolvedVertical.map(item => [item.id, item.label]));
 
   return (
     <nav 
@@ -31,7 +34,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         }`}
       >
         <LayoutDashboard className="w-5 h-5" />
-        <span className="text-[10px] mt-0.5 whitespace-nowrap">داشبورد</span>
+        <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[60px]">
+          {labelMap.get('dashboard') || 'داشبورد'}
+        </span>
       </button>
 
       <button
@@ -48,7 +53,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500" />
           )}
         </div>
-        <span className="text-[10px] mt-0.5 whitespace-nowrap">کارتابل</span>
+        <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[60px]">
+          {labelMap.get('cartable') || 'کارتابل'}
+        </span>
       </button>
 
       <button
@@ -60,7 +67,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         }`}
       >
         <GraduationCap className="w-5 h-5" />
-        <span className="text-[10px] mt-0.5 whitespace-nowrap">دوره‌ها</span>
+        <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[60px]">
+          {labelMap.get('courses') || 'دوره‌ها'}
+        </span>
       </button>
 
       <button
@@ -72,7 +81,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         }`}
       >
         <Scale className="w-5 h-5" />
-        <span className="text-[10px] mt-0.5 whitespace-nowrap">تالار رأی</span>
+        <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[60px]">
+          {labelMap.get('rulings') || 'تالار رأی'}
+        </span>
       </button>
 
       <button
@@ -84,7 +95,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         }`}
       >
         <Gift className="w-5 h-5" />
-        <span className="text-[10px] mt-0.5 whitespace-nowrap">رفاهیات</span>
+        <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[60px]">
+          {labelMap.get('welfare') || 'رفاهیات'}
+        </span>
       </button>
 
       <button

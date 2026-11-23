@@ -9,6 +9,7 @@ import {
   UnifiedShowcaseManagerEditor,
 } from '../admin/theme_customizer_subcomponents/CustomizerHonorsUnifiedTab';
 import { ShowcaseImagesStudioPanel } from '../admin/theme_customizer_subcomponents/ShowcaseImagesStudioPanel';
+import { CustomizerNavigationTab } from '../admin/theme_customizer_subcomponents/CustomizerNavigationTab';
 import {
   X,
   Palette,
@@ -26,11 +27,12 @@ import {
   RotateCcw,
   CheckCircle2,
   Sparkles,
+  Menu,
 } from 'lucide-react';
 
 interface Theme3StudioDrawerProps {
   isOpen: boolean;
-  initialTab?: 'appearance' | 'texts_layout' | 'honors' | 'unified_boxes';
+  initialTab?: 'appearance' | 'navigation' | 'texts_layout' | 'honors' | 'unified_boxes';
   onClose: () => void;
   crextioConfig: CrextioDashboardConfig;
   updateCrextioConfig: (updates: Partial<CrextioDashboardConfig>) => void;
@@ -71,7 +73,7 @@ export const Theme3StudioDrawer: React.FC<Theme3StudioDrawerProps> = ({
   crextioConfig,
   updateCrextioConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'appearance' | 'texts_layout' | 'honors' | 'unified_boxes'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'appearance' | 'navigation' | 'texts_layout' | 'honors' | 'unified_boxes'>(initialTab);
   const [savedToast, setSavedToast] = useState(false);
   const [uploadingBoxKey, setUploadingBoxKey] = useState<string | null>(null);
   const boxFileRef = useRef<HTMLInputElement>(null);
@@ -199,6 +201,7 @@ export const Theme3StudioDrawer: React.FC<Theme3StudioDrawerProps> = ({
           <div className="px-6 pt-3 bg-stone-50 border-b border-stone-200 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
             {[
               { id: 'appearance', label: 'ظاهر، پالت و افکت‌ها', icon: Palette },
+              { id: 'navigation', label: 'ناوبری عمودی، افقی و منو خدمات', icon: Menu },
               { id: 'texts_layout', label: 'متون، بخش‌ها و چیدمان', icon: Type },
               { id: 'honors', label: 'افتخارات و انتصابات', icon: Award },
               { id: 'unified_boxes', label: 'ویترین جامع و باکس‌ها', icon: LayoutGrid },
@@ -399,6 +402,14 @@ export const Theme3StudioDrawer: React.FC<Theme3StudioDrawerProps> = ({
                   </button>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'navigation' && (
+              <CustomizerNavigationTab
+                crextioConfig={crextioConfig}
+                updateCrextioConfig={updateCrextioConfig}
+                triggerSuccess={pulseSaved}
+              />
             )}
 
             {activeTab === 'texts_layout' && (

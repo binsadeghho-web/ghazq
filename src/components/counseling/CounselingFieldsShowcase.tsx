@@ -12,10 +12,15 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { CounselingFieldItem } from '../../types';
+import { toPersianNumbers } from '../../utils/persianNumbers';
 
 interface CounselingFieldsShowcaseProps {
+  badgeLabel?: string;
   title: string;
   subtitle?: string;
+  helperText?: string;
+  cardCtaLabel?: string;
+  emptyText?: string;
   fields: CounselingFieldItem[];
   onSelectField: (field: CounselingFieldItem) => void;
   variant?: 'specialized' | 'general';
@@ -61,41 +66,62 @@ const ACCENT_MAP: Record<string, { badge: string; border: string; iconBg: string
 };
 
 export const CounselingFieldsShowcase: React.FC<CounselingFieldsShowcaseProps> = ({
+  badgeLabel,
   title,
   subtitle,
+  helperText,
+  cardCtaLabel,
+  emptyText,
   fields,
   onSelectField,
   variant = 'general',
 }) => {
   const activeFields = fields.filter(f => f.isActive);
+  const resolvedBadge =
+    badgeLabel !== undefined
+      ? badgeLabel
+      : variant === 'specialized'
+      ? 'محورهای تخصصی هدایت شغلی و تحصیلی'
+      : 'حوزه‌های خدمات روان‌شناختی';
+  const resolvedHelper =
+    helperText !== undefined
+      ? helperText
+      : 'روی هر زمینه کلیک کنید تا فرم ثبت درخواست با همان محور باز شود';
+  const resolvedCta = cardCtaLabel || 'ثبت درخواست در این زمینه';
+  const resolvedEmpty = emptyText || 'هنوز زمینه مشاوره‌ای برای این بخش تعریف نشده است.';
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-            <Compass className="w-4 h-4 shrink-0" />
-            <span>{variant === 'specialized' ? 'محورهای تخصصی هدایت شغلی و تحصیلی' : 'حوزه‌های خدمات روان‌شناختی'}</span>
-          </div>
+          {resolvedBadge && (
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+              <Compass className="w-4 h-4 shrink-0" />
+              <span>{resolvedBadge}</span>
+            </div>
+          )}
           <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">{title}</h3>
           {subtitle && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
           )}
         </div>
-        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-          روی هر زمینه کلیک کنید تا فرم ثبت درخواست با همان محور باز شود
-        </span>
+        {resolvedHelper && (
+          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+            {resolvedHelper}
+          </span>
+        )}
       </div>
 
       {activeFields.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center text-xs text-slate-500 dark:text-slate-400">
-          هنوز زمینه مشاوره‌ای برای این بخش تعریف نشده است.
+          {resolvedEmpty}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeFields.map((field, idx) => {
             const IconComp = ICON_MAP[field.iconName || 'sparkles'] || Sparkles;
             const accent = ACCENT_MAP[field.accentColor || (variant === 'specialized' ? 'amber' : 'emerald')] || ACCENT_MAP.emerald;
+            const hasDetails = Boolean(field.subtitle?.trim() || field.description?.trim());
 
             return (
               <motion.button
@@ -113,22 +139,22 @@ export const CounselingFieldsShowcase: React.FC<CounselingFieldsShowcaseProps> =
                       <IconComp className="w-5 h-5" />
                     </div>
                     <span className="text-[11px] font-mono text-slate-400">
-                      #{String(idx + 1).padStart(2, '0')}
+                      #{toPersianNumbers(String(idx + 1).padStart(2, '0'))}
                     </span>
                   </div>
 
                   <div>
-                    <h4 className="font-black text-sm text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                    <h4 className={`font-black text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors ${hasDetails ? 'text-sm' : 'text-sm sm:text-base'}`}>
                       {field.title}
                     </h4>
-                    {field.subtitle && (
+                    {field.subtitle?.trim() && (
                       <p className={`text-[11px] font-bold mt-1 ${accent.badge}`}>
                         {field.subtitle}
                       </p>
                     )}
                   </div>
 
-                  {field.description && (
+                  {field.description?.trim() && (
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
                       {field.description}
                     </p>
@@ -136,7 +162,7 @@ export const CounselingFieldsShowcase: React.FC<CounselingFieldsShowcaseProps> =
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <span>ثبت درخواست در این زمینه</span>
+                  <span>{resolvedCta}</span>
                   <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:-translate-x-1 transition-all" />
                 </div>
               </motion.button>

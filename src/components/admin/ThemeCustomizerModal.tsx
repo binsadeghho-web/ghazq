@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import {
@@ -18,14 +18,17 @@ import { CustomizerFontsTab } from './theme_customizer_subcomponents/CustomizerF
 import { CustomizerBentoCardsTab } from './theme_customizer_subcomponents/CustomizerBentoCardsTab';
 import { CustomizerStylingModesTab } from './theme_customizer_subcomponents/CustomizerStylingModesTab';
 import { HonorsManagerEditor, UnifiedShowcaseManagerEditor } from './theme_customizer_subcomponents/CustomizerHonorsUnifiedTab';
+import { CustomizerNavigationTab } from './theme_customizer_subcomponents/CustomizerNavigationTab';
 
 interface ThemeCustomizerModalProps {
   isOpen: boolean;
+  initialTab?: CustomizerTab;
   onClose: () => void;
 }
 
 export type CustomizerTab =
   | 'modules'
+  | 'navigation'
   | 'honors'
   | 'unified'
   | 'rulings'
@@ -43,11 +46,21 @@ export type CustomizerTab =
   | 'cards'
   | 'stats';
 
-export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOpen, onClose }) => {
+export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
+  isOpen,
+  initialTab = 'modules',
+  onClose,
+}) => {
   const { crextioConfig, updateCrextioConfig, resetCrextioConfig, rulings } = useApp();
-  const [activeTab, setActiveTab] = useState<CustomizerTab>('modules');
+  const [activeTab, setActiveTab] = useState<CustomizerTab>(initialTab);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -196,6 +209,14 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
               updateCrextioConfig={updateCrextioConfig}
               triggerSuccess={triggerSuccess}
               handleToggle={handleToggle}
+            />
+          )}
+
+          {activeTab === 'navigation' && (
+            <CustomizerNavigationTab
+              crextioConfig={crextioConfig}
+              updateCrextioConfig={updateCrextioConfig}
+              triggerSuccess={triggerSuccess}
             />
           )}
 

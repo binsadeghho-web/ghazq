@@ -4,6 +4,10 @@ import { useApp } from '../../context/AppContext';
 import { AppSectionId } from '../../types';
 import { canViewSection, useRbacPolicies, isOrganizationalRole } from '../../utils/rbacPolicy';
 import {
+  applyNavigationCustomization,
+  getResolvedNavigationConfig,
+} from '../../utils/navigationConfig';
+import {
   LayoutDashboard,
   Inbox,
   GraduationCap,
@@ -58,7 +62,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileMenuOpen,
   setMobileMenuOpen,
 }) => {
-  const { currentUser, cartableRequests, rulings, synergyPosts, productsStoreConfig } = useApp();
+  const {
+    currentUser,
+    cartableRequests,
+    rulings,
+    synergyPosts,
+    productsStoreConfig,
+    crextioConfig,
+    isAlumniPreview,
+  } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const [hoveredTab, setHoveredTab] = useState<NavTabId | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; right: number } | null>(null);
@@ -195,16 +207,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  // Strict Menu Cloaking: Hide Alumni, Users, Admin, Finance from alumni & customer roles
-  const isStaff = isOrganizationalRole(currentUser?.role);
-  const mainNavItems = allNavCandidates.filter(item => {
+  const resolvedNav = getResolvedNavigationConfig(crextioConfig.navigationConfig);
+  const allNavWithAdmin: NavItemConfig[] = [
+    ...allNavCandidates,
+    {
+      id: 'admin',
+      label: 'مدیریت سایت و پایش امنیت',
+      subtext: 'پایش امنیت پایگاه داده، زنجیره وقایع SHA-256 و عیب‌یابی آنی سامانه',
+      icon: ShieldCheck,
+      accentColor: 'text-amber-500 dark:text-amber-400',
+      glowColor: 'rgba(245, 158, 11, 0.2)',
+      activeBg: 'bg-amber-500 text-slate-950',
+      statusTag: 'Admin',
+    },
+  ];
+
+  // Strict Menu Cloaking: Hide Alumni, Users, Admin, Finance from alumni, customer & preview mode
+  const isStaff = isOrganizationalRole(currentUser?.role) && !isAlumniPreview;
+  const customizedNav = applyNavigationCustomization(allNavWithAdmin, resolvedNav.verticalSidebar, {
+    hideInvisible: true,
+    alwaysKeepVisibleIds: ['dashboard'],
+  });
+
+  const mainNavItems = customizedNav.filter(item => {
     if (!isStaff && (item.id === 'alumni' || item.id === 'users' || item.id === 'admin' || item.id === 'finance')) {
       return false;
     }
     return canViewSection(currentUser, item.id as AppSectionId, rolePolicies);
   });
-
-  const showAdminTab = isStaff && canViewSection(currentUser, 'admin', rolePolicies);
 
   const handleSelect = (tab: NavTabId) => {
     setActiveTab(tab);
@@ -221,16 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setTooltipPos({ top: centerTop, right: rightOffset });
   };
 
-  const hoveredItem =
-    hoveredTab === 'admin'
-      ? {
-          id: 'admin' as NavTabId,
-          label: 'مدیریت سایت و پایش امنیت',
-          subtext: 'پایش امنیت پایگاه داده، زنجیره وقایع SHA-256 و عیب‌یابی آنی سامانه',
-          count: undefined,
-          statusTag: 'Admin',
-        }
-      : mainNavItems.find(i => i.id === hoveredTab) || null;
+  const hoveredItem = mainNavItems.find(i => i.id === hoveredTab) || null;
 
   return (
     <>
@@ -331,40 +352,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             );
           })}
-
-          {showAdminTab && (
-            <div
-              className="relative group w-full flex justify-center pt-2 mt-1 border-t border-slate-200/60 dark:border-white/10 shrink-0"
-              onMouseEnter={e => handleHoverEnter('admin', e.currentTarget)}
-            >
-              {hoveredTab === 'admin' && activeTab !== 'admin' && (
-                <motion.div
-                  layoutId="sidebar-hover-capsule"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  className="absolute inset-x-1 top-2 bottom-0 rounded-2xl bg-amber-500/15 backdrop-blur-md border border-amber-500/35 z-0 pointer-events-none"
-                />
-              )}
-
-              {activeTab === 'admin' && (
-                <motion.div
-                  layoutId="sidebar-active-capsule"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  className="absolute inset-x-1 top-2 bottom-0 rounded-2xl bg-amber-500 shadow-lg z-0 pointer-events-none"
-                />
-              )}
-
-              <button
-                type="button"
-                aria-label="مدیریت سایت و پایش امنیت"
-                onClick={() => handleSelect('admin')}
-                className={`relative z-10 w-11 h-11 flex items-center justify-center rounded-2xl transition-all group active:scale-95 cursor-pointer ${
-                  activeTab === 'admin' ? 'text-slate-950 font-bold' : 'text-slate-700 dark:text-slate-300'
-                }`}
-              >
-                <ShieldCheck className={`w-5 h-5 ${activeTab === 'admin' ? 'text-slate-950' : 'text-amber-500'}`} />
-              </button>
-            </div>
-          )}
         </div>
       </aside>
 
@@ -439,22 +426,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
-
-          {showAdminTab && (
-            <button
-              onClick={() => handleSelect('admin')}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-right transition-all mt-4 cursor-pointer ${
-                activeTab === 'admin'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-amber-600" />
-                <span className="text-xs font-bold">مدیریت سایت و پایش امنیت</span>
-              </div>
-            </button>
-          )}
         </div>
       </aside>
     </>

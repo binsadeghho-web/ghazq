@@ -42,6 +42,8 @@ export const CoursesSection: React.FC = () => {
     restoreCourse,
     sendCourseSms,
     reviewCourseEnrollment,
+    removeCourseEnrollmentFromClass,
+    restoreCourseEnrollmentToClass,
     sendPinOtpSms,
   } = useApp();
   const { rolePolicies } = useRbacPolicies();
@@ -99,8 +101,12 @@ export const CoursesSection: React.FC = () => {
   const availableCourses = useMemo(() => activeCourses.filter(c => c.status === 'enrolling' || c.status === 'ongoing'), [activeCourses]);
   const myEnrolledCourses = useMemo(() => {
     return activeCourses.filter(c => {
-      const hasEnroll = courseEnrollments.some(e => e.courseId === c.id && e.userId === currentUser?.id);
-      return c.isEnrolled || hasEnroll;
+      if (c.classStatus === 'removed') return false;
+      const myEnr = courseEnrollments.find(e => e.courseId === c.id && e.userId === currentUser?.id);
+      if (myEnr) {
+        return myEnr.paymentStatus !== 'rejected' && myEnr.classStatus !== 'removed';
+      }
+      return Boolean(c.isEnrolled);
     });
   }, [activeCourses, courseEnrollments, currentUser]);
   const archivedCourses = useMemo(() => activeCourses.filter(c => c.status === 'completed'), [activeCourses]);
@@ -406,10 +412,10 @@ export const CoursesSection: React.FC = () => {
       <AnimatePresence>
         {dedicatedCourseAdmin && (
           <CourseAdminPanelModal
-            course={dedicatedCourseAdmin}
+            course={courses.find(c => c.id === dedicatedCourseAdmin.id) || dedicatedCourseAdmin}
             onClose={() => setDedicatedCourseAdmin(null)}
             onOpenSmsModal={() => {
-              setCourseForRoster(dedicatedCourseAdmin);
+              setCourseForRoster(courses.find(c => c.id === dedicatedCourseAdmin.id) || dedicatedCourseAdmin);
             }}
             onInspectReceipt={setInspectingEnrollment}
             onOpenBuilder={c => {
@@ -422,10 +428,12 @@ export const CoursesSection: React.FC = () => {
       </AnimatePresence>
 
       <CourseRosterModal
-        course={courseForRoster}
+        course={courseForRoster ? (courses.find(c => c.id === courseForRoster.id) || courseForRoster) : null}
         enrollments={courseEnrollments}
         onClose={() => setCourseForRoster(null)}
         onReviewEnrollment={reviewCourseEnrollment}
+        onRemoveFromClass={removeCourseEnrollmentFromClass}
+        onRestoreToClass={restoreCourseEnrollmentToClass}
         onSendCourseSms={sendCourseSms}
         onInspectReceipt={setInspectingEnrollment}
       />

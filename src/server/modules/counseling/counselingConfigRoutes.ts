@@ -15,20 +15,59 @@ import {
   GeneralCounselingTariffItem,
 } from '../../../types';
 
+export const DEFAULT_OTHER_COUNSELING_CITIES: string[] = [
+  'تهران',
+  'مشهد',
+  'اصفهان',
+  'شیراز',
+  'تبریز',
+  'کرج',
+  'رشت',
+];
+
 export const DEFAULT_SPECIALIZED_PORTAL_CONFIG: SpecializedCounselingPortalConfig = {
   sectionTitle: 'مشاوره تخصصی شغلی و تحصیلی',
   sectionSubtitle: 'هدایت گام‌به‌گام مسیر حرفه‌ای، پژوهشی و انتخاب گرایش تخصصی دانش‌آموختگان',
+  headerBadgeLabel: 'واحد تخصصی هدایت شغلی و تحصیلی',
+  tabRequestLabel: 'ثبت درخواست و محورها',
+  tabConsultantsLabel: 'مشاوران تخصصی',
+  tabHistoryLabel: 'سوابق درخواست‌ها',
+  heroBadgeLabel: 'مشاوره تخصصی نخبگانی و قضایی',
   landingIntroTitle: 'راهنمای جامع مشاوره تخصصی شغلی و تحصیلی مرکز',
   landingIntroBody: 'در این بخش می‌توانید با بهره‌گیری از تجربه مشاوران تخصصی مرکز، برای مسیر ارتقای شغلی، انتخاب گرایش علمی، ادامه تحصیل در مقاطع تکمیلی و برنامه‌ریزی حرفه‌ای نوبت مشاوره ثبت نمایید. تمامی درخواست‌ها با محرمانگی کامل بررسی و زمان‌بندی می‌شوند.',
+  heroHistoryButtonLabel: 'سوابق درخواست‌های من',
+  calloutBadgeLabel: 'تکمیل مرحله‌به‌مرحله درخواست با راهنمای دائمی',
   landingCalloutTitle: 'آماده برنامه‌ریزی دقیق برای مسیر شغلی یا تحصیلی خود هستید؟',
   landingCalloutSubtitle: 'با کلیک بر روی دکمه زیر وارد مراحل کوتاه و ساختاریافته ثبت درخواست مشاوره خواهید شد.',
   ctaButtonLabel: 'در خواست مشاوره تخصصی شغلی/تحصیلی دارم',
+  calloutSecondaryLinkLabel: 'مشاهده توضیحات پیش از شروع',
+  fieldsShowcaseBadgeLabel: 'محورهای تخصصی هدایت شغلی و تحصیلی',
   fieldsSectionTitle: 'زمینه‌های مشاوره تخصصی',
   fieldsSectionSubtitle: 'حوزه‌هایی که مشاوران تخصصی مرکز در آن‌ها آماده راهنمایی شما هستند',
+  fieldsShowcaseHelperText: 'روی هر زمینه کلیک کنید تا فرم ثبت درخواست با همان محور باز شود',
+  fieldsCardCtaLabel: 'ثبت درخواست در این زمینه',
+  fieldsShowcaseEmptyText: 'هنوز زمینه مشاوره‌ای برای این بخش تعریف نشده است.',
+  landingInfoCardsTitle: '',
+  landingInfoCardsSubtitle: '',
+  landingInfoCards: [],
   descriptionButtonLabel: 'توضیحات',
   descriptionModalTitle: 'توضیحات و شیوه‌نامه مشاوره تخصصی شغلی / تحصیلی',
   descriptionModalBody: '۱. پس از ثبت درخواست، پرونده شما توسط دبیرخانه مشاوره تخصصی بررسی و متناسب‌ترین مشاور معرفی می‌گردد.\n۲. جلسات به صورت حضوری در مرکز، برخط تصویری یا تلفنی قابل برگزاری است.\n۳. زمان و محل دقیق برگزاری پس از تایید از طریق همین کارتابل به اطلاع شما خواهد رسید.',
   showAdvisorsToStudents: true,
+  showFieldsSelectionStep: true,
+  wizardFieldStepTitle: 'گام اول: انتخاب زمینه مشاوره',
+  wizardFieldStepSubtitle: 'انتخاب زمینه به کارشناسان کمک می‌کند درخواست شما به مرتبط‌ترین متخصص ارجاع شود.',
+  wizardFieldNotice: 'لطفاً زمینه مشاوره مورد نظر خود را انتخاب کنید:',
+  fieldSelectionOptional: false,
+  skipFieldSelectionLabel: 'ادامه بدون انتخاب زمینه',
+  otherCities: [...DEFAULT_OTHER_COUNSELING_CITIES],
+  includeFinalReviewStep: true,
+  showPhoneFieldInWizard: true,
+  showConsultantsInWizard: true,
+  submitButtonLabel: 'تایید و ثبت قطعی درخواست',
+  nextButtonLabel: 'ادامه و مرحله بعد',
+  prevButtonLabel: 'مرحله قبل',
+  submissionSuccessTitle: 'درخواست شما با موفقیت ثبت گردید',
   submissionSuccessMessage: 'درخواست مشاوره تخصصی شغلی/تحصیلی شما با موفقیت در سامانه ثبت شد. همکاران مرکز پس از بررسی، زمان و نحوه جلسه را در همین بخش اطلاع‌رسانی می‌نمایند.',
   wizardSteps: [
     {
@@ -125,102 +164,79 @@ export const DEFAULT_SPECIALIZED_PORTAL_CONFIG: SpecializedCounselingPortalConfi
 export const DEFAULT_GENERAL_PORTAL_CONFIG: GeneralCounselingPortalConfig = {
   sectionTitle: 'مشاوره عمومی و روان‌شناسان مرکز',
   sectionSubtitle: 'خدمات تخصصی روان‌شناسی، خانواده، تاب‌آوری شغلی و سنجش‌های روان‌شناختی با حفظ محرمانگی کامل',
+  headerBadgeLabel: 'بخش مستقل خدمات روان‌شناسی و سلامت روان مرکز',
+  tabRequestLabel: 'رزرو وقت و زمینه‌های مشاوره',
+  tabConsultantsLabel: 'روان‌شناسان مرکز',
+  tabTariffsLabel: 'نرخ‌نامه',
+  tabTestsLabel: 'تست‌ها',
+  tabHistoryLabel: 'سوابق مشاوره',
+  heroBadgeLabel: 'بخش روان‌شناسان و مشاوره عمومی مرکز',
   landingIntroTitle: 'آشنایی با مرکز مشاوره و خدمات روان‌شناختی',
   landingIntroBody: 'این بخش منحصراً توسط روان‌شناسان مجرب مرکز برای حمایت از سلامت روان، آرامش خانواده، پیشگیری از فرسودگی شغلی و تحلیل آزمون‌های استاندارد روان‌شناختی راه‌اندازی شده است. تمامی اطلاعات و گفتگوها کاملاً محرمانه می‌مانند.',
+  heroHistoryButtonLabel: 'سوابق درخواست‌های من',
+  calloutBadgeLabel: 'تکمیل مرحله‌به‌مرحله درخواست با راهنمای دائمی',
   landingCalloutTitle: 'نیاز به گفت‌وگوی تخصصی با روان‌شناسان مرکز دارید؟',
   landingCalloutSubtitle: 'برای ثبت نوبت جدید روی دکمه رزرو وقت مشاوره کلیک کرده و مراحل کوتاه را تکمیل فرمایید.',
   ctaButtonLabel: 'رزرو وقت مشاوره',
+  calloutSecondaryLinkLabel: 'مشاهده توضیحات پیش از شروع',
+  fieldsShowcaseBadgeLabel: 'حوزه‌های خدمات روان‌شناختی',
   fieldsSectionTitle: 'زمینه‌های مشاوره عمومی و روان‌شناختی',
   fieldsSectionSubtitle: 'محورهای تخصصی خدمات روان‌شناختی و خانواده در مرکز',
+  fieldsShowcaseHelperText: 'روی هر زمینه کلیک کنید تا فرم ثبت درخواست با همان محور باز شود',
+  fieldsCardCtaLabel: 'انتخاب و رزرو وقت',
+  fieldsShowcaseEmptyText: 'هنوز زمینه مشاوره‌ای برای این بخش تعریف نشده است.',
+  landingInfoCardsTitle: '',
+  landingInfoCardsSubtitle: '',
+  landingInfoCards: [],
   descriptionButtonLabel: 'توضیحات',
   descriptionModalTitle: 'راهنما و منشور محرمانگی مشاوره روان‌شناختی',
   descriptionModalBody: '۱. پرونده‌های روان‌شناختی و نتایج تست‌ها تنها برای روان‌شناس متخصص پرونده قابل رویت است.\n۲. در صورت صلاح‌دید روان‌شناس، تست‌های تکمیلی در بخش «تست‌ها» برای شما فعال می‌گردد.\n۳. تعرفه‌ها با یارانه ویژه اعضای مرکز محاسبه می‌شوند.',
+  showFieldsSelectionStep: true,
+  wizardFieldStepTitle: 'انتخاب زمینه مشاوره',
+  wizardFieldStepSubtitle: '',
+  wizardFieldNotice: 'در صورت تمایل زمینه مشاوره را انتخاب کنید (اطلاعات شما کاملاً محرمانه می‌ماند)',
+  fieldSelectionOptional: true,
+  skipFieldSelectionLabel: 'انتخاب نمی‌کنم / ادامه بدون انتخاب زمینه',
+  otherCities: [...DEFAULT_OTHER_COUNSELING_CITIES],
+  includeFinalReviewStep: false,
+  showPhoneFieldInWizard: true,
+  showConsultantsInWizard: false,
+  submitButtonLabel: 'ثبت درخواست مشاوره',
+  nextButtonLabel: 'ادامه و مرحله بعد',
+  prevButtonLabel: 'مرحله قبل',
   showRatesInWizardEnd: true,
   ratesButtonLabel: 'اطلاع از نرخ نامه مشاوره مرکز',
-  submissionSuccessMessage: 'درخواست رزرو وقت مشاوره شما با موفقیت ثبت شد. زمان دقیق جلسه توسط واحد پذیرش و روان‌شناسان مرکز هماهنگ و اعلام خواهد شد.',
+  submissionSuccessTitle: 'درخواست شما ثبت شد',
+  submissionSuccessMessage: 'درخواست شما ثبت شد و مشاوران مرکز با شما تماس خواهند گرفت',
   wizardSteps: [
     {
-      id: 'gen_step_1',
-      title: 'حوزه موضوعی و مخاطب جلسه',
-      subtitle: 'حوزه اصلی مشاوره روان‌شناختی را مشخص فرمایید.',
+      id: 'gen_step_location_time',
+      title: 'انتخاب مکان و زمان مشاوره',
+      subtitle: 'لطفاً شهر و بازه زمانی مناسب خود را مشخص کرده و درخواست را ثبت نمایید.',
       enabled: true,
       order: 1,
       fields: [
         {
-          id: 'gf_audience',
-          key: 'clientType',
-          label: 'مشاوره برای چه کسی درخواست می‌شود؟',
-          type: 'radio',
-          options: ['شخص خود متقاضی', 'همراه با همسر / مشاوره خانواده', 'فرزند یا یکی از اعضای درجه یک خانواده'],
+          id: 'gf_location',
+          key: 'counselingLocation',
+          label: 'مکان برگزاری مشاوره',
+          type: 'location_city',
+          primaryCityLabel: 'قم',
+          otherCitiesLabel: 'سایر شهرها',
+          options: [...DEFAULT_OTHER_COUNSELING_CITIES],
           required: true,
           enabled: true,
           order: 1,
         },
         {
-          id: 'gf_topic',
-          key: 'psychTopic',
-          label: 'موضوع محوری جلسه',
-          type: 'select',
-          options: ['مدیریت استرس و فرسودگی شغلی', 'روابط زوجین و خانواده', 'مشاوره پیش از ازدواج', 'رشد فردی و تصمیم‌گیری', 'سایر مسائل روان‌شناختی'],
+          id: 'gf_time_slot',
+          key: 'counselingTimePreference',
+          label: 'زمان مناسب جهت مشاوره',
+          type: 'time_preference',
+          dayTimeOptions: ['صبح', 'عصر'],
+          weekPeriodOptions: ['وسط هفته', 'آخر هفته'],
+          undecidedLabel: 'فعلاً مشخص نیست',
           required: true,
-          enabled: true,
-          order: 2,
-        },
-      ],
-    },
-    {
-      id: 'gen_step_2',
-      title: 'شرح حال اولیه و ترجیحات',
-      subtitle: 'بیان کوتاه وضعیت فعلی کمک می‌کند جلسه با آمادگی کامل آغاز شود.',
-      enabled: true,
-      order: 2,
-      fields: [
-        {
-          id: 'gf_summary',
-          key: 'issueSummary',
-          label: 'خلاصه موضوع یا هدف از جلسه مشاوره',
-          type: 'textarea',
-          placeholder: 'به‌اختصار بفرمایید در چه زمینه‌ای نیاز به همراهی روان‌شناس دارید...',
-          required: true,
-          enabled: true,
-          order: 1,
-        },
-        {
-          id: 'gf_history',
-          key: 'priorCounseling',
-          label: 'آیا پیش‌تر در این زمینه جلسه مشاوره‌ای داشته‌اید؟',
-          type: 'radio',
-          options: ['خیر، اولین نوبت است', 'بله، سابقه پیگیری قبلی دارم'],
-          required: false,
-          enabled: true,
-          order: 2,
-        },
-      ],
-    },
-    {
-      id: 'gen_step_3',
-      title: 'شیوه برگزاری و زمان مناسب',
-      subtitle: 'روش حضور و بازه‌های زمانی پیشنهادی خود را انتخاب نمایید.',
-      enabled: true,
-      order: 3,
-      fields: [
-        {
-          id: 'gf_mode',
-          key: 'meetingMode',
-          label: 'نحوه برگزاری جلسه',
-          type: 'radio',
-          options: ['حضوری', 'برخط (تصویری امن)', 'تلفنی'],
-          required: true,
-          enabled: true,
-          order: 1,
-        },
-        {
-          id: 'gf_time',
-          key: 'preferredSchedule',
-          label: 'بازه زمانی مناسب برای شما',
-          type: 'text',
-          placeholder: 'مثال: دوشنبه‌ها ساعت ۱۶ به بعد',
-          required: false,
           enabled: true,
           order: 2,
         },
@@ -297,6 +313,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش تنظیمات مشاوره نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
@@ -323,6 +342,21 @@ export function registerCounselingConfigRoutes(router: Router): void {
       const body = { ...(req.body || {}) };
       delete body.version;
       delete body._baseVersion;
+      delete body.expectedVersion;
+
+      // Sync otherCities with any location_city field in wizardSteps cleanly
+      if (Array.isArray(body.otherCities) && Array.isArray(body.wizardSteps)) {
+        const cleanCities = body.otherCities.map((c: any) => String(c || '').trim()).filter(Boolean);
+        body.otherCities = cleanCities;
+        body.wizardSteps = body.wizardSteps.map((st: any) => ({
+          ...st,
+          fields: Array.isArray(st.fields)
+            ? st.fields.map((fl: any) =>
+                fl.type === 'location_city' ? { ...fl, options: cleanCities } : fl
+              )
+            : [],
+        }));
+      }
 
       const nextConfig = {
         ...defaultCfg,
@@ -390,6 +424,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ایجاد زمینه مشاوره نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
@@ -444,6 +481,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش زمینه مشاوره نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
@@ -513,6 +553,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به حذف زمینه مشاوره نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'alumni_manager', 'cultural_educational_officer']
@@ -564,6 +607,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ثبت نرخ‌نامه نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager']
@@ -617,6 +663,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به ویرایش نرخ‌نامه نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager']
@@ -687,6 +736,9 @@ export function registerCounselingConfigRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const u = getCurrentUser(req);
+      if (u.role === 'general_observer') {
+        throw AppError.forbidden('نقش ناظر کل مجاز به حذف نرخ‌نامه نیست.');
+      }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
         ['admin', 'super_admin', 'supervisor', 'admin_finance_officer', 'alumni_manager']

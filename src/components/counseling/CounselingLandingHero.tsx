@@ -7,8 +7,9 @@ import {
   CheckCircle2,
   Layers,
 } from 'lucide-react';
-import { CounselingFieldItem } from '../../types';
+import { CounselingFieldItem, CounselingLandingInfoCard } from '../../types';
 import { CounselingFieldsShowcase } from './CounselingFieldsShowcase';
+import { toPersianNumbers } from '../../utils/persianNumbers';
 
 interface CtaPalette {
   name: string;
@@ -55,12 +56,22 @@ interface CounselingLandingHeroProps {
   badgeLabel: string;
   introTitle: string;
   introBody: string;
+  historyButtonLabel?: string;
+  calloutBadgeLabel?: string;
   calloutTitle: string;
   calloutSubtitle: string;
   ctaButtonLabel: string;
+  calloutSecondaryLinkLabel?: string;
   descriptionButtonLabel: string;
+  fieldsShowcaseBadgeLabel?: string;
   fieldsSectionTitle: string;
   fieldsSectionSubtitle?: string;
+  fieldsShowcaseHelperText?: string;
+  fieldsCardCtaLabel?: string;
+  fieldsShowcaseEmptyText?: string;
+  landingInfoCardsTitle?: string;
+  landingInfoCardsSubtitle?: string;
+  landingInfoCards?: CounselingLandingInfoCard[];
   fields: CounselingFieldItem[];
   myRequestsCount: number;
   onStartWizard: (preselectedField?: CounselingFieldItem) => void;
@@ -73,12 +84,22 @@ export const CounselingLandingHero: React.FC<CounselingLandingHeroProps> = ({
   badgeLabel,
   introTitle,
   introBody,
+  historyButtonLabel = 'سوابق درخواست‌های من',
+  calloutBadgeLabel = 'تکمیل مرحله‌به‌مرحله درخواست با راهنمای دائمی',
   calloutTitle,
   calloutSubtitle,
   ctaButtonLabel,
+  calloutSecondaryLinkLabel,
   descriptionButtonLabel,
+  fieldsShowcaseBadgeLabel,
   fieldsSectionTitle,
   fieldsSectionSubtitle,
+  fieldsShowcaseHelperText,
+  fieldsCardCtaLabel,
+  fieldsShowcaseEmptyText,
+  landingInfoCardsTitle,
+  landingInfoCardsSubtitle,
+  landingInfoCards = [],
   fields,
   myRequestsCount,
   onStartWizard,
@@ -95,10 +116,11 @@ export const CounselingLandingHero: React.FC<CounselingLandingHeroProps> = ({
   }, []);
 
   const palette = CTA_PALETTES[paletteIdx];
+  const enabledInfoCards = (landingInfoCards || []).filter(c => c.enabled && (c.title?.trim() || c.body?.trim()));
 
   return (
     <div className="space-y-7">
-      {/* Simple & Clear Intro Hero (Reforms 45 / 49) */}
+      {/* Intro Hero */}
       <div className="relative rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-gradient-to-br from-slate-950 via-[#0E1E19] to-slate-950 text-white shadow-xl">
         <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
@@ -106,18 +128,22 @@ export const CounselingLandingHero: React.FC<CounselingLandingHeroProps> = ({
         <div className="relative z-10 p-6 sm:p-8 lg:p-10 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div className="space-y-3 max-w-3xl">
-              <div className="flex items-center gap-2 text-xs text-amber-300 font-bold">
-                <Sparkles className="w-4 h-4 shrink-0" />
-                <span>{badgeLabel}</span>
-              </div>
+              {badgeLabel && (
+                <div className="flex items-center gap-2 text-xs text-amber-300 font-bold">
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  <span>{badgeLabel}</span>
+                </div>
+              )}
 
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight">
                 {introTitle}
               </h2>
 
-              <p className="text-xs sm:text-sm text-slate-200/90 leading-7 whitespace-pre-line">
-                {introBody}
-              </p>
+              {introBody && (
+                <p className="text-xs sm:text-sm text-slate-200/90 leading-7 whitespace-pre-line">
+                  {introBody}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-wrap lg:flex-col items-stretch gap-2.5 shrink-0">
@@ -137,7 +163,7 @@ export const CounselingLandingHero: React.FC<CounselingLandingHeroProps> = ({
                   className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   <Layers className="w-4 h-4 shrink-0" />
-                  <span>سوابق درخواست‌های من ({myRequestsCount})</span>
+                  <span>{historyButtonLabel} ({toPersianNumbers(myRequestsCount)})</span>
                 </button>
               )}
             </div>
@@ -155,16 +181,20 @@ export const CounselingLandingHero: React.FC<CounselingLandingHeroProps> = ({
 
         <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl text-center lg:text-right">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>تکمیل مرحله‌به‌مرحله درخواست با راهنمای دائمی</span>
-            </div>
+            {calloutBadgeLabel && (
+              <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{calloutBadgeLabel}</span>
+              </div>
+            )}
             <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-snug">
               {calloutTitle}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-7">
-              {calloutSubtitle}
-            </p>
+            {calloutSubtitle && (
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-7">
+                {calloutSubtitle}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col items-center gap-2.5 shrink-0">
@@ -199,16 +229,63 @@ export const CounselingLandingHero: React.FC<CounselingLandingHeroProps> = ({
               onClick={onOpenDescriptionModal}
               className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline cursor-pointer"
             >
-              مشاهده {descriptionButtonLabel || 'توضیحات'} پیش از شروع
+              {calloutSecondaryLinkLabel || `مشاهده ${descriptionButtonLabel || 'توضیحات'} پیش از شروع`}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Counseling Fields Showcase (زمینه‌های مشاوره) */}
+      {/* Custom Editable Info Cards (Optional) */}
+      {enabledInfoCards.length > 0 && (
+        <div className="space-y-4">
+          {(landingInfoCardsTitle?.trim() || landingInfoCardsSubtitle?.trim()) && (
+            <div>
+              {landingInfoCardsTitle?.trim() && (
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                  {landingInfoCardsTitle}
+                </h3>
+              )}
+              {landingInfoCardsSubtitle?.trim() && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {landingInfoCardsSubtitle}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {enabledInfoCards.map(card => (
+              <div
+                key={card.id}
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-2"
+              >
+                {card.badge?.trim() && (
+                  <span className="inline-block px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+                    {card.badge}
+                  </span>
+                )}
+                {card.title?.trim() && (
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">{card.title}</h4>
+                )}
+                {card.body?.trim() && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
+                    {card.body}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Counseling Fields Showcase */}
       <CounselingFieldsShowcase
+        badgeLabel={fieldsShowcaseBadgeLabel}
         title={fieldsSectionTitle}
         subtitle={fieldsSectionSubtitle}
+        helperText={fieldsShowcaseHelperText}
+        cardCtaLabel={fieldsCardCtaLabel}
+        emptyText={fieldsShowcaseEmptyText}
         fields={fields}
         onSelectField={f => onStartWizard(f)}
         variant={variant}

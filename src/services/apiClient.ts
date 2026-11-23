@@ -461,6 +461,35 @@ class ApiClient {
     });
   }
 
+  async removeCourseEnrollmentFromClass(
+    courseId: string,
+    enrollmentId: string,
+    reason?: string,
+    expectedVersion?: number
+  ) {
+    return this.request<{ enrollment: any; course: any }>(
+      `/api/courses/${courseId}/enrollments/${enrollmentId}/remove-from-class`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason, expectedVersion }),
+      }
+    );
+  }
+
+  async restoreCourseEnrollmentToClass(
+    courseId: string,
+    enrollmentId: string,
+    expectedVersion?: number
+  ) {
+    return this.request<{ enrollment: any; course: any }>(
+      `/api/courses/${courseId}/enrollments/${enrollmentId}/restore-to-class`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ expectedVersion }),
+      }
+    );
+  }
+
   // Products endpoints (Books, Multimedia & Audio Store - Reforms 23-30)
   async getProducts() {
     return this.request<any[]>('/api/products');
@@ -589,6 +618,12 @@ class ApiClient {
     return this.request<any>(`/api/counseling/requests/${requestId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCounselingRequest(requestId: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/counseling/requests/${requestId}`, {
+      method: 'DELETE',
     });
   }
 
@@ -1211,23 +1246,89 @@ class ApiClient {
     });
   }
 
-  // Cartable Attachments & Secure Private File helpers
+  // Fast Raw Binary File Upload (bypasses Base64 33% bloat & JSON parsing latency)
   async uploadFile(
     file: File,
     category = 'misc',
     extraBody?: Record<string, any>
-  ): Promise<{ url: string; filename?: string; originalName?: string }> {
-    const base64Data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error('خطا در خواندن فایل'));
-      reader.readAsDataURL(file);
-    });
-    const res = await this.request<{ success: boolean; url: string; filename?: string; originalName?: string }>(`/api/upload/${category}`, {
-      method: 'POST',
-      body: JSON.stringify({ filename: file.name, base64Data, ...(extraBody || {}) }),
-    });
-    return { url: res.url, filename: res.filename, originalName: res.originalName };
+  ): Promise<{ url: string; filename?: string; originalName?: string; sizeBytes?: number }> {
+    const buildHeaders = (token?: string): Record<string, string> => {
+      const h: Record<string, string> = {
+        'Content-Type': 'application/octet-stream',
+        'Idempotency-Key': generateClientUUID(),
+        'x-upload-filename': encodeURIComponent(file.name || 'upload.bin'),
+        'x-upload-mime': file.type || 'application/octet-stream',
+      };
+      if (token) h['Authorization'] = `Bearer ${token}`;
+      if (extraBody?.courseId) h['x-course-id'] = String(extraBody.courseId);
+      if (extraBody?.draftFolderKey) h['x-draft-key'] = String(extraBody.draftFolderKey);
+      if (extraBody?.previousUrl) h['x-previous-url'] = String(extraBody.previousUrl);
+      return h;
+    };
+
+    try {
+      let response = await fetch(`/api/upload-raw/${encodeURIComponent(category)}`, {
+        method: 'POST',
+        headers: buildHeaders(this.sessionToken),
+        body: file,
+      });
+
+      if (
+        response.status === 401 &&
+        !this.isRefreshing &&
+        (this.refreshTokenVal || (typeof window !== 'undefined' && !!localStorage.getItem('feqh_refresh_token')))
+      ) {
+        try {
+          this.isRefreshing = true;
+          const refreshRes = await this.refreshToken();
+          this.isRefreshing = false;
+          if (refreshRes?.accessToken) {
+            response = await fetch(`/api/upload-raw/${encodeURIComponent(category)}`, {
+              method: 'POST',
+              headers: buildHeaders(refreshRes.accessToken),
+              body: file,
+            });
+          }
+        } catch (refreshErr) {
+          this.isRefreshing = false;
+          this.clearSession();
+          throw refreshErr;
+        }
+      }
+
+      if (!response.ok) {
+        let problem: ProblemDetailsError;
+        try {
+          problem = await response.json();
+        } catch {
+          problem = {
+            type: 'about:blank',
+            title: response.statusText || 'خطای آپلود فایل',
+            status: response.status,
+            detail: 'آپلود فایل با خطا مواجه شد.',
+            code: `HTTP_${response.status}`,
+          };
+        }
+        throw new ApiError(problem);
+      }
+
+      const res = await response.json();
+      return {
+        url: res.url,
+        filename: res.filename,
+        originalName: res.originalName,
+        sizeBytes: res.sizeBytes,
+      };
+    } catch (err: any) {
+      if (err instanceof ApiError) throw err;
+      throw new ApiError({
+        type: 'upload_failure',
+        title: 'خطا در آپلود فایل',
+        status: 0,
+        detail: err?.message || 'عدم امکان ارسال فایل به سرور.',
+        code: 'UPLOAD_ERROR',
+      });
+    }
   }
 
   async fetchPrivateFileBlob(fileUrl: string): Promise<{ blob: Blob; contentType: string; filename: string }> {
@@ -1272,11 +1373,35 @@ class ApiClient {
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
   }
 
-  // Course Attendance, Waitlist & Certificates
+  // Course Disk Files, Attendance, Waitlist & Certificates
+  async getCourseDiskFiles(courseIdOrDraftFolder: string) {
+    return this.request<{
+      courseId: string;
+      folderName: string;
+      relativeDiskPath: string;
+      files: Array<{
+        filename: string;
+        sizeBytes: number;
+        sizeLabel: string;
+        format: string;
+        url: string;
+        modifiedAt: string;
+      }>;
+    }>(`/api/courses/${encodeURIComponent(courseIdOrDraftFolder)}/disk-files`);
+  }
+
+  async deleteCourseDiskFile(courseIdOrDraftFolder: string, filename: string) {
+    return this.request<{ success: boolean; filename: string }>(
+      `/api/courses/${encodeURIComponent(courseIdOrDraftFolder)}/disk-files/${encodeURIComponent(filename)}`,
+      { method: 'DELETE' }
+    );
+  }
+
   async getCourseOperations(courseId: string) {
     return this.request<{
       courseId: string;
       sessionsCount: number;
+      sessions?: any[];
       waitlistEnabled: boolean;
       version: number;
       attendance: any[];
@@ -1311,10 +1436,39 @@ class ApiClient {
     return this.updateCourseOperationsSettings(courseId, data);
   }
 
-  async recordCourseAttendance(courseId: string, data: { userId: string; userName: string; sessionNumber: number; sessionTitle?: string; status: 'present' | 'absent' | 'excused' }) {
+  async recordCourseAttendance(
+    courseId: string,
+    data: {
+      userId: string;
+      userName: string;
+      sessionNumber: number;
+      sessionTitle?: string;
+      sessionId?: string;
+      status: 'present' | 'absent' | 'excused' | 'late';
+      note?: string;
+    }
+  ) {
     return this.request<any>(`/api/courses/${courseId}/attendance`, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async recordCourseAttendanceBulk(
+    courseId: string,
+    records: Array<{
+      userId: string;
+      userName: string;
+      sessionNumber: number;
+      sessionTitle?: string;
+      sessionId?: string;
+      status: 'present' | 'absent' | 'excused' | 'late';
+      note?: string;
+    }>
+  ) {
+    return this.request<{ success: boolean; count: number }>(`/api/courses/${courseId}/attendance/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ records }),
     });
   }
 
