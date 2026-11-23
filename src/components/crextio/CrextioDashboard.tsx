@@ -63,6 +63,7 @@ import {
   formatWelcomeBannerTitle,
   formatWelcomeBannerSubtitle,
 } from '../../utils/welcomeBanner';
+import { MobileDashboardExperience } from './MobileDashboardExperience';
 
 const ThemeCustomizerModal = lazy(() =>
   import('../admin/ThemeCustomizerModal').then(m => ({ default: m.ThemeCustomizerModal }))
@@ -70,6 +71,7 @@ const ThemeCustomizerModal = lazy(() =>
 
 interface CrextioDashboardProps {
   onNavigateTab?: (tab: string) => void;
+  onOpenAllServices?: () => void;
   onBookGeneralCounseling?: () => void;
 }
 
@@ -146,6 +148,7 @@ const CrextioCard: React.FC<{
 
 export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
   onNavigateTab,
+  onOpenAllServices,
   onBookGeneralCounseling,
 }) => {
   const {
@@ -161,6 +164,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
     updateGeneralShowcase,
     setDesignTheme,
     isAlumniPreview,
+    toggleAlumniPreview,
   } = useApp();
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
@@ -1100,6 +1104,28 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
         )}
       </AnimatePresence>
 
+      {/* DEDICATED MOBILE-NATIVE FIRST PAGE (< lg) */}
+      <div className="lg:hidden">
+        <MobileDashboardExperience
+          onNavigateTab={onNavigateTab}
+          onOpenAllServices={onOpenAllServices}
+          onBookGeneralCounseling={onBookGeneralCounseling}
+          onOpenIdentityCard={() => setIsIdentityCardOpen(true)}
+          onOpenStudio={tab => {
+            setStudioInitialTab(tab);
+            setIsStudioOpen(true);
+          }}
+          onOpenCustomizer={() => setIsCustomizerOpen(true)}
+          onToggleAlumniPreview={toggleAlumniPreview}
+          isAdmin={isAdmin}
+          isRealAdmin={isRealAdmin}
+          isAlumni={isAlumni}
+          isAlumniPreview={isAlumniPreview}
+        />
+      </div>
+
+      {/* DESKTOP CONFIGURABLE 12-COLUMN DASHBOARD (>= lg preserved intact) */}
+      <div className="hidden lg:block space-y-6">
       {/* ADMIN THEME & LAYOUT CUSTOMIZER LAUNCHER BAR */}
       {isAdmin && (
         <div className="w-full bg-stone-900 text-white rounded-2xl p-3 sm:p-3.5 sm:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 border border-stone-800 shadow-sm">
@@ -1222,9 +1248,8 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
         />
       )}
 
-      {/* Reform 56: Alumni Profile Completion Percentage Widget & My Identity Card Modal */}
+      {/* Reform 56: Alumni Profile Completion Percentage Widget */}
       <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
-      <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
 
       {/* DYNAMIC 12-COLUMN DASHBOARD SECTIONS GRID (Includes Movable Status Widget, Events Calendar, Banners & All Showcases) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-stretch">
@@ -1447,6 +1472,10 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
           );
         })}
       </div>
+      </div>
+
+      {/* SHARED IDENTITY CARD MODAL (Mobile + Desktop) */}
+      <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
 
       {/* THEME 2 LIVE FULL-PAGE STUDIO DRAWER */}
       <Theme2StudioDrawer

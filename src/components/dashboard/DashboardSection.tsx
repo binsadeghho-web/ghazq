@@ -266,6 +266,27 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Compact mobile hero for Theme 1 (< sm), full Aurora header on sm+ */}
+      <div className="sm:hidden rounded-2xl bg-slate-900 text-white p-4 flex items-center justify-between gap-3 shadow-md">
+        <div className="min-w-0">
+          <h1 className="text-sm font-black truncate">
+            خوش آمدید، {currentUser?.fullName || 'همکار گرامی'}
+          </h1>
+          <p className="text-[11px] text-slate-300 mt-0.5 truncate">
+            {currentUser?.roleTitle || 'پرتال سازمانی فقه و قضا'} · {toPersianNumbers(customizedCards.length)} بخش فعال
+          </p>
+        </div>
+        {showAdminCard && (
+          <button
+            type="button"
+            onClick={() => setIsNavCustomizerOpen(true)}
+            className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 text-[11px] font-black shrink-0 cursor-pointer"
+          >
+            ترتیب منو
+          </button>
+        )}
+      </div>
+
       <DashboardWidgetsSuite
         onNavigateTab={(tab) => onNavigate((tab.toLowerCase() === 'people' ? 'cartable' : tab.toLowerCase()) as NavTabId)}
         isAlumniPreview={isAlumniPreview}
@@ -273,14 +294,16 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
       />
 
       {/* Reform 56: Alumni Identity Completion Percentage Widget & My Identity Card Trigger */}
-      <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
+      <div className="hidden sm:block">
+        <AlumniProfileCompletionWidget onOpenIdentityCard={() => setIsIdentityCardOpen(true)} />
+      </div>
       <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
 
-      {/* Aurora Spectrum Header */}
+      {/* Aurora Spectrum Header (sm+ / Desktop) */}
       <div
         ref={headerRef}
         onMouseMove={handleHeaderMouseMove}
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-slate-200/90 dark:border-white/15 shadow-xl transition-all select-none group"
+        className="hidden sm:block relative overflow-hidden rounded-3xl p-6 sm:p-7 border border-slate-200/90 dark:border-white/15 shadow-xl transition-all select-none group"
         style={{
           ['--mouse-x' as string]: `${headerMousePos.x}px`,
           ['--mouse-y' as string]: `${headerMousePos.y}px`,
@@ -305,54 +328,50 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
           <div className="space-y-2">
             <div className="flex items-start sm:items-center gap-3">
-              <div className="relative p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/15 to-amber-500/20 border border-white/40 dark:border-white/20 text-indigo-600 dark:text-amber-400 shadow-md backdrop-blur-md shrink-0">
-                <LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
-                </span>
+              <div className="relative p-2.5 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/15 to-amber-500/20 border border-white/40 dark:border-white/20 text-indigo-600 dark:text-amber-400 shadow-md backdrop-blur-md shrink-0">
+                <LayoutDashboard className="w-6 h-6" />
               </div>
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-base sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                     داشبورد خدمات جامع {currentUser?.fullName || 'دانش‌آموختگان فقه و قضا'}
                   </h1>
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20 shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20 shrink-0">
                     <Sparkles className="w-3 h-3" />
                     <span>نسخه پیشرفته ۳.۰</span>
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed max-w-2xl font-normal">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed max-w-2xl font-normal">
                   پرتال یکپارچه خدمات الکترونیک اداری، آموزش‌های تخصصی، مشاوره روان‌شناختی، راهبری پژوهش و تسهیلات رفاهی
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 overflow-x-auto scrollbar-none sm:overflow-visible sm:flex-wrap text-xs pb-0.5 sm:pb-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap text-xs">
             {showAdminCard && (
               <button
                 type="button"
                 onClick={() => setIsNavCustomizerOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 min-h-[38px] sm:min-h-0 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 <Menu className="w-3.5 h-3.5" />
                 <span>ترتیب و نام ناوبری و منوها</span>
               </button>
             )}
 
-            <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/80 dark:border-white/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs whitespace-nowrap shrink-0">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/80 dark:border-white/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs whitespace-nowrap shrink-0">
               <CheckCircle2 className="w-4 h-4" />
               <span>سامانه برخط</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-slate-300 font-medium shadow-xs whitespace-nowrap shrink-0">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-slate-300 font-medium shadow-xs whitespace-nowrap shrink-0">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span className="tabular-nums">۸ آبان ۱۴۰۳</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 backdrop-blur-md border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold whitespace-nowrap shrink-0">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 backdrop-blur-md border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold whitespace-nowrap shrink-0">
               <Layers className="w-3.5 h-3.5" />
               <span>{toPersianNumbers(customizedCards.length)} درگاه تخصصی</span>
             </div>
@@ -360,8 +379,39 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* Customized Responsive Service Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+      {/* Compact 2-Col Mobile Service Grid for Theme 1 (< sm) */}
+      <div className="grid grid-cols-2 gap-2.5 sm:hidden">
+        {customizedCards.map(card => (
+          <button
+            key={card.id}
+            type="button"
+            onClick={() => onNavigate(card.navTab)}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 text-right flex flex-col justify-between gap-2.5 active:scale-[0.98] transition-transform cursor-pointer relative"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                {card.icon}
+              </div>
+              {card.hasNotification && card.notificationCount && card.notificationCount > 0 ? (
+                <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black tabular-nums">
+                  {toPersianNumbers(card.notificationCount)}
+                </span>
+              ) : null}
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-1">
+                {card.title}
+              </h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                {card.badge}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Customized Responsive Service Cards Grid (sm+ / Desktop intact) */}
+      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {customizedCards.map(card => (
           <ModernDashboardCard
             key={card.id}
