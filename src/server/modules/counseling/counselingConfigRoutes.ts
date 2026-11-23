@@ -19,7 +19,7 @@ import {
 function sanitizeMediaOrExternalUrl(raw?: string): string | undefined {
   if (!raw || !String(raw).trim()) return undefined;
   const trimmed = String(raw).trim();
-  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('/assets/')) {
+  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('/assets/') || trimmed.startsWith('/src/assets/')) {
     return trimmed;
   }
   try {
@@ -35,6 +35,27 @@ export const DEFAULT_GENERAL_SHOWCASE_CONFIG: CounselingGeneralShowcaseConfig = 
   sectionBadge: 'آرامش روانی، سلامت خانواده و توانمندسازی',
   sectionTitle: 'ویترین خدمات مشاوره عمومی، خانواده و روان‌شناختی',
   sectionSubtitle: 'کارگاه‌های آموزشی، اطلاعیه‌های دوره‌های روان‌شناسی و معرفی مشاورین مرکز',
+  displayMode: 'carousel',
+  carouselAutoplay: true,
+  carouselIntervalSeconds: 6,
+  showcaseScale: 'normal',
+  showcaseImageUrl: '',
+  showShowcaseImage: true,
+  workshopsDisplayMode: 'both',
+  upcomingFields: {
+    showImage: true,
+    showPresenter: true,
+    showSchedule: true,
+    showDescription: true,
+    showActionBadge: true,
+  },
+  archiveFields: {
+    showImage: true,
+    showPresenter: true,
+    showSchedule: true,
+    showDescription: false,
+    showActionBadge: true,
+  },
   showWorkshopsCard: true,
   showAnnouncementsCard: true,
   showFeaturedConsultantCard: true,
@@ -985,10 +1006,30 @@ export function registerCounselingConfigRoutes(router: Router): void {
         })
       );
 
+      const sanitizeFields = (f: any, def: NonNullable<CounselingGeneralShowcaseConfig['upcomingFields']>) => ({
+        showImage: f?.showImage !== undefined ? Boolean(f.showImage) : Boolean(def.showImage),
+        showPresenter: f?.showPresenter !== undefined ? Boolean(f.showPresenter) : Boolean(def.showPresenter),
+        showSchedule: f?.showSchedule !== undefined ? Boolean(f.showSchedule) : Boolean(def.showSchedule),
+        showDescription: f?.showDescription !== undefined ? Boolean(f.showDescription) : Boolean(def.showDescription),
+        showActionBadge: f?.showActionBadge !== undefined ? Boolean(f.showActionBadge) : Boolean(def.showActionBadge),
+      });
+
+      const validScales = new Set(['micro', 'compact', 'normal', 'expanded']);
+      const validWorkshopModes = new Set(['both', 'upcoming_only', 'archive_only']);
+
       const merged: CounselingGeneralShowcaseConfig = {
         sectionBadge: raw.sectionBadge !== undefined ? String(raw.sectionBadge).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.sectionBadge,
         sectionTitle: raw.sectionTitle !== undefined ? String(raw.sectionTitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.sectionTitle,
         sectionSubtitle: raw.sectionSubtitle !== undefined ? String(raw.sectionSubtitle).trim() : DEFAULT_GENERAL_SHOWCASE_CONFIG.sectionSubtitle,
+        displayMode: raw.displayMode === 'grid' ? 'grid' : 'carousel',
+        carouselAutoplay: raw.carouselAutoplay !== false,
+        carouselIntervalSeconds: Math.min(30, Math.max(3, Number(raw.carouselIntervalSeconds) || 6)),
+        showcaseScale: validScales.has(raw.showcaseScale) ? raw.showcaseScale : 'normal',
+        showcaseImageUrl: raw.showcaseImageUrl ? (sanitizeMediaOrExternalUrl(raw.showcaseImageUrl) || '') : '',
+        showShowcaseImage: raw.showShowcaseImage !== false,
+        workshopsDisplayMode: validWorkshopModes.has(raw.workshopsDisplayMode) ? raw.workshopsDisplayMode : 'both',
+        upcomingFields: sanitizeFields(raw.upcomingFields, DEFAULT_GENERAL_SHOWCASE_CONFIG.upcomingFields!),
+        archiveFields: sanitizeFields(raw.archiveFields, DEFAULT_GENERAL_SHOWCASE_CONFIG.archiveFields!),
         showWorkshopsCard: raw.showWorkshopsCard !== false,
         showAnnouncementsCard: raw.showAnnouncementsCard !== false,
         showFeaturedConsultantCard: raw.showFeaturedConsultantCard !== false,

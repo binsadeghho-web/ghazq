@@ -21,6 +21,12 @@ import {
   Phone,
   Image as ImageIcon,
   CheckCircle2,
+  Play,
+  Pause,
+  Maximize2,
+  Minimize2,
+  LayoutGrid,
+  Clock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/apiClient';
@@ -65,6 +71,9 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
     Array<{ id: string; fullName: string; phone: string; notes: string; createdAt: string }>
   >([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+
+  // Showcase banner upload state
+  const [uploadingShowcaseImg, setUploadingShowcaseImg] = useState(false);
 
   // Announcement editor state
   const [editingAnnouncement, setEditingAnnouncement] = useState<CounselingAnnouncementItem | null>(null);
@@ -124,6 +133,23 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
     setExtMediaUrl('');
     setExtMediaDuration('');
     setIsWorkshopFormOpen(true);
+  };
+
+  const handleUploadShowcaseImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingShowcaseImg(true);
+    try {
+      const res = await api.uploadFile(file, 'counseling_media');
+      setDraft(prev => ({ ...prev, showcaseImageUrl: res.url, showShowcaseImage: true }));
+    } catch (err: any) {
+      window.dispatchEvent(
+        new CustomEvent('app:toast', { detail: { message: err?.message || 'خطا در بارگذاری تصویر ویترین', type: 'error' } })
+      );
+    } finally {
+      setUploadingShowcaseImg(false);
+      e.target.value = '';
+    }
   };
 
   const handleUploadWorkshopBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -359,24 +385,200 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
           {/* TAB 0: OVERVIEW & TOGGLES */}
           {activeTab === 'overview' && (
             <div className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-stone-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-stone-200 dark:border-slate-800">
-                <div>
-                  <label className="block font-bold text-stone-700 dark:text-slate-200 mb-1">تیتر اصلی ویترین داشبورد:</label>
-                  <input
-                    type="text"
-                    value={draft.sectionTitle}
-                    onChange={e => setDraft({ ...draft, sectionTitle: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 font-bold"
-                  />
+              {/* Row 1: Display Mode (Scheduled Carousel vs Grid) + Size Scale */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-slate-800/40 border border-stone-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-emerald-700" />
+                      نحوه نمایش ۳ بخش در ویترین
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ ...draft, displayMode: 'carousel' })}
+                      className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
+                        (draft.displayMode || 'carousel') === 'carousel'
+                          ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-black flex items-center gap-1.5">
+                        <Play className="w-3.5 h-3.5" />
+                        <span>ویترین زمان‌بندی‌شده</span>
+                      </div>
+                      <div className={`text-[10px] mt-0.5 ${(draft.displayMode || 'carousel') === 'carousel' ? 'text-emerald-100' : 'text-stone-500'}`}>
+                        چرخش خودکار بین بخش‌های فعال
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ ...draft, displayMode: 'grid' })}
+                      className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
+                        draft.displayMode === 'grid'
+                          ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-black flex items-center gap-1.5">
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span>نمایش ستونی هم‌زمان</span>
+                      </div>
+                      <div className={`text-[10px] mt-0.5 ${draft.displayMode === 'grid' ? 'text-emerald-100' : 'text-stone-500'}`}>
+                        نمایش کنار هم بخش‌های فعال
+                      </div>
+                    </button>
+                  </div>
+
+                  {(draft.displayMode || 'carousel') === 'carousel' && (
+                    <div className="pt-2 border-t border-stone-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+                      <label className="flex items-center gap-2 font-bold cursor-pointer text-stone-700 dark:text-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={draft.carouselAutoplay !== false}
+                          onChange={e => setDraft({ ...draft, carouselAutoplay: e.target.checked })}
+                        />
+                        <span>جابه‌جایی خودکار زمان‌بندی‌شده</span>
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-stone-500">مکث هر اسلاید:</span>
+                        <select
+                          value={Number(draft.carouselIntervalSeconds || 6)}
+                          onChange={e => setDraft({ ...draft, carouselIntervalSeconds: Number(e.target.value) })}
+                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 font-bold"
+                        >
+                          {[4, 5, 6, 8, 10, 12, 15].map(sec => (
+                            <option key={sec} value={sec}>
+                              {toPersianNumbers(sec)} ثانیه
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block font-bold text-stone-700 dark:text-slate-200 mb-1">توضیح کوتاه زیر تیتر ویترین:</label>
-                  <input
-                    type="text"
-                    value={draft.sectionSubtitle || ''}
-                    onChange={e => setDraft({ ...draft, sectionSubtitle: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700"
-                  />
+
+                {/* Size / Scale Control */}
+                <div className="p-4 rounded-2xl bg-stone-50 dark:bg-slate-800/40 border border-stone-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+                      {(draft.showcaseScale === 'micro' || draft.showcaseScale === 'compact') ? (
+                        <Minimize2 className="w-4 h-4 text-emerald-700" />
+                      ) : (
+                        <Maximize2 className="w-4 h-4 text-emerald-700" />
+                      )}
+                      اندازه ویترین در داشبورد
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'micro', label: 'خیلی کوچک', desc: 'نوار فشرده' },
+                      { id: 'compact', label: 'کوچک', desc: 'کم‌ارتفاع' },
+                      { id: 'normal', label: 'استاندارد', desc: 'متعادل' },
+                      { id: 'expanded', label: 'بزرگ', desc: 'گسترده' },
+                    ].map(sz => {
+                      const active = (draft.showcaseScale || 'normal') === sz.id;
+                      return (
+                        <button
+                          key={sz.id}
+                          type="button"
+                          onClick={() => setDraft({ ...draft, showcaseScale: sz.id as any })}
+                          className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                            active
+                              ? 'bg-stone-900 text-white border-stone-900 dark:bg-emerald-700 dark:border-emerald-700'
+                              : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700 hover:bg-stone-100'
+                          }`}
+                        >
+                          <div className="font-black text-[11px]">{sz.label}</div>
+                          <div className={`text-[10px] mt-0.5 ${active ? 'text-stone-300' : 'text-stone-400'}`}>
+                            {sz.desc}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Titles + Showcase Editorial Image Upload */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 bg-stone-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-stone-200 dark:border-slate-800">
+                <div className="lg:col-span-7 space-y-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 dark:text-slate-200 mb-1">تیتر اصلی ویترین داشبورد:</label>
+                    <input
+                      type="text"
+                      value={draft.sectionTitle || ''}
+                      onChange={e => setDraft({ ...draft, sectionTitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 dark:text-slate-200 mb-1">توضیح کوتاه زیر تیتر ویترین:</label>
+                    <input
+                      type="text"
+                      value={draft.sectionSubtitle || ''}
+                      onChange={e => setDraft({ ...draft, sectionSubtitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-emerald-700" />
+                      تصویر شاخص ویترین
+                    </span>
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={draft.showShowcaseImage !== false}
+                        onChange={e => setDraft({ ...draft, showShowcaseImage: e.target.checked })}
+                      />
+                      <span>نمایش تصویر</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {draft.showcaseImageUrl ? (
+                      <img
+                        src={draft.showcaseImageUrl}
+                        alt="تصویر ویترین مشاوره"
+                        className="w-16 h-16 rounded-xl object-cover border border-stone-200 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-stone-100 dark:bg-slate-800 flex items-center justify-center text-stone-400 border border-dashed border-stone-300 shrink-0">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 text-white font-bold cursor-pointer text-[11px]">
+                          {uploadingShowcaseImg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                          <span>آپلود عکس ویترین</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleUploadShowcaseImage} />
+                        </label>
+                        {draft.showcaseImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setDraft({ ...draft, showcaseImageUrl: '' })}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-[11px] cursor-pointer"
+                          >
+                            حذف عکس
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={draft.showcaseImageUrl || ''}
+                        onChange={e => setDraft({ ...draft, showcaseImageUrl: e.target.value })}
+                        placeholder="یا نشانی تصویر (اختیاری)"
+                        className="w-full px-2.5 py-1 rounded-lg bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 font-mono text-[10px]"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -412,7 +614,7 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
                     rows={2}
                     value={draft.workshopsCardSubtitle || ''}
                     onChange={e => setDraft({ ...draft, workshopsCardSubtitle: e.target.value })}
-                    placeholder="توضیح کوتاه کارت..."
+                    placeholder="توضیح کوتاه بخش..."
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700"
                   />
                 </div>
@@ -448,7 +650,7 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
                     rows={2}
                     value={draft.announcementsCardSubtitle || ''}
                     onChange={e => setDraft({ ...draft, announcementsCardSubtitle: e.target.value })}
-                    placeholder="توضیح کوتاه کارت..."
+                    placeholder="توضیح کوتاه بخش..."
                     className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700"
                   />
                 </div>
@@ -489,21 +691,126 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
                   />
                 </div>
               </div>
-
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-medium">
-                نکته چیدمان خودکار: اگر فقط ۱ یا ۲ کارت فعال باشند، عرض ویترین داشبورد به صورت خودکار و بدون ایجاد فضای خالی بین کارت‌های فعال تقسیم می‌شود.
-              </div>
             </div>
           )}
 
           {/* TAB 1: WORKSHOPS & ARCHIVE */}
           {activeTab === 'workshops' && (
             <div className="space-y-4">
+              {/* Showcase Filtering Policy & What to display in each */}
+              <div className="p-4 rounded-2xl bg-stone-50 dark:bg-slate-800/40 border border-stone-200 dark:border-slate-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-black text-stone-900 dark:text-white">
+                      حالت نمایش کارگاه‌های فعال و آرشیو در ویترین (بدون گزینه «همه»)
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      انتخاب کنید کاربران فقط کارگاه‌های فعال را ببینند، فقط آرشیو جلسات را ببینند یا هر دو بخش مجزا را.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 shrink-0">
+                    {[
+                      { id: 'both', label: 'هر دو (فعال و آرشیو)' },
+                      { id: 'upcoming_only', label: 'فقط کارگاه‌های فعال' },
+                      { id: 'archive_only', label: 'فقط آرشیو جلسات' },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setDraft({ ...draft, workshopsDisplayMode: opt.id as any })}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                          (draft.workshopsDisplayMode || 'both') === opt.id
+                            ? 'bg-emerald-800 text-white'
+                            : 'text-stone-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* What to display in Active Workshops vs Archive Sessions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-stone-200/80 dark:border-slate-700">
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 space-y-2">
+                    <div className="font-black text-emerald-900 dark:text-emerald-300">
+                      محتوای قابل نمایش در «کارگاه‌های فعال»:
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-[11px]">
+                      {[
+                        { key: 'showImage', label: 'تصویر / پوستر' },
+                        { key: 'showPresenter', label: 'نام مدرس' },
+                        { key: 'showSchedule', label: 'زمان‌بندی' },
+                        { key: 'showDescription', label: 'توضیح کوتاه' },
+                        { key: 'showActionBadge', label: 'وضعیت ثبت‌نام' },
+                      ].map(f => {
+                        const checked = (draft.upcomingFields as any)?.[f.key] !== false;
+                        return (
+                          <label key={f.key} className="flex items-center gap-1.5 cursor-pointer font-bold text-stone-700 dark:text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e =>
+                                setDraft({
+                                  ...draft,
+                                  upcomingFields: {
+                                    ...(draft.upcomingFields || {}),
+                                    [f.key]: e.target.checked,
+                                  },
+                                })
+                              }
+                            />
+                            <span>{f.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 space-y-2">
+                    <div className="font-black text-indigo-900 dark:text-indigo-300">
+                      محتوای قابل نمایش در «آرشیو جلسات»:
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-[11px]">
+                      {[
+                        { key: 'showImage', label: 'تصویر / کاور' },
+                        { key: 'showPresenter', label: 'ارائه‌دهنده' },
+                        { key: 'showSchedule', label: 'تاریخ / مدت' },
+                        { key: 'showDescription', label: 'توضیح کوتاه' },
+                        { key: 'showActionBadge', label: 'تعداد فایل قابل دانلود' },
+                      ].map(f => {
+                        const defaultVal = f.key === 'showDescription' ? false : true;
+                        const val = (draft.archiveFields as any)?.[f.key];
+                        const checked = val !== undefined ? Boolean(val) : defaultVal;
+                        return (
+                          <label key={f.key} className="flex items-center gap-1.5 cursor-pointer font-bold text-stone-700 dark:text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e =>
+                                setDraft({
+                                  ...draft,
+                                  archiveFields: {
+                                    ...(draft.archiveFields || {}),
+                                    [f.key]: e.target.checked,
+                                  },
+                                })
+                              }
+                            />
+                            <span>{f.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between gap-2 bg-stone-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-stone-200 dark:border-slate-800">
                 <div>
-                  <h4 className="font-black text-stone-900 dark:text-white">کارگاه‌های پیش‌رو و آرشیو جلسات برگزارشده</h4>
+                  <h4 className="font-black text-stone-900 dark:text-white">مدیریت کارگاه‌های فعال و جلسات آرشیوی</h4>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    امکان درج لینک دانلود خارجی یا بارگذاری مستقیم فایل صوتی، ویدئویی و جزوه روی دیسک سرور
+                    امکان بارگذاری عکس پوستر، فایل صوتی، ویدئویی و جزوه روی دیسک یا لینک دانلود خارجی
                   </p>
                 </div>
                 <button
@@ -602,8 +909,19 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="block font-bold">پوستر یا تصویر کارگاه (اختیاری)</label>
-                      <div className="flex items-center gap-2">
+                      <label className="block font-bold">پوستر یا تصویر کارگاه / جلسه (اختیاری)</label>
+                      <div className="flex items-center gap-2.5">
+                        {editingWorkshop.bannerUrl ? (
+                          <img
+                            src={editingWorkshop.bannerUrl}
+                            alt={editingWorkshop.title || 'پوستر کارگاه'}
+                            className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-dashed border-stone-300 flex items-center justify-center text-stone-400 shrink-0">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                        )}
                         <input
                           type="text"
                           dir="ltr"
@@ -755,66 +1073,104 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
 
               {/* Workshops list */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {draft.workshops.map(ws => (
-                  <div
-                    key={ws.id}
-                    className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 flex flex-col justify-between gap-3"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                            ws.mode === 'upcoming'
-                              ? 'bg-emerald-100 text-emerald-900'
-                              : 'bg-indigo-100 text-indigo-900'
-                          }`}
-                        >
-                          {ws.mode === 'upcoming' ? 'کارگاه پیش‌رو' : 'آرشیو جلسه'}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {ws.mode === 'upcoming' && (
+                {draft.workshops.map(ws => {
+                  const isVisible = ws.isActive !== false;
+                  return (
+                    <div
+                      key={ws.id}
+                      className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border flex flex-col justify-between gap-3 transition-opacity ${
+                        isVisible ? 'border-stone-200 dark:border-slate-800' : 'border-stone-200/70 dark:border-slate-800/50 opacity-60'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                              ws.mode === 'upcoming'
+                                ? 'bg-emerald-100 text-emerald-900'
+                                : 'bg-indigo-100 text-indigo-900'
+                            }`}
+                          >
+                            {ws.mode === 'upcoming' ? 'کارگاه فعال (پیش‌رو)' : 'آرشیو جلسه'}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {ws.mode === 'upcoming' && (
+                              <button
+                                type="button"
+                                onClick={() => handleInspectRegistrations(ws.id)}
+                                className="px-2 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                                title="مشاهده لیست ثبت‌نام‌کنندگان"
+                              >
+                                <Users className="w-3 h-3" />
+                                <span>{toPersianNumbers(ws.registrationsCount || 0)} شرکت‌کننده</span>
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => handleInspectRegistrations(ws.id)}
-                              className="px-2 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                              title="مشاهده لیست ثبت‌نام‌کنندگان"
+                              onClick={() =>
+                                setDraft(prev => ({
+                                  ...prev,
+                                  workshops: prev.workshops.map(item =>
+                                    item.id === ws.id ? { ...item, isActive: item.isActive === false } : item
+                                  ),
+                                }))
+                              }
+                              className={`p-1.5 rounded-lg cursor-pointer ${
+                                isVisible
+                                  ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                                  : 'text-stone-400 bg-stone-100 hover:bg-stone-200'
+                              }`}
+                              title={isVisible ? 'در حال نمایش در ویترین (کلیک برای مخفی‌سازی)' : 'مخفی در ویترین (کلیک برای نمایش)'}
                             >
-                              <Users className="w-3 h-3" />
-                              <span>{toPersianNumbers(ws.registrationsCount || 0)} شرکت‌کننده</span>
+                              {isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => openEditWorkshop(ws)}
+                              className="p-1.5 rounded-lg text-stone-500 hover:bg-stone-100 cursor-pointer"
+                              title="ویرایش"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDraft(prev => ({
+                                  ...prev,
+                                  workshops: prev.workshops.filter(item => item.id !== ws.id),
+                                }))
+                              }
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                              title="حذف"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                          {ws.bannerUrl && (
+                            <img
+                              src={ws.bannerUrl}
+                              alt={ws.title}
+                              className="w-11 h-11 rounded-xl object-cover border border-stone-200 shrink-0"
+                            />
                           )}
-                          <button
-                            type="button"
-                            onClick={() => openEditWorkshop(ws)}
-                            className="p-1.5 rounded-lg text-stone-500 hover:bg-stone-100 cursor-pointer"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDraft(prev => ({
-                                ...prev,
-                                workshops: prev.workshops.filter(item => item.id !== ws.id),
-                              }))
-                            }
-                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-black text-stone-900 dark:text-white truncate">{ws.title}</h5>
+                            <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                              {ws.presenter ? `${ws.presenter} · ` : ''}
+                              {ws.scheduleText || ''}
+                              {(ws.mediaFiles || []).length > 0
+                                ? ` · ${toPersianNumbers((ws.mediaFiles || []).length)} فایل`
+                                : ''}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <h5 className="font-black text-stone-900 dark:text-white">{ws.title}</h5>
-                      <p className="text-[11px] text-stone-500">
-                        {ws.presenter ? `${ws.presenter} · ` : ''}
-                        {ws.scheduleText || ''}
-                        {(ws.mediaFiles || []).length > 0
-                          ? ` · ${toPersianNumbers((ws.mediaFiles || []).length)} فایل`
-                          : ''}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {draft.workshops.length === 0 && (
                   <div className="md:col-span-2 p-8 text-center text-stone-500 border border-dashed border-stone-300 rounded-2xl">
                     هنوز کارگاه یا جلسه آرشیوی ثبت نشده است. برای افزودن روی دکمه «افزودن کارگاه یا آرشیو» کلیک کنید.

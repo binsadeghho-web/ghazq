@@ -1512,10 +1512,27 @@ export interface CounselingAnnouncementItem {
   displayOrder: number;
 }
 
+export interface CounselingGeneralShowcaseFieldVisibility {
+  showImage?: boolean;
+  showPresenter?: boolean;
+  showSchedule?: boolean;
+  showDescription?: boolean;
+  showActionBadge?: boolean;
+}
+
 export interface CounselingGeneralShowcaseConfig {
   sectionBadge?: string;
   sectionTitle?: string;
   sectionSubtitle?: string;
+  displayMode?: 'carousel' | 'grid';
+  carouselAutoplay?: boolean;
+  carouselIntervalSeconds?: number;
+  showcaseScale?: 'micro' | 'compact' | 'normal' | 'expanded';
+  showcaseImageUrl?: string;
+  showShowcaseImage?: boolean;
+  workshopsDisplayMode?: 'both' | 'upcoming_only' | 'archive_only';
+  upcomingFields?: CounselingGeneralShowcaseFieldVisibility;
+  archiveFields?: CounselingGeneralShowcaseFieldVisibility;
   showWorkshopsCard: boolean;
   showAnnouncementsCard: boolean;
   showFeaturedConsultantCard: boolean;

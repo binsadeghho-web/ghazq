@@ -156,6 +156,8 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
     researchMentorships,
     crextioConfig,
     updateCrextioConfig,
+    generalShowcase,
+    updateGeneralShowcase,
     setDesignTheme,
     isAlumniPreview,
   } = useApp();
@@ -916,21 +918,19 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
           );
         }
         return (
-          <div className={scale === 'compact' ? 'origin-top scale-[0.98]' : ''}>
-            <CounselingGeneralShowcase
-              span={span}
-              scale={scale}
-              onNavigateToGeneral={() => onNavigateTab?.('CounselingGeneral')}
-              onBookGeneralCounseling={() => {
-                if (onBookGeneralCounseling) {
-                  onBookGeneralCounseling();
-                } else {
-                  onNavigateTab?.('CounselingGeneral');
-                }
-              }}
-              onOpenQuickEdit={() => setQuickEditSectionKey('counseling_general_showcase')}
-            />
-          </div>
+          <CounselingGeneralShowcase
+            span={span}
+            scale={scale}
+            onNavigateToGeneral={() => onNavigateTab?.('CounselingGeneral')}
+            onBookGeneralCounseling={() => {
+              if (onBookGeneralCounseling) {
+                onBookGeneralCounseling();
+              } else {
+                onNavigateTab?.('CounselingGeneral');
+              }
+            }}
+            onOpenQuickEdit={() => setQuickEditSectionKey('counseling_general_showcase')}
+          />
         );
 
       case 'welfare_showcase':
@@ -1221,6 +1221,8 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
           const scale: 'micro' | 'compact' | 'normal' | 'expanded' =
             sectionKey === 'top_vip_row'
               ? crextioConfig.heroBannerScale || layout.scale || 'normal'
+              : sectionKey === 'counseling_general_showcase'
+              ? generalShowcase.showcaseScale || layout.scale || 'normal'
               : layout.scale || 'normal';
           const boxShowImage = layout.showImage !== false;
 
@@ -1292,6 +1294,9 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                                 [sectionKey]: { ...(layoutsMap[sectionKey] || {}), scale: nextScale },
                               },
                             });
+                          } else if (sectionKey === 'counseling_general_showcase') {
+                            updateSectionLayout(sectionKey, { scale: nextScale });
+                            updateGeneralShowcase({ showcaseScale: nextScale });
                           } else {
                             updateSectionLayout(sectionKey, { scale: nextScale });
                           }
