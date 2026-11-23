@@ -45,6 +45,7 @@ import {
   ClipboardList,
   Trash2,
   AlertTriangle,
+  ArrowRight,
 } from 'lucide-react';
 
 export const CartableSection: React.FC = () => {
@@ -127,6 +128,7 @@ export const CartableSection: React.FC = () => {
   // Selection & Navigation State
   const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
   const [selectedApplicantId, setSelectedApplicantId] = useState<string | null>(null);
+  const [mobilePane, setMobilePane] = useState<'list' | 'detail'>('list');
   const [viewMode, setViewMode] = useState<'applicants' | 'all_requests'>(
     isOfficial ? 'applicants' : 'all_requests'
   );
@@ -378,8 +380,81 @@ export const CartableSection: React.FC = () => {
         }}
       />
 
-      {/* Main Header Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+      {/* Luxury Mobile Hero Header (< sm) */}
+      <div className="sm:hidden relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white p-4 border border-amber-400/20 shadow-[0_14px_34px_-16px_rgba(7,30,23,0.65)] space-y-3">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-300/60 to-transparent" />
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-300/35 text-amber-300 flex items-center justify-center shrink-0">
+              <Inbox className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-white truncate">
+                کارتابل خدمات اداری و آموزشی
+              </h1>
+              <p className="text-[10px] text-emerald-100/80 truncate mt-0.5">
+                ثبت درخواست رسمی و پیگیری مستقیم با مسئولین
+              </p>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            type="button"
+            onClick={() => {
+              setPrefillTopic({});
+              setNewRequestModalOpen(true);
+            }}
+            className="px-3.5 py-2 min-h-[40px] rounded-xl bg-gradient-to-l from-amber-400 to-amber-300 text-stone-950 text-xs font-black flex items-center gap-1 shrink-0 shadow-sm cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>درخواست جدید</span>
+          </motion.button>
+        </div>
+
+        <div className="relative z-10 flex items-center gap-2 overflow-x-auto scrollbar-none pt-1">
+          {isOfficial && (
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode(viewMode === 'applicants' ? 'all_requests' : 'applicants');
+                setSelectedApplicantId(null);
+              }}
+              className="px-3 py-1.5 min-h-[34px] rounded-xl bg-white/12 border border-white/15 text-[11px] font-bold text-white whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              {viewMode === 'applicants' ? 'نمایش کل پرونده‌ها' : 'نمایش بر اساس متقاضی'}
+            </button>
+          )}
+          {(followableTopics.enabled !== false || isAdminOrAlumniManager) && (
+            <button
+              type="button"
+              onClick={() => setFollowableModalOpen(true)}
+              className="px-3 py-1.5 min-h-[34px] rounded-xl bg-white/10 border border-white/15 text-[11px] font-bold text-emerald-100 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              موارد قابل پیگیری
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setGuideModalOpen(true)}
+            className="px-3 py-1.5 min-h-[34px] rounded-xl bg-white/10 border border-white/15 text-[11px] font-bold text-amber-200 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            راهنمای ثبت
+          </button>
+          {isAdminOrAlumniManager && (
+            <button
+              type="button"
+              onClick={() => setCategoriesModalOpen(true)}
+              className="px-3 py-1.5 min-h-[34px] rounded-xl bg-white/10 border border-white/15 text-[11px] font-bold text-white whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              تنظیمات ارجاع
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Header Bar (Tablet & Desktop >= sm) */}
+      <div className="hidden sm:flex bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
             <Inbox className="w-6 h-6" />
@@ -528,10 +603,14 @@ export const CartableSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Content Grid (True Mobile Master-Detail on < lg, 5:7 Split on >= lg) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* LEFT COLUMN: Applicants or Requests List */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors">
+        <div
+          className={`${
+            mobilePane === 'list' ? 'flex' : 'hidden lg:flex'
+          } lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col transition-colors`}
+        >
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50 dark:bg-slate-900/50">
             {selectedApplicantId && (
               <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 mb-1 font-bold">
@@ -617,7 +696,7 @@ export const CartableSection: React.FC = () => {
                             {group.fullName}
                           </h3>
                           {group.hasUnread && (
-                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
                           )}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
@@ -661,7 +740,10 @@ export const CartableSection: React.FC = () => {
                     <button
                       type="button"
                       key={req.id}
-                      onClick={() => setSelectedReqId(req.id)}
+                      onClick={() => {
+                        setSelectedReqId(req.id);
+                        setMobilePane('detail');
+                      }}
                       className={`w-full p-3.5 text-right transition-colors flex flex-col gap-2 cursor-pointer ${
                         isSelected
                           ? 'bg-emerald-50/70 dark:bg-emerald-950/30 ring-1 ring-inset ring-emerald-500/30'
@@ -682,7 +764,7 @@ export const CartableSection: React.FC = () => {
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isUnread && (
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-black">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                               <span>جدید</span>
                             </span>
                           )}
@@ -715,7 +797,27 @@ export const CartableSection: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: Case Inspector & Interactive Chat Canvas */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors min-h-[620px]">
+        <div
+          className={`${
+            mobilePane === 'detail' ? 'flex' : 'hidden lg:flex'
+          } lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex-col transition-colors min-h-[540px] lg:min-h-[620px]`}
+        >
+          {/* Sticky Mobile Master-Detail Back Header (< lg) */}
+          <div className="lg:hidden sticky top-0 z-20 px-3.5 py-2.5 bg-gradient-to-l from-[#071E17] to-emerald-800 text-white flex items-center justify-between gap-2 border-b border-amber-400/25">
+            <button
+              type="button"
+              onClick={() => setMobilePane('list')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-xl bg-white/12 hover:bg-white/20 text-xs font-bold cursor-pointer"
+            >
+              <ArrowRight className="w-4 h-4 text-amber-300" />
+              <span>بازگشت به فهرست پرونده‌ها</span>
+            </button>
+            {selectedRequest && (
+              <span className="text-[11px] font-mono tabular-nums text-amber-200 truncate">
+                #{toPersianNumbers(selectedRequest.trackingNumber.replace('TRK-1403-', '').replace('TRK-', ''))}
+              </span>
+            )}
+          </div>
           {selectedRequest ? (
             <>
               <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/70 dark:bg-slate-900/60">

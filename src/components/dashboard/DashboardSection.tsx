@@ -1,8 +1,10 @@
 import React, { useState, useRef, useCallback, lazy, Suspense } from 'react';
+import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { NavTabId } from '../../types';
 import { ModernDashboardCard } from '../ModernDashboardCard';
 import { toPersianNumbers } from '../../utils/persianNumbers';
+import { calculateProfileCompletion } from '../../utils/profileCompletion';
 import { DashboardWidgetsSuite } from './DashboardWidgetsSuite';
 import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
 import { AlumniIdentityCardModal } from '../alumni/AlumniIdentityCardModal';
@@ -264,28 +266,85 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
     return canViewSection(currentUser, card.sectionId, rolePolicies);
   });
 
+  const completionPct = calculateProfileCompletion(currentUser).percentage;
+  const ringCirc = 2 * Math.PI * 11;
+  const ringOff = ringCirc * (1 - Math.max(0, Math.min(100, completionPct)) / 100);
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Compact mobile hero for Theme 1 (< sm), full Aurora header on sm+ */}
-      <div className="sm:hidden rounded-2xl bg-slate-900 text-white p-4 flex items-center justify-between gap-3 shadow-md">
-        <div className="min-w-0">
-          <h1 className="text-sm font-black truncate">
-            خوش آمدید، {currentUser?.fullName || 'همکار گرامی'}
-          </h1>
-          <p className="text-[11px] text-slate-300 mt-0.5 truncate">
-            {currentUser?.roleTitle || 'پرتال سازمانی فقه و قضا'} · {toPersianNumbers(customizedCards.length)} بخش فعال
-          </p>
+      {/* BESPOKE LUXURY MOBILE HERO FOR THEME 1 (< sm), full Aurora header on sm+ */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32 }}
+        className="sm:hidden relative overflow-hidden rounded-[26px] bg-gradient-to-br from-[#061A14] via-[#0B2A20] to-[#0E3327] text-white p-4.5 border border-[#F3D078]/25 shadow-xl"
+      >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-55" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/70 to-transparent" />
+        <div className="relative z-10 space-y-3.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black text-[#F3D078] truncate">
+                پرتال جامع فقه و قضا · {toPersianNumbers(customizedCards.length)} درگاه فعال
+              </div>
+              <h1 className="text-base font-black text-white mt-0.5 truncate">
+                سلام، {currentUser?.fullName || 'همکار گرامی'}
+              </h1>
+              <p className="text-[11px] text-emerald-100/80 truncate mt-0.5">
+                {currentUser?.roleTitle || 'عضو مجمع دانش‌آموختگان'}
+              </p>
+            </div>
+
+            {currentUser && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setIsIdentityCardOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[44px] rounded-2xl bg-white/10 border border-[#F3D078]/30 text-white shrink-0 cursor-pointer"
+              >
+                <svg className="w-6 h-6 -rotate-90 shrink-0" viewBox="0 0 28 28" aria-hidden="true">
+                  <circle cx="14" cy="14" r="11" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="2.4" />
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke="#F3D078"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeDasharray={ringCirc}
+                    strokeDashoffset={ringOff}
+                  />
+                </svg>
+                <span className="text-[11px] font-black tabular-nums text-[#F3D078]">
+                  {toPersianNumbers(completionPct)}٪
+                </span>
+              </motion.button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 pt-2 border-t border-white/12">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => onNavigate('cartable')}
+              className="flex-1 min-h-[40px] px-3 py-2 rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] text-xs font-black cursor-pointer"
+            >
+              کارتابل و درخواست‌ها
+            </motion.button>
+            {showAdminCard && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setIsNavCustomizerOpen(true)}
+                className="min-h-[40px] px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-xs font-bold shrink-0 cursor-pointer"
+              >
+                ترتیب منو
+              </motion.button>
+            )}
+          </div>
         </div>
-        {showAdminCard && (
-          <button
-            type="button"
-            onClick={() => setIsNavCustomizerOpen(true)}
-            className="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 text-[11px] font-black shrink-0 cursor-pointer"
-          >
-            ترتیب منو
-          </button>
-        )}
-      </div>
+      </motion.div>
 
       <DashboardWidgetsSuite
         onNavigateTab={(tab) => onNavigate((tab.toLowerCase() === 'people' ? 'cartable' : tab.toLowerCase()) as NavTabId)}
@@ -379,34 +438,38 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* Compact 2-Col Mobile Service Grid for Theme 1 (< sm) */}
-      <div className="grid grid-cols-2 gap-2.5 sm:hidden">
-        {customizedCards.map(card => (
-          <button
+      {/* Elevated 2-Col Mobile Service Grid for Theme 1 (< sm) */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
+        {customizedCards.map((card, idx) => (
+          <motion.button
             key={card.id}
             type="button"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: Math.min(idx * 0.025, 0.22) }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => onNavigate(card.navTab)}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 text-right flex flex-col justify-between gap-2.5 active:scale-[0.98] transition-transform cursor-pointer relative"
+            className="bg-white dark:bg-slate-900 rounded-[22px] border border-slate-200/85 dark:border-slate-800 p-3.5 text-right flex flex-col justify-between gap-3 shadow-[0_8px_22px_-16px_rgba(15,23,42,0.22)] cursor-pointer relative min-h-[108px]"
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-slate-100/90 dark:bg-slate-800 flex items-center justify-center shrink-0">
                 {card.icon}
               </div>
               {card.hasNotification && card.notificationCount && card.notificationCount > 0 ? (
-                <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black tabular-nums">
-                  {toPersianNumbers(card.notificationCount)}
+                <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 tabular-nums">
+                  {toPersianNumbers(card.notificationCount)} جدید
                 </span>
               ) : null}
             </div>
             <div>
-              <h3 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-1">
+              <h3 className="text-xs font-black text-slate-900 dark:text-white line-clamp-1">
                 {card.title}
               </h3>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 font-medium">
                 {card.badge}
               </p>
             </div>
-          </button>
+          </motion.button>
         ))}
       </div>
 

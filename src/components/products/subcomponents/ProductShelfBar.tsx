@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { ProductsStoreConfig } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { ProductShelfKey, getAllProductCategories } from './productUiHelpers';
@@ -91,26 +92,27 @@ export const ProductShelfBar: React.FC<ProductShelfBarProps> = ({
   const tabs = allTabs.filter(t => t.visible);
 
   return (
-    <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/70 rounded-xl text-xs overflow-x-auto scrollbar-none font-bold">
+    <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 sm:p-3 rounded-[22px] sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/70 rounded-xl text-xs overflow-x-auto scrollbar-none font-bold">
         {tabs.map(tab => (
-          <button
+          <motion.button
             key={tab.key}
             type="button"
+            whileTap={{ scale: 0.96 }}
             onClick={() => onSelectShelf(tab.key)}
-            className={`px-3.5 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 min-h-[38px] py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeShelf === tab.key
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
+                ? 'bg-[#071E17] text-[#F3D078] sm:bg-white sm:dark:bg-slate-700 sm:text-slate-900 sm:dark:text-white shadow-xs font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {tab.icon}
             <span>{tab.label}</span>
-            <span className="text-[11px] opacity-70 tabular-nums">({toPersianNumbers(tab.count)})</span>
+            <span className="text-[11px] opacity-75 tabular-nums">({toPersianNumbers(tab.count)})</span>
             {tab.disabledTag && (
               <span className="text-[10px] text-rose-500 font-bold">(خاموش)</span>
             )}
-          </button>
+          </motion.button>
         ))}
       </div>
 
@@ -121,7 +123,7 @@ export const ProductShelfBar: React.FC<ProductShelfBarProps> = ({
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
           placeholder="جستجو در عنوان، ارائه‌دهندگان، نمایه یا کد رهگیری..."
-          className="w-full pr-9 pl-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-400"
+          className="w-full pr-9 pl-3 min-h-[40px] py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-400"
         />
       </div>
     </div>

@@ -172,8 +172,37 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         </div>
       )}
 
-      {/* Frosted-Glass Main Header */}
-      <div className="relative overflow-hidden glass-card rounded-3xl p-5 sm:p-6 border border-white/60 dark:border-white/10 bg-white/75 dark:bg-slate-900/70 backdrop-blur-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[0_14px_40px_-20px_rgba(16,185,129,0.22)]">
+      {/* Luxury Mobile Hero Header (< sm) */}
+      <div className="sm:hidden relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white p-4 border border-amber-400/20 shadow-[0_14px_34px_-16px_rgba(7,30,23,0.65)]">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-300/60 to-transparent" />
+        <div className="relative z-10 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-300/35 text-amber-300 flex items-center justify-center shrink-0">
+              <HeartHandshake className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-white truncate">
+                {generalConfig.sectionTitle}
+              </h1>
+              <p className="text-[10px] text-emerald-100/80 truncate mt-0.5">
+                {generalConfig.sectionSubtitle}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDescriptionModalOpen(true)}
+            className="px-3 py-2 min-h-[38px] rounded-xl bg-white/12 border border-white/15 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>راهنما</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Frosted-Glass Main Header (Tablet & Desktop >= sm) */}
+      <div className="hidden sm:flex relative overflow-hidden glass-card rounded-3xl p-5 sm:p-6 border border-white/60 dark:border-white/10 bg-white/75 dark:bg-slate-900/70 backdrop-blur-2xl flex-col md:flex-row md:items-center justify-between gap-4 shadow-[0_14px_40px_-20px_rgba(16,185,129,0.22)]">
         <span
           aria-hidden="true"
           className="pointer-events-none absolute -top-24 -right-24 w-56 h-56 rounded-full bg-emerald-400/15 blur-3xl"
@@ -203,8 +232,48 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         </button>
       </div>
 
-      {/* Dual Major Pillars Switcher: 1) رزرو وقت مشاوره | 2) کارگاه‌های آموزشی */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      {/* Dual Major Pillars Switcher: Compact Luxury Segment on Mobile (< md), Dual Rich Cards on >= md */}
+      <div className="md:hidden grid grid-cols-2 gap-2">
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.96 }}
+          onClick={() => setActivePillar('booking')}
+          className={`relative overflow-hidden p-3 min-h-[62px] rounded-2xl border text-right flex flex-col justify-between gap-1 cursor-pointer transition-all ${
+            activePillar === 'booking'
+              ? 'bg-gradient-to-br from-[#071E17] to-emerald-800 text-white border-amber-400/35 shadow-md'
+              : 'bg-white dark:bg-slate-900 text-stone-800 dark:text-slate-200 border-stone-200 dark:border-slate-800'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-1">
+            <Calendar className={`w-4 h-4 ${activePillar === 'booking' ? 'text-amber-300' : 'text-emerald-700'}`} />
+            <span className={`text-[10px] font-black tabular-nums ${activePillar === 'booking' ? 'text-amber-200' : 'text-stone-400'}`}>
+              {toPersianNumbers(generalFields.length)} زمینه
+            </span>
+          </div>
+          <span className="text-xs font-black truncate">رزرو وقت مشاوره</span>
+        </motion.button>
+
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.96 }}
+          onClick={() => setActivePillar('workshops')}
+          className={`relative overflow-hidden p-3 min-h-[62px] rounded-2xl border text-right flex flex-col justify-between gap-1 cursor-pointer transition-all ${
+            activePillar === 'workshops'
+              ? 'bg-gradient-to-br from-[#071E17] to-emerald-800 text-white border-amber-400/35 shadow-md'
+              : 'bg-white dark:bg-slate-900 text-stone-800 dark:text-slate-200 border-stone-200 dark:border-slate-800'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-1">
+            <GraduationCap className={`w-4 h-4 ${activePillar === 'workshops' ? 'text-amber-300' : 'text-teal-700'}`} />
+            <span className={`text-[10px] font-black tabular-nums ${activePillar === 'workshops' ? 'text-amber-200' : 'text-stone-400'}`}>
+              {toPersianNumbers(activeWorkshopsCount)} کارگاه
+            </span>
+          </div>
+          <span className="text-xs font-black truncate">کارگاه‌های آموزشی</span>
+        </motion.button>
+      </div>
+
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-3.5">
         <motion.button
           type="button"
           whileHover={{ y: -2 }}

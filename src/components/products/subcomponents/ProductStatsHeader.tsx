@@ -99,8 +99,81 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Editorial Hero Header */}
-      <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-6 py-5 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      {/* MOBILE LUXURY GALLERY HEADER (< sm) */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="sm:hidden relative rounded-[26px] overflow-hidden bg-gradient-to-br from-[#071E17] via-[#0B2A20] to-[#113D30] text-white p-4 shadow-xl border border-[#F3D078]/25"
+      >
+        <div className="absolute inset-0 luxury-lattice-bg opacity-45 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#F3D078]/70 to-transparent pointer-events-none" />
+        <div className="relative z-10 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-black text-[#F3D078]">
+                نشر، رسانه و آثار علمی مرکز
+              </div>
+              <h1 className="text-base font-black text-white mt-0.5 tracking-tight">
+                {storeConfig.storeTitle || 'کتاب و محصولات چند رسانه‌ای'}
+              </h1>
+            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-white/10 border border-[#F3D078]/30 text-[#F3D078] text-[10px] font-black shrink-0 tabular-nums">
+              {toPersianNumbers(activeProductsCount)} اثر
+            </span>
+          </div>
+
+          {isOfficial && (
+            <div className="flex items-center gap-2">
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={onOpenAddProduct}
+                className="flex-1 min-h-[38px] px-3 py-2 rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] text-xs font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>افزودن اثر</span>
+              </motion.button>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={onOpenSettings}
+                className="min-h-[38px] px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Sliders className="w-3.5 h-3.5 text-[#F3D078]" />
+                <span>تنظیمات</span>
+              </motion.button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* MOBILE COMPACT STAT SCROLLER (< sm) */}
+      <div className="sm:hidden flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
+        {stats.map(stat => {
+          const isActive = activeShelf === stat.key;
+          return (
+            <motion.button
+              key={stat.key}
+              type="button"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onSelectShelf(stat.key)}
+              className={`shrink-0 px-3 py-2 rounded-2xl border flex items-center gap-2 transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-[#071E17] text-[#F3D078] border-[#071E17] shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-200/80 shadow-2xs'
+              }`}
+            >
+              {stat.icon}
+              <span className="text-[11px] font-bold">{stat.label}:</span>
+              <strong className="text-xs font-black tabular-nums">{toPersianNumbers(stat.value)}</strong>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP Editorial Hero Header */}
+      <div className="hidden sm:flex rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-6 py-5 shadow-xs flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="space-y-1 max-w-2xl">
           <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
             مرکز نشر، رسانه و عرضه آثار علمی مرکز فقه و حقوق اسلامی
@@ -138,8 +211,8 @@ export const ProductStatsHeader: React.FC<ProductStatsHeaderProps> = ({
         )}
       </div>
 
-      {/* Editorial Stat Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* DESKTOP Editorial Stat Strip */}
+      <div className="hidden sm:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {stats.map(stat => {
           const isActive = activeShelf === stat.key;
           return (

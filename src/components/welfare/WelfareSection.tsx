@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { ConsumableItem, WelfareRequest } from '../../types';
 import { ModernMetricCard } from '../common/ModernMetricCard';
@@ -248,22 +249,110 @@ export const WelfareSection: React.FC = () => {
     <div className="space-y-6" dir="rtl">
       {/* Return to Admin Mode floating banner if admin is previewing student mode */}
       {isOfficial && previewStudentMode && (
-        <div className="bg-teal-100 border border-teal-300 text-teal-900 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
-          <span className="text-xs font-bold flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
-            در حال مشاهده پیش‌نمایش فرم و محیط رفاهیات دانش‌آموخته هستید.
+        <div className="bg-teal-50 border border-teal-200 text-teal-900 rounded-2xl p-3 px-4 flex items-center justify-between gap-2 shadow-xs">
+          <span className="text-[11px] sm:text-xs font-bold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+            در حال مشاهده پیش‌نمایش محیط رفاهیات دانش‌آموخته هستید.
           </span>
           <button
             onClick={() => setPreviewStudentMode(false)}
-            className="px-4 py-1.5 rounded-xl bg-teal-900 hover:bg-teal-950 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-[#071E17] hover:bg-[#0E3226] text-[#F3D078] text-[11px] sm:text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
           >
-            بازگشت به میز مدیریت ادمین
+            بازگشت به میز ادمین
           </button>
         </div>
       )}
 
-      {/* METRIC CARDS OVERVIEW (Respects section enables) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* MOBILE LUXURY FUND CARD (< sm) */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="sm:hidden relative rounded-[26px] overflow-hidden bg-gradient-to-br from-[#071E17] via-[#0B2A20] to-[#113D30] text-white p-4 shadow-xl border border-[#F3D078]/25"
+      >
+        <div className="absolute inset-0 luxury-lattice-bg opacity-45 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#F3D078]/70 to-transparent pointer-events-none" />
+        <div className="relative z-10 space-y-3.5">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-[#F3D078]">
+                <Gift className="w-3.5 h-3.5 shrink-0" />
+                <span>{loanTermsAndRules.fundName}</span>
+              </div>
+              <h1 className="text-base font-black text-white mt-0.5 tracking-tight">
+                تسهیلات، رفاهیات و تعاونی مصرف
+              </h1>
+            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-white/10 border border-[#F3D078]/30 text-[#F3D078] text-[10px] font-black shrink-0 tabular-nums">
+              {toPersianNumbers(myWelfareList.length)} مصوبه
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {isLoansEnabled && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setActiveTab('loans')}
+                className={`p-2.5 rounded-2xl text-right border transition-all cursor-pointer ${
+                  activeTab === 'loans'
+                    ? 'bg-[#F3D078]/20 border-[#F3D078]/50 text-white'
+                    : 'bg-white/10 border-white/15 text-emerald-50'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-[10px] font-bold text-[#F3D078]">
+                  <Coins className="w-3 h-3 shrink-0" />
+                  <span className="truncate">سقف وام</span>
+                </div>
+                <div className="text-xs font-black mt-1 truncate tabular-nums">
+                  {loanTermsAndRules.maxLoanAmountDisplay.replace(' تومان', '')}
+                </div>
+              </motion.button>
+            )}
+            {isAccommodationsEnabled && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setActiveTab('stay')}
+                className={`p-2.5 rounded-2xl text-right border transition-all cursor-pointer ${
+                  activeTab === 'stay'
+                    ? 'bg-[#F3D078]/20 border-[#F3D078]/50 text-white'
+                    : 'bg-white/10 border-white/15 text-emerald-50'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200">
+                  <Home className="w-3 h-3 shrink-0" />
+                  <span className="truncate">اسکان</span>
+                </div>
+                <div className="text-xs font-black mt-1 truncate">مشهد و قم</div>
+              </motion.button>
+            )}
+            {isCooperativeEnabled && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setActiveTab('groceries')}
+                className={`p-2.5 rounded-2xl text-right border transition-all cursor-pointer ${
+                  activeTab === 'groceries'
+                    ? 'bg-[#F3D078]/20 border-[#F3D078]/50 text-white'
+                    : 'bg-white/10 border-white/15 text-emerald-50'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-200">
+                  <ShoppingBag className="w-3 h-3 shrink-0" />
+                  <span className="truncate">تعاونی</span>
+                </div>
+                <div className="text-xs font-black mt-1 tabular-nums">
+                  {toPersianNumbers(consumables.length)} کالا
+                </div>
+              </motion.button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* DESKTOP METRIC CARDS OVERVIEW (Respects section enables) */}
+      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoansEnabled && (
           <ModernMetricCard
             title={loansConfig?.title || 'تسهیلات قرض‌الحسنه'}
@@ -303,8 +392,8 @@ export const WelfareSection: React.FC = () => {
         />
       </div>
 
-      {/* HEADER BAR */}
-      <div className="bg-white rounded-3xl p-6 border border-stone-200/90 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* DESKTOP HEADER BAR */}
+      <div className="hidden sm:flex bg-white rounded-3xl p-6 border border-stone-200/90 shadow-2xs flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-stone-900 tracking-tight">
@@ -321,94 +410,101 @@ export const WelfareSection: React.FC = () => {
       </div>
 
       {/* DYNAMIC SEGMENTED CONTROL TABS (Respects Active Config) */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-stone-100 rounded-2xl border border-stone-200 text-xs overflow-x-auto shadow-xs scrollbar-none">
+      <div className="flex items-center gap-1.5 p-1.5 bg-white sm:bg-stone-100 rounded-2xl border border-stone-200/90 text-xs overflow-x-auto shadow-xs scrollbar-none">
         {isLoansEnabled && (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab('loans')}
-            className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'loans'
-                ? 'bg-teal-900 text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+                ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
             }`}
           >
             {loansConfig?.title || 'وام و تسهیلات مالی'}
-          </button>
+          </motion.button>
         )}
 
         {isAccommodationsEnabled && (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab('stay')}
-            className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'stay'
-                ? 'bg-teal-900 text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+                ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
             }`}
           >
             {accommodationsConfig?.title || 'اسکان و اقامتگاه‌های زیارتی'}
-          </button>
+          </motion.button>
         )}
 
         {isCooperativeEnabled && (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab('groceries')}
-            className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'groceries'
-                ? 'bg-teal-900 text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+                ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
             }`}
           >
             {cooperativeSectionInfo.title} ({toPersianNumbers(consumables.length)})
-          </button>
+          </motion.button>
         )}
 
         {isHealthEnabled && (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab('health')}
-            className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'health'
-                ? 'bg-teal-900 text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+                ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
             }`}
           >
             {healthConfig?.title || 'بیمه تکمیلی و درمان'}
-          </button>
+          </motion.button>
         )}
 
         {customSections.map(sec => (
-          <button
+          <motion.button
             key={sec.id}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab(sec.id)}
-            className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === sec.id
-                ? 'bg-teal-900 text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+                ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
             }`}
           >
             {sec.title}
-          </button>
+          </motion.button>
         ))}
 
-        <button
+        <motion.button
+          whileTap={{ scale: 0.96 }}
           onClick={() => setActiveTab('proposal')}
-          className={`px-3.5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+          className={`px-3.5 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'proposal'
-              ? 'bg-teal-900 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+              ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
           }`}
         >
           پیشنهاد کالا به تعاونی
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
+          whileTap={{ scale: 0.96 }}
           onClick={() => setActiveTab('my_welfare')}
-          className={`px-3.5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+          className={`px-3.5 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'my_welfare'
-              ? 'bg-teal-900 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
+              ? 'bg-[#071E17] sm:bg-teal-900 text-[#F3D078] sm:text-white shadow-xs'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50 sm:hover:bg-white/80'
           }`}
         >
           پیگیری مصوبات من ({toPersianNumbers(myWelfareList.length)})
-        </button>
+        </motion.button>
       </div>
 
       {/* =========================================================================

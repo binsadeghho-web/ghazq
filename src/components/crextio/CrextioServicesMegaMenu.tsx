@@ -403,18 +403,28 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
               className="fixed inset-x-0 bottom-0 md:bottom-auto md:inset-x-auto md:absolute md:top-full md:left-1/2 md:-translate-x-1/2 md:mt-3 w-full md:w-[min(94vw,1260px)] max-h-[86vh] md:max-h-[82vh] bg-[#FCFCFA] rounded-t-[28px] md:rounded-[32px] border border-stone-300 shadow-2xl text-stone-900 z-50 flex flex-col overflow-hidden safe-area-bottom"
               dir="rtl"
             >
-              {/* Mobile Sheet Drag Pill & Title */}
-              <div className="md:hidden flex flex-col items-center pt-2.5 pb-1.5 px-4 bg-[#F5F4ED] border-b border-stone-200/70 shrink-0">
-                <div className="w-10 h-1.5 rounded-full bg-stone-300 mb-2" />
-                <div className="w-full flex items-center justify-between">
-                  <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                    <LayoutGrid className="w-4 h-4 text-emerald-700" />
-                    <span>{resolvedNav.servicesMenuTitle}</span>
-                  </span>
+              {/* Mobile Sheet Drag Pill & Obsidian-Emerald Luxury Header */}
+              <div className="md:hidden relative overflow-hidden flex flex-col items-center pt-2.5 pb-3 px-4 bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white border-b border-amber-400/25 shrink-0">
+                <div className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
+                <div className="relative z-10 w-10 h-1 rounded-full bg-amber-300/45 mb-2.5" />
+                <div className="relative z-10 w-full flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-400/15 border border-amber-300/35 text-amber-300 flex items-center justify-center">
+                      <LayoutGrid className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-white block">
+                        {resolvedNav.servicesMenuTitle}
+                      </span>
+                      <span className="text-[10px] text-emerald-200/80">
+                        {toPersianNumbers(serviceCards.length)} سامانه فعال
+                      </span>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-600 cursor-pointer"
+                    className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white cursor-pointer"
                     aria-label="بستن منو"
                   >
                     <X className="w-4 h-4" />
@@ -425,19 +435,29 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
               {/* نوار سربرگ متمرکز با فیلتر دسته‌ها و جستجو */}
               <div className="p-3 sm:px-6 bg-[#F5F4ED] border-b border-stone-200 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
                 <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 md:pb-0 scrollbar-none">
-                  {categories.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-3 py-2 sm:px-3.5 sm:py-1.5 min-h-[38px] rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
-                        selectedCategory === cat.id
-                          ? 'bg-emerald-800 text-white shadow-xs'
-                          : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
+                  {categories.map(cat => {
+                    const isCatActive = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`relative px-3.5 py-2 sm:py-1.5 min-h-[38px] rounded-xl text-xs font-extrabold transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
+                          isCatActive
+                            ? 'text-white'
+                            : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
+                        }`}
+                      >
+                        {isCatActive && (
+                          <motion.span
+                            layoutId="servicesMenuCategoryPill"
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#071E17] to-emerald-800 shadow-xs"
+                          />
+                        )}
+                        <span className="relative z-10">{cat.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* جستجوی سریع */}
@@ -459,21 +479,24 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
               </div>
 
               {/* بدنه ۲ ستونی موبایل و ۴ ستونی دسکتاپ کارت‌ها */}
-              <div className="p-3 sm:p-6 overflow-y-auto flex-1">
+              <div className="p-3 sm:p-6 overflow-y-auto flex-1 bg-[#FAF9F5]">
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
-                  {filteredCards.map(card => {
+                  {filteredCards.map((card, cardIdx) => {
                     const Icon = card.icon;
                     const isActive = activeNav.toLowerCase() === card.id.toLowerCase();
 
                     return (
                       <motion.div
                         key={card.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.22, delay: Math.min(cardIdx * 0.025, 0.2) }}
                         onClick={() => {
                           onNavigate(card.id);
                           setIsOpen(false);
                         }}
                         whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
-                        whileTap={{ scale: 0.97 }}
+                        whileTap={{ scale: 0.96 }}
                         className={`group cursor-pointer rounded-2xl p-3 sm:p-4 border transition-all duration-200 flex flex-col justify-between relative bg-white overflow-hidden shadow-2xs hover:shadow-lg ${
                           isActive
                             ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'

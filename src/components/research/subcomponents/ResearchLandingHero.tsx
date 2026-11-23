@@ -89,19 +89,21 @@ export const ResearchLandingHero: React.FC<ResearchLandingHeroProps> = ({
   const heroBgSrc = resolveShowcaseImageUrl('research_promo', imageOverrides);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Main Architectural Intro Banner */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-slate-950 text-white shadow-xl">
+      <div className="relative rounded-[26px] sm:rounded-3xl overflow-hidden border border-[#F3D078]/25 sm:border-slate-200/80 dark:border-slate-800 bg-[#071E17] sm:bg-slate-950 text-white shadow-xl">
         <div className="absolute inset-0 pointer-events-none opacity-30">
           <img
             src={heroBgSrc}
             alt={config.sectionTitle}
             className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/85 to-slate-950/50" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/85 to-[#071E17]/55 sm:from-slate-950 sm:via-slate-950/85 sm:to-slate-950/50" />
         </div>
+        <div className="absolute inset-0 luxury-lattice-bg opacity-35 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#F3D078]/70 to-transparent pointer-events-none" />
 
-        <div className="relative z-10 p-6 sm:p-8 lg:p-10 space-y-6">
+        <div className="relative z-10 p-4 sm:p-8 lg:p-10 space-y-5 sm:space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div className="space-y-3 max-w-3xl">
               <div className="flex flex-wrap items-center gap-2 text-xs text-amber-300 font-bold">
@@ -180,7 +182,7 @@ export const ResearchLandingHero: React.FC<ResearchLandingHeroProps> = ({
       </div>
 
       {/* Prominent Interactive Callout Box with 30-second Color-Shifting Animated CTA Button (Reform 32) */}
-      <div className="relative rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 lg:p-10 shadow-lg overflow-hidden">
+      <div className="relative rounded-[26px] sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-8 lg:p-10 shadow-lg overflow-hidden">
         {/* Soft syncing ambient halo */}
         <motion.div
           animate={{ scale: [1, 1.06, 1], opacity: [0.35, 0.55, 0.35] }}

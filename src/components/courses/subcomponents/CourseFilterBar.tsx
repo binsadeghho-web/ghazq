@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Search, ShieldCheck, Archive, CalendarClock, TicketPercent } from 'lucide-react';
 import { CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
@@ -48,47 +49,54 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
   const pluralNoun = mode === 'counseling_workshop' ? 'کارگاه‌های' : 'دوره‌های';
 
   return (
-    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 glass-card p-3 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs">
+    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 glass-card p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs">
       {/* Navigation Tabs */}
       <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800/70 rounded-xl text-xs overflow-x-auto scrollbar-none font-bold">
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => onTabChange('available')}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`relative px-3.5 sm:px-4 py-2 min-h-[38px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'available'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
+              ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 sm:bg-none sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           {pluralNoun} در حال ثبت‌نام ({toPersianNumbers(availableCount)})
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => onTabChange('my_courses')}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+          className={`relative px-3.5 sm:px-4 py-2 min-h-[38px] rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'my_courses'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
+              ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 sm:bg-none sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <span>{pluralNoun} من</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 tabular-nums">
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] tabular-nums ${
+            activeTab === 'my_courses'
+              ? 'bg-white/20 text-amber-200 sm:bg-emerald-500/20 sm:text-emerald-700 sm:dark:text-emerald-300'
+              : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+          }`}>
             {toPersianNumbers(myEnrolledCount)}
           </span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => onTabChange('archive')}
-          className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+          className={`relative px-3.5 sm:px-4 py-2 min-h-[38px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'archive'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black'
+              ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 sm:bg-none sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           آرشیو {pluralNoun} سابق ({toPersianNumbers(archivedCount)})
-        </button>
+        </motion.button>
 
         {isOfficial && (
           <button

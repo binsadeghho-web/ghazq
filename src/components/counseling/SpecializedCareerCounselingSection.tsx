@@ -110,25 +110,54 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-4 sm:space-y-6" dir="rtl">
       {isOfficial && previewStudentMode && (
-        <div className="bg-amber-100 border border-amber-300 text-amber-950 rounded-2xl p-3 px-5 flex items-center justify-between shadow-xs">
+        <div className="bg-amber-100 border border-amber-300 text-amber-950 rounded-2xl p-3 px-4 sm:px-5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
           <span className="text-xs font-bold flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+            <span className="w-2 h-2 rounded-full bg-amber-600 shrink-0" />
             در حال مشاهده پیش‌نمایش دانش‌آموخته در بخش مشاوره تخصصی شغلی و تحصیلی هستید.
           </span>
           <button
             type="button"
             onClick={() => setPreviewStudentMode(false)}
-            className="px-4 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold cursor-pointer"
           >
             بازگشت به میز مدیریت ادمین
           </button>
         </div>
       )}
 
-      {/* Clean Header */}
-      <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/90 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Luxury Mobile Hero Header (< sm) */}
+      <div className="sm:hidden relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white p-4 border border-amber-400/20 shadow-[0_14px_34px_-16px_rgba(7,30,23,0.65)]">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-300/60 to-transparent" />
+        <div className="relative z-10 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-300/35 text-amber-300 flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-white truncate">
+                {specializedConfig.sectionTitle}
+              </h1>
+              <p className="text-[10px] text-emerald-100/80 truncate mt-0.5">
+                {specializedConfig.sectionSubtitle}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDescriptionModalOpen(true)}
+            className="px-3 py-2 min-h-[38px] rounded-xl bg-white/12 border border-white/15 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>توضیحات</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Clean Header (Tablet & Desktop >= sm) */}
+      <div className="hidden sm:flex glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/90 dark:border-white/10 flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-400 mb-1">
             <Briefcase className="w-4 h-4" />
@@ -153,46 +182,49 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
       </div>
 
       {/* Rebuilt Alumni Navigation Tabs */}
-      <div className="flex items-center gap-2 p-1.5 glass-panel rounded-2xl border border-slate-200/90 dark:border-white/10 text-xs overflow-x-auto shadow-xs">
-        <button
+      <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 glass-panel rounded-2xl border border-slate-200/90 dark:border-white/10 text-xs overflow-x-auto scrollbar-none shadow-xs">
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => setActiveTab('landing')}
-          className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeTab === 'landing'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+              ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 sm:bg-none sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-indigo-600" />
+          <Sparkles className={`w-4 h-4 ${activeTab === 'landing' ? 'text-amber-300 sm:text-indigo-600' : 'text-indigo-600'}`} />
           <span>{specializedConfig.tabRequestLabel || 'معرفی، زمینه‌ها و ثبت درخواست'}</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => setActiveTab('my_history')}
-          className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeTab === 'my_history'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+              ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 sm:bg-none sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Clock className="w-4 h-4 text-blue-600" />
+          <Clock className={`w-4 h-4 ${activeTab === 'my_history' ? 'text-amber-300 sm:text-blue-600' : 'text-blue-600'}`} />
           <span>{specializedConfig.tabHistoryLabel || 'سوابق درخواست‌های من'} ({toPersianNumbers(mySpecializedRequests.length)})</span>
-        </button>
+        </motion.button>
 
         {specializedConfig.showAdvisorsToStudents && (
-          <button
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab('advisors')}
-            className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
               activeTab === 'advisors'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 sm:bg-none sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <UserCheck className="w-4 h-4 text-emerald-600" />
+            <UserCheck className={`w-4 h-4 ${activeTab === 'advisors' ? 'text-amber-300 sm:text-emerald-600' : 'text-emerald-600'}`} />
             <span>{specializedConfig.tabConsultantsLabel || 'مشاوران تخصصی'} ({toPersianNumbers(specializedAdvisors.length)})</span>
-          </button>
+          </motion.button>
         )}
       </div>
 

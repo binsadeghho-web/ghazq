@@ -71,8 +71,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <motion.article
       whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.985 }}
       transition={{ duration: 0.18 }}
-      className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow"
+      className="rounded-[24px] sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow"
     >
       <div>
         {/* 4:3 Editorial Cover */}
@@ -199,12 +200,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Footer Actions */}
-      <div className="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+      <div className="px-4 sm:px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={() => onOpenIntro(product)}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer"
+            className="min-h-[38px] px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5 text-amber-500" />
             <span>{hasUnlockedFiles ? 'دریافت فایل‌ها' : 'معرفی و جلسات'}</span>
@@ -213,7 +214,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <button
             type="button"
             onClick={() => onOpenPurchase(product)}
-            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer"
+            className="min-h-[38px] px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>{product.isOwned ? 'سفارش نسخه دیگر' : 'خرید و ثبت‌نام'}</span>

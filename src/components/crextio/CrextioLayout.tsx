@@ -1,5 +1,5 @@
 import React, { useState, useRef, lazy, Suspense } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { CrextioDashboard } from './CrextioDashboard';
 import { CrextioSubViews } from './CrextioSubViews';
@@ -178,7 +178,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         <div className="absolute top-1/2 left-10 w-[400px] h-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 max-w-[1650px] mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-5 pb-24 lg:pb-6 space-y-3 sm:space-y-5">
+      <div className="relative z-10 max-w-[1650px] mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-5 pb-28 lg:pb-6 space-y-3 sm:space-y-5">
         
         {/* READ-ONLY OBSERVER BANNER FOR GENERAL OBSERVER (ناظر کل) */}
         {isReadOnlyObserver && (
@@ -263,27 +263,41 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           )
         ) : null}
 
-        {/* MAIN HEADER: SERENE APP TOP BAR ON MOBILE (< lg), 3-ZONE CENTERED MEGA-MENU ON DESKTOP */}
-        <header className="bg-white/90 lg:bg-white/95 backdrop-blur-2xl rounded-2xl lg:rounded-[32px] h-14 lg:h-auto px-3 lg:p-4 lg:px-6 border border-stone-200/80 lg:border-stone-200/90 shadow-2xs lg:shadow-sm flex items-center justify-between gap-2 sm:gap-4 relative z-30">
+        {/* MAIN HEADER: ULTRA-SLIM MASTHEAD ON MOBILE DASHBOARD (< lg), APP BAR IN SUB-VIEWS, 3-ZONE MEGA-MENU ON DESKTOP */}
+        <header
+          className={`${
+            activeNav === 'Dashboard'
+              ? 'bg-transparent lg:bg-white/95 lg:backdrop-blur-2xl h-12 lg:h-auto px-0.5 lg:p-4 lg:px-6 lg:border lg:border-stone-200/90 lg:shadow-sm'
+              : 'bg-white/92 lg:bg-white/95 backdrop-blur-2xl rounded-[22px] lg:rounded-[32px] h-14 lg:h-auto px-3 lg:p-4 lg:px-6 border border-stone-200/85 lg:border-stone-200/90 shadow-[0_8px_24px_-12px_rgba(7,30,23,0.12)] lg:shadow-sm'
+          } lg:rounded-[32px] flex items-center justify-between gap-2 sm:gap-4 relative z-30`}
+        >
+          {/* Subtle gold hairline glow along top edge on mobile sub-views */}
+          {activeNav !== 'Dashboard' && (
+            <span
+              aria-hidden="true"
+              className="lg:hidden pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-400/55 to-transparent"
+            />
+          )}
           {/* Right: Brand Logo OR Back to Dashboard in Mobile Sub-Views */}
           <div className="flex items-center gap-2 min-w-0 shrink">
             {activeNav !== 'Dashboard' && (
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.92 }}
                 onClick={() => setActiveNav('Dashboard')}
-                className="lg:hidden w-10 h-10 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition-transform"
+                className="lg:hidden w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-950 to-emerald-800 text-amber-300 border border-emerald-700/60 shadow-xs flex items-center justify-center shrink-0 cursor-pointer"
                 aria-label="بازگشت به داشبورد"
               >
                 <ArrowRight className="w-5 h-5" />
-              </button>
+              </motion.button>
             )}
 
             <button
               onClick={() => setActiveNav('Dashboard')}
               className="flex items-center gap-2.5 group text-right cursor-pointer min-w-0 shrink"
             >
-              <div className={`${activeNav !== 'Dashboard' ? 'hidden lg:flex' : 'flex'} w-9 h-9 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 items-center justify-center text-stone-950 shadow-sm lg:shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform border border-amber-300 shrink-0`}>
-                <Scale className="w-5 h-5 lg:w-7 lg:h-7 stroke-[2.3]" />
+              <div className={`${activeNav !== 'Dashboard' ? 'hidden lg:flex' : 'flex'} w-9 h-9 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-gradient-to-br from-[#071E17] to-[#113D30] lg:from-amber-300 lg:via-amber-500 lg:to-yellow-600 items-center justify-center text-[#F3D078] lg:text-stone-950 shadow-sm lg:shadow-md border border-[#F3D078]/35 lg:border-amber-200 shrink-0`}>
+                <Scale className="w-4.5 h-4.5 lg:w-7 lg:h-7 stroke-[2.2]" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -691,52 +705,65 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         onClose={() => setIsIdentityCardOpen(false)}
       />
 
-      {/* Mobile Ergonomic Bottom Navigation Bar for Theme 2 (Crextio) */}
+      {/* Floating Luxury Frosted Mobile Bottom Dock for Theme 2 (Crextio) */}
       <nav
         aria-label="ناوبری پایین موبایل"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-stone-200/90 px-1.5 pt-1 flex items-center justify-around safe-area-bottom shadow-[0_-10px_28px_-14px_rgba(15,23,42,0.16)]"
+        className="lg:hidden fixed bottom-2.5 inset-x-3 z-40 rounded-[26px] bg-white/92 backdrop-blur-2xl border border-stone-200/90 px-2 py-1.5 flex items-center justify-around gap-1 shadow-[0_16px_40px_-14px_rgba(7,30,23,0.28),inset_0_1px_0_rgba(255,255,255,0.9)] safe-area-bottom"
       >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-400/50 to-transparent"
+        />
         {fallbackMobileItems.map(item => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
           return (
-            <button
+            <motion.button
               key={item.id}
               type="button"
+              whileTap={{ scale: 0.92 }}
               onClick={() => setActiveNav(item.id)}
-              className={`flex flex-col items-center justify-center flex-1 min-h-[54px] min-w-[44px] py-1 rounded-xl transition-colors cursor-pointer ${
-                isActive ? 'text-emerald-800 font-black' : 'text-stone-500 hover:text-stone-800'
+              className={`relative flex flex-col items-center justify-center flex-1 min-h-[50px] min-w-[44px] py-1 rounded-2xl transition-colors cursor-pointer ${
+                isActive ? 'text-emerald-950 font-black' : 'text-stone-500 hover:text-stone-800'
               }`}
             >
-              <div className={`p-1 rounded-lg transition-colors ${isActive ? 'bg-emerald-50' : ''}`}>
-                <Icon className="w-5 h-5" />
+              {isActive && (
+                <motion.span
+                  layoutId="crextioMobileDockPill"
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-b from-emerald-50 to-amber-50/70 border border-emerald-200/80 shadow-2xs"
+                />
+              )}
+              <div className="relative z-10 flex flex-col items-center">
+                <Icon className={`w-[19px] h-[19px] transition-transform ${isActive ? 'text-emerald-800 stroke-[2.4] -translate-y-0.5' : 'stroke-[1.9]'}`} />
+                <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[64px]">
+                  {item.id === 'Courses' ? 'دوره‌ها' : item.id === 'People' ? 'کارتابل' : item.label}
+                </span>
               </div>
-              <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[66px]">
-                {item.id === 'Courses' ? 'دوره‌ها' : item.id === 'People' ? 'کارتابل' : item.label}
-              </span>
-            </button>
+            </motion.button>
           );
         })}
 
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.92 }}
           onClick={() => setServicesSheetOpen(true)}
-          className={`flex flex-col items-center justify-center flex-1 min-h-[54px] min-w-[44px] py-1 rounded-xl transition-colors cursor-pointer ${
-            servicesSheetOpen ? 'text-amber-700 font-black' : 'text-stone-600 hover:text-stone-900'
-          }`}
+          className="relative flex flex-col items-center justify-center flex-1 min-h-[50px] min-w-[44px] py-1 rounded-2xl cursor-pointer group"
         >
-          <div className={`p-1 rounded-lg ${servicesSheetOpen ? 'bg-amber-50' : ''}`}>
-            <LayoutGrid className="w-5 h-5" />
+          <div className="w-9 h-7 rounded-xl bg-gradient-to-br from-[#071E17] via-[#0E3226] to-emerald-800 text-amber-300 border border-amber-400/35 shadow-sm flex items-center justify-center group-active:scale-95 transition-transform">
+            <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
           </div>
-          <span className="text-[10px] mt-0.5 whitespace-nowrap">همه بخش‌ها</span>
-        </button>
+          <span className="text-[10px] mt-0.5 font-extrabold text-emerald-950 whitespace-nowrap">
+            همه بخش‌ها
+          </span>
+        </motion.button>
       </nav>
 
-      {/* Floating Alumni Preview Exit Bar (ONLY for staff in preview mode, offset cleanly above bottom bar) */}
+      {/* Floating Alumni Preview Exit Bar (ONLY for staff in preview mode, offset cleanly above floating dock) */}
       {isStaffMember && isAlumniPreview && (
-        <div className="fixed bottom-20 lg:bottom-6 inset-x-3 sm:inset-x-auto sm:left-6 z-40 flex items-center justify-between sm:justify-start gap-2.5 bg-slate-950/95 text-white backdrop-blur-md px-3.5 sm:px-4 py-2.5 rounded-2xl border border-indigo-500/40 shadow-2xl">
+        <div className="fixed bottom-22 lg:bottom-6 inset-x-3 sm:inset-x-auto sm:left-6 z-40 flex items-center justify-between sm:justify-start gap-2.5 bg-slate-950/95 text-white backdrop-blur-md px-3.5 sm:px-4 py-2.5 rounded-2xl border border-indigo-500/40 shadow-2xl">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
             <span className="text-[11px] sm:text-xs font-bold text-slate-200 truncate">پیش‌نمایش دانش‌آموخته فعال است</span>
           </div>
           <button

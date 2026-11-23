@@ -80,13 +80,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   return (
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.985 }}
       onClick={() => onOpenDetail(course)}
-      className="glass-card rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col justify-between shadow-lg group transition-all cursor-pointer"
+      className="glass-card rounded-[26px] sm:rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col justify-between shadow-lg group transition-all cursor-pointer"
     >
       <div>
         {/* Course Banner Image — Clicking opens Full Course Details Modal */}
         <div
-          className="relative h-44 w-full bg-slate-900 overflow-hidden group/img"
+          className="relative h-40 sm:h-44 w-full bg-slate-900 overflow-hidden group/img"
           title="کلیک جهت مشاهده کامل توضیحات، رزومه استاد و مشخصات دوره"
         >
           {course.coverImage ? (
@@ -94,8 +95,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <img
                 src={course.coverImage}
                 alt={course.title}
-                className="w-full h-full object-cover group-hover/img:scale-108 transition-transform duration-500 opacity-85"
+                className="w-full h-full object-cover group-hover/img:scale-108 transition-transform duration-500 opacity-90"
               />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-black/20" />
               <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
                 <Eye className="w-5 h-5 text-emerald-400 drop-shadow" />
                 <span className="text-xs font-black bg-black/65 px-3 py-1.5 rounded-xl backdrop-blur-sm">

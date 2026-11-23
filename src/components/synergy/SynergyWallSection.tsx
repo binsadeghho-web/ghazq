@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { SynergyPost } from '../../types';
 import { ModernMetricCard } from '../common/ModernMetricCard';
@@ -296,9 +297,78 @@ export const SynergyWallSection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 text-stone-900 font-sans" dir="rtl">
-      {/* Editorial Header */}
-      <div className="bg-[#FCFCFA] rounded-[32px] p-6 border border-stone-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 text-stone-900 font-sans" dir="rtl">
+      {/* MOBILE LUXURY SYNERGY HEADER (< sm) */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="sm:hidden relative rounded-[26px] overflow-hidden bg-gradient-to-br from-[#071E17] via-[#0B2A20] to-[#113D30] text-white p-4 shadow-xl border border-[#F3D078]/25"
+      >
+        <div className="absolute inset-0 luxury-lattice-bg opacity-45 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#F3D078]/70 to-transparent pointer-events-none" />
+        <div className="relative z-10 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-[#F3D078]">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>شبکه هم‌افزایی امن و محرمانه</span>
+              </div>
+              <h1 className="text-base font-black text-white mt-0.5 tracking-tight">
+                درگاه تجارب علمی و هم‌افزایی
+              </h1>
+            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-white/10 border border-[#F3D078]/30 text-[#F3D078] text-[10px] font-black shrink-0">
+              امن ۱۰۰٪
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setNewExperienceModalOpen(true)}
+              className="flex-1 min-h-[38px] px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#F3D078]" />
+              <span>+ ثبت تجربه</span>
+            </motion.button>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setNewSynergyModalOpen(true)}
+              className="flex-1 min-h-[38px] px-3 py-2 rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] text-[11px] font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ درخواست هم‌افزایی</span>
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* MOBILE COMPACT METRICS STRIP (< sm) */}
+      <div className="sm:hidden flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
+        <div className="shrink-0 px-3 py-2 rounded-2xl bg-white border border-stone-200/80 shadow-2xs flex items-center gap-2">
+          <Users2 className="w-3.5 h-3.5 text-amber-600" />
+          <span className="text-[11px] font-bold text-stone-600">هم‌افزایی:</span>
+          <strong className="text-xs font-black text-stone-900 tabular-nums">{toPersianNumbers(synergyPosts.length)}</strong>
+        </div>
+        <div className="shrink-0 px-3 py-2 rounded-2xl bg-white border border-stone-200/80 shadow-2xs flex items-center gap-2">
+          <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+          <span className="text-[11px] font-bold text-stone-600">تجارب:</span>
+          <strong className="text-xs font-black text-stone-900 tabular-nums">{toPersianNumbers(experiences.length)}</strong>
+        </div>
+        <div className="shrink-0 px-3 py-2 rounded-2xl bg-white border border-stone-200/80 shadow-2xs flex items-center gap-2">
+          <MessageCircle className="w-3.5 h-3.5 text-teal-700" />
+          <span className="text-[11px] font-bold text-stone-600">پاسخ‌ها:</span>
+          <strong className="text-xs font-black text-stone-900 tabular-nums">
+            {toPersianNumbers(synergyPosts.reduce((acc, p) => acc + (p.responses?.length || 0), 0))}
+          </strong>
+        </div>
+      </div>
+
+      {/* DESKTOP Editorial Header */}
+      <div className="hidden sm:flex bg-[#FCFCFA] rounded-[32px] p-6 border border-stone-200/90 shadow-sm flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="p-2 rounded-2xl bg-amber-100 text-amber-900 border border-amber-200">
@@ -333,34 +403,38 @@ export const SynergyWallSection: React.FC = () => {
       </div>
 
       {/* Main Split Navigation Tabs (تجارب / هم‌افزایی) */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#FCFCFA] rounded-2xl border border-stone-200/90 shadow-2xs">
-        <button
+      <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-white sm:bg-[#FCFCFA] rounded-2xl border border-stone-200/90 shadow-2xs">
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           onClick={() => setMainTab('synergy')}
-          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 min-h-[42px] py-2.5 sm:py-3 px-2.5 sm:px-4 rounded-xl text-[11px] sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             mainTab === 'synergy'
-              ? 'bg-amber-600 text-white shadow-sm'
+              ? 'bg-[#071E17] sm:bg-amber-600 text-[#F3D078] sm:text-white shadow-sm'
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          <Users2 className="w-4 h-4" />
-          <span>بخش هم‌افزایی و درخواست‌های شبکه اعضا ({toPersianNumbers(synergyPosts.length)})</span>
-        </button>
+          <Users2 className="w-4 h-4 shrink-0" />
+          <span className="sm:hidden">هم‌افزایی ({toPersianNumbers(synergyPosts.length)})</span>
+          <span className="hidden sm:inline">بخش هم‌افزایی و درخواست‌های شبکه اعضا ({toPersianNumbers(synergyPosts.length)})</span>
+        </motion.button>
 
-        <button
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           onClick={() => setMainTab('experiences')}
-          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 min-h-[42px] py-2.5 sm:py-3 px-2.5 sm:px-4 rounded-xl text-[11px] sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             mainTab === 'experiences'
-              ? 'bg-emerald-800 text-white shadow-sm'
+              ? 'bg-[#071E17] sm:bg-emerald-800 text-[#F3D078] sm:text-white shadow-sm'
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
-          <span>بخش تجارب علمی، قضایی و اداری ({toPersianNumbers(experiences.length)})</span>
-        </button>
+          <BookOpen className="w-4 h-4 shrink-0" />
+          <span className="sm:hidden">تجارب علمی ({toPersianNumbers(experiences.length)})</span>
+          <span className="hidden sm:inline">بخش تجارب علمی، قضایی و اداری ({toPersianNumbers(experiences.length)})</span>
+        </motion.button>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* DESKTOP Metrics Row */}
+      <div className="hidden sm:grid grid-cols-2 md:grid-cols-4 gap-4">
         <ModernMetricCard
           title="تجارب ثبت‌شده"
           value={experiences.length}
@@ -587,25 +661,25 @@ export const SynergyWallSection: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                  <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
                     <button
                       onClick={() => handleLikeExperience(exp.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         exp.likedBy.includes(currentUser?.id || 'me')
                           ? 'bg-emerald-800 text-white'
                           : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
                       }`}
                     >
                       <ThumbsUp className="w-3.5 h-3.5" />
-                      <span>تأیید و استفاده کردم ({toPersianNumbers(exp.likesCount)})</span>
+                      <span>تأیید ({toPersianNumbers(exp.likesCount)})</span>
                     </button>
 
                     <button
                       onClick={() => handleOpenPrivateChat(exp.authorTitle, exp.title)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-all cursor-pointer border border-stone-200"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-all cursor-pointer border border-stone-200"
                     >
                       <LockIcon className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>گفتگوی محرمانه با ارائه‌دهنده</span>
+                      <span>گفتگوی محرمانه</span>
                     </button>
                   </div>
                 </div>

@@ -146,55 +146,97 @@ export const CartableStatsCards: React.FC<CartableStatsCardsProps> = ({
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" dir="rtl">
-      {cards.map(card => {
-        const Icon = card.icon;
-        const isActive = card.id !== 'unread' && statusFilter === card.id;
-        return (
-          <button
-            key={card.id}
-            type="button"
-            onClick={() => {
-              if (card.id === 'unread') {
-                onSelectFilter('all', true);
-              } else {
-                onSelectFilter(statusFilter === card.id ? 'all' : card.id, true);
-              }
-            }}
-            className={`group relative overflow-hidden text-right rounded-2xl p-3.5 bg-white dark:bg-slate-900 border transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${
-              isActive
-                ? card.activeBorder
-                : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-            }`}
-          >
-            {/* Subtle top accent stripe */}
-            <div className={`absolute top-0 inset-x-0 h-[3px] bg-gradient-to-l ${card.accentBar} opacity-80`} />
-
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
-                {card.title}
+    <div dir="rtl">
+      {/* Compact Luxury Mobile KPI Strip (< sm) */}
+      <div className="sm:hidden flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
+        {cards.map(card => {
+          const Icon = card.icon;
+          const isActive = card.id !== 'unread' && statusFilter === card.id;
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => {
+                if (card.id === 'unread') {
+                  onSelectFilter('all', true);
+                } else {
+                  onSelectFilter(statusFilter === card.id ? 'all' : card.id, true);
+                }
+              }}
+              className={`flex items-center gap-2 px-3 py-2 min-h-[42px] rounded-2xl border text-xs shrink-0 transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-gradient-to-l from-[#071E17] to-emerald-800 text-white border-amber-400/30 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200/90 dark:border-slate-800'
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-amber-300' : 'text-emerald-700'}`} />
+              <span className="font-bold whitespace-nowrap">{card.title.split(' ')[0]}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-lg text-[10px] font-black tabular-nums ${
+                  isActive
+                    ? 'bg-white/15 text-amber-200'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
+                }`}
+              >
+                {toPersianNumbers(card.value)}
               </span>
-              <span className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 ${card.iconWrap}`}>
-                <Icon className="w-3.5 h-3.5" />
-              </span>
-            </div>
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="flex items-baseline justify-between gap-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
-                  {toPersianNumbers(card.value)}
+      {/* Tablet & Desktop KPI Grid (>= sm) */}
+      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {cards.map(card => {
+          const Icon = card.icon;
+          const isActive = card.id !== 'unread' && statusFilter === card.id;
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => {
+                if (card.id === 'unread') {
+                  onSelectFilter('all', true);
+                } else {
+                  onSelectFilter(statusFilter === card.id ? 'all' : card.id, true);
+                }
+              }}
+              className={`group relative overflow-hidden text-right rounded-2xl p-3.5 bg-white dark:bg-slate-900 border transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${
+                isActive
+                  ? card.activeBorder
+                  : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              {/* Subtle top accent stripe */}
+              <div className={`absolute top-0 inset-x-0 h-[3px] bg-gradient-to-l ${card.accentBar} opacity-80`} />
+
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">
+                  {card.title}
                 </span>
-                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                  {card.unit}
+                <span className={`w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 ${card.iconWrap}`}>
+                  <Icon className="w-3.5 h-3.5" />
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
-                {card.subtitle}
-              </span>
-            </div>
-          </button>
-        );
-      })}
+
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-slate-900 dark:text-white font-mono tabular-nums tracking-tight">
+                    {toPersianNumbers(card.value)}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    {card.unit}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
+                  {card.subtitle}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
+

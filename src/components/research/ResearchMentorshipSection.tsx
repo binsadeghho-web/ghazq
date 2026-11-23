@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Compass,
   ShieldCheck,
@@ -61,9 +62,65 @@ export const ResearchMentorshipSection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Section Header */}
-      <div className="glass-card rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      {/* MOBILE LUXURY RESEARCH HEADER (< sm) */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="sm:hidden relative rounded-[26px] overflow-hidden bg-gradient-to-br from-[#071E17] via-[#0B2A20] to-[#113D30] text-white p-4 shadow-xl border border-[#F3D078]/25"
+      >
+        <div className="absolute inset-0 luxury-lattice-bg opacity-45 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#F3D078]/70 to-transparent pointer-events-none" />
+        <div className="relative z-10 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-[#F3D078]">
+                <Compass className="w-3.5 h-3.5 shrink-0" />
+                <span>معاونت پژوهش مرکز فقه و حقوق اسلامی</span>
+              </div>
+              <h1 className="text-base font-black text-white mt-0.5 tracking-tight">
+                {researchPortalConfig.sectionTitle}
+              </h1>
+            </div>
+            {isOfficial && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setConfigEditorOpen(true)}
+                className="p-2 rounded-xl bg-white/10 border border-[#F3D078]/30 text-[#F3D078] cursor-pointer shrink-0"
+                title="تنظیمات بخش"
+              >
+                <Settings className="w-4 h-4" />
+              </motion.button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={handleOpenNewWizard}
+              className="flex-1 min-h-[40px] px-3 py-2 rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] text-xs font-black flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{researchPortalConfig.ctaButtonLabel || 'ثبت درخواست راهبری'}</span>
+            </motion.button>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setGuidanceOpen(true)}
+              className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Info className="w-4 h-4 text-[#F3D078]" />
+              <span>توضیحات</span>
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* DESKTOP Top Section Header */}
+      <div className="hidden sm:flex glass-card rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-white/10 flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400">
             <Compass className="w-4 h-4 shrink-0" />
@@ -112,46 +169,49 @@ export const ResearchMentorshipSection: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1.5 p-1.5 glass-panel rounded-2xl border border-slate-200/90 dark:border-white/10 text-xs overflow-x-auto">
-        <button
+      <div className="flex items-center gap-1.5 p-1.5 bg-white dark:bg-slate-900/80 sm:glass-panel rounded-2xl border border-slate-200/90 dark:border-white/10 text-xs overflow-x-auto scrollbar-none shadow-xs sm:shadow-none">
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 sm:px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'overview'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+              ? 'bg-[#071E17] sm:bg-white sm:dark:bg-slate-800 text-[#F3D078] sm:text-slate-900 sm:dark:text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Compass className="w-4 h-4 text-amber-500" />
-          <span>معرفی خدمات و ثبت درخواست</span>
-        </button>
+          <span>معرفی و ثبت درخواست</span>
+        </motion.button>
 
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.96 }}
           onClick={() => setActiveTab('my_requests')}
-          className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 sm:px-4 min-h-[40px] py-2 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'my_requests'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+              ? 'bg-[#071E17] sm:bg-white sm:dark:bg-slate-800 text-[#F3D078] sm:text-slate-900 sm:dark:text-white shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Layers className="w-4 h-4 text-emerald-600" />
-          <span>پیگیری درخواست‌ها و گفت‌وگو ({myRequests.length})</span>
-        </button>
+          <span>پیگیری درخواست‌ها ({myRequests.length})</span>
+        </motion.button>
 
         {isOfficial && (
-          <button
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.96 }}
             onClick={() => setActiveTab('admin_control')}
-            className={`px-4 py-2.5 rounded-xl font-black whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 sm:px-4 min-h-[40px] py-2 rounded-xl font-black whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'admin_control'
                 ? 'bg-amber-500 text-slate-950 shadow-xs'
                 : 'text-amber-700 dark:text-amber-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>مدیریت و کارتابل درخواست‌ها ({pendingOrReviewCount} فعال)</span>
-          </button>
+            <span>کارتابل مدیریت ({pendingOrReviewCount} فعال)</span>
+          </motion.button>
         )}
       </div>
 

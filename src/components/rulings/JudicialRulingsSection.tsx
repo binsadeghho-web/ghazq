@@ -183,9 +183,89 @@ export const JudicialRulingsSection: React.FC = () => {
   const layoutMode = rulingsPortalConfig.layoutMode || 'editorial_split';
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* Top KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="space-y-4 sm:space-y-6" dir="rtl">
+      {/* Luxury Mobile Hero Header & Compact 3-Stat Strip (< sm) */}
+      <div className="sm:hidden space-y-3">
+        <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white p-4 border border-amber-400/20 shadow-[0_14px_34px_-16px_rgba(7,30,23,0.65)] space-y-3">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-300/60 to-transparent" />
+          <div className="relative z-10 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-300/35 text-amber-300 flex items-center justify-center shrink-0">
+                <Scale className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm font-black text-white truncate">
+                  {rulingsPortalConfig.portalTitle || 'تالار نقد و مباحثه آراء قضایی'}
+                </h1>
+                <p className="text-[10px] text-emerald-100/80 truncate mt-0.5">
+                  مطالعه آراء مدلل و گفت‌وگوی تخصصی قضات
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUploadModalOpen(true)}
+              className="px-3 py-2 min-h-[38px] rounded-xl bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>بارگذاری</span>
+            </button>
+          </div>
+          {isOfficial && (
+            <div className="relative z-10 flex items-center gap-2 overflow-x-auto scrollbar-none pt-0.5">
+              <button
+                type="button"
+                onClick={handleGroupByAdminTags}
+                className="px-2.5 py-1.5 rounded-xl bg-white/12 border border-white/15 text-[11px] font-bold text-white whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                چینش هم‌برچسب‌ها
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesignerModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/15 text-[11px] font-bold text-amber-200 whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                طراحی چیدمان و برچسب‌ها
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <button
+            type="button"
+            onClick={() => setActiveTab('all_visible')}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-2.5 cursor-pointer"
+          >
+            <p className="text-sm font-black text-stone-900 dark:text-white tabular-nums">
+              {toPersianNumbers(publishedVisibleCount)}
+            </p>
+            <p className="text-[10px] font-bold text-stone-500 mt-0.5 truncate">آراء منتشرشده</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab(isOfficial ? 'pending_or_hidden' : 'system_picks')}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-2.5 cursor-pointer"
+          >
+            <p className="text-sm font-black text-amber-700 dark:text-amber-400 tabular-nums">
+              {toPersianNumbers(isOfficial ? pendingOrHiddenCount : systemPicksCount)}
+            </p>
+            <p className="text-[10px] font-bold text-stone-500 mt-0.5 truncate">
+              {isOfficial ? 'صف بررسی' : 'برگزیده سامانه'}
+            </p>
+          </button>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 p-2.5">
+            <p className="text-sm font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
+              {toPersianNumbers(totalDiscussions)}
+            </p>
+            <p className="text-[10px] font-bold text-stone-500 mt-0.5 truncate">دیدگاه و نقد</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top KPI Row (Tablet & Desktop >= sm) */}
+      <div className="hidden sm:grid sm:grid-cols-3 gap-4">
         <ModernMetricCard
           title="آراء منتشرشده در تالار"
           value={publishedVisibleCount}
@@ -222,8 +302,8 @@ export const JudicialRulingsSection: React.FC = () => {
         />
       </div>
 
-      {/* Header & Action Bar */}
-      <div className="rounded-2xl p-5 sm:p-6 bg-[#FBF9F5] dark:bg-slate-900 border border-stone-200 dark:border-slate-800 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      {/* Header & Action Bar (Tablet & Desktop >= sm) */}
+      <div className="hidden sm:flex rounded-2xl p-5 sm:p-6 bg-[#FBF9F5] dark:bg-slate-900 border border-stone-200 dark:border-slate-800 flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white tracking-tight">
             {rulingsPortalConfig.portalTitle || 'تالار رأی قضایی، نقد علمی و مباحثات فقهی'}
@@ -673,7 +753,12 @@ export const JudicialRulingsSection: React.FC = () => {
                 return (
                   <div
                     key={ruling.id}
-                    onClick={() => setSelectedRulingId(ruling.id)}
+                    onClick={() => {
+                      setSelectedRulingId(ruling.id);
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                        setDrawerRulingId(ruling.id);
+                      }
+                    }}
                     className={`p-4 text-right transition-colors cursor-pointer space-y-2 ${
                       isSelected
                         ? 'bg-[#FAF6EC] dark:bg-slate-800/90'
@@ -784,8 +869,8 @@ export const JudicialRulingsSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Detail Reader Column (7 Cols) */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 overflow-hidden">
+          {/* Detail Reader Column (7 Cols — Desktop split; mobile opens clean modal drawer directly on tap) */}
+          <div className="hidden lg:block lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 overflow-hidden">
             {activeRuling ? (
               <RulingDetailReader
                 ruling={activeRuling}

@@ -146,7 +146,7 @@ export const CounselingFieldsShowcase: React.FC<CounselingFieldsShowcaseProps> =
         </div>
       ) : isCompactGeneral ? (
         /* Compact Luminous Frosted-Glass Jewel Grid for General Counseling Fields */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           {activeFields.map((field, idx) => {
             const IconComp = ICON_MAP[field.iconName || 'sparkles'] || Sparkles;
             const accentKey = field.accentColor || COMPACT_PALETTES[idx % COMPACT_PALETTES.length];
@@ -158,11 +158,11 @@ export const CounselingFieldsShowcase: React.FC<CounselingFieldsShowcaseProps> =
                 type="button"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, delay: idx * 0.04 }}
+                transition={{ duration: 0.25, delay: idx * 0.035 }}
                 whileHover={{ y: -4, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => onSelectField(field)}
-                className={`group relative overflow-hidden text-right p-3.5 rounded-2xl bg-white/75 dark:bg-slate-900/65 backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)] transition-all duration-300 flex flex-col justify-between gap-2.5 cursor-pointer ${accent.border} ${accent.glow}`}
+                className={`group relative overflow-hidden text-right p-3 sm:p-3.5 rounded-[22px] sm:rounded-2xl bg-white/85 dark:bg-slate-900/65 backdrop-blur-xl border border-stone-200/80 sm:border-white/60 dark:border-white/10 shadow-[0_10px_26px_-14px_rgba(7,30,23,0.2)] transition-all duration-300 flex flex-col justify-between gap-2.5 cursor-pointer ${accent.border} ${accent.glow}`}
               >
                 {/* Luminous glass sheen gradient */}
                 <span
