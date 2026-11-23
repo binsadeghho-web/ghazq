@@ -162,7 +162,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
   };
 
   return (
-    <div className="w-full relative overflow-hidden rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-5 sm:p-7 text-stone-900 space-y-5">
+    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5">
       {/* Header */}
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-4">
         <div className="flex items-center gap-3">
@@ -180,11 +180,11 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+        <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap w-full md:w-auto">
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
               <span>ویرایش ویترین چندرسانه‌ای</span>
@@ -193,7 +193,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
 
           <button
             onClick={onNavigateToCourses}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
           >
             <span>مشاهده همه دوره‌ها و صوت/ویدیوها</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -202,13 +202,13 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
       </div>
 
       {/* Multimedia Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 sm:overflow-visible sm:pb-0">
         {mediaCards.map(item => (
           <motion.div
             key={item.id}
             whileHover={{ y: -3 }}
             onClick={onNavigateToCourses}
-            className="group p-4 rounded-2xl bg-white border border-stone-200/90 hover:border-cyan-300 transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md"
+            className="min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200/90 hover:border-cyan-300 transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md"
           >
             <div className="space-y-3">
               <div className="relative h-36 rounded-xl overflow-hidden bg-stone-900 border border-stone-200">

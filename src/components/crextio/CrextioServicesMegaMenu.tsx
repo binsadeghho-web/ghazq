@@ -32,13 +32,25 @@ import {
 interface CrextioServicesMegaMenuProps {
   activeNav: string;
   onNavigate: (tabId: string) => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  hideTriggerOnMobile?: boolean;
 }
 
 export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = ({
   activeNav,
-  onNavigate
+  onNavigate,
+  externalOpen,
+  onExternalOpenChange,
+  hideTriggerOnMobile = false,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setIsOpen = (val: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof val === 'function' ? val(isOpen) : val;
+    if (onExternalOpenChange) onExternalOpenChange(next);
+    else setInternalOpen(next);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -63,20 +75,23 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     setIsOpen(true);
   };
 
   const handleMouseLeave = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setIsOpen(false);
@@ -281,7 +296,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
       onMouseLeave={handleMouseLeave}
       className="relative flex items-center justify-center z-50"
     >
-      {/* دکمه مرکزی بسیار چشم‌نواز با رنگ‌های درخشان و چرخه کامل رنگی */}
+      {/* دکمه مرکزی در دسکتاپ/تبلت */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.04, y: -2 }}
@@ -304,7 +319,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
           ]
         }}
         transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-        className="group relative flex items-center gap-3 px-6 py-3 rounded-2xl text-stone-900 font-black shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden border-2 bg-white"
+        className={`${hideTriggerOnMobile ? 'hidden md:flex' : 'flex'} group relative items-center gap-3 px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl text-stone-900 font-black shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden border-2 bg-white`}
       >
         {/* کادر با گرادینت درخشان که به طور کامل در چرخه رنگی تغییر می‌کند */}
         <motion.div
@@ -368,150 +383,179 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
         </div>
       </motion.button>
 
-      {/* پنجره مگا منو متمرکز در مرکز صفحه با ابعاد متناسب (Light Daylight Style با موشن تم ۱) */}
+      {/* پنجره مگامنو (در موبایل به صورت Bottom Sheet تمام‌لمسی و در دسکتاپ به صورت مگامنو متمرکز) */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed sm:absolute top-20 sm:top-full left-1/2 -translate-x-1/2 mt-3 w-[95vw] max-w-6xl xl:w-[1260px] bg-[#FCFCFA] rounded-[32px] border border-stone-300 shadow-2xl text-stone-900 z-50 flex flex-col overflow-hidden"
-            dir="rtl"
-          >
-            {/* نوار سربرگ متمرکز با فیلتر دسته‌ها و جستجو */}
-            <div className="p-3.5 sm:px-6 bg-[#F5F4ED] border-b border-stone-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-                {categories.map(cat => (
+          <>
+            {/* Mobile Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="md:hidden fixed inset-0 bg-stone-950/60 backdrop-blur-xs z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed inset-x-0 bottom-0 md:bottom-auto md:inset-x-auto md:absolute md:top-full md:left-1/2 md:-translate-x-1/2 md:mt-3 w-full md:w-[min(94vw,1260px)] max-h-[86vh] md:max-h-[82vh] bg-[#FCFCFA] rounded-t-[28px] md:rounded-[32px] border border-stone-300 shadow-2xl text-stone-900 z-50 flex flex-col overflow-hidden safe-area-bottom"
+              dir="rtl"
+            >
+              {/* Mobile Sheet Drag Pill & Title */}
+              <div className="md:hidden flex flex-col items-center pt-2.5 pb-1.5 px-4 bg-[#F5F4ED] border-b border-stone-200/70 shrink-0">
+                <div className="w-10 h-1.5 rounded-full bg-stone-300 mb-2" />
+                <div className="w-full flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                    <LayoutGrid className="w-4 h-4 text-emerald-700" />
+                    <span>{resolvedNav.servicesMenuTitle}</span>
+                  </span>
                   <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
-                      selectedCategory === cat.id
-                        ? 'bg-emerald-800 text-white shadow-xs'
-                        : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
-                    }`}
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-600 cursor-pointer"
+                    aria-label="بستن منو"
                   >
-                    {cat.label}
+                    <X className="w-4 h-4" />
                   </button>
-                ))}
+                </div>
               </div>
 
-              {/* جستجوی سریع */}
-              <div className="flex items-center gap-2 bg-white border border-stone-300 rounded-xl px-3.5 py-1.5 max-w-xs w-full shadow-2xs">
-                <Search className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="جستجوی سریع خدمات..."
-                  className="bg-transparent text-xs text-stone-800 placeholder-stone-400 focus:outline-none w-full"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="text-stone-400 hover:text-stone-700">
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* بدنه ۴ یا ۳ ستونی کارت‌ها با موشن و افکت‌های تم ۱ */}
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[76vh]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
-                {filteredCards.map(card => {
-                  const Icon = card.icon;
-                  const isActive = activeNav.toLowerCase() === card.id.toLowerCase();
-
-                  return (
-                    <motion.div
-                      key={card.id}
-                      onClick={() => {
-                        onNavigate(card.id);
-                        setIsOpen(false);
-                      }}
-                      whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`group cursor-pointer rounded-2xl p-4 border transition-all duration-200 flex flex-col justify-between relative bg-white overflow-hidden shadow-2xs hover:shadow-lg ${
-                        isActive
-                          ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
-                          : 'border-stone-200/90 hover:border-emerald-400'
+              {/* نوار سربرگ متمرکز با فیلتر دسته‌ها و جستجو */}
+              <div className="p-3 sm:px-6 bg-[#F5F4ED] border-b border-stone-200 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 md:pb-0 scrollbar-none">
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`px-3 py-2 sm:px-3.5 sm:py-1.5 min-h-[38px] rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                        selectedCategory === cat.id
+                          ? 'bg-emerald-800 text-white shadow-xs'
+                          : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
                       }`}
                     >
-                      {/* هاله نور تعاملی تم ۱ در هاور */}
-                      <div
-                        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                        style={{
-                          background: `radial-gradient(180px circle at 50% 20%, ${card.accent}15, transparent 70%)`
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* جستجوی سریع */}
+                <div className="flex items-center gap-2 bg-white border border-stone-300 rounded-xl px-3.5 py-2 sm:py-1.5 md:max-w-xs w-full shadow-2xs">
+                  <Search className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="جستجوی سریع خدمات..."
+                    className="bg-transparent text-xs text-stone-800 placeholder-stone-400 focus:outline-none w-full"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="text-stone-400 hover:text-stone-700 p-1">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* بدنه ۲ ستونی موبایل و ۴ ستونی دسکتاپ کارت‌ها */}
+              <div className="p-3 sm:p-6 overflow-y-auto flex-1">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
+                  {filteredCards.map(card => {
+                    const Icon = card.icon;
+                    const isActive = activeNav.toLowerCase() === card.id.toLowerCase();
+
+                    return (
+                      <motion.div
+                        key={card.id}
+                        onClick={() => {
+                          onNavigate(card.id);
+                          setIsOpen(false);
                         }}
-                      />
+                        whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
+                        whileTap={{ scale: 0.97 }}
+                        className={`group cursor-pointer rounded-2xl p-3 sm:p-4 border transition-all duration-200 flex flex-col justify-between relative bg-white overflow-hidden shadow-2xs hover:shadow-lg ${
+                          isActive
+                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
+                            : 'border-stone-200/90 hover:border-emerald-400'
+                        }`}
+                      >
+                        {/* هاله نور تعاملی در هاور */}
+                        <div
+                          className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                          style={{
+                            background: `radial-gradient(180px circle at 50% 20%, ${card.accent}15, transparent 70%)`
+                          }}
+                        />
 
-                      {/* خط نواری بالای کارت با شاین */}
-                      <div
-                        className="absolute top-0 right-0 left-0 h-1.5 rounded-t-2xl transition-all group-hover:h-2"
-                        style={{ backgroundColor: card.accent }}
-                      />
+                        {/* خط نواری بالای کارت با شاین */}
+                        <div
+                          className="absolute top-0 right-0 left-0 h-1.5 rounded-t-2xl transition-all group-hover:h-2"
+                          style={{ backgroundColor: card.accent }}
+                        />
 
-                      <div className="relative z-10 space-y-2.5 pt-1">
-                        <div className="flex items-center justify-between">
-                          <div
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs"
-                            style={{
-                              backgroundColor: `${card.accent}18`,
-                              color: card.accent
-                            }}
-                          >
-                            <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <div className="relative z-10 space-y-2 pt-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <div
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs shrink-0"
+                              style={{
+                                backgroundColor: `${card.accent}18`,
+                                color: card.accent
+                              }}
+                            >
+                              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </div>
+
+                            <span
+                              className="hidden sm:inline-block text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-md truncate max-w-[110px]"
+                              style={{
+                                backgroundColor: `${card.accent}10`,
+                                color: card.accent,
+                                borderColor: `${card.accent}25`
+                              }}
+                            >
+                              {card.badge}
+                            </span>
                           </div>
 
-                          <span
-                            className="text-[11px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-md"
-                            style={{
-                              backgroundColor: `${card.accent}10`,
-                              color: card.accent,
-                              borderColor: `${card.accent}25`
-                            }}
-                          >
-                            {card.badge}
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-emerald-900 transition-colors line-clamp-2 sm:line-clamp-1 leading-snug">
+                              {card.title}
+                            </h4>
+                            <p className="hidden sm:line-clamp-2 text-[11px] text-stone-600 mt-1 leading-relaxed font-medium">
+                              {card.subtext}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="relative z-10 pt-2 mt-2 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-[11px] text-stone-500 font-medium">
+                          <span className="text-emerald-700 font-bold truncate">{card.tag}</span>
+                          <span className="flex items-center gap-0.5 text-stone-700 group-hover:text-emerald-800 font-extrabold shrink-0">
+                            <span>ورود</span>
+                            <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
                           </span>
                         </div>
-
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-emerald-900 transition-colors line-clamp-1">
-                            {card.title}
-                          </h4>
-                          <p className="text-[11px] text-stone-600 mt-1 line-clamp-2 leading-relaxed font-medium">
-                            {card.subtext}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative z-10 pt-2.5 mt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500 font-medium">
-                        <span className="text-emerald-700 font-bold">{card.tag}</span>
-                        <span className="flex items-center gap-0.5 text-stone-700 group-hover:text-emerald-800 font-extrabold">
-                          <span>ورود</span>
-                          <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
-                        </span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* فوتر مینیمال */}
-            <div className="p-3.5 px-8 bg-[#F5F4ED] border-t border-stone-200 flex items-center justify-between text-xs sm:text-sm text-stone-600 shrink-0">
-              <span className="flex items-center gap-2 text-stone-700 font-medium">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>انتخاب هر کارت شما را مستقیم به ماژول مربوطه هدایت می‌کند.</span>
-              </span>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-stone-600 hover:text-stone-900 font-bold px-3 py-1.5 rounded-xl hover:bg-stone-200 transition-colors cursor-pointer"
-              >
-                بستن (ESC)
-              </button>
-            </div>
-          </motion.div>
+              {/* فوتر */}
+              <div className="p-3 sm:px-8 bg-[#F5F4ED] border-t border-stone-200 flex items-center justify-between text-xs sm:text-sm text-stone-600 shrink-0">
+                <span className="hidden sm:flex items-center gap-2 text-stone-700 font-medium">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>انتخاب هر کارت شما را مستقیم به ماژول مربوطه هدایت می‌کند.</span>
+                </span>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="w-full sm:w-auto text-stone-700 hover:text-stone-900 bg-stone-200/70 sm:bg-transparent font-bold px-4 py-2.5 sm:py-1.5 rounded-xl hover:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  بستن منوی خدمات
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

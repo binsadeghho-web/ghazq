@@ -42,7 +42,9 @@ import {
   Compass,
   Wallet,
   IdCard,
-  Menu
+  Menu,
+  LayoutGrid,
+  ArrowRight
 } from 'lucide-react';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { UserRole, AppSectionId } from '../../types';
@@ -68,7 +70,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const { currentUser, users, switchUserRole, logout, crextioConfig, productsStoreConfig, setDesignTheme, isAlumniPreview, setIsAlumniPreview } = useApp();
   const { rolePolicies } = useRbacPolicies();
   const [activeNav, setActiveNav] = useState<string>('Dashboard');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [servicesSheetOpen, setServicesSheetOpen] = useState<boolean>(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
@@ -155,9 +157,15 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
       ? 'bg-white border-stone-200' 
       : 'bg-[#F8F7F2] border-[#E5E3D8]';
 
+  // Mobile Bottom Bar: pick top 4 primary destinations respecting RBAC & customizer labels + "همه خدمات" bottom sheet trigger
+  const mobileBottomTargets = ['Dashboard', 'People', 'Courses', 'Counseling']
+    .map(id => navItems.find(n => n.id === id))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const fallbackMobileItems = mobileBottomTargets.length >= 2 ? mobileBottomTargets : navItems.slice(0, 4);
+
   return (
     <div
-      className="min-h-screen bg-[#F4F3ED] text-stone-900 font-sans antialiased selection:bg-emerald-500 relative overflow-x-hidden"
+      className="min-h-screen bg-[#F4F3ED] text-stone-900 font-sans antialiased selection:bg-emerald-500 relative overflow-x-clip"
       dir="rtl"
     >
       {/* Dynamic Global Mouse Halo and Dust Trail for Theme 2 */}
@@ -170,7 +178,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         <div className="absolute top-1/2 left-10 w-[400px] h-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 lg:pr-0 py-5 space-y-5">
+      <div className="relative z-10 max-w-[1650px] mx-auto px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-5 pb-24 lg:pb-6 space-y-3 sm:space-y-5">
         
         {/* READ-ONLY OBSERVER BANNER FOR GENERAL OBSERVER (ناظر کل) */}
         {isReadOnlyObserver && (
@@ -204,18 +212,18 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
               </button>
             </div>
           ) : (
-            <div className="w-full bg-white/90 backdrop-blur-xl rounded-2xl px-4 sm:px-5 py-2.5 border border-stone-200/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+            <div className="w-full bg-white/90 backdrop-blur-xl rounded-2xl px-3 sm:px-5 py-2 sm:py-2.5 border border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 shadow-xs">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+                <span className="hidden sm:inline-flex px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold items-center gap-1.5">
                   <Scale className="w-3.5 h-3.5 text-amber-600" />
                   {crextioConfig.theme2TopBarTitle || 'تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان (طرح میزان)'}
                 </span>
-                <span className={`px-3 py-1 rounded-full border text-xs font-extrabold ${currentRoleMeta.badgeColor}`}>
+                <span className={`px-2.5 sm:px-3 py-1 rounded-full border text-[11px] sm:text-xs font-extrabold ${currentRoleMeta.badgeColor}`}>
                   نقش فعلی: {currentRoleMeta.title}
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none pb-0.5 sm:pb-0">
                 {canCustomizeLayout && (
                   <>
                     <button
@@ -223,17 +231,17 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                         setCustomizerInitialTab('navigation');
                         setIsCustomizerOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-[11px] sm:text-xs font-bold transition-all shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
                     >
                       <Menu className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>ترتیب و نام ناوبری و منو</span>
+                      <span>ترتیب و نام منو</span>
                     </button>
                     <button
                       onClick={() => {
                         setCustomizerInitialTab('modules');
                         setIsCustomizerOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] sm:text-xs font-bold transition-all shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
                     >
                       <Palette className="w-3.5 h-3.5 text-amber-600" />
                       <span>شخصی‌سازی تم ۲</span>
@@ -244,7 +252,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 {isStaffMember && (
                     <button
                       onClick={onToggleToPortalTheme}
-                      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
                     >
                       <ArrowLeftRight className="w-3.5 h-3.5" />
                       <span>تم ۱ (پرتال)</span>
@@ -255,44 +263,52 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           )
         ) : null}
 
-        {/* MAIN HEADER: CENTERED MEGA-MENU BUTTON, BRAND ON RIGHT, ACTIONS ON LEFT */}
-        <header className="bg-white/95 backdrop-blur-2xl rounded-[32px] p-3.5 sm:p-4 px-5 sm:px-6 border border-stone-200/90 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-30">
+        {/* MAIN HEADER: COMPACT SINGLE-ROW BAR ON MOBILE, 3-ZONE CENTERED MEGA-MENU ON DESKTOP */}
+        <header className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] p-2.5 sm:p-4 px-3 sm:px-6 border border-stone-200/90 shadow-sm flex items-center justify-between gap-2 sm:gap-4 relative z-30">
           {/* Right: Brand Logo */}
           <button
             onClick={() => setActiveNav('Dashboard')}
-            className="flex items-center gap-3 group text-right cursor-pointer shrink-0"
+            className="flex items-center gap-2 sm:gap-3 group text-right cursor-pointer min-w-0 shrink"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-stone-950 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform border border-amber-300">
-              <Scale className="w-7 h-7 stroke-[2.3]" />
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-stone-950 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform border border-amber-300 shrink-0">
+              <Scale className="w-5 h-5 sm:w-7 sm:h-7 stroke-[2.3]" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-extrabold text-stone-900 tracking-tight">
+                <h1 className="text-sm sm:text-xl font-extrabold text-stone-900 tracking-tight truncate">
                   {crextioConfig.brandMainTitle || 'سامانه فقه و قضا'}
                 </h1>
-                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-900 border border-amber-400/40">
+                <span className="text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-900 border border-amber-400/40 shrink-0">
                   {crextioConfig.brandBadgeText || 'میزان'}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-800 font-bold">
+              <p className="hidden sm:block text-[11px] text-emerald-800 font-bold truncate">
                 {crextioConfig.brandSubtitleText || 'پرتال و ویترین خدمات نخبگان'}
               </p>
             </div>
           </button>
 
-          {/* Center: دکمه و درگاه منو و خدمات سامانه متمرکز در مرکز صفحه */}
-          <div className="flex-1 flex justify-center py-1 md:py-0">
-            <CrextioServicesMegaMenu activeNav={activeNav} onNavigate={setActiveNav} />
+          {/* Center: Mega-Menu trigger on desktop + shared mobile bottom sheet portal */}
+          <div className="md:flex-1 flex justify-center">
+            <CrextioServicesMegaMenu
+              activeNav={activeNav}
+              onNavigate={setActiveNav}
+              externalOpen={servicesSheetOpen}
+              onExternalOpenChange={setServicesSheetOpen}
+              hideTriggerOnMobile={true}
+            />
           </div>
 
-          {/* Left: دکمه بازگشت به داشبورد، کارت اطلاعات هویتی من، اعلان‌ها و نمایه کاربری */}
-          <div className="flex items-center justify-end gap-2.5 shrink-0">
+          {/* Left: Back to Dashboard, Identity Card, Notifications & Profile */}
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0">
             {activeNav !== 'Dashboard' && (
               <button
                 onClick={() => setActiveNav('Dashboard')}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 border border-emerald-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 border border-emerald-500/40 text-[11px] sm:text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <span>بازگشت به داشبورد</span>
+                <ArrowRight className="w-3.5 h-3.5 sm:hidden" />
+                <span className="hidden sm:inline">بازگشت به داشبورد</span>
+                <span className="sm:hidden">داشبورد</span>
               </button>
             )}
 
@@ -300,12 +316,12 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             {currentUser && (
               <button
                 onClick={() => setIsIdentityCardOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-black transition-all shadow-2xs cursor-pointer"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 min-h-[40px] rounded-xl sm:rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-black transition-all shadow-2xs cursor-pointer"
                 title="مشاهده و تکمیل کارت اطلاعات هویتی من"
               >
-                <IdCard className="w-4 h-4 text-emerald-700" />
+                <IdCard className="w-4 h-4 text-emerald-700 shrink-0" />
                 <span className="hidden xl:inline">کارت اطلاعات هویتی من</span>
-                <span className="px-1.5 py-0.5 rounded-lg bg-emerald-800 text-white text-[10px] font-black">
+                <span className="px-1.5 py-0.5 rounded-lg bg-emerald-800 text-white text-[10px] font-black tabular-nums">
                   {toPersianNumbers(completionPct)}٪
                 </span>
               </button>
@@ -317,62 +333,72 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                     setNotificationsOpen(!notificationsOpen);
                     setUserDropdownOpen(false);
                   }}
-                  className="relative p-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition-colors cursor-pointer"
+                  className="relative w-10 h-10 sm:w-auto sm:h-auto sm:p-2.5 rounded-xl sm:rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition-colors cursor-pointer flex items-center justify-center"
+                  aria-label="اعلان‌ها"
                 >
                   <Bell className="w-4 h-4" />
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white animate-pulse" />
                 </button>
 
-                {/* Notifications Drawer Popover */}
+                {/* Notifications Drawer Popover (Viewport-safe on 360px phones) */}
                 {notificationsOpen && (
-                  <div className="absolute left-0 mt-3 w-80 sm:w-96 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                      <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-emerald-700" />
-                        <span className="text-xs font-bold text-stone-900">اعلان‌ها و رویدادهای ۱,۰۰۰ دانش‌آموخته</span>
-                      </div>
-                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
-                        {toPersianNumbers('۴')} پیام تازه
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {[
-                        { title: 'صدور گواهی پایه قضایی', desc: 'گواهی پایه ۹ قضایی شما با مهر دیجیتال تایید و آماده دریافت شد.', time: '۱۰ دقیقه پیش', unread: true },
-                        { title: 'همایش سراسری دانش‌آموختگان', desc: 'گردهمایی سالانه ۱,۰۰۰ قاضی و پژوهشگر در قم. ثبت‌نام از بخش رفاهیات.', time: '۲ ساعت پیش', unread: true },
-                        { title: 'نقد جدید در تالار آراء', desc: 'جناب استاد موسوی به رأی شماره ۹۴۳ پاسخ تحلیلی ثبت نمودند.', time: 'دیروز', unread: false },
-                        { title: 'عرضه کتاب خارج فقه القضا', desc: 'جلد پنجم موسوعه القضا با تخفیف ویژه اعضا بارگذاری شد.', time: '۳ روز پیش', unread: false },
-                      ].map((n, idx) => (
-                        <div key={idx} className={`p-2.5 rounded-2xl border text-xs transition-colors ${n.unread ? 'bg-emerald-50/70 border-emerald-200' : 'bg-stone-50 border-stone-200/60 text-stone-600'}`}>
-                          <div className="flex items-center justify-between font-bold text-stone-900">
-                            <span>{n.title}</span>
-                            <span className="text-[10px] text-stone-500 font-normal">{n.time}</span>
-                          </div>
-                          <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">{n.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
+                  <>
+                    <div
+                      className="sm:hidden fixed inset-0 bg-stone-950/35 z-40"
                       onClick={() => setNotificationsOpen(false)}
-                      className="w-full py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold text-center border border-stone-200 transition-colors cursor-pointer"
-                    >
-                      بستن اعلان‌ها
-                    </button>
-                  </div>
+                    />
+                    <div className="fixed inset-x-3 top-20 sm:top-auto sm:inset-x-auto sm:absolute sm:left-0 sm:mt-3 sm:w-96 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-emerald-700" />
+                          <span className="text-xs font-bold text-stone-900">اعلان‌ها و رویدادهای ۱,۰۰۰ دانش‌آموخته</span>
+                        </div>
+                        <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                          {toPersianNumbers('۴')} پیام تازه
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                        {[
+                          { title: 'صدور گواهی پایه قضایی', desc: 'گواهی پایه ۹ قضایی شما با مهر دیجیتال تایید و آماده دریافت شد.', time: '۱۰ دقیقه پیش', unread: true },
+                          { title: 'همایش سراسری دانش‌آموختگان', desc: 'گردهمایی سالانه ۱,۰۰۰ قاضی و پژوهشگر در قم. ثبت‌نام از بخش رفاهیات.', time: '۲ ساعت پیش', unread: true },
+                          { title: 'نقد جدید در تالار آراء', desc: 'جناب استاد موسوی به رأی شماره ۹۴۳ پاسخ تحلیلی ثبت نمودند.', time: 'دیروز', unread: false },
+                          { title: 'عرضه کتاب خارج فقه القضا', desc: 'جلد پنجم موسوعه القضا با تخفیف ویژه اعضا بارگذاری شد.', time: '۳ روز پیش', unread: false },
+                        ].map((n, idx) => (
+                          <div key={idx} className={`p-2.5 rounded-2xl border text-xs transition-colors ${n.unread ? 'bg-emerald-50/70 border-emerald-200' : 'bg-stone-50 border-stone-200/60 text-stone-600'}`}>
+                            <div className="flex items-center justify-between font-bold text-stone-900">
+                              <span>{n.title}</span>
+                              <span className="text-[10px] text-stone-500 font-normal">{n.time}</span>
+                            </div>
+                            <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">{n.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setNotificationsOpen(false)}
+                        className="w-full py-2.5 sm:py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold text-center border border-stone-200 transition-colors cursor-pointer"
+                      >
+                        بستن اعلان‌ها
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* User Account & Role Switcher */}
+              {/* User Account & Profile Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2.5 p-1.5 pl-3 rounded-2xl bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-all cursor-pointer"
+                  onClick={() => {
+                    setUserDropdownOpen(!userDropdownOpen);
+                    setNotificationsOpen(false);
+                  }}
+                  className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 sm:pl-3 min-h-[40px] rounded-xl sm:rounded-2xl bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-all cursor-pointer"
                 >
                   {currentUser?.profilePictureUrl ? (
-                    <img src={currentUser.profilePictureUrl} alt={currentUser?.fullName || 'کاربر'} className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-xs border border-stone-200" />
+                    <img src={currentUser.profilePictureUrl} alt={currentUser?.fullName || 'کاربر'} className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-cover shrink-0 shadow-xs border border-stone-200" />
                   ) : (
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-xs">
                       {currentUser?.avatarText || 'کاربر'}
                     </div>
                   )}
@@ -382,58 +408,64 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       {currentUser?.roleTitle || 'دانش‌آموخته'}
                     </p>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-stone-500 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-500 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* User Account & Role Switcher Dropdown */}
+                {/* User Account Dropdown (Viewport-safe on mobile) */}
                 {userDropdownOpen && (
-                  <div className="absolute left-0 mt-3 w-80 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
-                    {/* Profile Header */}
-                    <div className="p-3 bg-stone-50 rounded-2xl space-y-1 border border-stone-100">
-                      <p className="font-bold text-sm text-stone-900">{currentUser?.fullName}</p>
-                      <p className="text-xs text-emerald-800 font-medium">{currentUser?.roleTitle}</p>
-                      <p className="text-[11px] text-stone-500 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
-                      <p className="text-[11px] text-emerald-800 font-mono font-bold">کد مرکز: {currentUser?.centerCode || 'ثبت نشده'}</p>
-                    </div>
+                  <>
+                    <div
+                      className="sm:hidden fixed inset-0 bg-stone-950/35 z-40"
+                      onClick={() => setUserDropdownOpen(false)}
+                    />
+                    <div className="fixed inset-x-3 top-20 sm:top-auto sm:inset-x-auto sm:absolute sm:left-0 sm:mt-3 sm:w-80 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
+                      {/* Profile Header */}
+                      <div className="p-3 bg-stone-50 rounded-2xl space-y-1 border border-stone-100">
+                        <p className="font-bold text-sm text-stone-900">{currentUser?.fullName}</p>
+                        <p className="text-xs text-emerald-800 font-medium">{currentUser?.roleTitle}</p>
+                        <p className="text-[11px] text-stone-500 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
+                        <p className="text-[11px] text-emerald-800 font-mono font-bold">کد مرکز: {currentUser?.centerCode || 'ثبت نشده'}</p>
+                      </div>
 
-                    {/* Reform 56: Open Identity Card from dropdown */}
-                    <button
-                      onClick={() => {
-                        setUserDropdownOpen(false);
-                        setIsIdentityCardOpen(true);
-                      }}
-                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-black flex items-center justify-between border border-emerald-200 transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <IdCard className="w-4 h-4 text-emerald-700" />
-                        <span>کارت اطلاعات هویتی من</span>
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-white text-[10px]">
-                        {toPersianNumbers(completionPct)}٪
-                      </span>
-                    </button>
-
-                    {/* Logout Action */}
-                    <div className="pt-2 border-t border-stone-200">
+                      {/* Reform 56: Open Identity Card from dropdown */}
                       <button
                         onClick={() => {
-                          logout();
                           setUserDropdownOpen(false);
+                          setIsIdentityCardOpen(true);
                         }}
-                        className="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center gap-2 border border-red-200 transition-colors cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-black flex items-center justify-between border border-emerald-200 transition-colors cursor-pointer"
                       >
-                        <LogOut className="w-4 h-4 text-red-600" />
-                        <span>خروج از حساب کاربری</span>
+                        <span className="flex items-center gap-2">
+                          <IdCard className="w-4 h-4 text-emerald-700" />
+                          <span>کارت اطلاعات هویتی من</span>
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-white text-[10px]">
+                          {toPersianNumbers(completionPct)}٪
+                        </span>
                       </button>
+
+                      {/* Logout Action */}
+                      <div className="pt-2 border-t border-stone-200 space-y-2">
+                        <button
+                          onClick={() => {
+                            logout();
+                            setUserDropdownOpen(false);
+                          }}
+                          className="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center gap-2 border border-red-200 transition-colors cursor-pointer"
+                        >
+                          <LogOut className="w-4 h-4 text-red-600" />
+                          <span>خروج از حساب کاربری</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
           </div>
         </header>
 
-        {/* HORIZONTAL NAVIGATION BAR */}
-        <nav className="bg-white/95 backdrop-blur-xl rounded-2xl p-2 px-3 sm:px-4 border border-stone-200/90 shadow-sm overflow-x-auto scrollbar-none z-20">
+        {/* HORIZONTAL NAVIGATION BAR (Desktop / Tablet Landscape; Mobile uses Thumb Bottom Tab Bar) */}
+        <nav className="hidden lg:block bg-white/95 backdrop-blur-xl rounded-2xl p-2 px-3 sm:px-4 border border-stone-200/90 shadow-sm overflow-x-auto scrollbar-none z-20">
           <div className="flex items-center justify-start xl:justify-center gap-1 min-w-max mx-auto">
             {navItems.map(item => {
               const Icon = item.icon;
@@ -529,7 +561,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         </nav>
 
         {/* WARM ELEGANT CONTENT CANVAS */}
-        <main className={`${canvasBgClass} rounded-[40px] p-6 sm:p-8 lg:p-10 shadow-2xl border text-stone-900 min-h-[700px] transition-colors duration-500`}>
+        <main className={`${canvasBgClass} rounded-2xl sm:rounded-[40px] p-3 sm:p-8 lg:p-10 shadow-2xl border text-stone-900 min-h-[60vh] sm:min-h-[700px] transition-colors duration-500`}>
           {activeNav === 'Dashboard' || (!effectiveStaff && (activeNav === 'Finance' || activeNav === 'Alumni' || activeNav === 'Users' || activeNav === 'Admin' || activeNav === 'Setting')) ? (
             <CrextioDashboard
               onNavigateTab={setActiveNav}
@@ -582,16 +614,59 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         onClose={() => setIsIdentityCardOpen(false)}
       />
 
-      {/* Floating Alumni Preview Exit Bar (ONLY for staff in preview mode, NEVER for real alumni) */}
+      {/* Mobile Ergonomic Bottom Navigation Bar for Theme 2 (Crextio) */}
+      <nav
+        aria-label="ناوبری پایین موبایل"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-stone-200/90 px-1.5 pt-1 flex items-center justify-around safe-area-bottom shadow-[0_-10px_28px_-14px_rgba(15,23,42,0.16)]"
+      >
+        {fallbackMobileItems.map(item => {
+          const Icon = item.icon;
+          const isActive = activeNav === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveNav(item.id)}
+              className={`flex flex-col items-center justify-center flex-1 min-h-[54px] min-w-[44px] py-1 rounded-xl transition-colors cursor-pointer ${
+                isActive ? 'text-emerald-800 font-black' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <div className={`p-1 rounded-lg transition-colors ${isActive ? 'bg-emerald-50' : ''}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[66px]">
+                {item.id === 'Courses' ? 'دوره‌ها' : item.id === 'People' ? 'کارتابل' : item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setServicesSheetOpen(true)}
+          className={`flex flex-col items-center justify-center flex-1 min-h-[54px] min-w-[44px] py-1 rounded-xl transition-colors cursor-pointer ${
+            servicesSheetOpen ? 'text-amber-700 font-black' : 'text-stone-600 hover:text-stone-900'
+          }`}
+        >
+          <div className={`p-1 rounded-lg ${servicesSheetOpen ? 'bg-amber-50' : ''}`}>
+            <LayoutGrid className="w-5 h-5" />
+          </div>
+          <span className="text-[10px] mt-0.5 whitespace-nowrap">همه بخش‌ها</span>
+        </button>
+      </nav>
+
+      {/* Floating Alumni Preview Exit Bar (ONLY for staff in preview mode, offset cleanly above bottom bar) */}
       {isStaffMember && isAlumniPreview && (
-        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2.5 bg-slate-950/95 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl border border-indigo-500/40 shadow-2xl">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-bold text-slate-200">پیش‌نمایش نمای دانش‌آموخته فعال است</span>
+        <div className="fixed bottom-20 lg:bottom-6 inset-x-3 sm:inset-x-auto sm:left-6 z-40 flex items-center justify-between sm:justify-start gap-2.5 bg-slate-950/95 text-white backdrop-blur-md px-3.5 sm:px-4 py-2.5 rounded-2xl border border-indigo-500/40 shadow-2xl">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="text-[11px] sm:text-xs font-bold text-slate-200 truncate">پیش‌نمایش دانش‌آموخته فعال است</span>
+          </div>
           <button
             onClick={() => setIsAlumniPreview(false)}
-            className="mr-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95"
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
           >
-            بازگشت به پنل مدیریت
+            بازگشت به مدیریت
           </button>
         </div>
       )}

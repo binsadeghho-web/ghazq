@@ -129,6 +129,7 @@ const CrextioCard: React.FC<{
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      whileTap={onClick ? { scale: 0.985 } : undefined}
       className={`relative overflow-hidden transition-all duration-300 hover:z-20 hover:shadow-xl ${className}`}
     >
       <div
@@ -479,21 +480,21 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
             : 'min-h-[245px]';
         const heroPaddingClass =
           heroScale === 'compact'
-            ? 'p-3.5 sm:p-4'
+            ? 'p-3 sm:p-4'
             : heroScale === 'expanded'
-            ? 'p-6 sm:p-7'
-            : 'p-4 sm:p-5';
+            ? 'p-4 sm:p-7'
+            : 'p-3.5 sm:p-5';
         const heroTitleSizeClass =
           heroScale === 'compact'
-            ? 'text-lg sm:text-xl font-black'
+            ? 'text-base sm:text-xl font-black'
             : heroScale === 'expanded'
-            ? 'text-2xl sm:text-3xl xl:text-4xl font-black'
-            : 'text-xl sm:text-2xl xl:text-3xl font-black';
+            ? 'text-lg sm:text-3xl xl:text-4xl font-black'
+            : 'text-base sm:text-2xl xl:text-3xl font-black';
 
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-5 items-stretch">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-3.5 sm:gap-5 items-stretch">
             {showPortrait && (
-              <div className="xl:col-span-1 h-full">
+              <div className="hidden xl:block xl:col-span-1 h-full">
                 <CrextioCard
                   glowColor="rgba(16, 185, 129, 0.3)"
                   className={`relative h-full ${portraitHeightClass} w-full rounded-[28px] overflow-hidden shadow-md border border-stone-200/90 group`}
@@ -544,44 +545,82 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
               <div className={`${showPortrait ? 'xl:col-span-3' : 'xl:col-span-4'} h-full`}>
                 <CrextioCard
                   glowColor="rgba(16, 185, 129, 0.20)"
-                  className={`h-full rounded-[28px] ${heroPaddingClass} border border-[#E3E0D3] bg-[#FCFCF9]/95 backdrop-blur-2xl shadow-md flex flex-col justify-between`}
+                  className={`h-full rounded-2xl sm:rounded-[28px] ${heroPaddingClass} border border-[#E3E0D3] bg-[#FCFCF9]/95 backdrop-blur-2xl shadow-md flex flex-col justify-between`}
                 >
-                  <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                    <div className="space-y-2 max-w-2xl">
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600 font-semibold">
+                  <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 sm:gap-4">
+                    <div className="space-y-2.5 max-w-2xl">
+                      {/* Compact Mobile-First Portrait Strip (Visible on < xl so welcome hero & KPIs stay above the fold) */}
+                      {showPortrait && (
+                        <div className="flex xl:hidden items-center justify-between gap-3 p-2.5 rounded-2xl bg-gradient-to-l from-emerald-950 via-[#0E241C] to-emerald-900 text-white shadow-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={heroPortraitSrc}
+                              alt="پرتره دانش‌آموخته"
+                              referrerPolicy="no-referrer"
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover object-top border border-emerald-400/40 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1 text-[10px] font-bold text-amber-300">
+                                <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                                <span className="truncate">{crextioConfig.heroPortraitBadgeText || 'عضو رسمی مجمع'}</span>
+                              </div>
+                              <h3 className="text-xs sm:text-sm font-black text-white truncate">
+                                {currentUser?.fullName}
+                              </h3>
+                              <p className="text-[11px] text-emerald-300 font-medium truncate">
+                                {currentUser?.roleTitle}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 text-[10px] font-black">
+                              {isAlumni
+                                ? crextioConfig.heroPortraitRoleLabelAlumni || 'دانش‌آموخته'
+                                : crextioConfig.heroPortraitRoleLabelStaff || 'مسئول خدمات'}
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {crextioConfig.heroPortraitVerifiedText || 'تایید شده'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-stone-600 font-semibold">
                         <span className="text-amber-700 font-extrabold flex items-center gap-1">
                           <Scale className="w-3.5 h-3.5" />
                           {crextioConfig.heroSchemeLabel || 'طرح میزان'}
                         </span>
                         <span>·</span>
-                        <span className="text-emerald-800">
+                        <span className="text-emerald-800 truncate max-w-[200px] sm:max-w-none">
                           {crextioConfig.heroDomainLabel ||
                             (isAlumni ? 'مجمع نخبگان دانش‌آموختگان فقه و قضا' : 'درگاه مدیریت و کارتابل خدمات')}
                         </span>
-                        <span>·</span>
-                        <span>دوره {toPersianNumbers(currentUser?.graduationYear || '۱۳۹۵')}</span>
+                        <span className="hidden sm:inline">·</span>
+                        <span className="hidden sm:inline">دوره {toPersianNumbers(currentUser?.graduationYear || '۱۳۹۵')}</span>
                       </div>
 
                       <div>
                         <h1 className={`${heroTitleSizeClass} text-stone-900 leading-snug tracking-tight`}>
                           {welcomeTitle}
                         </h1>
-                        <p className="text-xs text-stone-600 mt-1.5 leading-relaxed font-medium">
+                        <p className="text-[11px] sm:text-xs text-stone-600 mt-1 sm:mt-1.5 leading-relaxed font-medium line-clamp-2 sm:line-clamp-none">
                           {welcomeSubtitle}
                         </p>
                       </div>
 
                       {rightSlotMode === 'both' && showQuickSlot && (
-                        <div className="pt-1.5 flex flex-wrap items-center gap-2">
+                        <div className="pt-1 flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 sm:flex-wrap sm:overflow-visible">
                           {configuredQuickBtns.map(btn => {
                             const QIcon = getQuickBtnIcon(btn.targetNav);
                             return (
                               <button
                                 key={btn.id}
                                 onClick={() => onNavigateTab?.(btn.targetNav)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-stone-200/90 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-stone-200/90 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                               >
-                                <QIcon className="w-3.5 h-3.5 text-emerald-700" />
+                                <QIcon className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                                 <span>{btn.label}</span>
                               </button>
                             );
@@ -594,12 +633,12 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                     {(isAdmin || showStatsSlot || (rightSlotMode === 'quick_actions' && showQuickSlot)) && (
                       <div className="flex flex-col gap-2 shrink-0">
                         {isAdmin && (
-                          <div className="flex justify-end gap-1.5 flex-wrap">
+                          <div className="flex justify-start sm:justify-end gap-1.5 flex-wrap">
                             {showStatsSlot && (
                               <button
                                 type="button"
                                 onClick={() => setIsHeroStatsModalOpen(true)}
-                                className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
+                                className="px-2.5 py-1.5 min-h-[34px] rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
                               >
                                 <Sliders className="w-3 h-3 text-amber-700" />
                                 <span>مدیریت آمار بنر</span>
@@ -611,7 +650,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                                 setStudioInitialTab('hero_quick');
                                 setIsStudioOpen(true);
                               }}
-                              className="px-2.5 py-1 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-950 border border-emerald-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
+                              className="px-2.5 py-1.5 min-h-[34px] rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-950 border border-emerald-500/30 text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer"
                             >
                               <Palette className="w-3 h-3 text-emerald-700" />
                               <span>آمار / دسترسی سریع</span>
@@ -628,7 +667,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                                   key={btn.id}
                                   type="button"
                                   onClick={() => onNavigateTab?.(btn.targetNav)}
-                                  className="px-3.5 py-2.5 rounded-2xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-[#E7E4D8] shadow-2xs flex items-center gap-2 text-xs font-extrabold transition-all active:scale-95 cursor-pointer"
+                                  className="px-3 py-2.5 min-h-[44px] rounded-2xl bg-white hover:bg-emerald-50 text-stone-800 hover:text-emerald-950 border border-[#E7E4D8] shadow-2xs flex items-center gap-2 text-xs font-extrabold transition-all active:scale-95 cursor-pointer"
                                 >
                                   <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-800 shrink-0">
                                     <QIcon className="w-3.5 h-3.5" />
@@ -642,7 +681,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                           showStatsSlot && (
                             <div
                               className={`grid grid-cols-2 sm:grid-cols-4 ${
-                                heroScale === 'compact' ? 'gap-2' : 'gap-2.5'
+                                heroScale === 'compact' ? 'gap-2' : 'gap-2 sm:gap-2.5'
                               } shrink-0`}
                             >
                               {heroStats.map(stat => {
@@ -652,12 +691,12 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                                     key={stat.id}
                                     glowColor="rgba(245, 158, 11, 0.25)"
                                     className={`bg-white/95 ${
-                                      heroScale === 'compact' ? 'p-2.5' : 'p-3.5'
+                                      heroScale === 'compact' ? 'p-2.5' : 'p-2.5 sm:p-3.5'
                                     } rounded-2xl border border-[#E7E4D8] shadow-2xs flex flex-col items-center justify-center text-center space-y-1 group`}
                                   >
                                     <div
                                       className={`${
-                                        heroScale === 'compact' ? 'p-1.5' : 'p-2'
+                                        heroScale === 'compact' ? 'p-1.5' : 'p-1.5 sm:p-2'
                                       } rounded-xl ${stat.color} mx-auto`}
                                     >
                                       <Icon className="w-3.5 h-3.5" />
@@ -667,7 +706,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                                     </span>
                                     <span
                                       className={`${
-                                        heroScale === 'compact' ? 'text-base' : 'text-xl'
+                                        heroScale === 'compact' ? 'text-base' : 'text-lg sm:text-xl'
                                       } font-black text-stone-900 tracking-tight block tabular-nums`}
                                     >
                                       <AnimatedCounter
@@ -1044,7 +1083,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ duration: 0.25 }}
-      className="w-full space-y-6 text-stone-900 font-sans"
+      className="w-full space-y-4 sm:space-y-6 text-stone-900 font-sans"
     >
       {/* QUICK NOTIFICATION TOAST */}
       <AnimatePresence>
@@ -1053,7 +1092,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-emerald-900 text-white px-6 py-3.5 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center gap-3 text-xs sm:text-sm font-bold"
+            className="fixed top-4 inset-x-3 sm:inset-x-auto sm:top-6 sm:left-1/2 sm:-translate-x-1/2 z-50 bg-emerald-900 text-white px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center gap-3 text-xs sm:text-sm font-bold"
           >
             <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
             <span>{quickServiceSuccess}</span>
@@ -1063,55 +1102,53 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
 
       {/* ADMIN THEME & LAYOUT CUSTOMIZER LAUNCHER BAR */}
       {isAdmin && (
-        <div className="w-full bg-stone-900 text-white rounded-2xl p-3.5 sm:px-5 flex flex-col lg:flex-row items-center justify-between gap-3 border border-stone-800 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+        <div className="w-full bg-stone-900 text-white rounded-2xl p-3 sm:p-3.5 sm:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 border border-stone-800 shadow-sm">
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+            <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
               <Sliders className="w-4 h-4" />
             </span>
-            <div className="text-right">
-              <span className="text-xs sm:text-sm font-bold text-white block">
+            <div className="text-right min-w-0">
+              <span className="text-xs sm:text-sm font-bold text-white block truncate">
                 کنترل چیدمان ویترین‌ها، تغییر سایز و نمای مینیمال
               </span>
-              <span className="text-[11px] text-stone-400">
-                جابه‌جایی با کشیدن و رها کردن (Drag & Drop)، نصف‌عرض کردن ویترین‌ها در یک ردیف یا سوئیچ به تم ۳ مینیمال
+              <span className="hidden sm:block text-[11px] text-stone-400">
+                جابه‌جایی با کشیدن و رها کردن، نصف‌عرض کردن ویترین‌ها در یک ردیف یا شخصی‌سازی کامل صفحه
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
             <button
               type="button"
               onClick={() => {
                 setStudioInitialTab('hero_quick');
                 setIsStudioOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-sm"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-[11px] sm:text-xs font-black transition-all cursor-pointer shadow-sm"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>ویرایشگر کامل صفحه</span>
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">ویرایشگر کامل</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsLayoutEditMode(prev => !prev)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                 isLayoutEditMode
                   ? 'bg-emerald-400 text-stone-950 shadow-md'
                   : 'bg-stone-800 hover:bg-stone-700 text-stone-100 border border-stone-700'
               }`}
             >
-              {isLayoutEditMode ? <Check className="w-3.5 h-3.5" /> : <Move className="w-3.5 h-3.5 text-amber-400" />}
-              <span>{isLayoutEditMode ? 'اتمام ویرایش چیدمان' : 'ویرایش زنده چیدمان (Drag & Drop)'}</span>
+              {isLayoutEditMode ? <Check className="w-3.5 h-3.5 shrink-0" /> : <Move className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+              <span className="truncate">{isLayoutEditMode ? 'اتمام ویرایش' : 'ویرایش چیدمان'}</span>
             </button>
-
-
 
             <button
               type="button"
               onClick={() => setIsCustomizerOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all cursor-pointer"
+              className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-[11px] sm:text-xs font-black transition-all cursor-pointer"
             >
-              <Palette className="w-3.5 h-3.5" />
+              <Palette className="w-3.5 h-3.5 shrink-0" />
               <span>تنظیمات پیشرفته</span>
             </button>
           </div>
@@ -1190,7 +1227,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
       <AlumniIdentityCardModal isOpen={isIdentityCardOpen} onClose={() => setIsIdentityCardOpen(false)} />
 
       {/* DYNAMIC 12-COLUMN DASHBOARD SECTIONS GRID (Includes Movable Status Widget, Events Calendar, Banners & All Showcases) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-stretch">
         {sectionOrder.map((sectionKey, sectionIdx) => {
           const isHidden = hiddenMap[sectionKey] === true;
           if (isHidden && !isLayoutEditMode) return null;

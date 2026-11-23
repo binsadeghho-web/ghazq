@@ -72,25 +72,25 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/70 dark:border-white/10 transition-colors shadow-xs">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-2.5 sm:px-6 lg:px-8">
         {/* Exact 3-Zone Top Bar Contract */}
-        <div className="flex items-center justify-between h-16 gap-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-8">
           
           {/* Zone 1: Single text element wordmark */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white focus:outline-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white focus:outline-none min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
               aria-label="منوی سامانه"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <a href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-800 text-amber-400 flex items-center justify-center font-bold border border-slate-700/60 transition-transform group-active:scale-95">
+            <a href="/" className="flex items-center gap-2 sm:gap-2.5 group min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-800 text-amber-400 flex items-center justify-center font-bold border border-slate-700/60 transition-transform group-active:scale-95 shrink-0">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
+              <span className="text-xs sm:text-base font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap truncate max-w-[140px] sm:max-w-none">
                 سامانه دانش‌آموختگان فقه و قضا
               </span>
             </a>

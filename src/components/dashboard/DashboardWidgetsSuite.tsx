@@ -368,18 +368,18 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
   const renderAdminBar = () => {
     if (!isRealAdmin) return null;
     return (
-      <div className="bg-white/95 border border-stone-200/90 rounded-2xl p-3.5 px-5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+      <div className="bg-white/95 border border-stone-200/90 rounded-2xl p-3 sm:p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-xs">
         <div className="flex items-center gap-2.5">
-          <span className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
             <Settings2 className="w-4 h-4" />
           </span>
-          <div>
-            <h4 className="text-xs font-extrabold text-stone-900">
+          <div className="min-w-0">
+            <h4 className="text-xs font-extrabold text-stone-900 truncate">
               {effectiveAlumniPreview
                 ? 'حالت پیش‌نمایش نمای دانش‌آموخته (فعال)'
-                : 'ابزارهای مدیریت داشبورد، تقویم و بنرهای اطلاع‌رسانی'}
+                : 'ابزارهای مدیریت داشبورد، تقویم و بنرها'}
             </h4>
-            <p className="text-[11px] text-stone-500">
+            <p className="hidden sm:block text-[11px] text-stone-500">
               {effectiveAlumniPreview
                 ? 'در این حالت، تمام دکمه‌های ویرایش ادمین مخفی بوده و داشبورد دقیقاً از دید دانش‌آموخته نمایش داده می‌شود.'
                 : 'کنترل روشن/خاموش بودن ویجت وضعیت و تقویم، ویرایش بنرهای اطلاع‌رسانی و پیش‌نمایش زنده دانش‌آموخته'}
@@ -387,20 +387,20 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleTogglePreview}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer border ${
               effectiveAlumniPreview
                 ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-sm'
                 : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border-stone-300'
             }`}
           >
             {effectiveAlumniPreview ? (
-              <EyeOff className="w-3.5 h-3.5" />
+              <EyeOff className="w-3.5 h-3.5 shrink-0" />
             ) : (
-              <Eye className="w-3.5 h-3.5 text-emerald-700" />
+              <Eye className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
             )}
             <span>
               {effectiveAlumniPreview ? 'خروج از پیش‌نمایش دانش‌آموخته' : 'پیش‌نمایش نمای دانش‌آموخته'}
@@ -411,10 +411,10 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => setIsManagerOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 min-h-[40px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
             >
-              <Megaphone className="w-3.5 h-3.5 text-amber-300" />
-              <span>مدیریت بنرها، تقویم و ویجت‌های داشبورد</span>
+              <Megaphone className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span>مدیریت بنرها، تقویم و ویجت‌ها</span>
             </button>
           )}
         </div>
@@ -460,7 +460,7 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
               {b.actionLabel && b.actionTab && onNavigateTab && (
                 <button
                   onClick={() => onNavigateTab(b.actionTab)}
-                  className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto shrink-0 transition-colors cursor-pointer border border-white/20"
+                  className="px-4 py-2 min-h-[40px] w-full sm:w-auto justify-center rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer border border-white/20"
                 >
                   <span>{b.actionLabel}</span>
                   <ArrowUpLeft className="w-3.5 h-3.5" />
@@ -477,16 +477,16 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
     if (!widgetConfig.showStatusSummaryWidget) return null;
     return (
       <div
-        className={`${fullSpanClass || ''} h-full bg-white/95 rounded-[28px] ${
-          compactHeight ? 'p-3.5 sm:p-4' : 'p-5 sm:p-6'
+        className={`${fullSpanClass || ''} h-full bg-white/95 rounded-2xl sm:rounded-[28px] ${
+          compactHeight ? 'p-3.5 sm:p-4' : 'p-3.5 sm:p-6'
         } border border-[#E3E0D3] shadow-xs flex flex-col justify-between`}
       >
-        <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-stone-200/70 gap-2">
-          <div>
-            <h3 className="text-sm sm:text-base font-extrabold text-stone-900">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-200/70 gap-2">
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-base font-extrabold text-stone-900 truncate">
               {crextioConfig.statusWidgetTitle || 'ویجت خلاصه وضعیت پرونده‌ها و خدمات من'}
             </h3>
-            <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
               {crextioConfig.statusWidgetSubtitle || 'نمای یکپارچه و بلادرنگ فعالیت‌های جاری شما در سامانه'}
             </p>
           </div>
@@ -494,60 +494,60 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => handleToggleWidget('showStatusSummaryWidget')}
-              className="text-[11px] font-bold text-stone-500 hover:text-rose-700 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+              className="text-[10px] sm:text-[11px] font-bold text-stone-500 hover:text-rose-700 px-2.5 py-1.5 min-h-[34px] rounded-lg bg-stone-100 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
             >
               خاموش کردن ویجت
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={() => onNavigateTab?.('People')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group`}
+            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
           >
             <Inbox className="w-5 h-5 text-emerald-700 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-2xl'} font-black text-stone-900`}>
+            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
               {toPersianNumbers(myCartableActive)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5">درخواست کارتابل در جریان</p>
+            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">درخواست کارتابل در جریان</p>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateTab?.('Courses')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group`}
+            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
           >
             <BookOpen className="w-5 h-5 text-amber-600 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-2xl'} font-black text-stone-900`}>
+            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
               {toPersianNumbers(myEnrolledCourses)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5">دوره‌های ثبت‌نام‌شده</p>
+            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">دوره‌های ثبت‌نام‌شده</p>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateTab?.('Counseling')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group`}
+            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
           >
             <HeartHandshake className="w-5 h-5 text-teal-700 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-2xl'} font-black text-stone-900`}>
+            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
               {toPersianNumbers(myCounselingActive)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5">نوبت مشاوره فعال</p>
+            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">نوبت مشاوره فعال</p>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateTab?.('Welfare')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group`}
+            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
           >
             <Gift className="w-5 h-5 text-indigo-700 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-2xl'} font-black text-stone-900`}>
+            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
               {toPersianNumbers(myWelfareActive)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5">پرونده تسهیلات رفاهی</p>
+            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">پرونده تسهیلات رفاهی</p>
           </button>
         </div>
       </div>
@@ -558,18 +558,18 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
     if (!widgetConfig.showEventsCalendarWidget) return null;
     return (
       <div
-        className={`${fullSpanClass || ''} h-full bg-white/95 rounded-[28px] ${
-          compactHeight ? 'p-3.5 sm:p-4' : 'p-5 sm:p-6'
+        className={`${fullSpanClass || ''} h-full bg-white/95 rounded-2xl sm:rounded-[28px] ${
+          compactHeight ? 'p-3.5 sm:p-4' : 'p-3.5 sm:p-6'
         } border border-[#E3E0D3] shadow-xs flex flex-col justify-between`}
       >
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-200/70 gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <Calendar className="w-5 h-5 text-emerald-800 shrink-0" />
-            <div>
-              <h3 className="text-sm sm:text-base font-extrabold text-stone-900">
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-base font-extrabold text-stone-900 truncate">
                 {crextioConfig.eventsCalendarTitle || 'تقویم رویدادها و مهلت‌های مرکز'}
               </h3>
-              <p className="text-[11px] sm:text-xs text-stone-500">
+              <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">
                 {crextioConfig.eventsCalendarSubtitle || 'نشست‌های علمی، کارگاه‌ها و فراخوان‌های پیش‌رو'}
               </p>
             </div>
@@ -578,7 +578,7 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => handleToggleWidget('showEventsCalendarWidget')}
-              className="text-[11px] font-bold text-stone-500 hover:text-rose-700 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+              className="text-[10px] sm:text-[11px] font-bold text-stone-500 hover:text-rose-700 px-2.5 py-1.5 min-h-[34px] rounded-lg bg-stone-100 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
             >
               خاموش کردن تقویم
             </button>
@@ -612,7 +612,7 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
                   <button
                     type="button"
                     onClick={() => handleDeleteEvent(ev.id)}
-                    className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer shrink-0"
+                    className="text-stone-400 hover:text-rose-600 p-1.5 cursor-pointer shrink-0"
                     title="حذف رویداد"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -629,34 +629,34 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
   const renderManagerModal = () => {
     if (!isManagerOpen) return null;
     return (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
         <div
-          className="bg-white rounded-3xl max-w-3xl w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl border border-stone-200 space-y-5"
+          className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-stone-200 space-y-4 sm:space-y-5"
           dir="rtl"
         >
-          <div className="flex items-center justify-between pb-4 border-b border-stone-200">
-            <div>
-              <h3 className="text-lg font-extrabold text-stone-900">
+          <div className="flex items-center justify-between pb-3.5 border-b border-stone-200 gap-2">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-lg font-extrabold text-stone-900 truncate">
                 مدیریت ویجت‌ها، تقویم و بنرهای اطلاع‌رسانی داشبورد
               </h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                ثبت، ویرایش کامل و حذف بنرها و رویدادها با ذخیره در دیتابیس MySQL و قفل OCC
+              <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
+                ثبت، ویرایش کامل و حذف بنرها و رویدادها با ذخیره در دیتابیس
               </p>
             </div>
             <button
               type="button"
               onClick={() => setIsManagerOpen(false)}
-              className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer flex items-center justify-center shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+          <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => setActiveManagerTab('toggles')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 activeManagerTab === 'toggles'
                   ? 'bg-white text-stone-900 shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
@@ -667,7 +667,7 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => setActiveManagerTab('banners')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 activeManagerTab === 'banners'
                   ? 'bg-white text-stone-900 shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
@@ -678,7 +678,7 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => setActiveManagerTab('calendar')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 activeManagerTab === 'calendar'
                   ? 'bg-white text-stone-900 shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'

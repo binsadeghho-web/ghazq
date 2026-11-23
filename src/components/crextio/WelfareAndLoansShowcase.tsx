@@ -220,7 +220,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
   };
 
   return (
-    <div className="w-full relative overflow-hidden rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-5 sm:p-7 text-stone-900 space-y-5">
+    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5">
       {/* Header */}
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-4">
         <div className="flex items-center gap-3">
@@ -238,11 +238,11 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+        <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap w-full md:w-auto">
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
               <span>ویرایش ویترین و تصاویر</span>
@@ -251,7 +251,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
 
           <button
             onClick={onNavigateToWelfare}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
           >
             <span>ورود به سامانه رفاهیات</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -260,7 +260,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       </div>
 
       {/* Welfare Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 sm:overflow-visible sm:pb-0">
         {welfareCards.map(item => {
           const Icon = getIconComponent(item.iconId);
 
@@ -269,7 +269,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
               key={item.id}
               whileHover={{ y: -3 }}
               onClick={onNavigateToWelfare}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${item.bgClass}`}
+              className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${item.bgClass}`}
             >
               <div className="space-y-2.5">
                 {item.imageUrl && (

@@ -396,7 +396,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
     const visibleSlice = showcaseProducts.slice(0, compact ? 4 : 6);
 
     return (
-      <div className={`grid grid-cols-1 ${compact ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 xl:grid-cols-3'} gap-3`}>
+      <div className={`flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid ${compact ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 xl:grid-cols-3'} sm:overflow-visible sm:pb-0`}>
         {visibleSlice.map((prod, idx) => {
           const prodCover = resolveProductCoverUrl(prod.coverImage, prod.format, idx);
           const displayPrice =
@@ -409,7 +409,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
             <div
               key={prod.id}
               onClick={() => setIntroProduct(prod)}
-              className={`group rounded-2xl border p-3 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+              className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink group rounded-2xl border p-3 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
                 !isShown ? 'opacity-65 border-dashed ' : ''
               }${
                 darkSurface
@@ -508,7 +508,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
     <section
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`rounded-3xl border overflow-hidden transition-colors ${
+      className={`rounded-2xl sm:rounded-3xl border overflow-hidden transition-colors ${
         darkSurface
           ? 'bg-[#111F1A] border-[#243B32] text-stone-100'
           : 'bg-white border-stone-200/90 text-stone-900 shadow-sm'
@@ -517,7 +517,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
     >
       {/* Unified Header + Interactive Tab Selector */}
       <div
-        className={`${isMicro ? 'px-3.5 py-2.5 space-y-2' : isCompactScale ? 'px-4 py-3 space-y-2.5' : 'px-5 py-4 space-y-3'} border-b ${
+        className={`${isMicro ? 'px-3.5 py-2.5 space-y-2' : isCompactScale ? 'px-3.5 sm:px-4 py-3 space-y-2.5' : 'px-3.5 sm:px-5 py-3.5 sm:py-4 space-y-3'} border-b ${
           darkSurface ? 'border-white/10 bg-[#14251F]' : 'border-stone-100 bg-stone-50/60'
         }`}
       >
@@ -559,13 +559,13 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 type="button"
                 onClick={() => setPaused(p => !p)}
                 title={paused ? 'پخش خودکار' : 'توقف'}
-                className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
+                className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-300 hover:bg-white/10'
                     : 'border-stone-200 text-stone-600 hover:bg-stone-100'
                 }`}
               >
-                {paused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                {paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
               </button>
             )}
 
@@ -596,7 +596,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 key={item.key}
                 type="button"
                 onClick={() => setSelectedKey(item.key)}
-                className={`relative px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                className={`relative px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer ${
                   isActive
                     ? darkSurface
                       ? 'text-stone-950'
@@ -626,7 +626,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
       {/* Body Stage */}
       {styleMode === 'tabbed_grid' ? (
         <div className="space-y-4">
-          <div className={`${isMicro ? 'p-3 gap-2.5' : isCompactScale ? 'p-4 gap-3' : 'p-5 gap-4'} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3`}>
+          <div className={`${isMicro ? 'p-3 gap-2.5' : isCompactScale ? 'p-3.5 sm:p-4 gap-3' : 'p-3.5 sm:p-5 gap-3 sm:gap-4'} flex overflow-x-auto snap-x snap-mandatory scrollbar-none md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible`}>
             {activeItems.map(item => {
               const Icon = item.icon;
               const thumb = resolveShowcaseImageUrl(item.key, crextioConfig.showcaseImageOverrides);
@@ -634,7 +634,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 <div
                   key={item.key}
                   onClick={() => onNavigateTab?.(item.targetNav)}
-                  className={`group rounded-2xl border overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 ${
+                  className={`min-w-[76vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink group rounded-2xl border overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 ${
                     darkSurface
                       ? 'bg-[#172822] border-white/10 hover:border-emerald-500/40'
                       : 'bg-stone-50/70 border-stone-200 hover:border-emerald-600/40 hover:bg-white'
@@ -734,7 +734,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigateTab?.('Products')}
-                className={`${isMicro ? 'px-3 py-1.5 text-[11px]' : 'px-4 py-2 text-xs'} rounded-xl font-black flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+                className={`${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} w-full sm:w-auto justify-center rounded-xl font-black flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
                   darkSurface
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
                     : 'bg-emerald-900 hover:bg-emerald-950 text-white'
@@ -773,12 +773,12 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                     ? 'h-56'
                     : 'h-44'
                   : isMicro
-                  ? 'lg:col-span-3 h-28 lg:h-auto lg:min-h-[140px]'
+                  ? 'lg:col-span-3 h-24 sm:h-28 lg:h-auto lg:min-h-[140px]'
                   : isCompactScale
-                  ? 'lg:col-span-4 min-h-[175px] lg:min-h-[200px]'
+                  ? 'lg:col-span-4 h-36 sm:min-h-[175px] lg:min-h-[200px]'
                   : scale === 'expanded'
-                  ? 'lg:col-span-5 min-h-[300px] lg:min-h-[350px]'
-                  : 'lg:col-span-5 min-h-[240px] lg:min-h-[290px]'
+                  ? 'lg:col-span-5 h-44 sm:min-h-[300px] lg:min-h-[350px]'
+                  : 'lg:col-span-5 h-40 sm:min-h-[240px] lg:min-h-[290px]'
               } relative overflow-hidden bg-stone-900`}
             >
               {imgUrl && (
@@ -863,7 +863,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
               </div>
 
               <div
-                className={`${isMicro ? 'pt-2' : 'pt-3'} border-t flex flex-wrap items-center justify-between gap-2 ${
+                className={`${isMicro ? 'pt-2' : 'pt-3'} border-t flex flex-wrap items-center justify-between gap-2.5 ${
                   darkSurface ? 'border-white/10' : 'border-stone-100'
                 }`}
               >
@@ -878,7 +878,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigateTab?.(currentItem.targetNav)}
-                  className={`${isMicro ? 'px-3 py-1.5 text-[11px]' : 'px-4 py-2 text-xs'} rounded-xl font-black flex items-center gap-2 transition-all cursor-pointer active:scale-95 ${
+                  className={`${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} w-full sm:w-auto justify-center rounded-xl font-black flex items-center gap-2 transition-all cursor-pointer active:scale-95 ${
                     darkSurface
                       ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
                       : 'bg-emerald-900 hover:bg-emerald-950 text-white'

@@ -148,7 +148,7 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
   return (
     <div className="w-full space-y-4">
       {/* Master Promo Showcase Card */}
-      <div className="relative rounded-[32px] overflow-hidden border border-[#D5E3D8] bg-gradient-to-br from-[#0F261E] via-[#143228] to-[#0A1D16] text-white shadow-xl">
+      <div className="relative rounded-2xl sm:rounded-[32px] overflow-hidden border border-[#D5E3D8] bg-gradient-to-br from-[#0F261E] via-[#143228] to-[#0A1D16] text-white shadow-xl">
         {/* Background Atmosphere Image with Scrim (Configurable Background) */}
         <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
           <img
@@ -168,7 +168,7 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
         <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* Content Structure */}
-        <div className="relative z-10 p-6 sm:p-8 space-y-6">
+        <div className="relative z-10 p-4 sm:p-8 space-y-4 sm:space-y-6">
           {/* Top Banner & Badges */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-2 max-w-2xl">
@@ -194,10 +194,10 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
             </div>
 
             {/* Quick Actions (Admin Configurable Labels & Actions) */}
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0 w-full md:w-auto">
               <button
                 onClick={handlePrimaryBtnClick}
-                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg transition-all active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg transition-all active:scale-95 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-stone-950" />
                 <span>{crextioConfig.researchPromoPrimaryBtnText || 'ثبت فوری پروپوزال و دریافت اسکان'}</span>
@@ -205,7 +205,7 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
 
               <button
                 onClick={handleSecondaryBtnClick}
-                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs backdrop-blur-md transition-all cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs backdrop-blur-md transition-all cursor-pointer"
               >
                 <span>{crextioConfig.researchPromoSecondaryBtnText || 'میز کار راهبری پژوهش'}</span>
                 <ArrowUpRight className="w-4 h-4" />
@@ -214,7 +214,7 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
           </div>
 
           {/* 4 Enticing Opportunity Pillars (100% Configurable by Admin) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2">
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-3.5 sm:overflow-visible sm:pb-0 pt-2">
             {cardsList.map((pillar) => {
               const Icon = getCardIcon(pillar.icon);
               const isClickable = pillar.clickAction && pillar.clickAction !== 'none';
@@ -223,7 +223,7 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
                 <div
                   key={pillar.id}
                   onClick={() => handleCardClick(pillar.clickAction, pillar.actionUrl)}
-                  className={`p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all backdrop-blur-sm space-y-2 group ${
+                  className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink p-3.5 sm:p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all backdrop-blur-sm space-y-2 group ${
                     isClickable ? 'cursor-pointer hover:shadow-lg active:scale-98' : ''
                   }`}
                 >

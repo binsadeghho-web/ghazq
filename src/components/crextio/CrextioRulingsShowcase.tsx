@@ -280,8 +280,8 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative rounded-[32px] overflow-hidden border border-[#E5E0D0] bg-[#FCFBF8] shadow-md">
-        <div className="relative z-10 px-6 py-5 border-b border-[#ECE7DA] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-amber-50/60 via-white/80 to-emerald-50/40 backdrop-blur-md">
+      <div className="relative rounded-2xl sm:rounded-[32px] overflow-hidden border border-[#E5E0D0] bg-[#FCFBF8] shadow-md">
+        <div className="relative z-10 px-4 py-3.5 sm:px-6 sm:py-5 border-b border-[#ECE7DA] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-gradient-to-r from-amber-50/60 via-white/80 to-emerald-50/40 backdrop-blur-md">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center shadow-xs">
@@ -305,12 +305,12 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl sm:rounded-2xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-all cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5 text-amber-700" />
                 <span>ویرایش و تنظیم ویترین آراء</span>
@@ -320,7 +320,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
             <button
               type="button"
               onClick={onNavigateToRulings}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer"
+              className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer"
             >
               <span>{crextioConfig.rulingsPrimaryBtnText || 'ورود به تالار جامع آراء'}</span>
               <ArrowUpRight className="w-4 h-4" />
@@ -336,7 +336,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           /* -------------------- MODE 1: SUMMARY CAROUSEL -------------------- */
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white/95">
             {coverImage && (
-              <div className="lg:col-span-4 relative min-h-[210px] overflow-hidden bg-stone-900">
+              <div className="lg:col-span-4 relative min-h-[175px] sm:min-h-[210px] overflow-hidden bg-stone-900">
                 <img
                   src={coverImage}
                   alt={currentCarouselRuling.title}
@@ -344,7 +344,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-                <div className="absolute bottom-4 right-4 left-4 text-white space-y-1">
+                <div className="absolute bottom-3.5 sm:bottom-4 right-4 left-4 text-white space-y-1">
                   <span className="text-[11px] font-bold text-amber-300 block">
                     {currentCarouselRuling.caseTypeTitle} · {currentCarouselRuling.rulingDate}
                   </span>
@@ -361,7 +361,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
             <div
               className={`${
                 coverImage ? 'lg:col-span-8' : 'lg:col-span-12'
-              } p-5 sm:p-6 flex flex-col justify-between gap-4`}
+              } p-4 sm:p-6 flex flex-col justify-between gap-4`}
             >
               <AnimatePresence mode="wait">
                 <motion.div
@@ -427,7 +427,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsPaused(p => !p)}
-                      className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-100 cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-100 cursor-pointer"
                       title={isPaused ? 'ادامه پخش خودکار' : 'توقف'}
                     >
                       {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -437,14 +437,14 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                       onClick={() =>
                         setCarouselIdx(p => (p - 1 + showcaseRulings.length) % showcaseRulings.length)
                       }
-                      className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setCarouselIdx(p => (p + 1) % showcaseRulings.length)}
-                      className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                     </button>
@@ -455,12 +455,12 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           </div>
         ) : isCompact ? (
           /* -------------------- MODE 2: COMPACT GRID -------------------- */
-          <div className="relative z-10 p-5 sm:p-6 bg-white/95">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="relative z-10 p-3.5 sm:p-6 bg-white/95">
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
               {showcaseRulings.map(ruling => (
                 <div
                   key={ruling.id}
-                  className="p-4 rounded-2xl bg-[#FBF9F4] hover:bg-amber-50/50 border border-stone-200/90 hover:border-amber-300 transition-all flex flex-col justify-between space-y-3 group shadow-2xs"
+                  className="min-w-[78vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink p-4 rounded-2xl bg-[#FBF9F4] hover:bg-amber-50/50 border border-stone-200/90 hover:border-amber-300 transition-all flex flex-col justify-between space-y-3 group shadow-2xs"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] text-stone-500">
@@ -501,7 +501,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           /* -------------------- MODE 3: EXPANDED SPLIT STAGE -------------------- */
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-0">
             {/* Left List */}
-            <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-l border-[#ECE7DA] p-4 sm:p-5 space-y-3 bg-[#FAF8F2]/60">
+            <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-l border-[#ECE7DA] p-3.5 sm:p-5 space-y-2.5 sm:space-y-3 bg-[#FAF8F2]/60">
               <div className="flex items-center justify-between pb-1">
                 <span className="text-xs font-black text-stone-700">
                   {crextioConfig.rulingsShowcaseSectionTitle || 'دادنامه‌های داغ و برگزیده'}
@@ -509,7 +509,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                 <span className="text-[10px] text-stone-500 font-semibold">برای مطالعه کلیک کنید</span>
               </div>
 
-              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-[240px] lg:max-h-[460px] overflow-y-auto pr-1">
                 {showcaseRulings.map(ruling => {
                   const isSelected = currentActive?.id === ruling.id;
                   return (
@@ -551,8 +551,8 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
 
             {/* Right Active Reader Stage */}
             {currentActive && (
-              <div className="lg:col-span-7 p-5 sm:p-6 flex flex-col justify-between space-y-4 bg-white/90">
-                <div className="space-y-4">
+              <div className="lg:col-span-7 p-4 sm:p-6 flex flex-col justify-between space-y-4 bg-white/90">
+                <div className="space-y-3.5 sm:space-y-4">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-stone-600">
                       <span>مرجع: <strong>{currentActive.courtBranch || '—'}</strong></span>
@@ -584,13 +584,13 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                     <>
                       {/* Configurable Tabs (Reform 16) */}
                       {visibleTabs.length > 1 && (
-                        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl border border-stone-200/80">
+                        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl border border-stone-200/80 overflow-x-auto scrollbar-none">
                           {visibleTabs.map(tKey => (
                             <button
                               key={tKey}
                               type="button"
                               onClick={() => setActiveTab(tKey)}
-                              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
+                              className={`flex-1 min-h-[36px] py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
                                 activeTab === tKey
                                   ? 'bg-white text-stone-900 shadow-2xs'
                                   : 'text-stone-600 hover:text-stone-900'

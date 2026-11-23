@@ -116,10 +116,10 @@ export const MinimalShowcaseCard: React.FC<MinimalShowcaseCardProps> = ({
     scale === 'micro'
       ? 'p-3 gap-2'
       : scale === 'compact'
-      ? 'p-4 gap-3'
+      ? 'p-3.5 sm:p-4 gap-2.5 sm:gap-3'
       : scale === 'expanded'
-      ? 'p-6 gap-5'
-      : 'p-5 gap-4';
+      ? 'p-4 sm:p-6 gap-3.5 sm:gap-5'
+      : 'p-3.5 sm:p-5 gap-3 sm:gap-4';
   const imgHeightClass =
     scale === 'micro'
       ? 'h-24'
@@ -272,15 +272,15 @@ export const MinimalShowcaseCard: React.FC<MinimalShowcaseCardProps> = ({
             <span />
           )}
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
             {actions.map((act, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={act.onClick}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   act.primary
-                    ? tone.primaryBtn
+                    ? `${tone.primaryBtn} flex-1 sm:flex-initial`
                     : darkSurface
                     ? 'bg-white/10 hover:bg-white/15 text-stone-100 border border-white/15'
                     : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/80'

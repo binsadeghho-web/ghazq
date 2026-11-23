@@ -230,7 +230,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
     <div
       onMouseEnter={handleUserInteraction}
       onClick={handleUserInteraction}
-      className="w-full relative overflow-hidden rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-5 sm:p-7 text-stone-900 space-y-5"
+      className="w-full relative overflow-hidden rounded-2xl sm:rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5"
     >
       {/* Header and Toggle */}
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-4">
@@ -259,45 +259,45 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
         </div>
 
         {/* Tab switchers & Admin edit button */}
-        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+        <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="flex items-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-700" />
               <span>ویرایش ۱۰۰٪ محتوای مشاوره</span>
             </button>
           )}
 
-          <div className="flex items-center bg-stone-100 p-1 rounded-2xl border border-stone-200">
+          <div className="grid grid-cols-2 sm:flex items-center w-full sm:w-auto bg-stone-100 p-1 rounded-2xl border border-stone-200">
             <button
               onClick={() => {
                 setActiveTab('general');
                 handleUserInteraction();
               }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`min-h-[40px] sm:min-h-0 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                 activeTab === 'general'
                   ? 'bg-rose-700 text-white shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <HeartHandshake className="w-3.5 h-3.5" />
-              <span>مشاوره عمومی و خانواده</span>
+              <HeartHandshake className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">عمومی و خانواده</span>
             </button>
             <button
               onClick={() => {
                 setActiveTab('specialized');
                 handleUserInteraction();
               }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`min-h-[40px] sm:min-h-0 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
                 activeTab === 'specialized'
                   ? 'bg-amber-600 text-white shadow-xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Compass className="w-3.5 h-3.5" />
-              <span>مشاوره تخصصی شغلی و تحصیلی</span>
+              <Compass className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">تخصصی شغلی و تحصیلی</span>
             </button>
           </div>
         </div>
@@ -352,7 +352,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 </div>
                 <button
                   onClick={onNavigateToSpecialized}
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>رزرو مشاوره تخصصی شغلی و تحصیلی</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -440,7 +440,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 </div>
                 <button
                   onClick={onNavigateToGeneral}
-                  className="px-5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>رزرو مشاوره عمومی و فردی</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />

@@ -11,7 +11,7 @@ import { CounselingSection } from './components/counseling/CounselingSection';
 import { UserManagementModule } from './components/admin/UserManagementModule';
 import { FinanceSection } from './components/finance/FinanceSection';
 import { CrextioSubViews } from './components/crextio/CrextioSubViews';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight, X, LayoutGrid } from 'lucide-react';
 import { ModuleFallback } from './components/common/ModuleFallback';
 import { ConcurrentConflictModal } from './components/common/ConcurrentConflictModal';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -92,7 +92,7 @@ const MainLayout: React.FC = () => {
       </div>
 
       {/* Top 3-Zone Navbar */}
-      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-[1600px] mx-auto px-2.5 sm:px-6 lg:px-8">
         <Navbar
           onOpenLogin={() => setLoginModalOpen(true)}
           onOpenSessions={() => setSessionModalOpen(true)}
@@ -107,7 +107,7 @@ const MainLayout: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 pb-20 lg:pb-6">
+      <div className="relative z-10 flex-1 flex max-w-[1600px] w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-3.5 sm:py-6 gap-6 pb-24 lg:pb-6">
         <main
           className="flex-1 min-w-0 transition-all duration-300"
         >
@@ -128,7 +128,7 @@ const MainLayout: React.FC = () => {
                   وقتی داخل هر یک از بخش‌های مختلف می‌رویم:
                   ظاهر بخش‌ها مطابق درخواست کاربر دقیقاً به فرمت تم ۲ (Crextio luxury emerald & ivory) درمی‌آید
                 */
-                <div className="rounded-[40px] bg-[#FCFCF9]/95 dark:bg-[#182622]/95 border border-[#E3E0D3] dark:border-[#2A423B] p-6 sm:p-8 lg:p-10 shadow-2xl text-stone-900 dark:text-stone-100 min-h-[700px] transition-all duration-500">
+                <div className="rounded-2xl sm:rounded-[40px] bg-[#FCFCF9]/95 dark:bg-[#182622]/95 border border-[#E3E0D3] dark:border-[#2A423B] p-3.5 sm:p-8 lg:p-10 shadow-2xl text-stone-900 dark:text-stone-100 min-h-[60vh] sm:min-h-[700px] transition-all duration-500">
                   {/* Top Bar Indicator for Sub-sections */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-stone-200/80 dark:border-[#2A423B]">
                     <div className="flex items-center gap-2.5">
@@ -187,6 +187,66 @@ const MainLayout: React.FC = () => {
         </main>
       </div>
 
+      {/* Mobile Sections Sheet for Theme 1 */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 360, damping: 32 }}
+              className="relative z-10 bg-white dark:bg-slate-900 rounded-t-3xl border-t border-slate-200 dark:border-slate-800 max-h-[82vh] flex flex-col overflow-hidden safe-area-bottom"
+            >
+              <div className="flex flex-col items-center pt-2.5 pb-2 px-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700 mb-2" />
+                <div className="w-full flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <LayoutGrid className="w-4 h-4 text-emerald-600" />
+                    <span>دسترسی سریع به بخش‌های سامانه</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-3.5 grid grid-cols-2 gap-2.5 overflow-y-auto">
+                {(Object.keys(tabTitles) as NavTabId[])
+                  .filter(t => !isRegularEndUser || (t !== 'alumni' && t !== 'users' && t !== 'finance' && t !== 'admin'))
+                  .map(tabKey => (
+                    <button
+                      key={tabKey}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tabKey);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`p-3 rounded-2xl border text-right text-xs font-bold transition-all min-h-[52px] flex flex-col justify-center cursor-pointer ${
+                        activeTab === tabKey
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-900 dark:text-emerald-200'
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      <span className="line-clamp-2 leading-snug">{tabTitles[tabKey]}</span>
+                    </button>
+                  ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Ergonomic Bottom Navigation Bar */}
       <MobileBottomNav
         activeTab={activeTab}
@@ -200,15 +260,15 @@ const MainLayout: React.FC = () => {
         onClose={() => setLoginModalOpen(false)}
       />
 
-      {/* Floating Theme Switcher Capsule (For Organizational Staff / Admin / Alumni Manager on Theme 1) */}
+      {/* Floating Theme Switcher Capsule (Offset cleanly above bottom mobile tab bar) */}
       {currentUser && isOrganizationalRole(currentUser.role) && !isReadOnlyObserverRole(currentUser.role) && (
-        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-1.5 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
-          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-slate-900 shadow-sm">
+        <div className="fixed bottom-20 lg:bottom-6 left-3 sm:left-6 z-40 flex items-center gap-1.5 bg-[#1A2621]/95 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
+          <span className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold bg-amber-500 text-slate-900 shadow-sm">
             تم ۱: پرتال
           </span>
           <button
             onClick={() => setDesignTheme('crextio')}
-            className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer text-slate-300 hover:text-white"
+            className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-slate-300 hover:text-white"
           >
             تم ۲: کرکستیو
           </button>

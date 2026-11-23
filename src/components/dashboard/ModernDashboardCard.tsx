@@ -158,7 +158,7 @@ export const ModernDashboardCard: React.FC<ModernDashboardCardProps> = ({
         }
       }}
       className={`
-        glass-card group relative p-6 rounded-2xl text-right cursor-pointer select-none
+        glass-card group relative p-4 sm:p-6 rounded-2xl text-right cursor-pointer select-none
         border border-slate-200/90 dark:border-white/10
         bg-gradient-to-br ${colors.gradientBg}
       `}

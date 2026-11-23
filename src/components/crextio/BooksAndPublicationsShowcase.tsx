@@ -134,7 +134,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
     : null;
 
   return (
-    <div className="w-full relative overflow-hidden rounded-[28px] bg-[#FCFCFA] border border-stone-200/90 shadow-xs p-5 sm:p-7 text-stone-900 space-y-5">
+    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[28px] bg-[#FCFCFA] border border-stone-200/90 shadow-xs p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5">
       {isAdmin && !productsStoreConfig.isStoreEnabled && (
         <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
           بخش «کتاب و محصولات چند رسانه‌ای» برای کاربران غیرفعال است؛ این ویترین صرفاً در نمای مدیر نمایش داده می‌شود.
@@ -153,13 +153,13 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           {/* Dynamic Category Switcher */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold overflow-x-auto scrollbar-none w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setActiveCatFilter('all')}
-              className={`px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
+              className={`min-h-[34px] px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
                 activeCatFilter === 'all' ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
               }`}
             >
@@ -170,7 +170,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveCatFilter(cat.id)}
-                className={`px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
+                className={`min-h-[34px] px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
                   activeCatFilter === cat.id ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
                 }`}
               >
@@ -183,7 +183,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
             <button
               type="button"
               onClick={() => setIsSettingsModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-600" />
               <span>عنوان ویترین</span>
@@ -193,7 +193,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
           <button
             type="button"
             onClick={onNavigateToProducts}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-2xs cursor-pointer"
           >
             <span>{ctaLabel}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -207,7 +207,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
           هیچ محصول فعالی در این دسته‌بندی برای نمایش در ویترین وجود ندارد.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 sm:overflow-visible sm:pb-0">
           {displayedProducts.slice(0, 8).map((prod, idx) => {
             const coverUrl = resolveProductCoverUrl(prod.coverImage, prod.format, idx);
             const displayPrice =
@@ -222,7 +222,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                 key={prod.id}
                 whileHover={{ y: -3 }}
                 onClick={() => setIntroProduct(prod)}
-                className={`group p-3.5 rounded-2xl bg-white border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${
+                className={`min-w-[70vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3 sm:p-3.5 rounded-2xl bg-white border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${
                   !isShown ? 'border-dashed border-stone-300 opacity-70' : 'border-stone-200/90 hover:border-purple-300'
                 }`}
               >

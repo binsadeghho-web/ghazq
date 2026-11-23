@@ -33,34 +33,34 @@ export const AlumniProfileCompletionWidget: React.FC<AlumniProfileCompletionWidg
 
   return (
     <div
-      className={`rounded-[28px] border transition-all shadow-sm overflow-hidden ${
+      className={`rounded-2xl sm:rounded-[28px] border transition-all shadow-sm overflow-hidden ${
         darkSurface
           ? 'bg-[#11201B]/95 border-[#223B31] text-stone-100'
           : 'bg-white/95 border-[#E3E0D3] text-stone-900'
-      } ${compact ? 'p-4' : 'p-5 sm:p-6'}`}
+      } ${compact ? 'p-3.5 sm:p-4' : 'p-3.5 sm:p-6'}`}
       dir="rtl"
     >
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 sm:gap-4">
         {/* Right: Icon, Title, Center Code & Completion Status */}
-        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+        <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 min-w-0">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-xs border ${
+            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-xs border ${
               isComplete
                 ? 'bg-emerald-700 text-white border-emerald-600'
                 : 'bg-gradient-to-br from-emerald-800 to-teal-900 text-amber-300 border-emerald-700/40'
             }`}
           >
-            <IdCard className="w-6 h-6" />
+            <IdCard className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
 
-          <div className="space-y-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm sm:text-base font-black tracking-tight">
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h3 className="text-xs sm:text-base font-black tracking-tight">
                 کارت اطلاعات هویتی من
               </h3>
 
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border inline-flex items-center gap-1 ${
+                className={`px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black border inline-flex items-center gap-1 ${
                   currentUser.centerCode
                     ? darkSurface
                       ? 'bg-amber-500/20 text-amber-300 border-amber-400/30'
@@ -80,19 +80,19 @@ export const AlumniProfileCompletionWidget: React.FC<AlumniProfileCompletionWidg
               </span>
 
               {canSelfComplete ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 inline-flex items-center gap-1">
+                <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 items-center gap-1">
                   <Sparkles className="w-3 h-3" />
                   <span>ویرایش و تکمیل اطلاعات فعال است</span>
                 </span>
               ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 inline-flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 inline-flex items-center gap-1">
                   <Lock className="w-3 h-3" />
-                  <span>قفل ویرایش توسط مدیر مرکز</span>
+                  <span>قفل ویرایش</span>
                 </span>
               )}
             </div>
 
-            <p className={`text-xs leading-relaxed ${darkSurface ? 'text-stone-300' : 'text-stone-500'}`}>
+            <p className={`text-[11px] sm:text-xs leading-relaxed line-clamp-2 sm:line-clamp-none ${darkSurface ? 'text-stone-300' : 'text-stone-500'}`}>
               {report.missingLabels.length === 0 ? (
                 <span className="text-emerald-600 font-bold">
                   پرونده الکترونیک ۴ سربرگه شما به طور کامل تکمیل و در پایگاه داده ثبت شده است.
@@ -113,8 +113,8 @@ export const AlumniProfileCompletionWidget: React.FC<AlumniProfileCompletionWidg
         </div>
 
         {/* Center: Progress Bar & Percentage Widget */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0">
-          <div className="min-w-[200px] sm:w-56 space-y-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 shrink-0">
+          <div className="w-full sm:min-w-[200px] sm:w-56 space-y-1.5">
             <div className="flex items-center justify-between text-xs font-extrabold">
               <span className={darkSurface ? 'text-stone-300' : 'text-stone-600'}>
                 درصد تکمیل اطلاعات هویتی
@@ -169,7 +169,7 @@ export const AlumniProfileCompletionWidget: React.FC<AlumniProfileCompletionWidg
           <button
             type="button"
             onClick={onOpenIdentityCard}
-            className="px-4 py-2.5 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-extrabold shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+            className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-extrabold shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
           >
             <IdCard className="w-4 h-4 text-amber-300" />
             <span>{canSelfComplete ? 'مشاهده و تکمیل کارت هویتی من' : 'مشاهده کارت اطلاعات هویتی من'}</span>

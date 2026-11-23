@@ -331,11 +331,11 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
             </div>
 
             {workshopsDisplayMode === 'both' ? (
-              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-stone-100/90 dark:bg-slate-800/80 text-[11px] font-bold shrink-0">
+              <div className="grid grid-cols-2 sm:inline-flex w-full sm:w-auto items-center gap-1 p-1 rounded-xl bg-stone-100/90 dark:bg-slate-800/80 text-[11px] font-bold shrink-0">
                 <button
                   type="button"
                   onClick={() => setWorkshopTab('upcoming')}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`min-h-[38px] sm:min-h-0 px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap text-center ${
                     effectiveWorkshopTab === 'upcoming'
                       ? 'bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-300 shadow-2xs font-black'
                       : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
@@ -346,7 +346,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                 <button
                   type="button"
                   onClick={() => setWorkshopTab('archive')}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`min-h-[38px] sm:min-h-0 px-2.5 sm:px-3 py-1.5 sm:py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap text-center ${
                     effectiveWorkshopTab === 'archive'
                       ? 'bg-white dark:bg-slate-900 text-indigo-900 dark:text-indigo-300 shadow-2xs font-black'
                       : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
@@ -583,10 +583,10 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                 onClick={() =>
                   setConsultantIdx(i => (i - 1 + featuredConsultants.length) % featuredConsultants.length)
                 }
-                className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
+                className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
                 title="مشاور قبلی"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               </button>
               <span className="text-[11px] font-bold text-stone-500 tabular-nums px-1">
                 {toPersianNumbers((consultantIdx % featuredConsultants.length) + 1)}/{toPersianNumbers(featuredConsultants.length)}
@@ -594,10 +594,10 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               <button
                 type="button"
                 onClick={() => setConsultantIdx(i => (i + 1) % featuredConsultants.length)}
-                className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
+                className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
                 title="مشاور بعدی"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               </button>
             </div>
           )}
@@ -675,14 +675,14 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`relative w-full rounded-[28px] bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-stone-200/75 dark:border-slate-800 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.14)] overflow-hidden text-stone-900 dark:text-slate-100 ${
+      className={`relative w-full rounded-2xl sm:rounded-[28px] bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-stone-200/75 dark:border-slate-800 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.14)] overflow-hidden text-stone-900 dark:text-slate-100 ${
         isMicro
-          ? 'p-3.5 sm:p-4 space-y-3'
+          ? 'p-3 sm:p-4 space-y-3'
           : isCompact
-          ? 'p-4 sm:p-5 space-y-3.5'
+          ? 'p-3.5 sm:p-5 space-y-3 sm:space-y-3.5'
           : isExpanded
-          ? 'p-6 sm:p-8 space-y-6'
-          : 'p-5 sm:p-6 space-y-5'
+          ? 'p-4 sm:p-8 space-y-4 sm:space-y-6'
+          : 'p-3.5 sm:p-6 space-y-4 sm:space-y-5'
       }`}
       dir="rtl"
     >
@@ -723,7 +723,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
         </div>
 
         {/* Interactive Toolbar Actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full md:w-auto">
           {canEditShowcase && (
             <>
               <button
@@ -750,7 +750,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
           <button
             type="button"
             onClick={onNavigateToGeneral}
-            className={`inline-flex items-center gap-1.5 ${isMicro ? 'px-3 py-1.5 text-[11px]' : 'px-4 py-2 text-xs'} rounded-xl bg-stone-900 hover:bg-black dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0`}
+            className={`flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 ${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} rounded-xl bg-stone-900 hover:bg-black dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0`}
           >
             <span>میز خدمات مشاوره</span>
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -790,7 +790,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
           {/* Interactive Segmented Pillar Navigation & Playback Controls */}
           {enabledPillars.length > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-stone-100/90 dark:bg-slate-800/80 overflow-x-auto max-w-full">
+              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-stone-100/90 dark:bg-slate-800/80 overflow-x-auto scrollbar-none max-w-full">
                 {enabledPillars.map((pillar, idx) => {
                   const meta = PILLAR_META[pillar];
                   const Icon = meta.icon;
@@ -800,7 +800,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                       key={pillar}
                       type="button"
                       onClick={() => setActivePillarIdx(idx)}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                      className={`min-h-[36px] px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         isActive
                           ? 'bg-white dark:bg-slate-900 text-stone-900 dark:text-white shadow-2xs font-black'
                           : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
@@ -817,7 +817,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                 <button
                   type="button"
                   onClick={() => setManualPaused(p => !p)}
-                  className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
+                  className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
                   title={manualPaused ? 'ادامه پخش زمان‌بندی‌شده' : 'توقف موقت چرخش'}
                 >
                   {manualPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -827,27 +827,27 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                   onClick={() =>
                     setActivePillarIdx(prev => (prev - 1 + enabledPillars.length) % enabledPillars.length)
                   }
-                  className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
+                  className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
                   title="بخش قبلی"
                 >
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setActivePillarIdx(prev => (prev + 1) % enabledPillars.length)}
-                  className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
+                  className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-600 dark:text-slate-300 cursor-pointer"
                   title="بخش بعدی"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                 </button>
               </div>
             </div>
           )}
 
           {/* Balanced Editorial Split: Optional Showcase Image + Animated Active Pillar Stage */}
-          <div className={`grid grid-cols-1 ${showCoverPanel ? 'lg:grid-cols-12' : ''} gap-5 items-stretch`}>
+          <div className={`grid grid-cols-1 ${showCoverPanel ? 'lg:grid-cols-12' : ''} gap-4 sm:gap-5 items-stretch`}>
             {showCoverPanel && (
-              <div className={`lg:col-span-4 relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 ${isCompact ? 'min-h-[180px]' : isExpanded ? 'min-h-[290px]' : 'min-h-[235px]'}`}>
+              <div className={`lg:col-span-4 relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 ${isCompact ? 'min-h-[155px] sm:min-h-[180px]' : isExpanded ? 'min-h-[200px] sm:min-h-[290px]' : 'min-h-[175px] sm:min-h-[235px]'}`}>
                 {!coverImgFailed ? (
                   <img
                     src={coverImageUrl}

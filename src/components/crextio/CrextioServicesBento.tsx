@@ -73,7 +73,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
   return (
     <div className="space-y-4">
       {/* هدر بخش همراه با نشان رسمی میزان و دکمه مدیریت چیدمان کارت‌ها */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/95 border border-stone-200/90 p-4 sm:p-5 rounded-3xl shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/95 border border-stone-200/90 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-stone-950 flex items-center justify-center shadow-xs shrink-0 border border-amber-300">
             <Scale className="w-5 h-5 stroke-[2.3]" />
@@ -114,7 +114,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
       </div>
 
       {/* شبکه بنتو گرید با چیدمان و اندازه‌های شخصی‌سازی‌شده */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {sortedCards.map(card => {
           const Icon = ICON_MAP[card.id] || Sparkles;
           const sizeClass = SIZE_CLASS_MAP[card.size] || 'col-span-1 row-span-1';
@@ -132,7 +132,8 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
               onMouseLeave={() => setHoveredTile(null)}
               onClick={() => onNavigateTab(card.id)}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              className={`relative group cursor-pointer rounded-3xl bg-white/95 border border-stone-200/90 p-5 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden ${sizeClass} hover:border-emerald-300 hover:bg-emerald-50/20`}
+              whileTap={{ scale: 0.98 }}
+              className={`relative group cursor-pointer rounded-2xl sm:rounded-3xl bg-white/95 border border-stone-200/90 p-3 sm:p-5 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden ${sizeClass} hover:border-emerald-300 hover:bg-emerald-50/20`}
             >
               {/* هاله نور تعاملی پشت کارت */}
               <div
@@ -148,22 +149,22 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
                 style={{ backgroundColor: accentColor }}
               />
 
-              <div className="relative z-10 space-y-3">
+              <div className="relative z-10 space-y-2 sm:space-y-3">
                 {/* ردیف آیکون و برچسب وضعیت */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1.5">
                   <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-2xs transition-transform group-hover:scale-105"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xs transition-transform group-hover:scale-105 shrink-0"
                     style={{
                       backgroundColor: `${accentColor}15`,
                       color: accentColor,
                       border: `1px solid ${accentColor}30`
                     }}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
 
                   <span
-                    className="text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur-md"
+                    className="hidden sm:inline-block text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur-md truncate max-w-[140px]"
                     style={{
                       backgroundColor: `${accentColor}10`,
                       color: accentColor,
@@ -176,17 +177,17 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
 
                 {/* عنوان و توضیحات ویرایش‌شده */}
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-stone-900 group-hover:text-emerald-900 transition-colors leading-snug">
+                  <h3 className="text-[13px] sm:text-base font-black text-stone-900 group-hover:text-emerald-900 transition-colors leading-snug line-clamp-1 sm:line-clamp-none">
                     {card.title}
                   </h3>
-                  <p className="text-xs text-stone-500 mt-1 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-stone-500 mt-1 line-clamp-1 sm:line-clamp-2 leading-relaxed">
                     {card.subtext}
                   </p>
                 </div>
 
                 {/* فهرست زیرخدمات ویرایش‌شده */}
                 {card.subServices && card.subServices.length > 0 && (
-                  <div className="pt-2 border-t border-stone-200/70 space-y-1.5">
+                  <div className="hidden md:block pt-2 border-t border-stone-200/70 space-y-1.5">
                     <div className="text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-700" />
                       <span>زیرخدمات و امکانات:</span>
@@ -210,7 +211,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
               </div>
 
               {/* فوتر اقدام کارت */}
-              <div className="relative z-10 pt-4 mt-3 border-t border-stone-200/70 flex items-center justify-between text-xs font-bold">
+              <div className="relative z-10 pt-2.5 sm:pt-4 mt-2 sm:mt-3 border-t border-stone-200/70 flex items-center justify-between text-[11px] sm:text-xs font-bold">
                 <span
                   className="flex items-center gap-1 group-hover:underline"
                   style={{ color: accentColor }}
@@ -219,7 +220,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
                   <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
                 </span>
 
-                <span className="text-[10px] font-mono text-stone-400 flex items-center gap-1">
+                <span className="hidden sm:flex text-[10px] font-mono text-stone-400 items-center gap-1">
                   <span>{crextioConfig.bentoCardSchemeText || 'طرح میزان'}</span>
                   <Sparkles className="w-3 h-3 text-amber-500" />
                 </span>
