@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Course } from '../../../types';
+import { Course, CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import {
   ShieldAlert,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 interface CourseDeleteConfirmModalProps {
+  mode?: CourseScope;
   course: Course | null;
   deleteSmsNotice: string | null;
   onClose: () => void;
@@ -19,6 +20,7 @@ interface CourseDeleteConfirmModalProps {
 }
 
 export const CourseDeleteConfirmModal: React.FC<CourseDeleteConfirmModalProps> = ({
+  mode,
   course,
   deleteSmsNotice,
   onClose,
@@ -30,6 +32,7 @@ export const CourseDeleteConfirmModal: React.FC<CourseDeleteConfirmModalProps> =
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!course) return null;
+  const unitNoun = (mode || course.courseScope) === 'counseling_workshop' ? 'کارگاه' : 'دوره';
 
   const handleConfirm = async () => {
     try {
@@ -57,7 +60,7 @@ export const CourseDeleteConfirmModal: React.FC<CourseDeleteConfirmModalProps> =
           <div className="flex items-center justify-between pb-3 border-b border-rose-500/20">
             <h3 className="text-sm font-black text-rose-600 dark:text-rose-400 flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-rose-500" />
-              <span>تایید امنیتی حذف منطقی دوره (Safe Delete)</span>
+              <span>تایید امنیتی حذف منطقی {unitNoun} (Safe Delete)</span>
             </h3>
             <button
               onClick={onClose}

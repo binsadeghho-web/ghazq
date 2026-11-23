@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Course, CourseEnrollment, User } from '../../../types';
+import { Course, CourseEnrollment, CourseScope, User } from '../../../types';
 import { api } from '../../../services/apiClient';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { PrivateFileViewerModal } from './PrivateFileViewerModal';
@@ -27,6 +27,8 @@ interface CourseAttendanceWaitlistCertModalProps {
   currentUser: User | null;
   enrollments: CourseEnrollment[];
   isOfficial: boolean;
+  hideNationalId?: boolean;
+  mode?: CourseScope;
   onClose: () => void;
 }
 
@@ -35,8 +37,11 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
   currentUser,
   enrollments,
   isOfficial,
+  hideNationalId = false,
+  mode,
   onClose,
 }) => {
+  const unitNoun = (mode || course?.courseScope) === 'counseling_workshop' ? 'کارگاه' : 'دوره';
   const [activeTab, setActiveTab] = useState<'attendance' | 'waitlist' | 'certificates'>('attendance');
   const [sessionsCount, setSessionsCount] = useState<number>(Number((course as any)?.sessionsCount) || 5);
   const [waitlistEnabled, setWaitlistEnabled] = useState<boolean>(
@@ -193,7 +198,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
       await api.issueCourseCertificate(course.id, {
         userId: participant.userId,
         userName: participant.userName,
-        userNationalId: participant.nationalId || '',
+        userNationalId: hideNationalId ? '' : (participant.nationalId || ''),
         courseTitle: course.title,
         instructorName: course.instructor,
         hours: course.hours,
@@ -204,8 +209,8 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
       await loadCourseOpsData();
       showToast(
         uploadedFile
-          ? `فایل گواهینامه در پوشه اختصاصی دوره (course_${course.id}) برای «${participant.userName}» ذخیره و صادر شد.`
-          : `گواهینامه رسمی دوره برای «${participant.userName}» صادر گردید.`
+          ? `فایل گواهینامه در پوشه اختصاصی ${unitNoun} (course_${course.id}) برای «${participant.userName}» ذخیره و صادر شد.`
+          : `گواهینامه رسمی ${unitNoun} برای «${participant.userName}» صادر گردید.`
       );
     } catch (err: any) {
       showToast(`خطا در صدور/بارگذاری گواهینامه: ${err.message}`);
@@ -227,7 +232,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
         {
           userId: participant.userId,
           userName: participant.userName,
-          nationalId: participant.userNationalId,
+          nationalId: hideNationalId ? '' : participant.userNationalId,
         },
         { url: uploaded.url, fileName: uploaded.originalName || file.name }
       );
@@ -739,7 +744,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
                           <option value="">-- انتخاب شرکت‌کننده دوره --</option>
                           {courseEnrollments.map(enr => (
                             <option key={enr.id} value={enr.userId}>
-                              {enr.userName} ({toPersianNumbers(enr.userNationalId || enr.userPhone)})
+                              {enr.userName} ({toPersianNumbers(hideNationalId ? enr.userPhone : (enr.userNationalId || enr.userPhone))})
                             </option>
                           ))}
                         </select>

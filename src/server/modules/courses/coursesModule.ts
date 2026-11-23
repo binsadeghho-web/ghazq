@@ -13,6 +13,14 @@ import { deleteCourseImageIfUnreferenced, promoteDraftCourseFilesFolder } from '
 import { registerCourseOperationsRoutes } from './courseOperationsRoutes';
 import { registerCourseDiscountsRoutes, validateDiscountForCourse } from './courseDiscountsRoutes';
 import { registerCourseInstallmentsRoutes, mapInstallmentRow } from './courseInstallmentsRoutes';
+import {
+  normalizeCourseScope,
+  canReadAdminCourseScope,
+  isWorkshopOnlyManager,
+  assertCanManageCourseScope,
+  assertCanManageCourseId,
+  redactNationalIdForUser,
+} from './courseScopeAuth';
 
 function parseJsonField<T>(val: any, fallback: T): T {
   if (val === null || val === undefined) return fallback;
@@ -232,6 +240,7 @@ function mapCourseRow(row: any): Course & { version: number } {
 
   return {
     id: fromIdBuffer(row.id),
+    courseScope: normalizeCourseScope(row.course_scope),
     title: row.title,
     instructor: primaryInst?.fullName || row.instructor,
     instructorTitle: primaryInst?.title || row.instructor_title || undefined,
@@ -327,7 +336,7 @@ function mapEnrollmentRow(row: any): CourseEnrollment & { version: number } {
 }
 
 export class CoursesService {
-  async getAll(authCtx?: AuthContext, includeDeleted = false): Promise<Array<Course & { version: number }>> {
+  async getAll(authCtx?: AuthContext, includeDeleted = false, scopeFilter?: string): Promise<Array<Course & { version: number }>> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
     const p = getPool();
@@ -335,15 +344,23 @@ export class CoursesService {
     const isStaff = authCtx?.role !== 'alumni' && authCtx?.role !== 'customer';
 
     let sql = `SELECT * FROM courses WHERE 1=1`;
+    const params: any[] = [];
+    if (scopeFilter === 'specialized' || scopeFilter === 'counseling_workshop') {
+      sql += ` AND course_scope = ?`;
+      params.push(scopeFilter);
+    }
     if (!includeDeleted || !isStaff) {
       sql += ` AND is_deleted = 0`;
+    } else if (includeDeleted && authCtx && isWorkshopOnlyManager(authCtx)) {
+      // Workshop-only managers can inspect soft-deleted items ONLY inside counseling_workshop scope
+      sql += ` AND (is_deleted = 0 OR course_scope = 'counseling_workshop')`;
     }
     if (authCtx?.role === 'customer') {
       sql += ` AND (visible_to_customer = 1 OR visible_to_customer IS NULL)`;
     }
     sql += ` ORDER BY created_at DESC`;
 
-    const rows = await selectWithTimeout<any>(sql, [], 4000);
+    const rows = await selectWithTimeout<any>(sql, params, 4000);
     const courses = (rows || []).map(mapCourseRow);
 
     if (courses.length === 0) return [];
@@ -390,39 +407,60 @@ export class CoursesService {
   async getEnrollments(authCtx: AuthContext, courseId?: string): Promise<Array<CourseEnrollment & { version: number }>> {
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
-    let sql = `SELECT * FROM course_enrollments WHERE 1=1`;
+    const workshopOnly = isWorkshopOnlyManager(authCtx);
+
+    if (workshopOnly && courseId) {
+      const cRows = await selectWithTimeout<any>(
+        `SELECT course_scope FROM courses WHERE id = ? OR id = ? LIMIT 1`,
+        [toIdBuffer(courseId), courseId],
+        3000
+      );
+      if (cRows.length > 0 && normalizeCourseScope(cRows[0].course_scope) !== 'counseling_workshop') {
+        throw AppError.forbidden('دسترسی مسئول مشاوره صرفاً به کارگاه‌های آموزشی مجاز است.');
+      }
+    }
+
+    let sql = `SELECT ce.* FROM course_enrollments ce INNER JOIN courses c ON c.id = ce.course_id WHERE 1=1`;
     const params: any[] = [];
 
     if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
-      sql += ` AND (user_id = ? OR user_id = ?)`;
+      sql += ` AND (ce.user_id = ? OR ce.user_id = ?)`;
+      params.push(toIdBuffer(authCtx.userId), authCtx.userId);
+    } else if (workshopOnly) {
+      sql += ` AND c.course_scope = 'counseling_workshop'`;
+    } else if (!canReadAdminCourseScope(authCtx, 'specialized') && !canReadAdminCourseScope(authCtx, 'counseling_workshop')) {
+      sql += ` AND (ce.user_id = ? OR ce.user_id = ?)`;
       params.push(toIdBuffer(authCtx.userId), authCtx.userId);
     }
 
     if (courseId) {
-      sql += ` AND (course_id = ? OR course_id = ?)`;
+      sql += ` AND (ce.course_id = ? OR ce.course_id = ?)`;
       params.push(toIdBuffer(courseId), courseId);
     }
 
-    sql += ` ORDER BY enrolled_at DESC`;
+    sql += ` ORDER BY ce.enrolled_at DESC`;
 
     const rows = await selectWithTimeout<any>(sql, params, 4000);
-    const enrollments = (rows || []).map(mapEnrollmentRow);
+    const enrollments = (rows || []).map(mapEnrollmentRow).map(e => redactNationalIdForUser(authCtx, e));
 
     if (enrollments.length > 0) {
-      let instSql = `SELECT * FROM course_installments WHERE deleted_at IS NULL`;
+      let instSql = `SELECT ci.* FROM course_installments ci INNER JOIN courses c ON c.id = ci.course_id WHERE ci.deleted_at IS NULL`;
       const instParams: any[] = [];
       if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
-        instSql += ` AND (user_id = ? OR user_id = ?)`;
+        instSql += ` AND (ci.user_id = ? OR ci.user_id = ?)`;
         instParams.push(toIdBuffer(authCtx.userId), authCtx.userId);
-      } else if (courseId) {
-        instSql += ` AND (course_id = ? OR course_id = ?)`;
+      } else if (workshopOnly) {
+        instSql += ` AND c.course_scope = 'counseling_workshop'`;
+      }
+      if (courseId) {
+        instSql += ` AND (ci.course_id = ? OR ci.course_id = ?)`;
         instParams.push(toIdBuffer(courseId), courseId);
       }
-      instSql += ` ORDER BY installment_number ASC`;
+      instSql += ` ORDER BY ci.installment_number ASC`;
       const instRows = await selectWithTimeout<any>(instSql, instParams, 4000);
       const byEnr = new Map<string, CourseInstallmentRecord[]>();
       for (const ir of instRows || []) {
-        const mapped = mapInstallmentRow(ir);
+        const mapped = redactNationalIdForUser(authCtx, mapInstallmentRow(ir));
         const list = byEnr.get(mapped.enrollmentId) || [];
         list.push(mapped);
         byEnr.set(mapped.enrollmentId, list);
@@ -507,6 +545,7 @@ export class CoursesService {
       const valRes = await validateDiscountForCourse({
         code: dto.discountCode.trim(),
         courseId: course.id,
+        courseScope: course.courseScope,
         coursePrice: originalAmount,
         courseTargetAudiences: course.targetAudiences,
         userId: authCtx.userId,
@@ -772,6 +811,7 @@ export class CoursesService {
 
       outbox.enqueue('courses.enrolled', {
         courseId,
+        courseScope: course.courseScope || 'specialized',
         userId: authCtx.userId,
         title: course.title,
         paymentStatus,
@@ -795,7 +835,6 @@ export class CoursesService {
     adminNote?: string,
     expectedVersion?: number
   ): Promise<CourseEnrollment & { version: number }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
 
     const eBuf = toIdBuffer(enrollmentId);
@@ -809,6 +848,7 @@ export class CoursesService {
     }
     const enrollment = mapEnrollmentRow(eRows[0]);
     const cBuf = toIdBuffer(enrollment.courseId);
+    const courseScope = await assertCanManageCourseId(authCtx, enrollment.courseId);
 
     return await withTx(async (conn) => {
       const prevStatus = enrollment.paymentStatus;
@@ -869,12 +909,13 @@ export class CoursesService {
       outbox.enqueue('courses.enrollment_reviewed', {
         enrollmentId,
         courseId: enrollment.courseId,
+        courseScope,
         userId: enrollment.userId,
         status,
       });
 
       const [updatedRows]: any = await conn.query(`SELECT * FROM course_enrollments WHERE id = ? OR id = ? LIMIT 1`, [eBuf, enrollmentId]);
-      return mapEnrollmentRow(updatedRows[0]);
+      return redactNationalIdForUser(authCtx, mapEnrollmentRow(updatedRows[0]));
     });
   }
 
@@ -882,7 +923,8 @@ export class CoursesService {
     authCtx: AuthContext,
     data: Partial<Course>
   ): Promise<Course & { version: number }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    const scope = normalizeCourseScope(data.courseScope);
+    assertCanManageCourseScope(authCtx, scope);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -919,17 +961,17 @@ export class CoursesService {
           has_certificate, certificate_details,
           status, topics, cover_image, allowed_payment_method, archive_access, archive_resources,
           offline_download_url, offline_download_guide, offline_download_files,
-          instructors, sessions, sessions_count,
+          instructors, sessions, sessions_count, course_scope,
           is_deleted, version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
         [
           idBuf,
-          data.title || 'دوره جدید',
+          data.title || (scope === 'counseling_workshop' ? 'کارگاه آموزشی جدید' : 'دوره جدید'),
           primaryInst?.fullName || data.instructor || 'استاد محترم',
           primaryInst?.title || data.instructorTitle || null,
           primaryInst?.resume || data.instructorResume || null,
           primaryInst?.avatarUrl || data.instructorAvatarUrl || null,
-          data.category || 'فقه القضاء',
+          data.category || (scope === 'counseling_workshop' ? 'کارگاه‌های روان‌شناسی و مشاوره' : 'فقه القضاء'),
           data.level || 'تخصصی عالی',
           data.hours || 0,
           data.capacity || 0,
@@ -967,6 +1009,7 @@ export class CoursesService {
           JSON.stringify(instructors),
           JSON.stringify(sessions),
           effectiveSessionsCount,
+          scope,
         ]
       );
 
@@ -979,7 +1022,7 @@ export class CoursesService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `دوره تخصصی جدید [${data.title}] با ${instructors.length} مدرس و ${sessions.length} جلسه تعریف و منتشر گردید.`,
+      details: `${scope === 'counseling_workshop' ? 'کارگاه آموزشی' : 'دوره تخصصی'} جدید [${data.title}] با ${instructors.length} مدرس و ${sessions.length} جلسه تعریف و منتشر گردید.`,
       severity: 'info',
     });
 
@@ -988,6 +1031,7 @@ export class CoursesService {
 
     outbox.enqueue('courses.created', {
       courseId: newId,
+      courseScope: scope,
       resourceId: newId,
       updates: created,
     });
@@ -1000,7 +1044,6 @@ export class CoursesService {
     courseId: string,
     updates: Partial<Course> & { expectedVersion?: number; version?: number }
   ): Promise<Course & { version: number }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -1010,6 +1053,8 @@ export class CoursesService {
     if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
 
     const existing = mapCourseRow(rows[0]);
+    const existingScope = normalizeCourseScope(existing.courseScope);
+    assertCanManageCourseScope(authCtx, existingScope);
 
     const rawVersion = updates.expectedVersion !== undefined ? updates.expectedVersion : updates.version;
     if (rawVersion === undefined || rawVersion === null || isNaN(Number(rawVersion))) {
@@ -1242,6 +1287,7 @@ export class CoursesService {
 
     outbox.enqueue('courses.updated', {
       courseId,
+      courseScope: existingScope,
       resourceId: courseId,
       title: finalCourse.title,
       version: finalCourse.version,
@@ -1258,7 +1304,6 @@ export class CoursesService {
     courseId: string,
     pin: string
   ): Promise<{ success: boolean; message: string }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
 
     if (!pin || pin.trim().length < 4) {
@@ -1272,6 +1317,8 @@ export class CoursesService {
     if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
 
     const course = mapCourseRow(rows[0]);
+    const courseScope = normalizeCourseScope(course.courseScope);
+    assertCanManageCourseScope(authCtx, courseScope);
 
     await p.query(
       `UPDATE courses
@@ -1286,19 +1333,20 @@ export class CoursesService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `حذف منطقی امن (Soft Delete) دوره [${course.title}] با تایید هویت دوعاملی توسط ${authCtx.fullName}.`,
+      details: `حذف منطقی امن (Soft Delete) ${courseScope === 'counseling_workshop' ? 'کارگاه آموزشی' : 'دوره'} [${course.title}] با تایید هویت دوعاملی توسط ${authCtx.fullName}.`,
       severity: 'warning',
     });
 
     outbox.enqueue('courses.deleted', {
       courseId,
+      courseScope,
       title: course.title,
       deletedBy: authCtx.fullName,
     });
 
     return {
       success: true,
-      message: `دوره [${course.title}] با موفقیت حذف منطقی گردید و به بخش بایگانی امن انتقال یافت.`,
+      message: `${courseScope === 'counseling_workshop' ? 'کارگاه' : 'دوره'} [${course.title}] با موفقیت حذف منطقی گردید و به بخش بایگانی امن انتقال یافت.`,
     };
   }
 
@@ -1306,7 +1354,6 @@ export class CoursesService {
     authCtx: AuthContext,
     courseId: string
   ): Promise<{ success: boolean; message: string }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
 
     const cBuf = toIdBuffer(courseId);
@@ -1316,6 +1363,8 @@ export class CoursesService {
     if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
 
     const course = mapCourseRow(rows[0]);
+    const courseScope = normalizeCourseScope(course.courseScope);
+    assertCanManageCourseScope(authCtx, courseScope);
 
     await p.query(
       `UPDATE courses
@@ -1326,12 +1375,13 @@ export class CoursesService {
 
     outbox.enqueue('courses.restored', {
       courseId,
+      courseScope,
       title: course.title,
     });
 
     return {
       success: true,
-      message: `دوره [${course.title}] با موفقیت از بایگانی بازیابی شد.`,
+      message: `${courseScope === 'counseling_workshop' ? 'کارگاه' : 'دوره'} [${course.title}] با موفقیت از بایگانی بازیابی شد.`,
     };
   }
 
@@ -1340,13 +1390,13 @@ export class CoursesService {
     courseId: string,
     dto: { recipientPhone: string | 'all'; message: string; recipientName?: string }
   ): Promise<{ success: boolean; count: number; message: string }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
     ensureDatabaseConnection();
 
     const cBuf = toIdBuffer(courseId);
     const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId]);
     if (!rows || rows.length === 0) throw AppError.notFound(`دوره با شناسه ${courseId}`);
     const course = mapCourseRow(rows[0]);
+    assertCanManageCourseScope(authCtx, normalizeCourseScope(course.courseScope));
 
     if (!dto.message || !dto.message.trim()) {
       throw AppError.unprocessable('متن پیامک ارسالی نمی‌تواند خالی باشد.');
@@ -1389,7 +1439,7 @@ export class CoursesService {
     reason?: string,
     expectedVersion?: number
   ): Promise<{ enrollment: CourseEnrollment & { version: number }; course: Course & { version: number } }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    const courseScope = await assertCanManageCourseId(authCtx, courseId);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -1459,11 +1509,12 @@ export class CoursesService {
         `SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`,
         [cBuf, courseId]
       );
-      const updatedEnrollment = mapEnrollmentRow(updatedEnrRows[0]);
+      const updatedEnrollment = redactNationalIdForUser(authCtx, mapEnrollmentRow(updatedEnrRows[0]));
       const updatedCourse = mapCourseRow(updatedCourseRows[0]);
 
       outbox.enqueue('courses.enrollment_removed', {
         courseId,
+        courseScope,
         enrollmentId,
         userId: updatedEnrollment.userId,
         classStatus: 'removed',
@@ -1482,7 +1533,7 @@ export class CoursesService {
     enrollmentId: string,
     expectedVersion?: number
   ): Promise<{ enrollment: CourseEnrollment & { version: number }; course: Course & { version: number } }> {
-    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor']);
+    const courseScope = await assertCanManageCourseId(authCtx, courseId);
     ensureDatabaseConnection();
     await ensureDomainTablesAndIndexes();
 
@@ -1550,11 +1601,12 @@ export class CoursesService {
         `SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`,
         [cBuf, courseId]
       );
-      const updatedEnrollment = mapEnrollmentRow(updatedEnrRows[0]);
+      const updatedEnrollment = redactNationalIdForUser(authCtx, mapEnrollmentRow(updatedEnrRows[0]));
       const updatedCourse = mapCourseRow(updatedCourseRows[0]);
 
       outbox.enqueue('courses.enrollment_restored', {
         courseId,
+        courseScope,
         enrollmentId,
         userId: updatedEnrollment.userId,
         classStatus: 'active',
@@ -1563,6 +1615,15 @@ export class CoursesService {
       return { enrollment: updatedEnrollment, course: updatedCourse };
     });
   }
+}
+
+function buildAuthCtx(u: any): AuthContext {
+  return {
+    userId: u.id,
+    role: u.role,
+    fullName: u.fullName,
+    sectionPermissions: u.sectionPermissions,
+  };
 }
 
 export function createCoursesRouter(): Router {
@@ -1576,9 +1637,10 @@ export function createCoursesRouter(): Router {
   router.get('/', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const includeDeleted = req.query.includeDeleted === 'true';
-      const items = await service.getAll(authCtx, includeDeleted);
+      const scopeFilter = req.query.scope as string | undefined;
+      const items = await service.getAll(authCtx, includeDeleted, scopeFilter);
       res.json(items);
     } catch (err) {
       next(err);
@@ -1588,7 +1650,7 @@ export function createCoursesRouter(): Router {
   router.get('/enrollments', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const courseId = req.query.courseId as string | undefined;
       const items = await service.getEnrollments(authCtx, courseId);
       res.json(items);
@@ -1600,7 +1662,7 @@ export function createCoursesRouter(): Router {
   router.post('/:id/enroll', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx = { userId: u.id, role: u.role, fullName: u.fullName, nationalId: u.nationalId };
+      const authCtx = { ...buildAuthCtx(u), nationalId: u.nationalId };
       const result = await service.enroll(authCtx, req.params.id, req.body);
       res.json(result);
     } catch (err) {
@@ -1611,7 +1673,7 @@ export function createCoursesRouter(): Router {
   router.post('/', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const created = await service.createCourse(authCtx, req.body);
       res.status(201).json(created);
     } catch (err) {
@@ -1622,7 +1684,7 @@ export function createCoursesRouter(): Router {
   router.put('/:id', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const expectedVersion = extractExpectedVersion(req, true);
       const updated = await service.updateCourse(authCtx, req.params.id, {
         ...req.body,
@@ -1637,7 +1699,7 @@ export function createCoursesRouter(): Router {
   router.delete('/:id', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const pin = req.body?.pin || (req.headers['x-security-pin'] as string);
       const result = await service.softDeleteCourse(authCtx, req.params.id, pin);
       res.json(result);
@@ -1649,7 +1711,7 @@ export function createCoursesRouter(): Router {
   router.post('/:id/restore', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const result = await service.restoreCourse(authCtx, req.params.id);
       res.json(result);
     } catch (err) {
@@ -1660,7 +1722,7 @@ export function createCoursesRouter(): Router {
   router.post('/:id/sms', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const result = await service.sendCourseSms(authCtx, req.params.id, req.body);
       res.json(result);
     } catch (err) {
@@ -1671,7 +1733,7 @@ export function createCoursesRouter(): Router {
   router.patch('/enrollments/:id/status', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const { status, adminNote } = req.body;
       const expectedVersion = extractExpectedVersion(req, true);
       const updated = await service.reviewEnrollment(authCtx, req.params.id, status, adminNote, expectedVersion);
@@ -1684,7 +1746,7 @@ export function createCoursesRouter(): Router {
   router.post('/:id/enrollments/:enrollmentId/remove-from-class', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const expectedVersion = extractExpectedVersion(req, true);
       const result = await service.removeEnrollmentFromClass(
         authCtx,
@@ -1702,7 +1764,7 @@ export function createCoursesRouter(): Router {
   router.post('/:id/enrollments/:enrollmentId/restore-to-class', async (req: Request, res: Response, next) => {
     try {
       const u = getCurrentUser(req);
-      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const authCtx = buildAuthCtx(u);
       const expectedVersion = extractExpectedVersion(req, true);
       const result = await service.restoreEnrollmentToClass(
         authCtx,

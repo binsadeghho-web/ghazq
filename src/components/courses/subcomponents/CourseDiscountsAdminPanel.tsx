@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Course, CourseDiscountCode, CourseDiscountCategory } from '../../../types';
+import { Course, CourseDiscountCode, CourseDiscountCategory, CourseScope } from '../../../types';
 import { api } from '../../../services/apiClient';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import {
@@ -19,14 +19,16 @@ import {
 
 interface CourseDiscountsAdminPanelProps {
   courses: Course[];
+  scope?: CourseScope;
+  hideNationalId?: boolean;
 }
 
 const DISCOUNT_CATEGORY_LABELS: Record<CourseDiscountCategory, string> = {
   percentage: 'تخفیف درصدی استاندارد',
   fixed_amount: 'تخفیف مبلغی ثابت (تومان)',
-  single_course: 'کد تخفیف ویژه یک دوره مشخص',
-  multi_course: 'کد تخفیف ویژه چند دوره انتخابی',
-  all_courses: 'کد تخفیف سراسری (همه دوره‌ها)',
+  single_course: 'کد تخفیف ویژه یک دوره/کارگاه مشخص',
+  multi_course: 'کد تخفیف ویژه چند دوره/کارگاه انتخابی',
+  all_courses: 'کد تخفیف سراسری (همه موارد این بخش)',
   audience_specific: 'کد تخفیف ویژه مخاطبان (طلاب، قضات، وکلا...)',
   user_specific: 'کد تخفیف اختصاصی افراد (کد ملی مشخص)',
   early_bird: 'کد تخفیف ثبت‌نام زودهنگام / مناسبتی زمان‌دار',
@@ -34,7 +36,13 @@ const DISCOUNT_CATEGORY_LABELS: Record<CourseDiscountCategory, string> = {
 
 const AUDIENCE_PRESETS = ['طلاب و فضلای حوزه', 'قضات دادگستری', 'وکلای دادگستری', 'پژوهشگران و دانشجویان دکتری', 'ایثارگران و رتبه‌های برتر'];
 
-export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps> = ({ courses }) => {
+export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps> = ({
+  courses,
+  scope = 'specialized',
+  hideNationalId = false,
+}) => {
+  const pluralNoun = scope === 'counseling_workshop' ? 'کارگاه‌های آموزشی' : 'دوره‌ها';
+  const unitNoun = scope === 'counseling_workshop' ? 'کارگاه' : 'دوره';
   const [discounts, setDiscounts] = useState<CourseDiscountCode[]>([]);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -70,14 +78,14 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
   const loadDiscounts = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await api.getCourseDiscountCodes(false);
+      const list = await api.getCourseDiscountCodes(false, scope);
       setDiscounts(Array.isArray(list) ? list : []);
     } catch (err: any) {
       setFeedback({ type: 'error', text: err?.message || 'خطا در دریافت لیست کدهای تخفیف.' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     loadDiscounts();
@@ -150,6 +158,7 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
         code: code.trim().toUpperCase(),
         title: title.trim(),
         description: description.trim() || undefined,
+        scope,
         discountCategory,
         valueType,
         discountValue: Number(discountValue),
@@ -159,7 +168,7 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
         courseIds: discountCategory === 'multi_course' ? selectedCourseIds : [],
         targetAudiences: discountCategory === 'audience_specific' ? targetAudiences : [],
         allowedNationalIds:
-          discountCategory === 'user_specific'
+          discountCategory === 'user_specific' && !hideNationalId
             ? allowedNationalIdsText
                 .split(/[,،\s\n]+/)
                 .map(s => s.trim())
@@ -228,7 +237,7 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
         <div>
           <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Tag className="w-5 h-5 text-amber-500" />
-            <span>استودیو تعریف انواع کد تخفیف دوره‌ها و گزارش کامل مصرف</span>
+            <span>استودیو تعریف انواع کد تخفیف {pluralNoun} و گزارش کامل مصرف</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             امکان تعریف کد تخفیف درصدی، مبلغ ثابت، تک‌دوره‌ای، چنددوره‌ای، سراسری، گروه مخاطبان، اختصاصی کد ملی و زمان‌دار به همراه نمایش کامل مشخصات و استفاده‌کنندگان
@@ -441,9 +450,11 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
                   }}
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-black"
                 >
-                  {Object.entries(DISCOUNT_CATEGORY_LABELS).map(([k, lbl]) => (
-                    <option key={k} value={k}>{lbl}</option>
-                  ))}
+                  {Object.entries(DISCOUNT_CATEGORY_LABELS)
+                    .filter(([k]) => !(hideNationalId && k === 'user_specific'))
+                    .map(([k, lbl]) => (
+                      <option key={k} value={k}>{lbl}</option>
+                    ))}
                 </select>
               </div>
 
@@ -775,7 +786,7 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
                 </div>
               )}
 
-              {detailsModalCode.allowedNationalIds && detailsModalCode.allowedNationalIds.length > 0 && (
+              {!hideNationalId && detailsModalCode.allowedNationalIds && detailsModalCode.allowedNationalIds.length > 0 && (
                 <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
                   <strong className="block mb-1 text-amber-900 dark:text-amber-300">کدهای ملی مجاز:</strong>
                   <div className="font-mono text-amber-950 dark:text-amber-200">
@@ -801,8 +812,8 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
                     <table className="w-full text-right text-xs">
                       <thead className="bg-slate-100 dark:bg-slate-800 font-black">
                         <tr>
-                          <th className="p-2.5">فراگیر و کد ملی</th>
-                          <th className="p-2.5">دوره</th>
+                          <th className="p-2.5">{hideNationalId ? 'فراگیر' : 'فراگیر و کد ملی'}</th>
+                          <th className="p-2.5">{unitNoun}</th>
                           <th className="p-2.5">مبلغ اصلی</th>
                           <th className="p-2.5">مبلغ تخفیف</th>
                           <th className="p-2.5">مبلغ نهایی</th>
@@ -814,9 +825,11 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
                           <tr key={u.id}>
                             <td className="p-2.5">
                               <strong className="block">{u.userName}</strong>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {toPersianNumbers(u.userNationalId || '')}
-                              </span>
+                              {!hideNationalId && u.userNationalId && (
+                                <span className="text-[10px] text-slate-400 font-mono tabular-nums">
+                                  {toPersianNumbers(u.userNationalId)}
+                                </span>
+                              )}
                             </td>
                             <td className="p-2.5 max-w-[160px] truncate font-bold">{u.courseTitle}</td>
                             <td className="p-2.5">{toPersianNumbers(u.originalAmount.toLocaleString('fa-IR'))} ت</td>

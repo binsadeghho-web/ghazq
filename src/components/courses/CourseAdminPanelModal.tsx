@@ -31,7 +31,7 @@ import {
   Loader2,
   Calendar,
 } from 'lucide-react';
-import { Course, CourseEnrollment, CourseAttendanceRecord } from '../../types';
+import { Course, CourseEnrollment, CourseAttendanceRecord, CourseScope } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/apiClient';
@@ -39,6 +39,8 @@ import { compressImageFast, formatFileSizeLabel } from '../../utils/imageCompres
 
 interface CourseAdminPanelModalProps {
   course: Course;
+  mode?: CourseScope;
+  hideNationalId?: boolean;
   onClose: () => void;
   onOpenSmsModal: (course: Course, recipient: 'all' | CourseEnrollment) => void;
   onInspectReceipt: (enrollment: CourseEnrollment) => void;
@@ -50,11 +52,14 @@ type AttendanceStatusType = 'present' | 'late' | 'excused' | 'absent';
 
 export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
   course,
+  mode,
+  hideNationalId = false,
   onClose,
   onOpenSmsModal,
   onInspectReceipt,
   onOpenBuilder,
 }) => {
+  const unitNoun = (mode || course.courseScope) === 'counseling_workshop' ? 'کارگاه' : 'دوره';
   const {
     courseEnrollments,
     reviewCourseEnrollment,
@@ -237,7 +242,7 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
     if (rosterSearch.trim()) {
       const q = rosterSearch.toLowerCase();
       const matchName = e.userName.toLowerCase().includes(q);
-      const matchNational = e.userNationalId.includes(q);
+      const matchNational = !hideNationalId && (e.userNationalId || '').includes(q);
       const matchPhone = e.userPhone.includes(q);
       const matchTrack = e.trackingCode.toLowerCase().includes(q);
       if (!matchName && !matchNational && !matchPhone && !matchTrack) return false;
@@ -499,14 +504,14 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black">
-                  پنل مدیریت ویژه دوره
+                  پنل مدیریت ویژه {unitNoun}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-bold">
                   {course.holdingFormat === 'online'
-                    ? 'دوره آنلاین (برخط)'
+                    ? `${unitNoun} آنلاین (برخط)`
                     : course.holdingFormat === 'in_person'
-                    ? 'دوره حضوری'
-                    : 'دوره ترکیبی/آفلاین'}
+                    ? `${unitNoun} حضوری`
+                    : `${unitNoun} ترکیبی/آفلاین`}
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-black text-white mt-1">{course.title}</h3>
@@ -635,7 +640,11 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                     type="text"
                     value={rosterSearch}
                     onChange={e => setRosterSearch(e.target.value)}
-                    placeholder="جستجوی نام شرکت‌کننده، کد ملی، شماره تماس یا کد رهگیری فیش..."
+                    placeholder={
+                      hideNationalId
+                        ? 'جستجوی نام شرکت‌کننده، شماره تماس یا کد رهگیری فیش...'
+                        : 'جستجوی نام شرکت‌کننده، کد ملی، شماره تماس یا کد رهگیری فیش...'
+                    }
                     className="w-full pr-9 pl-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -678,7 +687,7 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                   <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3">نام و وضعیت کلاسی</th>
-                      <th className="p-3">شماره تماس و کد ملی</th>
+                      <th className="p-3">{hideNationalId ? 'شماره تماس' : 'شماره تماس و کد ملی'}</th>
                       <th className="p-3">شیوه پرداخت و مبلغ</th>
                       <th className="p-3">کد پیگیری و بانک</th>
                       <th className="p-3 text-center">وضعیت پرداخت</th>
@@ -734,9 +743,11 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                                 </button>
                                 {copiedId === enr.id && <span className="text-[9px] text-emerald-600">کپی شد</span>}
                               </div>
-                              <span className="text-[11px] text-slate-400 block mt-0.5">
-                                کد ملی: {toPersianNumbers(enr.userNationalId)}
-                              </span>
+                              {!hideNationalId && enr.userNationalId && (
+                                <span className="text-[11px] text-slate-400 block mt-0.5 tabular-nums">
+                                  کد ملی: {toPersianNumbers(enr.userNationalId)}
+                                </span>
+                              )}
                             </td>
                             <td className="p-3 tabular-nums">
                               <span className="font-bold text-slate-900 dark:text-white block">
@@ -1083,7 +1094,7 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                                 {enr.userName}
                               </strong>
                               <span className="text-[10px] text-slate-400 font-mono tabular-nums">
-                                {toPersianNumbers(enr.userNationalId || enr.userPhone)}
+                                {toPersianNumbers(hideNationalId ? enr.userPhone : (enr.userNationalId || enr.userPhone))}
                               </span>
                             </td>
                             <td className="p-3 text-center font-mono font-bold tabular-nums text-slate-600 dark:text-slate-300">

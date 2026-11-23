@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { Course, CourseEnrollment, CourseInstallmentRecord } from '../../types';
+import { Course, CourseEnrollment, CourseInstallmentRecord, CourseScope } from '../../types';
 import { GraduationCap, CreditCard, CalendarClock, ArrowLeft } from 'lucide-react';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import { toPersianNumbers } from '../../utils/persianNumbers';
@@ -26,7 +26,15 @@ import { InstallmentAutoGatewayModal } from './subcomponents/InstallmentAutoGate
 import { CourseInstallmentsAdminPanel } from './subcomponents/CourseInstallmentsAdminPanel';
 import { CourseDiscountsAdminPanel } from './subcomponents/CourseDiscountsAdminPanel';
 
-export const CoursesSection: React.FC = () => {
+interface CoursesSectionProps {
+  mode?: CourseScope;
+  onOpenShowcaseEditor?: () => void;
+}
+
+export const CoursesSection: React.FC<CoursesSectionProps> = ({
+  mode = 'specialized',
+  onOpenShowcaseEditor,
+}) => {
   const {
     currentUser,
     courses,
@@ -48,7 +56,12 @@ export const CoursesSection: React.FC = () => {
   } = useApp();
   const { rolePolicies } = useRbacPolicies();
 
-  const isOfficial = canManageAllInSection(currentUser, 'courses', rolePolicies);
+  const isWorkshopMode = mode === 'counseling_workshop';
+  const unitNoun = isWorkshopMode ? 'کارگاه' : 'دوره';
+  const isOfficial = isWorkshopMode
+    ? canManageAllInSection(currentUser, 'counseling', rolePolicies)
+    : canManageAllInSection(currentUser, 'courses', rolePolicies);
+  const hideNationalId = currentUser?.role === 'psychologist_counselor';
 
   // Navigation & Filter States
   const [activeTab, setActiveTab] = useState<CourseTab>('available');
@@ -74,50 +87,79 @@ export const CoursesSection: React.FC = () => {
   const [isAutoTriggeredGateway, setIsAutoTriggeredGateway] = useState(false);
   const autoPromptedUserRef = useRef<string | null>(null);
 
-  // Auto-open payment gateway when due installment exists for the current user
+  // Strictly scoped courses, enrollments, and installments by mode ('specialized' vs 'counseling_workshop')
+  const scopedCourses = useMemo(
+    () => courses.filter(c => (c.courseScope || 'specialized') === mode),
+    [courses, mode]
+  );
+
+  const scopedCourseIds = useMemo(
+    () => new Set(scopedCourses.map(c => c.id)),
+    [scopedCourses]
+  );
+
+  const scopedEnrollments = useMemo(
+    () => courseEnrollments.filter(e => scopedCourseIds.has(e.courseId)),
+    [courseEnrollments, scopedCourseIds]
+  );
+
+  const scopedMyInstallments = useMemo(
+    () => myInstallments.filter(i => scopedCourseIds.has(i.courseId)),
+    [myInstallments, scopedCourseIds]
+  );
+
+  const scopedDueNowInstallments = useMemo(
+    () => dueNowInstallments.filter(i => scopedCourseIds.has(i.courseId)),
+    [dueNowInstallments, scopedCourseIds]
+  );
+
+  // Auto-open payment gateway when due installment exists for the current user in this scope
   useEffect(() => {
     if (!currentUser?.id) {
       autoPromptedUserRef.current = null;
       return;
     }
-    if (dueNowInstallments.length > 0 && autoPromptedUserRef.current !== currentUser.id) {
-      autoPromptedUserRef.current = currentUser.id;
-      setActiveGatewayInstallment(dueNowInstallments[0]);
+    if (scopedDueNowInstallments.length > 0 && autoPromptedUserRef.current !== `${currentUser.id}:${mode}`) {
+      autoPromptedUserRef.current = `${currentUser.id}:${mode}`;
+      setActiveGatewayInstallment(scopedDueNowInstallments[0]);
       setIsAutoTriggeredGateway(true);
     }
-  }, [currentUser?.id, dueNowInstallments]);
+  }, [currentUser?.id, scopedDueNowInstallments, mode]);
 
   // Memoized Lists (with granular customer visibility filtering)
   const activeCourses = useMemo(
     () =>
-      courses.filter(c => {
+      scopedCourses.filter(c => {
         if (c.isDeleted) return false;
         if (currentUser?.role === 'customer' && c.visibleToCustomer === false) return false;
         return true;
       }),
-    [courses, currentUser?.role]
+    [scopedCourses, currentUser?.role]
   );
-  const deletedCourses = useMemo(() => courses.filter(c => c.isDeleted), [courses]);
-  const availableCourses = useMemo(() => activeCourses.filter(c => c.status === 'enrolling' || c.status === 'ongoing'), [activeCourses]);
+  const deletedCourses = useMemo(() => scopedCourses.filter(c => c.isDeleted), [scopedCourses]);
+  const availableCourses = useMemo(
+    () => activeCourses.filter(c => c.status === 'enrolling' || c.status === 'ongoing'),
+    [activeCourses]
+  );
   const myEnrolledCourses = useMemo(() => {
     return activeCourses.filter(c => {
       if (c.classStatus === 'removed') return false;
-      const myEnr = courseEnrollments.find(e => e.courseId === c.id && e.userId === currentUser?.id);
+      const myEnr = scopedEnrollments.find(e => e.courseId === c.id && e.userId === currentUser?.id);
       if (myEnr) {
         return myEnr.paymentStatus !== 'rejected' && myEnr.classStatus !== 'removed';
       }
       return Boolean(c.isEnrolled);
     });
-  }, [activeCourses, courseEnrollments, currentUser]);
+  }, [activeCourses, scopedEnrollments, currentUser]);
   const archivedCourses = useMemo(() => activeCourses.filter(c => c.status === 'completed'), [activeCourses]);
 
   const pendingReceiptsCount = useMemo(() => {
-    return courseEnrollments.filter(e => e.paymentStatus === 'pending_review').length;
-  }, [courseEnrollments]);
+    return scopedEnrollments.filter(e => e.paymentStatus === 'pending_review').length;
+  }, [scopedEnrollments]);
 
   const unpaidMyInstallments = useMemo(
-    () => myInstallments.filter(item => item.status !== 'paid'),
-    [myInstallments]
+    () => scopedMyInstallments.filter(item => item.status !== 'paid'),
+    [scopedMyInstallments]
   );
 
   const currentList = useMemo(() => {
@@ -144,8 +186,8 @@ export const CoursesSection: React.FC = () => {
 
   const existingEnrollment = useMemo(() => {
     if (!registrationCourse || !currentUser) return null;
-    return courseEnrollments.find(e => e.courseId === registrationCourse.id && e.userId === currentUser.id);
-  }, [registrationCourse, currentUser, courseEnrollments]);
+    return scopedEnrollments.find(e => e.courseId === registrationCourse.id && e.userId === currentUser.id);
+  }, [registrationCourse, currentUser, scopedEnrollments]);
 
   // Handlers
   const handleOpenRegistration = (course: Course) => {
@@ -192,10 +234,14 @@ export const CoursesSection: React.FC = () => {
   };
 
   const handleSaveCourse = async (courseData: Partial<Course>) => {
+    const payloadWithScope: Partial<Course> = {
+      ...courseData,
+      courseScope: mode,
+    };
     if (editingCourse) {
-      await updateCourse(editingCourse.id, courseData);
+      await updateCourse(editingCourse.id, payloadWithScope);
     } else {
-      await addCourse(courseData);
+      await addCourse(payloadWithScope);
     }
   };
 
@@ -205,6 +251,7 @@ export const CoursesSection: React.FC = () => {
     <div className="space-y-6" dir="rtl">
       {/* 1. Header & Metrics Overview */}
       <CourseStatsHeader
+        mode={mode}
         availableCount={availableCourses.length}
         enrolledCount={myEnrolledCourses.length}
         archiveCount={archivedCourses.length}
@@ -216,13 +263,14 @@ export const CoursesSection: React.FC = () => {
           setEditingCourse(null);
           setCourseBuilderOpen(true);
         }}
+        onOpenShowcaseEditor={onOpenShowcaseEditor}
       />
 
       {/* User Installment Status & Auto-Gateway Banner */}
       {unpaidMyInstallments.length > 0 && (
         <div
           className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-            dueNowInstallments.length > 0
+            scopedDueNowInstallments.length > 0
               ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100'
               : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100'
           }`}
@@ -230,21 +278,21 @@ export const CoursesSection: React.FC = () => {
           <div className="flex items-center gap-3 text-xs">
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                dueNowInstallments.length > 0 ? 'bg-amber-500 text-stone-950' : 'bg-emerald-600 text-white'
+                scopedDueNowInstallments.length > 0 ? 'bg-amber-500 text-stone-950' : 'bg-emerald-600 text-white'
               }`}
             >
               <CalendarClock className="w-5 h-5" />
             </div>
             <div>
               <strong className="font-black text-sm block">
-                {dueNowInstallments.length > 0
-                  ? `${toPersianNumbers(dueNowInstallments.length)} قسط سررسید شده آماده پرداخت دارید`
+                {scopedDueNowInstallments.length > 0
+                  ? `${toPersianNumbers(scopedDueNowInstallments.length)} قسط سررسید شده آماده پرداخت دارید`
                   : `${toPersianNumbers(unpaidMyInstallments.length)} قسط آتی در برنامه اقساط شما ثبت شده است`}
               </strong>
               <span className="opacity-85">
-                {dueNowInstallments.length > 0
-                  ? `نزدیک‌ترین قسط: ${dueNowInstallments[0].courseTitle || 'دوره تخصصی'} · قسط ${toPersianNumbers(dueNowInstallments[0].installmentNumber)} به مبلغ ${toPersianNumbers(dueNowInstallments[0].amount.toLocaleString('fa-IR'))} تومان`
-                  : `قسط بعدی: ${unpaidMyInstallments[0].courseTitle || 'دوره تخصصی'} · سررسید ${toPersianNumbers(unpaidMyInstallments[0].dueDateJalali || unpaidMyInstallments[0].dueDateIso.slice(0, 10))}`}
+                {scopedDueNowInstallments.length > 0
+                  ? `نزدیک‌ترین قسط: ${scopedDueNowInstallments[0].courseTitle || (isWorkshopMode ? 'کارگاه آموزشی' : 'دوره تخصصی')} · قسط ${toPersianNumbers(scopedDueNowInstallments[0].installmentNumber)} به مبلغ ${toPersianNumbers(scopedDueNowInstallments[0].amount.toLocaleString('fa-IR'))} تومان`
+                  : `قسط بعدی: ${unpaidMyInstallments[0].courseTitle || (isWorkshopMode ? 'کارگاه آموزشی' : 'دوره تخصصی')} · سررسید ${toPersianNumbers(unpaidMyInstallments[0].dueDateJalali || unpaidMyInstallments[0].dueDateIso.slice(0, 10))}`}
               </span>
             </div>
           </div>
@@ -253,12 +301,12 @@ export const CoursesSection: React.FC = () => {
             type="button"
             onClick={() => {
               setIsAutoTriggeredGateway(false);
-              setActiveGatewayInstallment(dueNowInstallments[0] || unpaidMyInstallments[0]);
+              setActiveGatewayInstallment(scopedDueNowInstallments[0] || unpaidMyInstallments[0]);
             }}
-            className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-500 text-white dark:text-stone-950 text-xs font-black flex items-center gap-2 hover:opacity-95 shrink-0 cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-500 text-white dark:text-stone-950 text-xs font-black flex items-center gap-2 hover:opacity-95 shrink-0 whitespace-nowrap cursor-pointer"
           >
             <CreditCard className="w-4 h-4" />
-            <span>{dueNowInstallments.length > 0 ? 'پرداخت قسط سررسید شده' : 'مدیریت و پرداخت اقساط من'}</span>
+            <span>{scopedDueNowInstallments.length > 0 ? 'پرداخت قسط سررسید شده' : 'مدیریت و پرداخت اقساط من'}</span>
             <ArrowLeft className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -266,6 +314,7 @@ export const CoursesSection: React.FC = () => {
 
       {/* 2. Navigation Tabs & Filter Bar */}
       <CourseFilterBar
+        mode={mode}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         searchQuery={searchQuery}
@@ -286,15 +335,18 @@ export const CoursesSection: React.FC = () => {
           {currentList.length === 0 ? (
             <div className="col-span-full p-16 text-center text-xs text-slate-400 space-y-3 glass-card rounded-3xl border border-slate-200 dark:border-white/10">
               <GraduationCap className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" />
-              <p className="font-extrabold text-slate-700 dark:text-slate-300 text-sm">هیچ دوره‌ای با شرایط انتخابی یافت نشد.</p>
-              <p>می‌توانید فیلترها را تغییر داده یا از جستجوی دوره استفاده فرمایید.</p>
+              <p className="font-extrabold text-slate-700 dark:text-slate-300 text-sm">
+                هیچ {unitNoun}‌ای با شرایط انتخابی یافت نشد.
+              </p>
+              <p>می‌توانید فیلترها را تغییر داده یا از جستجوی {unitNoun} استفاده فرمایید.</p>
             </div>
           ) : (
             currentList.map(course => {
-              const userEnrollment = courseEnrollments.find(e => e.courseId === course.id && e.userId === currentUser?.id);
+              const userEnrollment = scopedEnrollments.find(e => e.courseId === course.id && e.userId === currentUser?.id);
               return (
                 <CourseCard
                   key={course.id}
+                  mode={mode}
                   course={course}
                   userEnrollment={userEnrollment}
                   isOfficial={isOfficial}
@@ -320,8 +372,9 @@ export const CoursesSection: React.FC = () => {
       {/* 4. Soft-Deleted Courses Tab */}
       {isOfficial && activeTab === 'deleted_courses' && (
         <CourseDeletedTab
+          mode={mode}
           deletedCourses={deletedCourses}
-          courseEnrollments={courseEnrollments}
+          courseEnrollments={scopedEnrollments}
           onSelectCourseRoster={setCourseForRoster}
           onRestoreCourse={handleRestore}
           onImageClick={setLightboxImage}
@@ -331,8 +384,9 @@ export const CoursesSection: React.FC = () => {
       {/* 5. Admin Registration Moderation Tab */}
       {isOfficial && activeTab === 'admin_panel' && (
         <CourseAdminPanelTab
-          courses={courses}
-          courseEnrollments={courseEnrollments}
+          mode={mode}
+          courses={activeCourses}
+          courseEnrollments={scopedEnrollments}
           onInspectReceipt={setInspectingEnrollment}
           onReviewEnrollment={reviewCourseEnrollment}
         />
@@ -340,18 +394,26 @@ export const CoursesSection: React.FC = () => {
 
       {/* 6. Admin Installments Management Tab */}
       {isOfficial && activeTab === 'installments_admin' && (
-        <CourseInstallmentsAdminPanel courses={courses} />
+        <CourseInstallmentsAdminPanel
+          courses={activeCourses}
+          scope={mode}
+          hideNationalId={hideNationalId}
+        />
       )}
 
       {/* 7. Admin Discount Codes Management Tab */}
       {isOfficial && activeTab === 'discounts_admin' && (
-        <CourseDiscountsAdminPanel courses={courses} />
+        <CourseDiscountsAdminPanel
+          courses={activeCourses}
+          scope={mode}
+          hideNationalId={hideNationalId}
+        />
       )}
 
       {/* 8. Modular Dialogs */}
       <CourseDetailModal
         course={detailCourse}
-        userEnrollment={detailCourse ? courseEnrollments.find(e => e.courseId === detailCourse.id && e.userId === currentUser?.id) : undefined}
+        userEnrollment={detailCourse ? scopedEnrollments.find(e => e.courseId === detailCourse.id && e.userId === currentUser?.id) : undefined}
         isOfficial={isOfficial}
         onClose={() => setDetailCourse(null)}
         onOpenRegistration={c => {
@@ -375,7 +437,7 @@ export const CoursesSection: React.FC = () => {
 
       <InstallmentAutoGatewayModal
         installment={activeGatewayInstallment}
-        allMyInstallments={myInstallments}
+        allMyInstallments={scopedMyInstallments}
         isAutoTriggered={isAutoTriggeredGateway}
         onClose={() => {
           setActiveGatewayInstallment(null);
@@ -404,18 +466,22 @@ export const CoursesSection: React.FC = () => {
       <CourseAttendanceWaitlistCertModal
         course={opsModalCourse}
         currentUser={currentUser}
-        enrollments={courseEnrollments}
+        enrollments={scopedEnrollments}
         isOfficial={isOfficial}
+        hideNationalId={hideNationalId}
+        mode={mode}
         onClose={() => setOpsModalCourse(null)}
       />
 
       <AnimatePresence>
         {dedicatedCourseAdmin && (
           <CourseAdminPanelModal
-            course={courses.find(c => c.id === dedicatedCourseAdmin.id) || dedicatedCourseAdmin}
+            course={scopedCourses.find(c => c.id === dedicatedCourseAdmin.id) || dedicatedCourseAdmin}
+            mode={mode}
+            hideNationalId={hideNationalId}
             onClose={() => setDedicatedCourseAdmin(null)}
             onOpenSmsModal={() => {
-              setCourseForRoster(courses.find(c => c.id === dedicatedCourseAdmin.id) || dedicatedCourseAdmin);
+              setCourseForRoster(scopedCourses.find(c => c.id === dedicatedCourseAdmin.id) || dedicatedCourseAdmin);
             }}
             onInspectReceipt={setInspectingEnrollment}
             onOpenBuilder={c => {
@@ -428,8 +494,9 @@ export const CoursesSection: React.FC = () => {
       </AnimatePresence>
 
       <CourseRosterModal
-        course={courseForRoster ? (courses.find(c => c.id === courseForRoster.id) || courseForRoster) : null}
-        enrollments={courseEnrollments}
+        course={courseForRoster ? (scopedCourses.find(c => c.id === courseForRoster.id) || courseForRoster) : null}
+        enrollments={scopedEnrollments}
+        hideNationalId={hideNationalId}
         onClose={() => setCourseForRoster(null)}
         onReviewEnrollment={reviewCourseEnrollment}
         onRemoveFromClass={removeCourseEnrollmentFromClass}
@@ -439,6 +506,7 @@ export const CoursesSection: React.FC = () => {
       />
 
       <CourseDeleteConfirmModal
+        mode={mode}
         course={courseToDelete}
         deleteSmsNotice={deleteSmsNotice}
         onClose={() => setCourseToDelete(null)}
@@ -454,6 +522,7 @@ export const CoursesSection: React.FC = () => {
       />
 
       <CourseBuilderModal
+        mode={mode}
         isOpen={courseBuilderOpen}
         courseToEdit={editingCourse}
         onClose={() => {

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Course, CourseEnrollment } from '../../../types';
+import { Course, CourseEnrollment, CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { ShieldCheck, Eye } from 'lucide-react';
 
 interface CourseAdminPanelTabProps {
+  mode?: CourseScope;
   courses: Course[];
   courseEnrollments: CourseEnrollment[];
   onInspectReceipt: (enrollment: CourseEnrollment) => void;
@@ -11,11 +12,14 @@ interface CourseAdminPanelTabProps {
 }
 
 export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
+  mode = 'specialized',
   courses,
   courseEnrollments,
   onInspectReceipt,
   onReviewEnrollment,
 }) => {
+  const unitNoun = mode === 'counseling_workshop' ? 'کارگاه' : 'دوره';
+  const pluralNoun = mode === 'counseling_workshop' ? 'کارگاه‌های' : 'دوره‌های';
   const [adminEnrollmentStatusFilter, setAdminEnrollmentStatusFilter] = useState<'all' | 'pending_review' | 'confirmed' | 'rejected'>('all');
   const [adminEnrollmentCourseFilter, setAdminEnrollmentCourseFilter] = useState<string>('all');
   const [rejectTarget, setRejectTarget] = useState<{ id: string; userName: string; reason: string } | null>(null);
@@ -59,7 +63,7 @@ export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
             onChange={e => setAdminEnrollmentCourseFilter(e.target.value)}
             className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold max-w-[200px] truncate"
           >
-            <option value="all">همه دوره‌های آموزشی</option>
+            <option value="all">همه {pluralNoun} آموزشی</option>
             {courses.map(c => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
@@ -73,7 +77,7 @@ export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
           <thead>
             <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700">
               <th className="p-3.5">نام متقاضی و سمت</th>
-              <th className="p-3.5">عنوان دوره تخصصی</th>
+              <th className="p-3.5">عنوان {unitNoun}</th>
               <th className="p-3.5">شیوه پرداخت و مبلغ</th>
               <th className="p-3.5">کد رهگیری و تاریخ</th>
               <th className="p-3.5 text-center">پیوست فیش واریز</th>
@@ -137,7 +141,7 @@ export const CourseAdminPanelTab: React.FC<CourseAdminPanelTabProps> = ({
                       enr.paymentStatus === 'confirmed'
                         ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                         : enr.paymentStatus === 'pending_review'
-                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                         : 'bg-rose-500/15 text-rose-600 border-rose-500/30'
                     }`}>
                       {enr.paymentStatus === 'confirmed' ? 'ثبت‌نام قطعی' : enr.paymentStatus === 'pending_review' ? 'در حال بررسی' : 'رد شده'}

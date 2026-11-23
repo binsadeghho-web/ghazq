@@ -1,5 +1,5 @@
 import React from 'react';
-import { Course, CourseEnrollment } from '../../../types';
+import { Course, CourseEnrollment, CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import {
   Archive,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 interface CourseDeletedTabProps {
+  mode?: CourseScope;
   deletedCourses: Course[];
   courseEnrollments: CourseEnrollment[];
   onSelectCourseRoster: (course: Course) => void;
@@ -17,34 +18,37 @@ interface CourseDeletedTabProps {
 }
 
 export const CourseDeletedTab: React.FC<CourseDeletedTabProps> = ({
+  mode = 'specialized',
   deletedCourses,
   courseEnrollments,
   onSelectCourseRoster,
   onRestoreCourse,
   onImageClick,
 }) => {
+  const unitNoun = mode === 'counseling_workshop' ? 'کارگاه' : 'دوره';
+  const pluralNoun = mode === 'counseling_workshop' ? 'کارگاه‌های' : 'دوره‌های';
   return (
     <div className="glass-card rounded-3xl border border-rose-500/20 dark:border-rose-500/10 overflow-hidden shadow-xl p-6 space-y-5 bg-rose-500/5">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-rose-500/20">
         <div>
           <h2 className="text-base sm:text-lg font-black text-rose-700 dark:text-rose-400 flex items-center gap-2">
             <Archive className="w-5 h-5 text-rose-500" />
-            <span>دوره‌های حذف‌شده منطقی (بایگانی امن - Safe Deleted)</span>
+            <span>{pluralNoun} حذف‌شده منطقی (بایگانی امن - Safe Deleted)</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            این دوره‌ها به واسطه تایید دوعاملی پین کد امنیتی از دید عموم خارج شده‌اند، اما کلیه اطلاعات ثبت‌نامی‌ها، فیش‌ها و سوابق مالی به طور ماندگار حفظ شده است.
+            این {pluralNoun} به واسطه تایید دوعاملی پین کد امنیتی از دید عموم خارج شده‌اند، اما کلیه اطلاعات ثبت‌نامی‌ها، فیش‌ها و سوابق مالی به طور ماندگار حفظ شده است.
           </p>
         </div>
         <span className="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-bold">
-          تعداد: {toPersianNumbers(deletedCourses.length)} دوره بایگانی‌شده
+          تعداد: {toPersianNumbers(deletedCourses.length)} {unitNoun} بایگانی‌شده
         </span>
       </div>
 
       {deletedCourses.length === 0 ? (
         <div className="p-12 text-center text-xs text-slate-400 space-y-2">
           <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-500/40" />
-          <p className="font-bold text-slate-600 dark:text-slate-300">هیچ دوره‌ای در وضعیت حذف منطقی وجود ندارد.</p>
-          <p>تمام دوره‌های تعریف‌شده در وضعیت عادی و فعال قرار دارند.</p>
+          <p className="font-bold text-slate-600 dark:text-slate-300">هیچ {unitNoun}‌ای در وضعیت حذف منطقی وجود ندارد.</p>
+          <p>تمام {pluralNoun} تعریف‌شده در وضعیت عادی و فعال قرار دارند.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -107,7 +111,7 @@ export const CourseDeletedTab: React.FC<CourseDeletedTabProps> = ({
                     className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>بازگردانی دوره به سامانه</span>
+                    <span>بازگردانی {unitNoun} به سامانه</span>
                   </button>
                 </div>
               </div>

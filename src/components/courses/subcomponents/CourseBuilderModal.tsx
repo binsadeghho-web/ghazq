@@ -6,6 +6,7 @@ import {
   CourseInstallmentPlan,
   CourseInstructorItem,
   CourseSessionItem,
+  CourseScope,
 } from '../../../types';
 import { api } from '../../../services/apiClient';
 import { CourseBuilderAdvancedTabs, CourseOfflineFileEntry } from './CourseBuilderAdvancedTabs';
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 
 interface CourseBuilderModalProps {
+  mode?: CourseScope;
   isOpen: boolean;
   courseToEdit: Course | null;
   onClose: () => void;
@@ -57,12 +59,16 @@ const buildDefaultInstallmentPlan = (price: number): CourseInstallmentPlan => {
 };
 
 export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
+  mode = 'specialized',
   isOpen,
   courseToEdit,
   onClose,
   onSave,
   onImagePreview,
 }) => {
+  const effectiveScope: CourseScope = mode || courseToEdit?.courseScope || 'specialized';
+  const isWorkshop = effectiveScope === 'counseling_workshop';
+  const unitNoun = isWorkshop ? 'کارگاه' : 'دوره';
   const courseCoverInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -419,10 +425,16 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
           <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
             <div>
               <span className="text-[11px] text-amber-400 font-bold block mb-0.5">
-                پنل هوشمند ویژه مسئول آموزش (رزومه استاد، فیلدهای پویا، اقساط زمان‌بندی‌شده و سرفصل‌ها)
+                {isWorkshop
+                  ? 'پنل هوشمند ویژه مسئول مشاوره و آموزش کارگاه‌ها (رزومه استاد، فیلدهای پویا، اقساط زمان‌بندی‌شده و جلسات)'
+                  : 'پنل هوشمند ویژه مسئول آموزش (رزومه استاد، فیلدهای پویا، اقساط زمان‌بندی‌شده و سرفصل‌ها)'}
               </span>
               <h3 className="text-base font-black text-white">
-                {courseToEdit ? 'ویرایش مشخصات و فیلدهای دوره' : 'تعریف دوره تخصصی و کارگاه آموزشی جدید'}
+                {courseToEdit
+                  ? `ویرایش مشخصات و فیلدهای ${unitNoun}`
+                  : isWorkshop
+                  ? 'تعریف کارگاه آموزشی و روانشناختی جدید'
+                  : 'تعریف دوره تخصصی و کارگاه آموزشی جدید'}
               </h3>
             </div>
             <button

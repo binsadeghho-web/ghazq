@@ -9,6 +9,7 @@ import { storageAdapter } from './platform/storageAdapter';
 import { validateSecureUploadBuffer } from './platform/uploadSecurity';
 import { deleteCourseImageIfUnreferenced } from './platform/storageCleanup';
 import { isOrganizationalUserRole } from './platform/authorization';
+import { assertCanManageCourseId, normalizeCourseScope } from './modules/courses/courseScopeAuth';
 import { getPool, isDatabaseConnected } from './platform/mysqlDatabase';
 import { toIdBuffer, fromIdBuffer } from './platform/uuidv7';
 import { createAuthRouter } from './modules/auth/authModule';
@@ -142,6 +143,16 @@ export function createMasterRouter(): Router {
           });
         }
 
+        if (user?.role === 'psychologist_counselor' && (category === 'product_media' || category === 'cartable_officials')) {
+          return res.status(403).json({
+            type: 'forbidden',
+            title: 'عدم دسترسی',
+            status: 403,
+            detail: 'مسئول مشاوره مجاز به بارگذاری فایل در بخش محصولات یا کارتابل اداری نیست.',
+            code: 'FORBIDDEN_UPLOAD_CATEGORY',
+          });
+        }
+
         const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
         const rawHeaderName = String(req.headers['x-upload-filename'] || 'upload');
         let origName = 'upload';
@@ -154,6 +165,15 @@ export function createMasterRouter(): Router {
         const courseIdHeader = req.headers['x-course-id'] ? String(req.headers['x-course-id']) : undefined;
         const draftKeyHeader = req.headers['x-draft-key'] ? String(req.headers['x-draft-key']) : undefined;
         const previousUrlHeader = req.headers['x-previous-url'] ? String(req.headers['x-previous-url']) : undefined;
+
+        if (
+          user?.role === 'psychologist_counselor' &&
+          (category === 'course_file' || category === 'course_certificate') &&
+          courseIdHeader &&
+          !courseIdHeader.startsWith('draft_')
+        ) {
+          await assertCanManageCourseId({ userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: user.sectionPermissions }, courseIdHeader);
+        }
 
         const validated = validateSecureUploadBuffer(category, origName, buffer, declaredMime);
         const safeBaseOrig = path.basename(origName).replace(/\.[^.]+$/, '') || 'attachment';
@@ -217,57 +237,42 @@ export function createMasterRouter(): Router {
         });
       }
 
-      if (category === 'product_media' && !isOrganizationalUserRole(user?.role)) {
+      if (
+        (category === 'product_media' ||
+          category === 'course_certificate' ||
+          category === 'course_file' ||
+          category === 'counseling_media' ||
+          category === 'cartable_officials') &&
+        (!isOrganizationalUserRole(user?.role) || user?.role === 'general_observer')
+      ) {
         return res.status(403).json({
           type: 'forbidden',
           title: 'عدم دسترسی',
           status: 403,
-          detail: 'بارگذاری فایل جلسات و محصولات صرفاً برای مدیران سامانه مجاز است.',
+          detail: 'بارگذاری فایل در این بخش صرفاً برای مدیران و مسئولین مجاز است.',
           code: 'FORBIDDEN_UPLOAD_CATEGORY',
         });
       }
 
-      if (category === 'course_certificate' && !isOrganizationalUserRole(user?.role)) {
+      if (user?.role === 'psychologist_counselor' && (category === 'product_media' || category === 'cartable_officials')) {
         return res.status(403).json({
           type: 'forbidden',
           title: 'عدم دسترسی',
           status: 403,
-          detail: 'بارگذاری گواهی پایان دوره صرفاً برای مدیران و مسئولین آموزش مجاز است.',
-          code: 'FORBIDDEN_UPLOAD_CATEGORY',
-        });
-      }
-
-      if (category === 'course_file' && !isOrganizationalUserRole(user?.role)) {
-        return res.status(403).json({
-          type: 'forbidden',
-          title: 'عدم دسترسی',
-          status: 403,
-          detail: 'بارگذاری فایل‌های دانلودی دوره صرفاً برای مدیران و مسئولین آموزش مجاز است.',
-          code: 'FORBIDDEN_UPLOAD_CATEGORY',
-        });
-      }
-
-      if (category === 'counseling_media' && (!isOrganizationalUserRole(user?.role) || user?.role === 'general_observer')) {
-        return res.status(403).json({
-          type: 'forbidden',
-          title: 'عدم دسترسی',
-          status: 403,
-          detail: 'بارگذاری فایل‌های کارگاه‌ها و اطلاعیه‌های مشاوره صرفاً برای مسئولین مشاوره و مدیران مجاز است.',
-          code: 'FORBIDDEN_UPLOAD_CATEGORY',
-        });
-      }
-
-      if (category === 'cartable_officials' && !isOrganizationalUserRole(user?.role)) {
-        return res.status(403).json({
-          type: 'forbidden',
-          title: 'عدم دسترسی',
-          status: 403,
-          detail: 'ذخیره فایل در پوشه مسئولین صرفاً برای مدیران و مسئولین مجاز است.',
+          detail: 'مسئول مشاوره مجاز به بارگذاری فایل در بخش محصولات یا کارتابل اداری نیست.',
           code: 'FORBIDDEN_UPLOAD_CATEGORY',
         });
       }
 
       const body = req.body || {};
+      if (
+        user?.role === 'psychologist_counselor' &&
+        (category === 'course_file' || category === 'course_certificate') &&
+        body.courseId &&
+        !String(body.courseId).startsWith('draft_')
+      ) {
+        await assertCanManageCourseId({ userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: user.sectionPermissions }, String(body.courseId));
+      }
       const base64Input = body.base64Data || body.dataUrl;
       const origName = body.filename || body.fileName || 'upload';
 
@@ -381,10 +386,13 @@ export function createMasterRouter(): Router {
         return res.status(403).json({ error: 'مسیر دسترسی غیرمجاز است.' });
       }
 
-      // Strict BOLA / Ownership guard for cartable attachments: non-officials can only access their own request attachments
+      const isFullOrgStaff = isOrganizationalUserRole(user.role) && user.role !== 'psychologist_counselor';
+      const isPsychologist = user.role === 'psychologist_counselor';
+
+      // Strict BOLA / Ownership guard for cartable attachments: non-officials & psychologist can only access their own request attachments
       if (
         (storageKey === 'cartable_alumni' || storageKey === 'cartable_officials') &&
-        !isOrganizationalUserRole(user.role)
+        !isFullOrgStaff
       ) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
@@ -409,9 +417,8 @@ export function createMasterRouter(): Router {
         }
       }
 
-      // Strict BOLA / Visibility guard for verdict attachments: non-officials can only view attachments
-      // attached to rulings they submitted OR rulings explicitly marked visible & published to alumni
-      if (storageKey === 'verdict' && !isOrganizationalUserRole(user.role)) {
+      // Strict BOLA / Visibility guard for verdict attachments
+      if (storageKey === 'verdict' && !isFullOrgStaff) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
         }
@@ -436,8 +443,8 @@ export function createMasterRouter(): Router {
         }
       }
 
-      // Strict BOLA guard for product payment receipts: only order owner or officials
-      if (storageKey === 'product_receipt' && !isOrganizationalUserRole(user.role)) {
+      // Strict BOLA guard for product payment receipts
+      if (storageKey === 'product_receipt' && !isFullOrgStaff) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
         }
@@ -460,8 +467,8 @@ export function createMasterRouter(): Router {
         }
       }
 
-      // Strict BOLA guard for product session media downloads: only confirmed purchasers or officials
-      if (storageKey === 'product_media' && !isOrganizationalUserRole(user.role)) {
+      // Strict BOLA guard for product session media downloads
+      if (storageKey === 'product_media' && !isFullOrgStaff) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
         }
@@ -485,8 +492,8 @@ export function createMasterRouter(): Router {
         }
       }
 
-      // Strict BOLA guard for course payment/installment receipts: only payer or officials
-      if (storageKey === 'course_receipt' && !isOrganizationalUserRole(user.role)) {
+      // Strict BOLA guard for course payment/installment receipts: full org staff OR psychologist on counseling_workshop OR payer
+      if (storageKey === 'course_receipt' && !isFullOrgStaff) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
         }
@@ -494,25 +501,26 @@ export function createMasterRouter(): Router {
         const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
         const userIdBuf = toIdBuffer(user.id);
         const [enrRows]: any = await p.query(
-          `SELECT user_id FROM course_enrollments WHERE receipt_file_url LIKE ? LIMIT 5`,
+          `SELECT ce.user_id, c.course_scope FROM course_enrollments ce LEFT JOIN courses c ON c.id = ce.course_id WHERE ce.receipt_file_url LIKE ? LIMIT 5`,
           [fileUrlSuffix]
         );
         const [instRows]: any = await p.query(
-          `SELECT user_id FROM course_installments WHERE receipt_file_url LIKE ? AND deleted_at IS NULL LIMIT 5`,
+          `SELECT ci.user_id, c.course_scope FROM course_installments ci LEFT JOIN courses c ON c.id = ci.course_id WHERE ci.receipt_file_url LIKE ? AND ci.deleted_at IS NULL LIMIT 5`,
           [fileUrlSuffix]
         );
         const allRows = [...(enrRows || []), ...(instRows || [])];
-        const ownsCourseReceipt = allRows.some((r: any) => {
+        const canAccessCourseReceipt = allRows.some((r: any) => {
+          if (isPsychologist && normalizeCourseScope(r.course_scope) === 'counseling_workshop') return true;
           const ownerStr = Buffer.isBuffer(r.user_id) ? fromIdBuffer(r.user_id) : String(r.user_id);
           return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
         });
-        if (!ownsCourseReceipt) {
-          return res.status(403).json({ error: 'عدم دسترسی: این فیش متعلق به ثبت‌نام یا اقساط شما نیست.' });
+        if (!canAccessCourseReceipt) {
+          return res.status(403).json({ error: 'عدم دسترسی: این فیش متعلق به ثبت‌نام یا اقساط مجاز برای شما نیست.' });
         }
       }
 
-      // Strict BOLA guard for course certificates: only certificate owner or officials
-      if (storageKey === 'course_certificate' && !isOrganizationalUserRole(user.role)) {
+      // Strict BOLA guard for course certificates: full org staff OR psychologist on counseling_workshop OR certificate owner
+      if (storageKey === 'course_certificate' && !isFullOrgStaff) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
         }
@@ -522,20 +530,21 @@ export function createMasterRouter(): Router {
           : `%/${catConfig.folderName}/${safeFilename}%`;
         const userIdBuf = toIdBuffer(user.id);
         const [certRows]: any = await p.query(
-          `SELECT user_id FROM course_certificates WHERE certificate_file_url LIKE ? AND (deleted_at IS NULL) LIMIT 5`,
+          `SELECT cc.user_id, c.course_scope FROM course_certificates cc LEFT JOIN courses c ON c.id = cc.course_id WHERE cc.certificate_file_url LIKE ? AND (cc.deleted_at IS NULL) LIMIT 5`,
           [fileUrlSuffix]
         );
-        const ownsCert = Array.isArray(certRows) && certRows.some((r: any) => {
+        const canAccessCert = Array.isArray(certRows) && certRows.some((r: any) => {
+          if (isPsychologist && normalizeCourseScope(r.course_scope) === 'counseling_workshop') return true;
           const ownerStr = Buffer.isBuffer(r.user_id) ? fromIdBuffer(r.user_id) : String(r.user_id);
           return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
         });
-        if (!ownsCert) {
+        if (!canAccessCert) {
           return res.status(403).json({ error: 'عدم دسترسی: این گواهی دوره متعلق به شما نیست.' });
         }
       }
 
-      // Strict BOLA guard for course downloadable files: only officials OR active confirmed enrollees (not removed from class) OR courses with archive_access='all'
-      if (storageKey === 'course_file' && !isOrganizationalUserRole(user.role)) {
+      // Strict BOLA guard for course downloadable files
+      if (storageKey === 'course_file' && !isFullOrgStaff) {
         if (!isDatabaseConnected()) {
           return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
         }
@@ -544,19 +553,22 @@ export function createMasterRouter(): Router {
         const courseIdFromSubFolder = safeSubFolder.startsWith('course_')
           ? safeSubFolder.slice('course_'.length)
           : '';
+        const isDraftFolder = safeSubFolder.startsWith('draft_');
         const fileUrlSuffix = safeSubFolder
           ? `%/${catConfig.folderName}/${safeSubFolder}/${safeFilename}%`
           : `%/${catConfig.folderName}/${safeFilename}%`;
 
-        let authorized = false;
-        if (courseIdFromSubFolder) {
+        let authorized = isPsychologist && isDraftFolder;
+        if (!authorized && courseIdFromSubFolder) {
           const cBuf = toIdBuffer(courseIdFromSubFolder);
           const [courseRows]: any = await p.query(
-            `SELECT id, archive_access, is_deleted FROM courses WHERE (id = ? OR id = ?) AND is_deleted = 0 LIMIT 1`,
+            `SELECT id, archive_access, course_scope, is_deleted FROM courses WHERE (id = ? OR id = ?) AND is_deleted = 0 LIMIT 1`,
             [cBuf, courseIdFromSubFolder]
           );
           if (Array.isArray(courseRows) && courseRows.length > 0) {
-            if (courseRows[0].archive_access === 'all') {
+            if (isPsychologist && normalizeCourseScope(courseRows[0].course_scope) === 'counseling_workshop') {
+              authorized = true;
+            } else if (courseRows[0].archive_access === 'all') {
               authorized = true;
             } else {
               const [enrRows]: any = await p.query(
@@ -571,9 +583,9 @@ export function createMasterRouter(): Router {
               authorized = Array.isArray(enrRows) && enrRows.length > 0;
             }
           }
-        } else {
+        } else if (!authorized) {
           const [rows]: any = await p.query(
-            `SELECT c.id
+            `SELECT c.id, c.course_scope, c.archive_access, ce.id AS enr_id
              FROM courses c
              LEFT JOIN course_enrollments ce
                ON ce.course_id = c.id
@@ -582,11 +594,14 @@ export function createMasterRouter(): Router {
                AND (ce.class_status IS NULL OR ce.class_status != 'removed')
              WHERE c.is_deleted = 0
                AND (CAST(c.offline_download_files AS CHAR) LIKE ? OR c.offline_download_url LIKE ?)
-               AND (c.archive_access = 'all' OR ce.id IS NOT NULL)
-             LIMIT 1`,
+             LIMIT 5`,
             [userIdBuf, user.id, fileUrlSuffix, fileUrlSuffix]
           );
-          authorized = Array.isArray(rows) && rows.length > 0;
+          authorized = Array.isArray(rows) && rows.some((r: any) =>
+            (isPsychologist && normalizeCourseScope(r.course_scope) === 'counseling_workshop') ||
+            r.archive_access === 'all' ||
+            Boolean(r.enr_id)
+          );
         }
 
         if (!authorized) {
@@ -797,9 +812,33 @@ export function createMasterRouter(): Router {
         return;
       }
 
-      // Item 2: User events are strictly restricted to Organizational Roles (Information Leak Prevention)
-      if (msg.topic.startsWith('user.') && !isOrganizationalUserRole(userRole)) {
+      // Item 2: User events are strictly restricted to full Organizational Roles (Information Leak Prevention)
+      if (msg.topic.startsWith('user.') && (!isOrganizationalUserRole(userRole) || (userRole === 'psychologist_counselor' && payload.userId !== userId))) {
         return;
+      }
+
+      // Single-domain isolation for psychologist_counselor on SSE streams
+      if (userRole === 'psychologist_counselor') {
+        const isAllowedForPsychologist =
+          msg.topic.startsWith('counseling.') ||
+          msg.topic === 'research.config_updated' ||
+          msg.topic.startsWith('dashboard.') ||
+          msg.topic.startsWith('courses.');
+        const isOwnCartableOrPrivate =
+          (msg.topic.startsWith('cartable.') || msg.topic.startsWith('private_msg.')) &&
+          (payload.applicantId === userId || payload.recipientId === userId || payload.userId === userId);
+        if (!isAllowedForPsychologist && !isOwnCartableOrPrivate) {
+          return;
+        }
+        if (msg.topic.startsWith('courses.')) {
+          const evScope = payload.courseScope || payload.updates?.courseScope || payload.discount?.scope;
+          if (evScope && evScope !== 'counseling_workshop') {
+            return;
+          }
+          if (!evScope && payload.userId && payload.userId !== userId) {
+            return;
+          }
+        }
       }
 
       // Authorization filtering: private items only go to owners or organizational officials
@@ -825,9 +864,18 @@ export function createMasterRouter(): Router {
         }
       }
 
-      // Privacy guard for Judicial Rulings SSE events (Reforms 14 & 17):
-      // Never leak adminTags, internalReviewNote, internalTagDefinitions, or unpublished rulings to non-officials!
+      // Privacy guard for Judicial Rulings SSE events (Reforms 14 & 17) & PII stripping for psychologist_counselor
       let sanitizedUpdates = payload.updates || payload.config || payload;
+      if (userRole === 'psychologist_counselor' && msg.topic.startsWith('courses.') && sanitizedUpdates && typeof sanitizedUpdates === 'object') {
+        sanitizedUpdates = { ...sanitizedUpdates };
+        if ('userNationalId' in sanitizedUpdates) sanitizedUpdates.userNationalId = '';
+        if (sanitizedUpdates.certificate && typeof sanitizedUpdates.certificate === 'object') {
+          sanitizedUpdates.certificate = { ...sanitizedUpdates.certificate, userNationalId: '' };
+        }
+        if (sanitizedUpdates.installment && typeof sanitizedUpdates.installment === 'object') {
+          sanitizedUpdates.installment = { ...sanitizedUpdates.installment, userNationalId: '' };
+        }
+      }
       if (msg.topic.startsWith('rulings.') && !isOrganizationalUserRole(userRole)) {
         if (msg.topic === 'rulings.portal_config_updated' && sanitizedUpdates) {
           sanitizedUpdates = { ...sanitizedUpdates, internalTagDefinitions: [] };
@@ -836,7 +884,6 @@ export function createMasterRouter(): Router {
           if (rulingCandidate) {
             const isPublicVisible = rulingCandidate.status === 'selected' && Boolean(rulingCandidate.isVisibleToAlumni);
             if (!isPublicVisible) {
-              // Emit lightweight removal signal if an existing published ruling was hidden; otherwise suppress unpublished creation
               if (msg.topic === 'rulings.updated') {
                 sanitizedUpdates = { removedRulingId: rulingCandidate.id };
               } else {

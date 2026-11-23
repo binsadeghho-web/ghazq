@@ -8,7 +8,14 @@ import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7'
 import { extractExpectedVersion } from '../../platform/httpUtils';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
-import { CourseDiscountCode, CourseDiscountUsage, CourseDiscountCategory } from '../../../types';
+import { CourseDiscountCode, CourseDiscountUsage, CourseDiscountCategory, CourseScope } from '../../../types';
+import {
+  normalizeCourseScope,
+  canReadAdminCourseScope,
+  isWorkshopOnlyManager,
+  assertCanManageCourseScope,
+  redactNationalIdForUser,
+} from './courseScopeAuth';
 
 function parseJsonSafe<T>(val: any, fallback: T): T {
   if (val === null || val === undefined) return fallback;
@@ -53,6 +60,7 @@ export function mapDiscountRow(row: any): CourseDiscountCode {
     createdByName: row.created_by_name || undefined,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
     version: Number(row.version || 1),
+    scope: normalizeCourseScope(row.scope),
   };
 }
 
@@ -89,6 +97,7 @@ export interface DiscountValidationResult {
 export async function validateDiscountForCourse(params: {
   code: string;
   courseId: string;
+  courseScope?: CourseScope;
   coursePrice: number;
   courseTargetAudiences?: string[];
   userId: string;
@@ -111,6 +120,15 @@ export async function validateDiscountForCourse(params: {
   }
 
   const discount = mapDiscountRow(rows[0]);
+  const expectedScope = normalizeCourseScope(params.courseScope);
+  if (normalizeCourseScope(discount.scope) !== expectedScope) {
+    throw AppError.badRequest(
+      expectedScope === 'counseling_workshop'
+        ? 'این کد تخفیف صرفاً برای دوره‌های تخصصی است و روی کارگاه‌های مشاوره قابل اعمال نیست.'
+        : 'این کد تخفیف صرفاً ویژه کارگاه‌های مشاوره است و روی دوره‌های تخصصی قابل اعمال نیست.',
+      'DISCOUNT_SCOPE_MISMATCH'
+    );
+  }
   if (!discount.isActive) {
     throw AppError.badRequest('این کد تخفیف توسط مدیریت غیرفعال شده است.', 'DISCOUNT_INACTIVE');
   }
@@ -220,20 +238,46 @@ export async function validateDiscountForCourse(params: {
 }
 
 export function registerCourseDiscountsRoutes(router: Router): void {
-  // List all discount codes (Admin/Supervisor)
+  // List all discount codes (Admin/Supervisor/Counseling Workshop Manager)
   router.get('/discounts', async (req: Request, res: Response, next) => {
     try {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
+      const workshopOnly = isWorkshopOnlyManager(authCtx);
 
-      const rows = await selectWithTimeout<any>(
-        `SELECT * FROM course_discount_codes WHERE deleted_at IS NULL ORDER BY created_at DESC`,
-        [],
-        4000
-      );
-      const codes = (rows || []).map(mapDiscountRow);
+      const requestedScope = req.query.scope as string | undefined;
+      if (workshopOnly && requestedScope === 'specialized') {
+        throw AppError.forbidden('دسترسی مسئول مشاوره صرفاً به کدهای تخفیف کارگاه‌های آموزشی مجاز است.');
+      }
+
+      const effectiveScope: CourseScope | undefined = workshopOnly
+        ? 'counseling_workshop'
+        : requestedScope === 'specialized' || requestedScope === 'counseling_workshop'
+        ? requestedScope
+        : undefined;
+
+      if (!effectiveScope && !canReadAdminCourseScope(authCtx, 'specialized') && !canReadAdminCourseScope(authCtx, 'counseling_workshop')) {
+        throw AppError.forbidden('سطح دسترسی شما مجاز به مشاهده لیست کدهای تخفیف نیست.');
+      }
+      if (effectiveScope && !canReadAdminCourseScope(authCtx, effectiveScope)) {
+        throw AppError.forbidden('سطح دسترسی شما مجاز به مشاهده کدهای تخفیف این بخش نیست.');
+      }
+
+      let sql = `SELECT * FROM course_discount_codes WHERE deleted_at IS NULL`;
+      const params: any[] = [];
+      if (effectiveScope) {
+        sql += ` AND scope = ?`;
+        params.push(effectiveScope);
+      }
+      sql += ` ORDER BY created_at DESC`;
+
+      const rows = await selectWithTimeout<any>(sql, params, 4000);
+      let codes = (rows || []).map(mapDiscountRow);
+      if (workshopOnly) {
+        codes = codes.map(c => ({ ...c, allowedNationalIds: [] }));
+      }
 
       if (req.query.includeUsages === 'true' && codes.length > 0) {
         const uRows = await selectWithTimeout<any>(
@@ -243,7 +287,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
         );
         const usagesByDiscount = new Map<string, CourseDiscountUsage[]>();
         for (const ur of uRows || []) {
-          const mapped = mapDiscountUsageRow(ur);
+          const mapped = redactNationalIdForUser(authCtx, mapDiscountUsageRow(ur));
           const list = usagesByDiscount.get(mapped.discountId) || [];
           list.push(mapped);
           usagesByDiscount.set(mapped.discountId, list);
@@ -265,7 +309,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const dBuf = toIdBuffer(req.params.id);
       const [codeRows, usageRows] = await Promise.all([
@@ -286,7 +330,14 @@ export function registerCourseDiscountsRoutes(router: Router): void {
       }
 
       const discount = mapDiscountRow(codeRows[0]);
-      discount.usages = (usageRows || []).map(mapDiscountUsageRow);
+      const dScope = normalizeCourseScope(discount.scope);
+      if (!canReadAdminCourseScope(authCtx, dScope)) {
+        throw AppError.forbidden('سطح دسترسی شما مجاز به مشاهده جزئیات این کد تخفیف نیست.');
+      }
+      if (isWorkshopOnlyManager(authCtx)) {
+        discount.allowedNationalIds = [];
+      }
+      discount.usages = (usageRows || []).map(ur => redactNationalIdForUser(authCtx, mapDiscountUsageRow(ur)));
       res.json(discount);
     } catch (err) {
       next(err);
@@ -299,9 +350,12 @@ export function registerCourseDiscountsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const body = req.body || {};
+      const targetScope = normalizeCourseScope(body.scope);
+      assertCanManageCourseScope(authCtx, targetScope);
+
       const code = String(body.code || '').trim().toUpperCase();
       const title = String(body.title || '').trim();
       if (!code || code.length < 3) {
@@ -345,8 +399,8 @@ export function registerCourseDiscountsRoutes(router: Router): void {
           id, code, title, description, discount_category, value_type, discount_value,
           max_discount_amount, min_purchase_amount, course_id, course_ids,
           target_audiences, allowed_national_ids, max_uses, per_user_limit, used_count,
-          starts_at, expires_at, starts_at_jalali, expires_at_jalali, is_active, created_by_name, version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 1)`,
+          starts_at, expires_at, starts_at_jalali, expires_at_jalali, is_active, created_by_name, scope, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, 1)`,
         [
           idBuf,
           code,
@@ -369,6 +423,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
           body.expiresAtJalali || null,
           body.isActive === false ? 0 : 1,
           user.fullName,
+          targetScope,
         ]
       );
 
@@ -381,11 +436,11 @@ export function registerCourseDiscountsRoutes(router: Router): void {
         actorName: user.fullName,
         actorRole: user.role,
         ip: '127.0.0.1',
-        details: `تعریف کد تخفیف جدید [${code} - ${title}] از نوع ${created.discountCategory}.`,
+        details: `تعریف کد تخفیف جدید [${code} - ${title}] (${targetScope}) از نوع ${created.discountCategory}.`,
         severity: 'info',
       });
 
-      outbox.enqueue('courses.discount_updated', { action: 'created', discount: created });
+      outbox.enqueue('courses.discount_updated', { action: 'created', courseScope: targetScope, discount: created });
       res.status(201).json(created);
     } catch (err) {
       next(err);
@@ -398,7 +453,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const expVer = extractExpectedVersion(req, true);
       const dBuf = toIdBuffer(req.params.id);
@@ -411,6 +466,8 @@ export function registerCourseDiscountsRoutes(router: Router): void {
       );
       if (!rows || rows.length === 0) throw AppError.notFound('کد تخفیف');
       const existing = mapDiscountRow(rows[0]);
+      const existingScope = normalizeCourseScope(existing.scope);
+      assertCanManageCourseScope(authCtx, existingScope);
 
       const body = req.body || {};
       const title = body.title !== undefined ? String(body.title).trim() : existing.title;
@@ -471,7 +528,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
 
       const updatedRows = await selectWithTimeout<any>(`SELECT * FROM course_discount_codes WHERE id = ? OR id = ? LIMIT 1`, [dBuf, req.params.id], 3000);
       const updated = mapDiscountRow(updatedRows[0]);
-      outbox.enqueue('courses.discount_updated', { action: 'updated', discount: updated });
+      outbox.enqueue('courses.discount_updated', { action: 'updated', courseScope: existingScope, discount: updated });
       res.json(updated);
     } catch (err) {
       next(err);
@@ -483,11 +540,22 @@ export function registerCourseDiscountsRoutes(router: Router): void {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const expVer = extractExpectedVersion(req, true);
       const dBuf = toIdBuffer(req.params.id);
       const p = getPool();
+
+      const existingRows = await selectWithTimeout<any>(
+        `SELECT scope FROM course_discount_codes WHERE (id = ? OR id = ?) AND deleted_at IS NULL LIMIT 1`,
+        [dBuf, req.params.id],
+        3000
+      );
+      if (!existingRows || existingRows.length === 0) {
+        throw AppError.notFound('کد تخفیف');
+      }
+      const existingScope = normalizeCourseScope(existingRows[0].scope);
+      assertCanManageCourseScope(authCtx, existingScope);
 
       const [upd]: any = await p.query(
         `UPDATE course_discount_codes
@@ -500,7 +568,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
         throw AppError.conflict('کد تخفیف یافت نشد یا توسط مدیر دیگری تغییر یافته است.', 'CONCURRENT_MODIFICATION_CONFLICT');
       }
 
-      outbox.enqueue('courses.discount_updated', { action: 'deleted', discountId: req.params.id });
+      outbox.enqueue('courses.discount_updated', { action: 'deleted', courseScope: existingScope, discountId: req.params.id });
       res.json({ success: true, id: req.params.id });
     } catch (err) {
       next(err);
@@ -521,7 +589,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
 
       const cBuf = toIdBuffer(courseId);
       const cRows = await selectWithTimeout<any>(
-        `SELECT id, price, target_audiences FROM courses WHERE (id = ? OR id = ?) AND is_deleted = 0 LIMIT 1`,
+        `SELECT id, price, target_audiences, course_scope FROM courses WHERE (id = ? OR id = ?) AND is_deleted = 0 LIMIT 1`,
         [cBuf, courseId],
         3000
       );
@@ -535,6 +603,7 @@ export function registerCourseDiscountsRoutes(router: Router): void {
       const result = await validateDiscountForCourse({
         code,
         courseId: fromIdBuffer(cRow.id),
+        courseScope: normalizeCourseScope(cRow.course_scope),
         coursePrice: Number(cRow.price || 0),
         courseTargetAudiences: targetAudiences,
         userId: user.id,

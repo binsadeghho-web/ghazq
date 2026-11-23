@@ -5,6 +5,7 @@ export interface AuthContext {
   userId: string;
   role: UserRole;
   fullName: string;
+  sectionPermissions?: any;
 }
 
 export const ORGANIZATIONAL_ROLES: UserRole[] = [

@@ -138,7 +138,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
     setValidatingDiscount(true);
     setSubmitError(null);
     try {
-      const res = await api.validateCourseDiscountCode(discountInput.trim(), course.id);
+      const res = await api.validateCourseDiscountCode(course.id, discountInput.trim());
       setDiscountResult(res);
     } catch (err: any) {
       setDiscountResult({

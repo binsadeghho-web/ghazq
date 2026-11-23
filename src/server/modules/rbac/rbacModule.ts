@@ -187,7 +187,16 @@ export async function rbacEnforcementMiddleware(
     else if (subPath.startsWith('/admin/users')) targetSection = 'users';
 
     if (targetSection) {
-      const effectivePerm = getServerEffectivePermission(user, targetSection);
+      let effectivePerm = getServerEffectivePermission(user, targetSection);
+
+      // /courses serves both Specialized Courses ('courses' permission) and Counseling Workshops ('counseling' permission)
+      // Fail-closed per-scope BOLA checks inside coursesModule/sub-routers ensure psychologist_counselor can ONLY touch 'counseling_workshop'.
+      if (subPath.startsWith('/courses') && effectivePerm === 'none') {
+        const counselingPerm = getServerEffectivePermission(user, 'counseling');
+        if (counselingPerm !== 'none') {
+          effectivePerm = counselingPerm;
+        }
+      }
 
       // Special exception: if an organizational user is viewing `/admin/users` because they have access to `alumni` directory
       const canAlsoAccessViaAlumni =

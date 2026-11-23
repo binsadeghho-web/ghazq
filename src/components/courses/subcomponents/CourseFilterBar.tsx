@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, ShieldCheck, Archive, CalendarClock, TicketPercent } from 'lucide-react';
+import { CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 
 export type CourseTab =
@@ -13,6 +14,7 @@ export type CourseTab =
 export type CourseFormatFilter = 'all' | 'online' | 'in_person' | 'hybrid';
 
 interface CourseFilterBarProps {
+  mode?: CourseScope;
   activeTab: CourseTab;
   onTabChange: (tab: CourseTab) => void;
   searchQuery: string;
@@ -28,6 +30,7 @@ interface CourseFilterBarProps {
 }
 
 export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
+  mode = 'specialized',
   activeTab,
   onTabChange,
   searchQuery,
@@ -42,12 +45,14 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
   isOfficial,
 }) => {
   const isCatalogTab = activeTab === 'available' || activeTab === 'my_courses' || activeTab === 'archive';
+  const pluralNoun = mode === 'counseling_workshop' ? 'کارگاه‌های' : 'دوره‌های';
 
   return (
     <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 glass-card p-3 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs">
       {/* Navigation Tabs */}
       <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800/70 rounded-xl text-xs overflow-x-auto scrollbar-none font-bold">
         <button
+          type="button"
           onClick={() => onTabChange('available')}
           className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'available'
@@ -55,10 +60,11 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          دوره‌های در حال ثبت‌نام ({toPersianNumbers(availableCount)})
+          {pluralNoun} در حال ثبت‌نام ({toPersianNumbers(availableCount)})
         </button>
 
         <button
+          type="button"
           onClick={() => onTabChange('my_courses')}
           className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'my_courses'
@@ -66,13 +72,14 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <span>دوره‌های من</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+          <span>{pluralNoun} من</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 tabular-nums">
             {toPersianNumbers(myEnrolledCount)}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => onTabChange('archive')}
           className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
             activeTab === 'archive'
@@ -80,11 +87,12 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          آرشیو دوره‌های سابق ({toPersianNumbers(archivedCount)})
+          آرشیو {pluralNoun} سابق ({toPersianNumbers(archivedCount)})
         </button>
 
         {isOfficial && (
           <button
+            type="button"
             onClick={() => onTabChange('admin_panel')}
             className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'admin_panel'
@@ -95,7 +103,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>پنل تایید فیش‌ها</span>
             {pendingReceiptsCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white animate-pulse">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-black tabular-nums">
                 {toPersianNumbers(pendingReceiptsCount)}
               </span>
             )}
@@ -104,6 +112,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
 
         {isOfficial && (
           <button
+            type="button"
             onClick={() => onTabChange('installments_admin')}
             className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'installments_admin'
@@ -118,6 +127,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
 
         {isOfficial && (
           <button
+            type="button"
             onClick={() => onTabChange('discounts_admin')}
             className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'discounts_admin'
@@ -132,6 +142,7 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
 
         {isOfficial && (
           <button
+            type="button"
             onClick={() => onTabChange('deleted_courses')}
             className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'deleted_courses'
@@ -150,8 +161,9 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800/70 rounded-xl text-xs">
             <button
+              type="button"
               onClick={() => onFormatFilterChange('all')}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 formatFilter === 'all'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400'
@@ -160,8 +172,9 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
               همه
             </button>
             <button
+              type="button"
               onClick={() => onFormatFilterChange('online')}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 formatFilter === 'online'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400'
@@ -170,8 +183,9 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
               مجازی (برخط)
             </button>
             <button
+              type="button"
               onClick={() => onFormatFilterChange('in_person')}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 formatFilter === 'in_person'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400'
@@ -187,7 +201,11 @@ export const CourseFilterBar: React.FC<CourseFilterBarProps> = ({
               type="text"
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
-              placeholder="جستجو در عنوان، استاد، فقه القضا..."
+              placeholder={
+                mode === 'counseling_workshop'
+                  ? 'جستجو در عنوان، مدرس، کارگاه مشاوره...'
+                  : 'جستجو در عنوان، استاد، فقه القضا...'
+              }
               className="w-full pr-8.5 pl-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400"
             />
           </div>

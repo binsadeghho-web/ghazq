@@ -1571,11 +1571,17 @@ class ApiClient {
     return this.request<{ items: any[]; dueNow: any[] }>('/api/courses/installments/my');
   }
 
-  async getAdminCourseInstallments(filters?: { courseId?: string; status?: string; search?: string }) {
+  async getAdminCourseInstallments(filters?: {
+    courseId?: string;
+    status?: string;
+    search?: string;
+    scope?: 'specialized' | 'counseling_workshop';
+  }) {
     const qs = new URLSearchParams();
     if (filters?.courseId) qs.set('courseId', filters.courseId);
     if (filters?.status) qs.set('status', filters.status);
     if (filters?.search) qs.set('search', filters.search);
+    if (filters?.scope) qs.set('scope', filters.scope);
     const queryStr = qs.toString() ? `?${qs.toString()}` : '';
     return this.request<{ items: any[]; summary: any }>(`/api/courses/installments/admin${queryStr}`);
   }
@@ -1615,9 +1621,12 @@ class ApiClient {
   }
 
   // Course Discount Codes Endpoints (Multi-Type + Usage Analytics)
-  async getCourseDiscountCodes(includeUsages = false) {
-    const qs = includeUsages ? '?includeUsages=true' : '';
-    return this.request<any[]>(`/api/courses/discounts${qs}`);
+  async getCourseDiscountCodes(includeUsages = false, scope?: 'specialized' | 'counseling_workshop') {
+    const qs = new URLSearchParams();
+    if (includeUsages) qs.set('includeUsages', 'true');
+    if (scope) qs.set('scope', scope);
+    const queryStr = qs.toString() ? `?${qs.toString()}` : '';
+    return this.request<any[]>(`/api/courses/discounts${queryStr}`);
   }
 
   async getCourseDiscountDetails(discountId: string) {

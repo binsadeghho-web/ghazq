@@ -792,6 +792,8 @@ export type CourseDiscountCategory =
   | 'user_specific'
   | 'early_bird';
 
+export type CourseScope = 'specialized' | 'counseling_workshop';
+
 export interface CourseDiscountUsage {
   id: string;
   discountId: string;
@@ -835,6 +837,7 @@ export interface CourseDiscountCode {
   createdByName?: string;
   createdAt?: string;
   version: number;
+  scope?: CourseScope;
   usages?: CourseDiscountUsage[];
 }
 
@@ -904,6 +907,7 @@ export interface CourseAttendanceRecord {
 
 export interface Course {
   id: string;
+  courseScope?: CourseScope;
   title: string;
   instructor: string;
   instructorTitle?: string;

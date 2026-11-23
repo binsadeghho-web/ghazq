@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   HeartHandshake,
@@ -19,6 +19,7 @@ import {
   Phone,
   LayoutGrid,
   Copy,
+  GraduationCap,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingRequest } from '../../types';
@@ -27,16 +28,23 @@ import { GeneralCounselingTariffsTab } from './GeneralCounselingTariffsTab';
 import { PsychologicalTestsTab } from './PsychologicalTestsTab';
 import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossierSuite';
 import { CounselingGeneralShowcaseEditorModal } from '../crextio/CounselingGeneralShowcaseEditorModal';
+import { ModuleFallback } from '../common/ModuleFallback';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { isReadOnlyObserverRole } from '../../utils/rbacPolicy';
 
+const CoursesSection = lazy(() =>
+  import('../courses/CoursesSection').then(m => ({ default: m.CoursesSection }))
+);
+
 interface AdminCounselingGeneralSuiteProps {
   initialTab?: 'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder';
+  initialWorkspace?: 'booking' | 'workshops';
   onSwitchToStudentPreview: () => void;
 }
 
 export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuiteProps> = ({
   initialTab = 'queue',
+  initialWorkspace = 'booking',
   onSwitchToStudentPreview,
 }) => {
   const {
@@ -44,6 +52,8 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
     consultants,
     counselingRequests,
     counselingClientsBasic,
+    courses,
+    courseEnrollments,
     generalConfig,
     counselingFields,
     updateCounselingStatus,
@@ -56,6 +66,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
 
   const isObserver = isReadOnlyObserverRole(currentUser?.role);
   const isPsychologistRole = currentUser?.role === 'psychologist_counselor';
+  const [adminWorkspace, setAdminWorkspace] = useState<'booking' | 'workshops'>(initialWorkspace);
   const [showcaseEditorOpen, setShowcaseEditorOpen] = useState(false);
   const [contactModalClient, setContactModalClient] = useState<{ fullName: string; phone: string } | null>(null);
   const [copiedPhone, setCopiedPhone] = useState(false);
@@ -173,6 +184,24 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
   const pendingCount = generalRequests.filter(r => r.status === 'pending').length;
   const scheduledCount = generalRequests.filter(r => r.status === 'scheduled').length;
   const activePsychologistsCount = generalConsultants.filter(c => c.isActive !== false).length;
+
+  // Counseling Workshops Metrics (Strictly Scoped to courseScope === 'counseling_workshop')
+  const workshopCourses = useMemo(
+    () => courses.filter(c => (c.courseScope || 'specialized') === 'counseling_workshop' && !c.isDeleted),
+    [courses]
+  );
+  const workshopCourseIds = useMemo(
+    () => new Set(courses.filter(c => (c.courseScope || 'specialized') === 'counseling_workshop').map(c => c.id)),
+    [courses]
+  );
+  const workshopEnrollments = useMemo(
+    () => courseEnrollments.filter(e => workshopCourseIds.has(e.courseId)),
+    [courseEnrollments, workshopCourseIds]
+  );
+  const workshopActiveCount = workshopCourses.length;
+  const workshopEnrollingCount = workshopCourses.filter(c => c.status === 'enrolling' || c.status === 'ongoing').length;
+  const workshopPendingReceiptsCount = workshopEnrollments.filter(e => e.paymentStatus === 'pending_review').length;
+  const workshopConfirmedCount = workshopEnrollments.filter(e => e.paymentStatus === 'confirmed').length;
 
   const handleOpenScheduleModal = (req: CounselingRequest) => {
     if (isObserver) return;
@@ -314,98 +343,231 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
           </div>
         </div>
 
-        {/* Dynamic DB KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-white/10 text-xs">
-          <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
-            <span className="text-slate-300 font-bold block">کل درخواست‌های مشاوره عمومی</span>
-            <span className="text-2xl font-black text-white mt-1 block">{toPersianNumbers(totalRequests)}</span>
+        {/* Dynamic DB KPI Cards Adapting to Active Admin Workspace */}
+        {adminWorkspace === 'workshops' ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-white/10 text-xs">
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">کل کارگاه‌های آموزشی فعال</span>
+              <span className="text-2xl font-black text-white mt-1 block tabular-nums">{toPersianNumbers(workshopActiveCount)}</span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">کارگاه‌های در حال پذیرش</span>
+              <span className="text-2xl font-black text-emerald-300 mt-1 block tabular-nums">{toPersianNumbers(workshopEnrollingCount)}</span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">فیش‌های ثبت‌نامی در نوبت بررسی</span>
+              <span className="text-2xl font-black text-amber-300 mt-1 block tabular-nums">{toPersianNumbers(workshopPendingReceiptsCount)}</span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">ثبت‌نام‌های قطعی کارگاه‌ها</span>
+              <span className="text-2xl font-black text-white mt-1 block tabular-nums">{toPersianNumbers(workshopConfirmedCount)}</span>
+            </div>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
-            <span className="text-slate-300 font-bold block">نوبت‌های در انتظار پذیرش</span>
-            <span className="text-2xl font-black text-amber-300 mt-1 block">{toPersianNumbers(pendingCount)}</span>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-white/10 text-xs">
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">کل درخواست‌های مشاوره عمومی</span>
+              <span className="text-2xl font-black text-white mt-1 block tabular-nums">{toPersianNumbers(totalRequests)}</span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">نوبت‌های در انتظار پذیرش</span>
+              <span className="text-2xl font-black text-amber-300 mt-1 block tabular-nums">{toPersianNumbers(pendingCount)}</span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">جلسات هماهنگ‌شده</span>
+              <span className="text-2xl font-black text-emerald-300 mt-1 block tabular-nums">{toPersianNumbers(scheduledCount)}</span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
+              <span className="text-slate-300 font-bold block">روان‌شناسان فعال مرکز</span>
+              <span className="text-2xl font-black text-white mt-1 block tabular-nums">{toPersianNumbers(activePsychologistsCount)}</span>
+            </div>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
-            <span className="text-slate-300 font-bold block">جلسات هماهنگ‌شده</span>
-            <span className="text-2xl font-black text-emerald-300 mt-1 block">{toPersianNumbers(scheduledCount)}</span>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
-            <span className="text-slate-300 font-bold block">روان‌شناسان فعال مرکز</span>
-            <span className="text-2xl font-black text-white mt-1 block">{toPersianNumbers(activePsychologistsCount)}</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
-        {[
-          {
-            id: 'queue',
-            label: 'پذیرش و نوبت‌دهی',
-            icon: Calendar,
-            badge: pendingCount > 0 ? `${toPersianNumbers(pendingCount)} معلق` : undefined,
-          },
-          {
-            id: 'tests_dossiers',
-            label: 'تست‌های روان‌شناختی و پرونده جلسات',
-            icon: ClipboardCheck,
-          },
-          {
-            id: 'consultants',
-            label: 'کادر روان‌شناسان مرکز',
-            icon: Users,
-            badge: `${toPersianNumbers(generalConsultants.length)} روان‌شناس`,
-          },
-          {
-            id: 'tariffs',
-            label: 'مدیریت نرخ‌نامه',
-            icon: DollarSign,
-          },
-          {
-            id: 'form_builder',
-            label: 'ویرایش صفحه، زمینه‌ها، شهرها و فرم',
-            icon: Sliders,
-          },
-        ].map(tab => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition-all ${
-                active
-                  ? 'bg-emerald-800 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+      {/* Completely Separate Top-Level Admin Workspace Switcher */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <button
+          type="button"
+          onClick={() => setAdminWorkspace('booking')}
+          className={`text-right p-4 sm:p-5 rounded-3xl border backdrop-blur-xl transition-all flex items-center justify-between gap-4 cursor-pointer ${
+            adminWorkspace === 'booking'
+              ? 'bg-gradient-to-l from-emerald-800 via-teal-900 to-slate-900 text-white border-emerald-400/50 shadow-lg'
+              : 'bg-white/80 dark:bg-slate-900/75 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-emerald-400/60'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${
+                adminWorkspace === 'booking'
+                  ? 'bg-white/15 border-white/25 text-amber-300'
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'}`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span
+                className={`text-[11px] font-bold block ${
+                  adminWorkspace === 'booking' ? 'text-emerald-200' : 'text-emerald-700 dark:text-emerald-400'
+                }`}
+              >
+                پنل مدیریت ۱
+              </span>
+              <h2 className="text-sm sm:text-base font-black truncate">
+                پنل مدیریت رزرو وقت مشاوره و پرونده‌ها
+              </h2>
+              <p
+                className={`text-[11px] mt-0.5 truncate ${
+                  adminWorkspace === 'booking' ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                پذیرش، نوبت‌دهی، کادر روان‌شناسان، آزمون‌ها، تعرفه و فرم‌ساز
+              </p>
+            </div>
+          </div>
+          {pendingCount > 0 && (
+            <span className="px-2.5 py-1 rounded-xl bg-amber-400 text-stone-950 text-[11px] font-black shrink-0 whitespace-nowrap tabular-nums">
+              {toPersianNumbers(pendingCount)} نوبت معلق
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminWorkspace('workshops')}
+          className={`text-right p-4 sm:p-5 rounded-3xl border backdrop-blur-xl transition-all flex items-center justify-between gap-4 cursor-pointer ${
+            adminWorkspace === 'workshops'
+              ? 'bg-gradient-to-l from-indigo-900 via-teal-900 to-slate-900 text-white border-teal-400/50 shadow-lg'
+              : 'bg-white/80 dark:bg-slate-900/75 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-teal-400/60'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${
+                adminWorkspace === 'workshops'
+                  ? 'bg-white/15 border-white/25 text-amber-300'
+                  : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-700 dark:text-indigo-300'
+              }`}
+            >
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <span
+                className={`text-[11px] font-bold block ${
+                  adminWorkspace === 'workshops' ? 'text-teal-200' : 'text-indigo-700 dark:text-indigo-400'
+                }`}
+              >
+                پنل مدیریت ۲
+              </span>
+              <h2 className="text-sm sm:text-base font-black truncate">
+                پنل مدیریت کارگاه‌های آموزشی
+              </h2>
+              <p
+                className={`text-[11px] mt-0.5 truncate ${
+                  adminWorkspace === 'workshops' ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                تعریف کارگاه، جلسات، اساتید، تایید فیش، اقساط، تخفیف و گواهی
+              </p>
+            </div>
+          </div>
+          {workshopPendingReceiptsCount > 0 && (
+            <span className="px-2.5 py-1 rounded-xl bg-rose-500 text-white text-[11px] font-black shrink-0 whitespace-nowrap tabular-nums">
+              {toPersianNumbers(workshopPendingReceiptsCount)} فیش منتظر
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Tab 1: General Counseling Queue */}
-      {activeTab === 'queue' && (
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 w-full lg:w-80">
-                <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="جستجو بر اساس نام، کد ملی، موبایل، شهر یا زمینه..."
-                  className="bg-transparent text-xs focus:outline-none w-full"
-                />
-              </div>
+      {/* WORKSPACE 2: DEDICATED COUNSELING WORKSHOPS ADMIN ENGINE */}
+      {adminWorkspace === 'workshops' && (
+        <Suspense fallback={<ModuleFallback />}>
+          <CoursesSection
+            mode="counseling_workshop"
+            onOpenShowcaseEditor={!isObserver ? () => setShowcaseEditorOpen(true) : undefined}
+          />
+        </Suspense>
+      )}
+
+      {/* WORKSPACE 1: DEDICATED COUNSELING BOOKING ADMIN ENGINE */}
+      {adminWorkspace === 'booking' && (
+        <>
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+            {[
+              {
+                id: 'queue',
+                label: 'پذیرش و نوبت‌دهی',
+                icon: Calendar,
+                badge: pendingCount > 0 ? `${toPersianNumbers(pendingCount)} معلق` : undefined,
+              },
+              {
+                id: 'tests_dossiers',
+                label: 'تست‌های روان‌شناختی و پرونده جلسات',
+                icon: ClipboardCheck,
+              },
+              {
+                id: 'consultants',
+                label: 'کادر روان‌شناسان مرکز',
+                icon: Users,
+                badge: `${toPersianNumbers(generalConsultants.length)} روان‌شناس`,
+              },
+              {
+                id: 'tariffs',
+                label: 'مدیریت نرخ‌نامه',
+                icon: DollarSign,
+              },
+              {
+                id: 'form_builder',
+                label: 'ویرایش صفحه، زمینه‌ها، شهرها و فرم',
+                icon: Sliders,
+              },
+            ].map(tab => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition-all ${
+                    active
+                      ? 'bg-emerald-800 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900'}`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab 1: General Counseling Queue */}
+          {activeTab === 'queue' && (
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 w-full lg:w-80">
+                    <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder={
+                        isPsychologistRole
+                          ? 'جستجو بر اساس نام، موبایل، شهر یا زمینه...'
+                          : 'جستجو بر اساس نام، کد ملی، موبایل، شهر یا زمینه...'
+                      }
+                      className="bg-transparent text-xs focus:outline-none w-full"
+                    />
+                  </div>
 
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <select
@@ -767,6 +929,8 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
 
       {/* Tab 5: Full Page, Fields, Cities & Dynamic Form Builder */}
       {activeTab === 'form_builder' && <CounselingFormBuilderTab counselingType="general" />}
+        </>
+      )}
 
       {/* Schedule & Edit Request Modal */}
       <AnimatePresence>

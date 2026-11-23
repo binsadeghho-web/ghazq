@@ -187,12 +187,14 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
       `ADD COLUMN offline_download_files JSON NULL`,
       `ADD COLUMN instructors JSON NULL`,
       `ADD COLUMN sessions JSON NULL`,
+      `ADD COLUMN course_scope ENUM('specialized', 'counseling_workshop') NOT NULL DEFAULT 'specialized'`,
       `ADD COLUMN deleted_at DATETIME(3) NULL`,
       `ADD COLUMN deleted_by VARCHAR(255) NULL`
     ];
     for (const clause of courseAlters) {
       try { await p.query(`ALTER TABLE courses ${clause};`); } catch {}
     }
+    try { await p.query(`CREATE INDEX idx_courses_scope_deleted ON courses (course_scope, deleted_at, created_at);`); } catch {}
 
     const enrollmentAlters = [
       `ADD COLUMN payment_plan_type ENUM('full', 'installment') NOT NULL DEFAULT 'full'`,
@@ -410,6 +412,7 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
         expires_at_jalali VARCHAR(32) NULL,
         is_active TINYINT(1) NOT NULL DEFAULT 1,
         created_by_name VARCHAR(255) NULL,
+        scope ENUM('specialized', 'counseling_workshop') NOT NULL DEFAULT 'specialized',
         deleted_at DATETIME(3) NULL,
         version INT NOT NULL DEFAULT 1,
         created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -417,6 +420,8 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
         INDEX idx_disc_active_del (deleted_at, is_active, created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+    try { await p.query(`ALTER TABLE course_discount_codes ADD COLUMN scope ENUM('specialized', 'counseling_workshop') NOT NULL DEFAULT 'specialized';`); } catch {}
+    try { await p.query(`CREATE INDEX idx_cdiscounts_scope_del ON course_discount_codes (scope, deleted_at, is_active);`); } catch {}
 
     await p.query(`
       CREATE TABLE IF NOT EXISTS course_discount_usages (

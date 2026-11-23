@@ -20,6 +20,7 @@ import {
 interface CourseRosterModalProps {
   course: Course | null;
   enrollments: CourseEnrollment[];
+  hideNationalId?: boolean;
   onClose: () => void;
   onReviewEnrollment: (enrollmentId: string, status: 'confirmed' | 'rejected', adminNote?: string) => Promise<void>;
   onRemoveFromClass?: (courseId: string, enrollmentId: string, reason?: string) => Promise<void>;
@@ -31,6 +32,7 @@ interface CourseRosterModalProps {
 export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
   course,
   enrollments,
+  hideNationalId = false,
   onClose,
   onReviewEnrollment,
   onRemoveFromClass,
@@ -73,13 +75,13 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
         return (
           e.userName.toLowerCase().includes(q) ||
           e.userPhone.includes(q) ||
-          e.userNationalId.includes(q) ||
+          (!hideNationalId && (e.userNationalId || '').includes(q)) ||
           e.trackingCode.toLowerCase().includes(q)
         );
       }
       return true;
     });
-  }, [courseEnrollmentsList, rosterStatusFilter, rosterSearch]);
+  }, [courseEnrollmentsList, rosterStatusFilter, rosterSearch, hideNationalId]);
 
   if (!course) return null;
 
@@ -202,7 +204,11 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                   type="text"
                   value={rosterSearch}
                   onChange={e => setRosterSearch(e.target.value)}
-                  placeholder="جستجوی نام شرکت‌کننده، کد ملی، شماره موبایل یا کد رهگیری..."
+                  placeholder={
+                    hideNationalId
+                      ? 'جستجوی نام شرکت‌کننده، شماره موبایل یا کد رهگیری...'
+                      : 'جستجوی نام شرکت‌کننده، کد ملی، شماره موبایل یا کد رهگیری...'
+                  }
                   className="w-full pr-8 pl-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
@@ -323,10 +329,12 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                           {copiedPhone === enr.id && <span className="text-[9px] text-emerald-600 font-sans">کپی شد</span>}
                         </div>
 
-                        <div className="flex items-center gap-1 font-mono">
-                          <span className="text-slate-400">کد ملی:</span>
-                          <span>{toPersianNumbers(enr.userNationalId)}</span>
-                        </div>
+                        {!hideNationalId && enr.userNationalId && (
+                          <div className="flex items-center gap-1 font-mono tabular-nums">
+                            <span className="text-slate-400">کد ملی:</span>
+                            <span>{toPersianNumbers(enr.userNationalId)}</span>
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-1 font-mono">
                           <span className="text-slate-400">رهگیری:</span>

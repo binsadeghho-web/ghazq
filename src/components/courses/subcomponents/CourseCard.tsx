@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Course, CourseEnrollment } from '../../../types';
+import { Course, CourseEnrollment, CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import {
   Eye,
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 interface CourseCardProps {
+  mode?: CourseScope;
   course: Course;
   userEnrollment?: CourseEnrollment;
   isOfficial: boolean;
@@ -37,6 +38,7 @@ interface CourseCardProps {
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
+  mode,
   course,
   userEnrollment,
   isOfficial,
@@ -49,6 +51,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onStartDelete,
   onOpenCourseOps,
 }) => {
+  const unitNoun = (mode || course.courseScope) === 'counseling_workshop' ? 'کارگاه' : 'دوره';
   const isRemovedFromClass = Boolean(
     userEnrollment?.classStatus === 'removed' || course.classStatus === 'removed'
   );
@@ -96,7 +99,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
                 <Eye className="w-5 h-5 text-emerald-400 drop-shadow" />
                 <span className="text-xs font-black bg-black/65 px-3 py-1.5 rounded-xl backdrop-blur-sm">
-                  مشاهده جزئیات کامل دوره
+                  مشاهده جزئیات کامل {unitNoun}
                 </span>
               </div>
             </>
@@ -171,11 +174,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                   e.stopPropagation();
                   onOpenDedicatedAdmin(course);
                 }}
-                className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 text-[10px] font-black border border-amber-500/30 flex items-center gap-1 shrink-0 transition-transform active:scale-95"
-                title="ورود به پنل مدیریت این دوره"
+                className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 text-[10px] font-black border border-amber-500/30 flex items-center gap-1 shrink-0 transition-transform active:scale-95 whitespace-nowrap cursor-pointer"
+                title={`ورود به پنل مدیریت این ${unitNoun}`}
               >
                 <Settings className="w-3 h-3" />
-                <span>مدیریت دوره</span>
+                <span>مدیریت {unitNoun}</span>
               </button>
             )}
           </div>
@@ -288,7 +291,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/20 cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5 text-emerald-200" />
-              <span>پنل مدیریت دوره</span>
+              <span>پنل مدیریت {unitNoun}</span>
             </motion.button>
           ) : isRemovedFromClass ? (
             <span className="px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-[11px] font-black">

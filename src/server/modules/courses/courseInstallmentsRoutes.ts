@@ -8,7 +8,14 @@ import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7'
 import { extractExpectedVersion } from '../../platform/httpUtils';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
-import { CourseInstallmentRecord } from '../../../types';
+import { CourseInstallmentRecord, CourseScope } from '../../../types';
+import {
+  normalizeCourseScope,
+  canReadAdminCourseScope,
+  isWorkshopOnlyManager,
+  assertCanManageCourseId,
+  redactNationalIdForUser,
+} from './courseScopeAuth';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -87,35 +94,65 @@ export function registerCourseInstallmentsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
+      const workshopOnly = isWorkshopOnlyManager(authCtx);
+
+      const requestedScope = req.query.scope as string | undefined;
+      if (workshopOnly && requestedScope === 'specialized') {
+        throw AppError.forbidden('دسترسی مسئول مشاوره صرفاً به اقساط کارگاه‌های آموزشی مجاز است.');
+      }
+
+      const effectiveScope: CourseScope | undefined = workshopOnly
+        ? 'counseling_workshop'
+        : requestedScope === 'specialized' || requestedScope === 'counseling_workshop'
+        ? requestedScope
+        : undefined;
+
+      if (!effectiveScope && !canReadAdminCourseScope(authCtx, 'specialized') && !canReadAdminCourseScope(authCtx, 'counseling_workshop')) {
+        throw AppError.forbidden('سطح دسترسی شما مجاز به مشاهده لیست اقساط نیست.');
+      }
+      if (effectiveScope && !canReadAdminCourseScope(authCtx, effectiveScope)) {
+        throw AppError.forbidden('سطح دسترسی شما مجاز به مشاهده اقساط این بخش نیست.');
+      }
 
       const courseId = req.query.courseId as string | undefined;
       const status = req.query.status as string | undefined;
       const search = (req.query.search as string | undefined)?.trim();
 
-      let sql = `SELECT * FROM course_installments WHERE deleted_at IS NULL`;
+      let sql = `SELECT ci.* FROM course_installments ci INNER JOIN courses c ON c.id = ci.course_id WHERE ci.deleted_at IS NULL`;
       const params: any[] = [];
 
+      if (effectiveScope) {
+        sql += ` AND c.course_scope = ?`;
+        params.push(effectiveScope);
+      }
+
       if (courseId && courseId !== 'all') {
-        sql += ` AND (course_id = ? OR course_id = ?)`;
+        sql += ` AND (ci.course_id = ? OR ci.course_id = ?)`;
         params.push(toIdBuffer(courseId), courseId);
       }
 
       if (status && status !== 'all' && status !== 'overdue') {
-        sql += ` AND status = ?`;
+        sql += ` AND ci.status = ?`;
         params.push(status);
       }
 
       if (search) {
         const like = `%${search}%`;
-        sql += ` AND (user_name LIKE ? OR user_national_id LIKE ? OR user_phone LIKE ? OR tracking_code LIKE ? OR course_title LIKE ?)`;
-        params.push(like, like, like, like, like);
+        if (workshopOnly) {
+          // Do not allow probing by national ID when workshop-only manager has PII minimized
+          sql += ` AND (ci.user_name LIKE ? OR ci.user_phone LIKE ? OR ci.tracking_code LIKE ? OR ci.course_title LIKE ?)`;
+          params.push(like, like, like, like);
+        } else {
+          sql += ` AND (ci.user_name LIKE ? OR ci.user_national_id LIKE ? OR ci.user_phone LIKE ? OR ci.tracking_code LIKE ? OR ci.course_title LIKE ?)`;
+          params.push(like, like, like, like, like);
+        }
       }
 
-      sql += ` ORDER BY due_date_iso ASC, installment_number ASC LIMIT 1000`;
+      sql += ` ORDER BY ci.due_date_iso ASC, ci.installment_number ASC LIMIT 1000`;
 
       const rows = await selectWithTimeout<any>(sql, params, 4000);
-      let items = (rows || []).map(mapInstallmentRow);
+      let items = (rows || []).map(mapInstallmentRow).map(i => redactNationalIdForUser(authCtx, i));
 
       if (status === 'overdue') {
         items = items.filter(i => i.status === 'overdue');
@@ -234,9 +271,13 @@ export function registerCourseInstallmentsRoutes(router: Router): void {
         severity: 'info',
       });
 
+      const cRows = await selectWithTimeout<any>(`SELECT course_scope FROM courses WHERE id = ? OR id = ? LIMIT 1`, [toIdBuffer(updated.courseId), updated.courseId], 2000);
+      const courseScope = cRows?.[0]?.course_scope ? normalizeCourseScope(cRows[0].course_scope) : 'specialized';
+
       outbox.enqueue('courses.installment_updated', {
         installmentId: updated.id,
         courseId: updated.courseId,
+        courseScope,
         userId: updated.userId,
         installment: updated,
       });
@@ -253,7 +294,7 @@ export function registerCourseInstallmentsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const installmentId = req.params.installmentId;
       const iBuf = toIdBuffer(installmentId);
@@ -267,6 +308,7 @@ export function registerCourseInstallmentsRoutes(router: Router): void {
       );
       if (!rows || rows.length === 0) throw AppError.notFound('قسط آموزشی');
       const existing = mapInstallmentRow(rows[0]);
+      const courseScope = await assertCanManageCourseId(authCtx, existing.courseId);
 
       const nextStatus = status || existing.status;
       const nextDueIso = dueDateIso !== undefined ? String(dueDateIso).slice(0, 10) : existing.dueDateIso;
@@ -299,12 +341,13 @@ export function registerCourseInstallmentsRoutes(router: Router): void {
           `SELECT * FROM course_installments WHERE id = ? OR id = ? LIMIT 1`,
           [iBuf, installmentId]
         );
-        return mapInstallmentRow(refreshed[0]);
+        return redactNationalIdForUser(authCtx, mapInstallmentRow(refreshed[0]));
       });
 
       outbox.enqueue('courses.installment_updated', {
         installmentId: updated.id,
         courseId: updated.courseId,
+        courseScope,
         userId: updated.userId,
         installment: updated,
       });

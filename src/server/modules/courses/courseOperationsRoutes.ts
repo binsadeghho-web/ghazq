@@ -10,6 +10,14 @@ import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7'
 import { extractExpectedVersion } from '../../platform/httpUtils';
 import { storageConfig } from '../../platform/storage';
 import { outbox } from '../../platform/outbox';
+import {
+  normalizeCourseScope,
+  canManageCourseScope,
+  isWorkshopOnlyManager,
+  assertCanManageCourseScope,
+  assertCanManageCourseId,
+  redactNationalIdForUser,
+} from './courseScopeAuth';
 
 function formatReadableBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '۰ بایت';
@@ -31,9 +39,18 @@ export function registerCourseOperationsRoutes(router: Router): void {
   router.get('/:courseId/disk-files', async (req: Request, res: Response, next) => {
     try {
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const folderName = resolveCourseDiskFolderName(req.params.courseId);
+      if (folderName.startsWith('draft_')) {
+        if (!canManageCourseScope(authCtx, 'counseling_workshop') && !canManageCourseScope(authCtx, 'specialized')) {
+          throw AppError.forbidden('سطح دسترسی شما مجاز به مشاهده فایل‌های پیش‌نویس نیست.');
+        }
+      } else {
+        const cleanCourseId = folderName.startsWith('course_') ? folderName.slice('course_'.length) : folderName;
+        await assertCanManageCourseId(authCtx, cleanCourseId);
+      }
+
       const baseDir = path.resolve(storageConfig.categories.course_file.path);
       const targetDir = path.resolve(baseDir, folderName);
       if (!targetDir.startsWith(baseDir + path.sep)) {
@@ -83,9 +100,17 @@ export function registerCourseOperationsRoutes(router: Router): void {
   router.delete('/:courseId/disk-files/:filename', async (req: Request, res: Response, next) => {
     try {
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const folderName = resolveCourseDiskFolderName(req.params.courseId);
+      if (folderName.startsWith('draft_')) {
+        if (!canManageCourseScope(authCtx, 'counseling_workshop') && !canManageCourseScope(authCtx, 'specialized')) {
+          throw AppError.forbidden('سطح دسترسی شما مجاز به حذف فایل‌های پیش‌نویس نیست.');
+        }
+      } else {
+        const cleanCourseId = folderName.startsWith('course_') ? folderName.slice('course_'.length) : folderName;
+        await assertCanManageCourseId(authCtx, cleanCourseId);
+      }
       const safeFilename = path.basename(decodeURIComponent(req.params.filename || ''));
       if (!safeFilename || safeFilename.includes('..')) {
         throw AppError.badRequest('نام فایل نامعتبر است.');
@@ -122,11 +147,13 @@ export function registerCourseOperationsRoutes(router: Router): void {
     try {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
+      const user = getCurrentUser(req);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
       const courseId = req.params.courseId;
       const cBuf = toIdBuffer(courseId);
 
       const [courseRows, attRows, waitRows, certRows] = await Promise.all([
-        selectWithTimeout<any>(`SELECT id, title, instructor, hours, sessions_count, sessions, waitlist_enabled, version FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000),
+        selectWithTimeout<any>(`SELECT id, title, instructor, hours, sessions_count, sessions, waitlist_enabled, course_scope, version FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_attendance WHERE course_id = ? OR course_id = ? ORDER BY session_number ASC`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_waitlist WHERE course_id = ? OR course_id = ? ORDER BY created_at ASC`, [cBuf, courseId], 3000),
         selectWithTimeout<any>(`SELECT * FROM course_certificates WHERE (course_id = ? OR course_id = ?) AND deleted_at IS NULL ORDER BY issued_at DESC`, [cBuf, courseId], 3000),
@@ -136,58 +163,72 @@ export function registerCourseOperationsRoutes(router: Router): void {
         throw AppError.notFound('دوره آموزشی');
       }
       const cRow = courseRows[0];
+      const courseScope = normalizeCourseScope(cRow.course_scope);
+      if (isWorkshopOnlyManager(authCtx) && courseScope !== 'counseling_workshop') {
+        throw AppError.forbidden('دسترسی مسئول مشاوره صرفاً به کارگاه‌های آموزشی مجاز است.');
+      }
+      const isWorkshopMgr = canManageCourseScope(authCtx, courseScope);
       let parsedSessions: any[] = [];
       try {
         parsedSessions = typeof cRow.sessions === 'string' ? JSON.parse(cRow.sessions) : Array.isArray(cRow.sessions) ? cRow.sessions : [];
       } catch {}
 
+      const isEndUserOnly = user.role === 'alumni' || user.role === 'customer' || (!isWorkshopMgr && user.role !== 'general_observer' && !canManageCourseScope(authCtx, 'specialized'));
+
       res.json({
         courseId: fromIdBuffer(cRow.id),
+        courseScope,
         sessionsCount: parsedSessions.length > 0 ? parsedSessions.length : Number(cRow.sessions_count || 4),
         sessions: parsedSessions,
         waitlistEnabled: cRow.waitlist_enabled !== undefined ? Boolean(cRow.waitlist_enabled) : true,
         version: Number(cRow.version || 1),
-        attendance: (attRows || []).map((r: any) => ({
-          id: fromIdBuffer(r.id),
-          courseId: fromIdBuffer(r.course_id),
-          userId: fromIdBuffer(r.user_id),
-          userName: r.user_name,
-          sessionNumber: Number(r.session_number),
-          sessionTitle: r.session_title || `جلسه ${r.session_number}`,
-          status: r.status,
-          note: r.note || undefined,
-          recordedBy: r.recorded_by || undefined,
-          version: Number(r.version || 1),
-          updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
-        })),
-        waitlist: (waitRows || []).map((w: any) => ({
-          id: fromIdBuffer(w.id),
-          courseId: fromIdBuffer(w.course_id),
-          courseTitle: w.course_title,
-          userId: fromIdBuffer(w.user_id),
-          userName: w.user_name,
-          userPhone: w.user_phone,
-          status: w.status,
-          version: Number(w.version || 1),
-          createdAt: w.created_at ? new Date(w.created_at).toISOString() : new Date().toISOString(),
-        })),
-        certificates: (certRows || []).map((cert: any) => ({
-          id: fromIdBuffer(cert.id),
-          certificateNumber: cert.certificate_number,
-          courseId: fromIdBuffer(cert.course_id),
-          courseTitle: cert.course_title,
-          instructor: cert.instructor,
-          hours: Number(cert.hours || 0),
-          userId: fromIdBuffer(cert.user_id),
-          userName: cert.user_name,
-          userNationalId: cert.user_national_id || '',
-          certificateFileUrl: cert.certificate_file_url || undefined,
-          certificateFileName: cert.certificate_file_name || undefined,
-          uploadedByName: cert.uploaded_by_name || undefined,
-          gradeText: cert.grade_text || undefined,
-          issuedAt: cert.issued_at ? new Date(cert.issued_at).toISOString() : new Date().toISOString(),
-          version: Number(cert.version || 1),
-        })),
+        attendance: (attRows || [])
+          .filter((r: any) => !isEndUserOnly || fromIdBuffer(r.user_id) === user.id)
+          .map((r: any) => ({
+            id: fromIdBuffer(r.id),
+            courseId: fromIdBuffer(r.course_id),
+            userId: fromIdBuffer(r.user_id),
+            userName: r.user_name,
+            sessionNumber: Number(r.session_number),
+            sessionTitle: r.session_title || `جلسه ${r.session_number}`,
+            status: r.status,
+            note: r.note || undefined,
+            recordedBy: r.recorded_by || undefined,
+            version: Number(r.version || 1),
+            updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+          })),
+        waitlist: (waitRows || [])
+          .filter((w: any) => !isEndUserOnly || fromIdBuffer(w.user_id) === user.id)
+          .map((w: any) => ({
+            id: fromIdBuffer(w.id),
+            courseId: fromIdBuffer(w.course_id),
+            courseTitle: w.course_title,
+            userId: fromIdBuffer(w.user_id),
+            userName: w.user_name,
+            userPhone: w.user_phone,
+            status: w.status,
+            version: Number(w.version || 1),
+            createdAt: w.created_at ? new Date(w.created_at).toISOString() : new Date().toISOString(),
+          })),
+        certificates: (certRows || [])
+          .filter((cert: any) => !isEndUserOnly || fromIdBuffer(cert.user_id) === user.id)
+          .map((cert: any) => redactNationalIdForUser(authCtx, {
+            id: fromIdBuffer(cert.id),
+            certificateNumber: cert.certificate_number,
+            courseId: fromIdBuffer(cert.course_id),
+            courseTitle: cert.course_title,
+            instructor: cert.instructor,
+            hours: Number(cert.hours || 0),
+            userId: fromIdBuffer(cert.user_id),
+            userName: cert.user_name,
+            userNationalId: cert.user_national_id || '',
+            certificateFileUrl: cert.certificate_file_url || undefined,
+            certificateFileName: cert.certificate_file_name || undefined,
+            uploadedByName: cert.uploaded_by_name || undefined,
+            gradeText: cert.grade_text || undefined,
+            issuedAt: cert.issued_at ? new Date(cert.issued_at).toISOString() : new Date().toISOString(),
+            version: Number(cert.version || 1),
+          })),
       });
     } catch (err) {
       next(err);
@@ -200,7 +241,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const expVer = extractExpectedVersion(req, true);
       const courseId = req.params.courseId;
@@ -210,6 +251,8 @@ export function registerCourseOperationsRoutes(router: Router): void {
       const rows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000);
       if (!rows || rows.length === 0) throw AppError.notFound('دوره آموزشی');
       const existing = rows[0];
+      const courseScope = normalizeCourseScope(existing.course_scope);
+      assertCanManageCourseScope(authCtx, courseScope);
 
       const sessionsCount = req.body.sessionsCount !== undefined ? Math.max(1, Math.min(50, Number(req.body.sessionsCount))) : Number(existing.sessions_count || 4);
       const waitlistEnabled = req.body.waitlistEnabled !== undefined ? (req.body.waitlistEnabled ? 1 : 0) : Number(existing.waitlist_enabled ?? 1);
@@ -228,6 +271,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
       const newVer = Number(existing.version || 1) + 1;
       outbox.enqueue('courses.operations_updated', {
         courseId,
+        courseScope,
         sessionsCount,
         waitlistEnabled: Boolean(waitlistEnabled),
         version: newVer,
@@ -250,9 +294,10 @@ export function registerCourseOperationsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const courseId = req.params.courseId;
+      const courseScope = await assertCanManageCourseId(authCtx, courseId);
       const cBuf = toIdBuffer(courseId);
       const { userId, userName, sessionNumber, sessionTitle, status, note, sessionId } = req.body;
 
@@ -294,6 +339,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
 
       outbox.enqueue('courses.attendance_updated', {
         courseId,
+        courseScope,
         userId,
         sessionNumber: Number(sessionNumber),
         status: normalizedStatus,
@@ -318,9 +364,10 @@ export function registerCourseOperationsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
 
       const courseId = req.params.courseId;
+      const courseScope = await assertCanManageCourseId(authCtx, courseId);
       const cBuf = toIdBuffer(courseId);
       const records = Array.isArray(req.body?.records) ? req.body.records : [];
       if (records.length === 0) {
@@ -361,6 +408,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
 
       outbox.enqueue('courses.attendance_updated', {
         courseId,
+        courseScope,
         bulkCount: records.length,
       });
 
@@ -421,7 +469,8 @@ export function registerCourseOperationsRoutes(router: Router): void {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
+      const courseScope = await assertCanManageCourseId(authCtx, req.params.courseId);
 
       const expVer = extractExpectedVersion(req, true);
       const wBuf = toIdBuffer(req.params.waitlistId);
@@ -438,6 +487,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
 
       outbox.enqueue('courses.waitlist_updated', {
         courseId: req.params.courseId,
+        courseScope,
         waitlistId: req.params.waitlistId,
         status: req.body.status,
       });
@@ -454,6 +504,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const currentUser = getCurrentUser(req);
+      const authCtx = { userId: currentUser.id, role: currentUser.role, fullName: currentUser.fullName, sectionPermissions: (currentUser as any).sectionPermissions };
       const courseId = req.params.courseId;
       const cBuf = toIdBuffer(courseId);
       const p = getPool();
@@ -461,8 +512,12 @@ export function registerCourseOperationsRoutes(router: Router): void {
       const cRows = await selectWithTimeout<any>(`SELECT * FROM courses WHERE id = ? OR id = ? LIMIT 1`, [cBuf, courseId], 3000);
       if (!cRows || cRows.length === 0) throw AppError.notFound('دوره آموزشی');
       const course = cRows[0];
+      const courseScope = normalizeCourseScope(course.course_scope);
 
-      const isAdmin = currentUser.role === 'admin' || currentUser.role === 'supervisor';
+      const isAdmin = canManageCourseScope(authCtx, courseScope);
+      if (isWorkshopOnlyManager(authCtx) && courseScope !== 'counseling_workshop') {
+        throw AppError.forbidden('دسترسی مسئول مشاوره صرفاً به کارگاه‌های آموزشی مجاز است.');
+      }
       const targetUserId = isAdmin && req.body.userId ? req.body.userId : currentUser.id;
       const targetUserName = req.body.userName || currentUser.fullName;
       const targetNationalId = req.body.userNationalId || (currentUser as any).nationalId || '';
@@ -498,7 +553,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
         }
         const refreshed = await selectWithTimeout<any>(`SELECT * FROM course_certificates WHERE id = ? LIMIT 1`, [c.id], 3000);
         const r = refreshed[0];
-        const certObj = {
+        const rawCertObj = {
           id: fromIdBuffer(r.id),
           certificateNumber: r.certificate_number,
           courseId: fromIdBuffer(r.course_id),
@@ -515,7 +570,8 @@ export function registerCourseOperationsRoutes(router: Router): void {
           issuedAt: r.issued_at ? new Date(r.issued_at).toISOString() : new Date().toISOString(),
           version: Number(r.version || 1),
         };
-        outbox.enqueue('courses.certificate_issued', { courseId, certificate: certObj });
+        const certObj = redactNationalIdForUser(authCtx, rawCertObj);
+        outbox.enqueue('courses.certificate_issued', { courseId, courseScope, certificate: certObj });
         return res.json(certObj);
       }
 
@@ -546,7 +602,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
         ]
       );
 
-      const certObj = {
+      const rawCertObj = {
         id,
         certificateNumber: certNum,
         courseId,
@@ -563,9 +619,11 @@ export function registerCourseOperationsRoutes(router: Router): void {
         issuedAt: new Date().toISOString(),
         version: 1,
       };
+      const certObj = redactNationalIdForUser(authCtx, rawCertObj);
 
       outbox.enqueue('courses.certificate_issued', {
         courseId,
+        courseScope,
         certificate: certObj,
       });
 
@@ -580,7 +638,8 @@ export function registerCourseOperationsRoutes(router: Router): void {
     try {
       ensureDatabaseConnection();
       const user = getCurrentUser(req);
-      AuthorizationPolicy.requireRole({ userId: user.id, role: user.role, fullName: user.fullName }, ['admin', 'supervisor']);
+      const authCtx = { userId: user.id, role: user.role, fullName: user.fullName, sectionPermissions: (user as any).sectionPermissions };
+      const courseScope = await assertCanManageCourseId(authCtx, req.params.courseId);
 
       const certBuf = toIdBuffer(req.params.certId);
       const p = getPool();
@@ -590,7 +649,7 @@ export function registerCourseOperationsRoutes(router: Router): void {
       );
       if (!upd || upd.affectedRows === 0) throw AppError.notFound('گواهی دوره');
 
-      outbox.enqueue('courses.certificate_issued', { courseId: req.params.courseId, removedCertId: req.params.certId });
+      outbox.enqueue('courses.certificate_issued', { courseId: req.params.courseId, courseScope, removedCertId: req.params.certId });
       res.json({ success: true, id: req.params.certId });
     } catch (err) {
       next(err);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Course, CourseInstallmentRecord } from '../../../types';
+import { Course, CourseInstallmentRecord, CourseScope } from '../../../types';
 import { api } from '../../../services/apiClient';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import { PrivateFileViewerModal } from './PrivateFileViewerModal';
@@ -20,12 +20,18 @@ import {
 interface CourseInstallmentsAdminPanelProps {
   courses: Course[];
   initialCourseId?: string;
+  scope?: CourseScope;
+  hideNationalId?: boolean;
 }
 
 export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanelProps> = ({
   courses,
   initialCourseId = 'all',
+  scope = 'specialized',
+  hideNationalId = false,
 }) => {
+  const unitNoun = scope === 'counseling_workshop' ? 'کارگاه' : 'دوره';
+  const pluralNoun = scope === 'counseling_workshop' ? 'کارگاه‌های' : 'دوره‌های';
   const [items, setItems] = useState<CourseInstallmentRecord[]>([]);
   const [summary, setSummary] = useState<{
     totalRecords: number;
@@ -65,6 +71,7 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
         courseId: courseFilter,
         status: statusFilter,
         search: searchQuery.trim() || undefined,
+        scope,
       });
       setItems(Array.isArray(res.items) ? res.items : []);
       if (res.summary) setSummary(res.summary);
@@ -73,7 +80,7 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
     } finally {
       setLoading(false);
     }
-  }, [courseFilter, statusFilter, searchQuery]);
+  }, [courseFilter, statusFilter, searchQuery, scope]);
 
   useEffect(() => {
     loadData();
@@ -151,7 +158,7 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
         <div>
           <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-emerald-500" />
-            <span>مدیریت جامع اقساط دوره‌ها، مستندات و سررسیدهای خودکار</span>
+            <span>مدیریت جامع اقساط {pluralNoun}، مستندات و سررسیدهای خودکار</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             مشاهده فراگیران دارای قسط، وضعیت پرداخت‌ها، بررسی مستندات ذخیره‌شده روی دیسک و تنظیم تاریخ بازشدن خودکار درگاه پرداخت
@@ -225,7 +232,11 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="جستجو بر اساس نام، کد ملی، شماره همراه، کد رهگیری یا نام دوره..."
+            placeholder={
+              hideNationalId
+                ? `جستجو بر اساس نام، شماره همراه، کد رهگیری یا نام ${unitNoun}...`
+                : `جستجو بر اساس نام، کد ملی، شماره همراه، کد رهگیری یا نام ${unitNoun}...`
+            }
             className="w-full pr-9 pl-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
           />
         </div>
@@ -235,7 +246,7 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
           onChange={e => setCourseFilter(e.target.value)}
           className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold max-w-[220px]"
         >
-          <option value="all">همه دوره‌های اقساطی</option>
+          <option value="all">همه {pluralNoun} اقساطی</option>
           {courses.map(c => (
             <option key={c.id} value={c.id}>{c.title}</option>
           ))}
@@ -260,8 +271,8 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
         <table className="w-full text-right text-xs">
           <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black">
             <tr>
-              <th className="p-3">فراگیر و کد ملی</th>
-              <th className="p-3">دوره و عنوان قسط</th>
+              <th className="p-3">{hideNationalId ? 'فراگیر و شماره همراه' : 'فراگیر و کد ملی'}</th>
+              <th className="p-3">{unitNoun} و عنوان قسط</th>
               <th className="p-3">مبلغ قسط</th>
               <th className="p-3">تاریخ سررسید (بازشدن درگاه)</th>
               <th className="p-3 text-center">مستند پرداخت روی دیسک</th>
@@ -281,8 +292,9 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
                 <tr key={inst.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="p-3">
                     <strong className="text-slate-900 dark:text-white block font-black">{inst.userName}</strong>
-                    <span className="text-[11px] text-slate-500 font-mono block">
-                      {toPersianNumbers(inst.userPhone || '')} · ملی: {toPersianNumbers(inst.userNationalId || '')}
+                    <span className="text-[11px] text-slate-500 font-mono block tabular-nums">
+                      {toPersianNumbers(inst.userPhone || '')}
+                      {!hideNationalId && inst.userNationalId ? ` · ملی: ${toPersianNumbers(inst.userNationalId)}` : ''}
                     </span>
                   </td>
                   <td className="p-3">
