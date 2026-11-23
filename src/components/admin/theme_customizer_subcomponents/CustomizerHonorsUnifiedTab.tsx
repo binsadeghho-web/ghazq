@@ -148,13 +148,6 @@ export const HonorsManagerEditor: React.FC<EditorBaseProps> = ({
                       span: nextSpan,
                     },
                   },
-                  theme3Config: {
-                    ...(crextioConfig.theme3Config || {}),
-                    blockSpans: {
-                      ...(crextioConfig.theme3Config?.blockSpans || {}),
-                      honors_showcase: nextSpan,
-                    },
-                  },
                 });
                 triggerSuccess?.();
               }}
@@ -492,13 +485,6 @@ export const UnifiedShowcaseManagerEditor: React.FC<EditorBaseProps> = ({
                     unified_showcase: {
                       ...unifiedLayout,
                       span: nextSpan,
-                    },
-                  },
-                  theme3Config: {
-                    ...(crextioConfig.theme3Config || {}),
-                    blockSpans: {
-                      ...(crextioConfig.theme3Config?.blockSpans || {}),
-                      unified_showcase: nextSpan,
                     },
                   },
                 });

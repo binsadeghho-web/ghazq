@@ -469,47 +469,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   unifiedShowcaseStyle: 'cinematic',
   unifiedShowcaseAutoplay: true,
   unifiedShowcaseAutoplaySeconds: 4,
-  theme3Config: {
-    palette: 'emerald_ivory',
-    cardSurface: 'elevated',
-    borderRadius: 'balanced',
-    motionLevel: 'cinematic',
-    headlineSize: 'normal',
-    heroScale: 'normal',
-    brandTitle: 'مجمع دانش‌آموختگان فقه و قضا',
-    heroBadgeText: 'پایگاه هم‌افزایی و تکریم نخبگان قضایی و حوزوی',
-    heroGreetingPrefix: 'سلام',
-    heroSubtitle: 'درگاه متمرکز هم‌افزایی اعضا، پیگیری کارتابل خدمات، افتخارات نخبگان، راهبری پژوهش‌ها و مشاوره تخصصی',
-    showHero: true,
-    showWidgets: true,
-    showOperationsSplit: true,
-    showIndividualShowcases: true,
-    cartableSectionTitle: 'آخرین درخواست‌های کارتابل',
-    synergySectionTitle: 'تازه‌های دیوار هم‌افزایی و تبادل تجربه',
-    individualShowcasesHeading: 'درگاه‌های علمی، پژوهشی و خدماتی',
-    quickButtons: [
-      { id: 'qb_cartable', label: 'کارتابل خدمات', targetNav: 'People', visible: true },
-      { id: 'qb_synergy', label: 'دیوار هم‌افزایی', targetNav: 'Synergy', visible: true },
-      { id: 'qb_research', label: 'راهبری پژوهش', targetNav: 'Research', visible: true },
-      { id: 'qb_counseling', label: 'مشاوره نخبگان', targetNav: 'Counseling', visible: true }
-    ],
-    blockOrder: [
-      'hero',
-      'widgets',
-      'honors_showcase',
-      'unified_showcase',
-      'operations_split',
-      'individual_showcases'
-    ],
-    blockSpans: {
-      hero: 'full',
-      widgets: 'full',
-      honors_showcase: 'full',
-      unified_showcase: 'full',
-      operations_split: 'full',
-      individual_showcases: 'full'
-    }
-  }
+
 };
 
 export const DEFAULT_MIZAN_CONFIG: MizanDashboardConfig = {

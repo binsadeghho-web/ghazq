@@ -1104,14 +1104,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
               <span>{isLayoutEditMode ? 'اتمام ویرایش چیدمان' : 'ویرایش زنده چیدمان (Drag & Drop)'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setDesignTheme('minimal')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>تم ۳ (مجمع مینیمال)</span>
-            </button>
+
 
             <button
               type="button"

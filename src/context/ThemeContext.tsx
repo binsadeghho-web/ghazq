@@ -136,11 +136,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ...DEFAULT_CREXTIO_CONFIG,
         ...prev,
         ...incoming,
-        theme3Config: {
-          ...(DEFAULT_CREXTIO_CONFIG.theme3Config || {}),
-          ...(prev.theme3Config || {}),
-          ...(incoming.theme3Config || {}),
-        },
+
         navigationConfig: {
           ...(prev.navigationConfig || {}),
           ...(incoming.navigationConfig || {}),
@@ -293,11 +289,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const toggleDesignTheme = useCallback(() => {
-    setDesignThemeState(prev => {
-      if (prev === 'portal') return 'crextio';
-      if (prev === 'crextio') return 'minimal';
-      return 'portal';
-    });
+    setDesignThemeState(prev => (prev === 'portal' ? 'crextio' : 'portal'));
   }, []);
 
   useEffect(() => {

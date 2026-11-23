@@ -444,7 +444,7 @@ export interface CrextioDashboardConfig {
   honorsAutoplaySeconds?: number;
   honorsItems?: HonorAppointmentItem[];
 
-  // ویترین جامع یکپارچه (شامل ویترین‌های منتخب تم ۲ - مشترک در تم ۲ و تم ۳)
+  // ویترین جامع یکپارچه (شامل ویترین‌های منتخب تم ۲)
   showUnifiedShowcase?: boolean;
   unifiedShowcaseTitle?: string;
   unifiedShowcaseSubtitle?: string;
@@ -452,9 +452,6 @@ export interface CrextioDashboardConfig {
   unifiedShowcaseStyle?: 'cinematic' | 'tabbed_grid';
   unifiedShowcaseAutoplay?: boolean;
   unifiedShowcaseAutoplaySeconds?: number;
-
-  // ویرایشگر جامع تم ۳ (مجمع مینیمال و هم‌افزایی)
-  theme3Config?: Theme3CustomizationConfig;
 }
 
 export interface CustomNavItemConfig {
@@ -488,36 +485,23 @@ export interface HonorAppointmentItem {
   ctaUrl?: string;
 }
 
-export interface Theme3CustomizationConfig {
-  palette?: 'emerald_ivory' | 'lapis_parchment' | 'bronze_graphite' | 'obsidian_emerald';
-  accentColorHex?: string;
-  cardSurface?: 'glass' | 'hairline' | 'elevated';
-  borderRadius?: 'sharp' | 'balanced' | 'pill_modern';
-  motionLevel?: 'cinematic' | 'gentle' | 'minimal';
-  headlineSize?: 'compact' | 'normal' | 'large';
-  heroScale?: 'micro' | 'compact' | 'normal' | 'expanded';
-  brandTitle?: string;
-  heroGreetingPrefix?: string;
-  heroSubtitle?: string;
-  heroBadgeText?: string;
-  showHero?: boolean;
-  showWidgets?: boolean;
-  showOperationsSplit?: boolean;
-  showIndividualShowcases?: boolean;
-  cartableSectionTitle?: string;
-  synergySectionTitle?: string;
-  individualShowcasesHeading?: string;
-  quickButtons?: Array<{
-    id: string;
-    label: string;
-    targetNav: string;
-    visible: boolean;
-  }>;
-  blockOrder?: string[];
-  blockSpans?: Record<string, 'full' | 'half'>;
-}
+export type NavTabId =
+  | 'dashboard'
+  | 'cartable'
+  | 'courses'
+  | 'products'
+  | 'counseling'
+  | 'specialized_counseling'
+  | 'research'
+  | 'rulings'
+  | 'welfare'
+  | 'synergy'
+  | 'alumni'
+  | 'users'
+  | 'finance'
+  | 'admin';
 
-export type DesignThemeType = 'portal' | 'crextio' | 'minimal';
+export type DesignThemeType = 'portal' | 'crextio';
 
 export interface MizanDashboardConfig {
   showHeroSeal: boolean;

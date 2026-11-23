@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavTabId } from './Sidebar';
+import { NavTabId } from '../../types';
 import { LayoutDashboard, Inbox, GraduationCap, Scale, Gift, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getResolvedNavigationConfig } from '../../utils/navigationConfig';

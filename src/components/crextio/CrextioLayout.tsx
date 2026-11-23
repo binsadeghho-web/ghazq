@@ -58,7 +58,7 @@ import {
   NINE_ORGANIZATIONAL_ROLES,
 } from '../../utils/rbacPolicy';
 
-import { Sidebar, NavTabId } from '../layout/Sidebar';
+import { NavTabId } from '../../types';
 
 interface CrextioLayoutProps {
   onToggleToPortalTheme: () => void;
@@ -170,15 +170,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         <div className="absolute top-1/2 left-10 w-[400px] h-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
       </div>
 
-      {/* Floating Capsule Dock (Theme 1 Vertical Sidebar on Right Edge) */}
-      <Sidebar
-        activeTab={mapNavToTabId(activeNav)}
-        setActiveTab={(t) => setActiveNav(mapTabIdToNav(t))}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
-
-      <div className="relative z-10 max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 lg:pr-28 py-5 space-y-5">
+      <div className="relative z-10 max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 lg:pr-0 py-5 space-y-5">
         
         {/* READ-ONLY OBSERVER BANNER FOR GENERAL OBSERVER (ناظر کل) */}
         {isReadOnlyObserver && (
@@ -250,14 +242,6 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 )}
 
                 {isStaffMember && (
-                  <>
-                    <button
-                      onClick={() => setDesignTheme('minimal')}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>تم ۳ (مجمع مینیمال)</span>
-                    </button>
                     <button
                       onClick={onToggleToPortalTheme}
                       className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 cursor-pointer"
@@ -265,7 +249,6 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       <ArrowLeftRight className="w-3.5 h-3.5" />
                       <span>تم ۱ (پرتال)</span>
                     </button>
-                  </>
                 )}
               </div>
             </div>

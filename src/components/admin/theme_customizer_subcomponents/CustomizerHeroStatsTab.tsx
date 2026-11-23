@@ -119,10 +119,6 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
                   const val = e.target.value as 'micro' | 'compact' | 'normal' | 'expanded';
                   updateCrextioConfig({
                     heroBannerScale: val,
-                    theme3Config: {
-                      ...(crextioConfig.theme3Config || {}),
-                      heroScale: val,
-                    },
                   });
                   triggerSuccess();
                 }}

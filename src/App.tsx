@@ -2,7 +2,7 @@ import React, { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/layout/Navbar';
-import { Sidebar, NavTabId } from './components/layout/Sidebar';
+import { NavTabId } from './types';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { LoginModal } from './components/auth/LoginModal';
 import { ModernLoginPage } from './components/auth/ModernLoginPage';
@@ -21,7 +21,7 @@ import { isOrganizationalRole, isReadOnlyObserverRole } from './utils/rbacPolicy
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
 const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
 const CrextioLayout = lazy(() => import('./components/crextio/CrextioLayout').then(m => ({ default: m.CrextioLayout })));
-const MinimalThemeLayout = lazy(() => import('./components/minimal/MinimalThemeLayout').then(m => ({ default: m.MinimalThemeLayout })));
+
 const MizanLayout = lazy(() => import('./components/mizan/MizanLayout').then(m => ({ default: m.MizanLayout })));
 const WelfareSection = lazy(() => import('./components/welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
 const AlumniDirectorySection = lazy(() => import('./components/alumni/AlumniDirectorySection').then(m => ({ default: m.AlumniDirectorySection })));
@@ -67,14 +67,7 @@ const MainLayout: React.FC = () => {
 
   const isRegularEndUser = currentUser.role === 'alumni' || currentUser.role === 'customer';
 
-  // Theme 3: Minimalist Community Hub
-  if (designTheme === 'minimal' || (currentUser?.role === 'alumni' && crextioConfig.defaultAlumniTheme === 'minimal')) {
-    return (
-      <Suspense fallback={<ModuleFallback />}>
-        <MinimalThemeLayout onSelectTheme={setDesignTheme} />
-      </Suspense>
-    );
-  }
+
 
   // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio unless Minimal is selected as default.
   if (designTheme === 'crextio' || currentUser?.role === 'alumni') {
@@ -113,19 +106,10 @@ const MainLayout: React.FC = () => {
         />
       </div>
 
-      {/* Main Container with Sidebar + Content */}
+      {/* Main Content Area */}
       <div className="relative z-10 flex-1 flex max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 pb-20 lg:pb-6">
-        {/* Right Independent Floating Capsule Sidebar */}
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={setMobileMenuOpen}
-        />
-
-        {/* Center/Left Main Content Area (offset by floating capsule sidebar) */}
         <main
-          className="flex-1 min-w-0 transition-all duration-300 lg:mr-28"
+          className="flex-1 min-w-0 transition-all duration-300"
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -227,12 +211,6 @@ const MainLayout: React.FC = () => {
             className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer text-slate-300 hover:text-white"
           >
             تم ۲: کرکستیو
-          </button>
-          <button
-            onClick={() => setDesignTheme('minimal')}
-            className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer text-emerald-300 hover:text-white"
-          >
-            تم ۳: مینیمال
           </button>
         </div>
       )}

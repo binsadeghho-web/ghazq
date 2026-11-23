@@ -363,10 +363,6 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
                               ...layoutsMap,
                               [key]: { ...(layoutsMap[key] || {}), scale: nextScale },
                             },
-                            theme3Config: {
-                              ...(crextioConfig.theme3Config || {}),
-                              heroScale: nextScale,
-                            },
                           });
                           triggerSuccess();
                         } else {

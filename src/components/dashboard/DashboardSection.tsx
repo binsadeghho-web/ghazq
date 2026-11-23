@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useApp } from '../../context/AppContext';
-import { NavTabId } from '../layout/Sidebar';
+import { NavTabId } from '../../types';
 import { ModernDashboardCard } from '../ModernDashboardCard';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { DashboardWidgetsSuite } from './DashboardWidgetsSuite';

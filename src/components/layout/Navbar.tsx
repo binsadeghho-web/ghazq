@@ -120,23 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Theme 2 & Theme 3 Switcher Buttons */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold">
-              <button
-                onClick={() => setDesignTheme('crextio')}
-                className="px-2.5 py-1 rounded-lg text-slate-700 dark:text-amber-300 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
-                title="تم ۲: ویترین و طرح میزان"
-              >
-                تم ۲
-              </button>
-              <button
-                onClick={() => setDesignTheme('minimal')}
-                className="px-2.5 py-1 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
-                title="تم ۳: مجمع مینیمال و هم‌افزایی"
-              >
-                تم ۳ (مینیمال)
-              </button>
-            </div>
+
 
             {/* Theme Toggle Button */}
             <button
