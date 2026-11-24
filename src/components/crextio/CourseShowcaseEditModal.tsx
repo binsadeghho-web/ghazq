@@ -109,7 +109,7 @@ export const CourseShowcaseEditModal: React.FC<CourseShowcaseEditModalProps> = (
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/60 backdrop-blur-sm overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
@@ -118,7 +118,7 @@ export const CourseShowcaseEditModal: React.FC<CourseShowcaseEditModalProps> = (
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           onClick={e => e.stopPropagation()}
-          className="bg-white rounded-3xl w-full max-w-3xl border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-5 max-h-[90vh] overflow-y-auto"
+          className="bg-white rounded-t-[26px] sm:rounded-3xl w-full max-w-3xl border border-stone-200 shadow-2xl text-stone-900 max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
         >
           <input
             ref={fileRef}
@@ -128,21 +128,23 @@ export const CourseShowcaseEditModal: React.FC<CourseShowcaseEditModalProps> = (
             className="hidden"
           />
 
-          <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-emerald-800" />
-              <h4 className="font-black text-sm text-stone-900">
-                مدیریت و ویرایش ۱۰۰٪ ویترین دوره‌های علمی (هردو حالت + ذخیره در MySQL)
+          <div className="px-5 py-4 sm:px-6 flex items-center justify-between gap-2 border-b border-stone-200 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <GraduationCap className="w-5 h-5 text-emerald-800 shrink-0" />
+              <h4 className="font-black text-xs sm:text-sm text-stone-900 truncate">
+                مدیریت و ویرایش ۱۰۰٪ ویترین دوره‌های علمی
               </h4>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
+              className="w-10 h-10 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-700 flex items-center justify-center shrink-0 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-5 flex-1 min-h-0">
 
           {/* Mode + Timer + Price + Main Cover */}
           <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3.5">
@@ -404,15 +406,17 @@ export const CourseShowcaseEditModal: React.FC<CourseShowcaseEditModalProps> = (
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-stone-200">
-            <span className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+          </div>
+
+          <div className="px-5 py-3.5 sm:px-6 flex items-center justify-between gap-2 border-t border-stone-200 shrink-0 bg-stone-50 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+            <span className="text-[11px] text-emerald-800 font-bold items-center gap-1 hidden sm:flex">
               <Edit3 className="w-3.5 h-3.5" />
               تمام تغییرات به صورت زنده در MySQL ثبت می‌شوند
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs shadow-md cursor-pointer"
+              className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs shadow-md cursor-pointer mr-auto"
             >
               تایید و بستن
             </button>

@@ -88,21 +88,25 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
 
   return (
     <div
-      className="fixed inset-0 z-[75] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 z-[75] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden"
       dir="rtl"
       role="dialog"
       aria-modal="true"
+      onClick={onClose}
     >
-      <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100">
+      <div
+        onClick={e => e.stopPropagation()}
+        className="bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl w-full max-w-4xl max-h-[92dvh] sm:max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2.5">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Settings className="w-5 h-5 text-amber-500 shrink-0" />
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
                 تنظیمات و ویرایشگر ۱۰۰٪ بخش راهبری پژوهش و مقاله
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                 تمامی تغییرات در پایگاه داده ذخیره و بدون نیاز به رفرش برای همه کاربران همگام‌سازی می‌شوند.
               </p>
             </div>
@@ -110,7 +114,8 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            aria-label="بستن"
+            className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -159,7 +164,7 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+        <form id="research-config-form" onSubmit={handleSave} className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-5 text-xs">
           {tab === 'texts' && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -546,25 +551,27 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
             </div>
           )}
 
-          {/* Footer Submit */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold cursor-pointer"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'در حال ذخیره...' : 'ذخیره تنظیمات در پایگاه داده'}</span>
-            </button>
-          </div>
         </form>
+
+        {/* Pinned Footer Submit */}
+        <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0 text-xs">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 min-h-[42px] rounded-xl border border-slate-300 dark:border-slate-700 font-bold cursor-pointer"
+          >
+            انصراف
+          </button>
+          <button
+            type="submit"
+            form="research-config-form"
+            disabled={saving}
+            className="px-6 py-2.5 min-h-[42px] rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saving ? 'در حال ذخیره...' : 'ذخیره تنظیمات در پایگاه داده'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

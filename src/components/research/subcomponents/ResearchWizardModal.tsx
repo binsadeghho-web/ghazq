@@ -258,22 +258,24 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+        className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden"
         dir="rtl"
         role="dialog"
         aria-modal="true"
+        onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 12 }}
+          initial={{ opacity: 0, scale: 0.97, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: 12 }}
-          className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
+          exit={{ opacity: 0, scale: 0.97, y: 16 }}
+          onClick={e => e.stopPropagation()}
+          className="bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl w-full max-w-3xl max-h-[92dvh] sm:max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
         >
           {/* Persistent Header with Reform 36 "توضیحات" Button */}
-          <div className="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 flex items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
@@ -294,7 +296,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               <button
                 type="button"
                 onClick={onOpenGuidance}
-                className="px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-2.5 sm:px-3 py-2 min-h-[40px] rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Info className="w-4 h-4 shrink-0" />
                 <span>توضیحات</span>
@@ -303,16 +305,16 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 cursor-pointer"
+                className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 cursor-pointer"
                 aria-label="بستن فرم"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-7 space-y-5 sm:space-y-6">
             {errorMsg && (
               <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
@@ -803,14 +805,14 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
 
           {/* Footer Navigation + Reform 37 Center Contact Strip */}
           {step !== 'success' && (
-            <div className="px-5 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70 space-y-3 shrink-0">
-              <div className="flex items-center justify-between gap-3">
+            <div className="px-4 sm:px-6 py-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-950/95 space-y-2.5 shrink-0">
+              <div className="flex items-center justify-between gap-2.5">
                 <div>
                   {step !== 1 && (
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                     >
                       <ChevronRight className="w-4 h-4" />
                       <span>مرحله قبل</span>
@@ -823,7 +825,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                     <button
                       type="button"
                       onClick={step === 3 ? handleNextFromStep3 : handleNextFromStep4}
-                      className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                      className="px-5 py-2.5 min-h-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>مرحله بعد</span>
                       <ChevronLeft className="w-4 h-4" />
@@ -835,7 +837,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       type="button"
                       disabled={submitting}
                       onClick={handleFinalSubmit}
-                      className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-black flex items-center gap-2 shadow-md cursor-pointer"
+                      className="px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-black flex items-center gap-2 shadow-md cursor-pointer"
                     >
                       <Send className="w-4 h-4" />
                       <span>
@@ -851,7 +853,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               </div>
 
               {/* Reform 37 compact phone strip inside wizard */}
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/70 dark:border-slate-800 pt-2">
+              <div className="hidden sm:flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/70 dark:border-slate-800 pt-2">
                 <div className="flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
                   <span>پشتیبانی دبیرخانه:</span>

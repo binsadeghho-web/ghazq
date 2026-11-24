@@ -107,7 +107,7 @@ export const InstallmentAutoGatewayModal: React.FC<InstallmentAutoGatewayModalPr
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
@@ -115,22 +115,22 @@ export const InstallmentAutoGatewayModal: React.FC<InstallmentAutoGatewayModalPr
           initial={{ opacity: 0, scale: 0.95, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 12 }}
-          className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+          className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-5 bg-gradient-to-l from-emerald-950 via-slate-900 to-slate-900 text-white flex items-center justify-between border-b border-emerald-800/40">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center">
-                <CalendarClock className="w-6 h-6" />
+          <div className="p-4 sm:p-5 bg-gradient-to-l from-emerald-950 via-slate-900 to-slate-900 text-white flex items-center justify-between gap-2 border-b border-emerald-800/40 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center shrink-0">
+                <CalendarClock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div>
-                <span className="text-[11px] font-black text-emerald-300 block">
+              <div className="min-w-0">
+                <span className="text-[11px] font-black text-emerald-300 block truncate">
                   {isAutoTriggered
                     ? 'یادآور خودکار سررسید پرداخت قسط دوره'
                     : 'درگاه و سامانه پرداخت اقساط دوره'}
                 </span>
-                <h3 className="text-sm sm:text-base font-black text-white">
+                <h3 className="text-sm sm:text-base font-black text-white truncate">
                   {selectedInstallment.courseTitle}
                 </h3>
               </div>
@@ -138,13 +138,14 @@ export const InstallmentAutoGatewayModal: React.FC<InstallmentAutoGatewayModalPr
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="بستن"
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+          <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4 text-xs">
             {/* Auto Alert Banner */}
             {isAutoTriggered && !successMsg && (
               <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200 flex items-start gap-2.5">
@@ -327,31 +328,34 @@ export const InstallmentAutoGatewayModal: React.FC<InstallmentAutoGatewayModalPr
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
-                  >
-                    پرداخت در زمان دیگر
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmitting || isUploading}
-                    onClick={handleSubmit}
-                    className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
-                  >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                    <span>
-                      {paymentMethod === 'online_gateway'
-                        ? 'پرداخت آنلاین قسط از درگاه'
-                        : 'ثبت نهایی و ارسال فیش'}
-                    </span>
-                  </button>
-                </div>
               </>
             )}
           </div>
+
+          {!successMsg && (
+            <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800 shrink-0 text-xs">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
+              >
+                پرداخت در زمان دیگر
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting || isUploading}
+                onClick={handleSubmit}
+                className="px-6 py-2.5 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                <span>
+                  {paymentMethod === 'online_gateway'
+                    ? 'پرداخت آنلاین قسط از درگاه'
+                    : 'ثبت نهایی و ارسال فیش'}
+                </span>
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

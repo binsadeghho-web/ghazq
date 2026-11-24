@@ -82,34 +82,35 @@ export const RulingPortalDesignerModal: React.FC<RulingPortalDesignerModalProps>
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/65 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-stone-950/65 backdrop-blur-xs overflow-hidden"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl bg-[#FBF9F5] dark:bg-slate-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-3xl bg-[#FBF9F5] dark:bg-slate-900 rounded-t-[26px] sm:rounded-2xl shadow-2xl border border-stone-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-6 py-4 bg-stone-900 dark:bg-slate-950 text-white flex items-center justify-between border-b border-stone-800 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <Sliders className="w-5 h-5 text-amber-400" />
-            <div>
-              <h3 className="text-sm font-bold">طراحی چیدمان، بخش‌های نمایشی و مدیریت برچسب‌های تالار رأی</h3>
-              <p className="text-[11px] text-stone-300 mt-0.5">
-                تنظیم شیوه نمایش تالار برای همه کاربران و تعریف برچسب‌های رنگی اختصاصی با ذخیره دائمی در پایگاه داده
+        <div className="px-4 sm:px-6 py-4 bg-stone-900 dark:bg-slate-950 text-white flex items-center justify-between gap-2 border-b border-stone-800 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Sliders className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold truncate">طراحی چیدمان، بخش‌های نمایشی و مدیریت برچسب‌های تالار رأی</h3>
+              <p className="text-[11px] text-stone-300 mt-0.5 truncate">
+                تنظیم شیوه نمایش تالار برای همه کاربران و تعریف برچسب‌های رنگی اختصاصی
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 cursor-pointer"
+            aria-label="بستن"
+            className="w-10 h-10 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800 flex items-center justify-center shrink-0 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6 overflow-y-auto text-right">
+        <div className="p-4 sm:p-6 space-y-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 text-right">
           {/* Titles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
@@ -365,11 +366,11 @@ export const RulingPortalDesignerModal: React.FC<RulingPortalDesignerModalProps>
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-white dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-end gap-2.5 shrink-0">
+        <div className="px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-stone-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 cursor-pointer"
+            className="px-4 py-2.5 min-h-[42px] rounded-xl text-xs font-medium text-stone-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 cursor-pointer"
           >
             انصراف
           </button>
@@ -377,7 +378,7 @@ export const RulingPortalDesignerModal: React.FC<RulingPortalDesignerModalProps>
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span>ذخیره تنظیمات چیدمان و برچسب‌ها</span>

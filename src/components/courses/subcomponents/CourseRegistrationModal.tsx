@@ -210,35 +210,39 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+          exit={{ opacity: 0, scale: 0.96, y: 20 }}
+          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
           onClick={e => e.stopPropagation()}
         >
           {/* Modal Header */}
-          <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-[11px] text-emerald-400 font-bold block mb-0.5">
+          <div className="shrink-0 p-4 sm:p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[11px] text-emerald-400 font-bold block mb-0.5 truncate">
                 مرحله {toPersianNumbers(regStep)} از ۳: {regStep === 1 ? 'معرفی جامع و شرایط دوره' : regStep === 2 ? 'کد تخفیف، اقساط و پرداخت' : 'تایید نهایی ثبت‌نام'}
               </span>
-              <h3 className="text-base sm:text-lg font-black text-white truncate max-w-md">
+              <h3 className="text-sm sm:text-lg font-black text-white truncate">
                 {course.title}
               </h3>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="بستن"
+              className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Step Flow Content */}
-          <div className="p-6 overflow-y-auto space-y-5 flex-1">
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-5 flex-1 min-h-0">
             {/* STEP 1: DETAILED COURSE PRESENTATION LANDING */}
             {regStep === 1 && (
               <div className="space-y-4">
@@ -805,27 +809,27 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
           </div>
 
           {/* Modal Footer Controls */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="shrink-0 p-3.5 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-slate-50/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2.5">
             {regStep > 1 && regStep < 3 ? (
               <button
                 type="button"
                 onClick={() => setRegStep(prev => (prev - 1) as 1 | 2 | 3)}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer shrink-0"
               >
                 <ChevronRight className="w-4 h-4" />
                 <span>مرحله قبل</span>
               </button>
             ) : (
-              <div />
+              <div className="hidden sm:block" />
             )}
 
-            <div>
+            <div className="flex-1 sm:flex-none flex justify-end">
               {regStep === 1 && (
                 isAlreadyEnrolled || isFull ? (
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black cursor-pointer shadow-md"
+                    className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black cursor-pointer shadow-md"
                   >
                     بستن و بازگشت
                   </button>
@@ -834,13 +838,13 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
                     type="button"
                     disabled={!regTermsAccepted}
                     onClick={() => setRegStep(2)}
-                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
+                    className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl text-xs font-black transition-all ${
                       regTermsAccepted
                         ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950 shadow-md shadow-emerald-500/20 cursor-pointer'
                         : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
                     }`}
                   >
-                    <span>تایید و ورود به بخش تخفیف و پرداخت</span>
+                    <span>تایید و ادامه پرداخت</span>
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                 )
@@ -851,7 +855,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
                   type="button"
                   disabled={isSubmitting || isUploadingReceipt}
                   onClick={handleSubmit}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
@@ -870,9 +874,9 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-500 text-stone-950 text-xs font-black cursor-pointer shadow-md"
+                  className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-500 text-stone-950 text-xs font-black cursor-pointer shadow-md"
                 >
-                  بستن و بازگشت به میز کار
+                  بستن و بازگشت
                 </button>
               )}
             </div>

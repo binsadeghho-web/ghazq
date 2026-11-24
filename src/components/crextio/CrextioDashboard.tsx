@@ -71,6 +71,7 @@ const ThemeCustomizerModal = lazy(() =>
 
 interface CrextioDashboardProps {
   onNavigateTab?: (tab: string) => void;
+  onNavigateDeep?: (tab: string, subTab?: string) => void;
   onOpenAllServices?: () => void;
   onBookGeneralCounseling?: () => void;
 }
@@ -148,6 +149,7 @@ const CrextioCard: React.FC<{
 
 export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
   onNavigateTab,
+  onNavigateDeep,
   onOpenAllServices,
   onBookGeneralCounseling,
 }) => {
@@ -1120,6 +1122,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
       <div className="lg:hidden">
         <MobileDashboardExperience
           onNavigateTab={onNavigateTab}
+          onNavigateDeep={onNavigateDeep}
           onOpenAllServices={onOpenAllServices}
           onBookGeneralCounseling={onBookGeneralCounseling}
           onOpenIdentityCard={() => setIsIdentityCardOpen(true)}

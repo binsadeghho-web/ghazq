@@ -78,6 +78,15 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState<boolean>(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
   const [generalBookingAutoOpenNonce, setGeneralBookingAutoOpenNonce] = useState<number>(0);
+  const [subTabNav, setSubTabNav] = useState<{ nav: string; subTab?: string; nonce: number }>({
+    nav: 'Dashboard',
+    subTab: undefined,
+    nonce: 0,
+  });
+  const handleNavigateDeep = (nav: string, subTab?: string) => {
+    setActiveNav(nav);
+    setSubTabNav({ nav, subTab, nonce: Date.now() });
+  };
   const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const completionPct = calculateProfileCompletion(currentUser).percentage;
 
@@ -654,7 +663,11 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         >
           {activeNav === 'Dashboard' || (!effectiveStaff && (activeNav === 'Finance' || activeNav === 'Alumni' || activeNav === 'Users' || activeNav === 'Admin' || activeNav === 'Setting')) ? (
             <CrextioDashboard
-              onNavigateTab={setActiveNav}
+              onNavigateTab={nav => {
+                setSubTabNav({ nav, subTab: undefined, nonce: 0 });
+                setActiveNav(nav);
+              }}
+              onNavigateDeep={handleNavigateDeep}
               onOpenAllServices={() => setServicesSheetOpen(true)}
               onBookGeneralCounseling={() => {
                 setGeneralBookingAutoOpenNonce(n => n + 1);
@@ -677,6 +690,8 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             <CrextioSubViews
               activeNav={activeNav}
               onNavigate={setActiveNav}
+              deepLinkSubTab={subTabNav.nav === activeNav ? subTabNav.subTab : undefined}
+              deepLinkNonce={subTabNav.nav === activeNav ? subTabNav.nonce : undefined}
               autoOpenGeneralBookingNonce={generalBookingAutoOpenNonce}
             />
           )}

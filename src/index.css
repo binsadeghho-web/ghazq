@@ -237,4 +237,27 @@ h1, h2, h3, h4, .text-balance {
   background-size: 56px 56px;
 }
 
+/* Mobile-safe modal sheet layout helpers so close & submit buttons remain reachable */
+.mobile-modal-backdrop {
+  @apply fixed inset-0 flex items-end sm:items-center justify-center bg-slate-950/65 backdrop-blur-sm p-1 sm:p-4 overflow-hidden;
+}
 
+.mobile-modal-sheet {
+  @apply relative w-full max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden rounded-t-[26px] sm:rounded-3xl shadow-2xl;
+}
+
+.mobile-modal-header {
+  @apply shrink-0 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4;
+}
+
+.mobile-modal-close {
+  @apply shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 inline-flex items-center justify-center rounded-xl transition-colors;
+}
+
+.mobile-modal-body {
+  @apply flex-1 min-h-0 overflow-y-auto overscroll-y-contain;
+}
+
+.mobile-modal-footer {
+  @apply shrink-0 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 dark:border-slate-800 pb-[max(0.75rem,env(safe-area-inset-bottom))];
+}

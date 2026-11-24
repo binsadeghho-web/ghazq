@@ -935,16 +935,16 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
          ==================================================================== */}
       {liveSelectedWorkshop && (
         <div
-          className="fixed inset-0 z-[75] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[75] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden"
           dir="rtl"
           onClick={() => setSelectedWorkshop(null)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-stone-200 dark:border-slate-800 shadow-2xl overflow-hidden text-xs max-h-[88vh] flex flex-col"
+            className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-stone-200 dark:border-slate-800 shadow-2xl overflow-hidden text-xs max-h-[92dvh] sm:max-h-[88vh] flex flex-col"
           >
             {liveSelectedWorkshop.bannerUrl && (
-              <div className="h-44 w-full bg-stone-900 relative overflow-hidden shrink-0">
+              <div className="h-36 sm:h-44 w-full bg-stone-900 relative overflow-hidden shrink-0">
                 <img
                   src={liveSelectedWorkshop.bannerUrl}
                   alt={liveSelectedWorkshop.title}
@@ -954,9 +954,9 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               </div>
             )}
 
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <div className={`text-[11px] font-black mb-1 ${liveSelectedWorkshop.mode === 'upcoming' ? 'text-emerald-700' : 'text-indigo-700'}`}>
                     {liveSelectedWorkshop.mode === 'upcoming' ? 'کارگاه آموزشی پیش‌رو' : 'آرشیو جلسه برگزارشده'}
                   </div>
@@ -972,7 +972,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                 <button
                   type="button"
                   onClick={() => setSelectedWorkshop(null)}
-                  className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                  className="w-10 h-10 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1034,7 +1034,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               )}
             </div>
 
-            <div className="p-4 border-t border-stone-200 dark:border-slate-800 bg-stone-50 dark:bg-slate-950/50 flex flex-wrap items-center justify-between gap-2">
+            <div className="p-4 border-t border-stone-200 dark:border-slate-800 bg-stone-50 dark:bg-slate-950/50 flex flex-wrap items-center justify-between gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
               {liveSelectedWorkshop.mode === 'upcoming' ? (
                 <div className="flex flex-wrap items-center gap-2">
                   {registeredWorkshopIds.has(liveSelectedWorkshop.id) ? (
@@ -1047,7 +1047,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                       type="button"
                       disabled={registeringWsId === liveSelectedWorkshop.id}
                       onClick={() => handleWorkshopRegister(liveSelectedWorkshop.id)}
-                      className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>
@@ -1063,7 +1063,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                       href={liveSelectedWorkshop.registrationUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold flex items-center gap-1.5"
+                      className="px-4 py-2.5 min-h-[42px] rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold flex items-center gap-1.5"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>لینک جلسه / ثبت‌نام</span>
@@ -1077,7 +1077,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               <button
                 type="button"
                 onClick={() => setSelectedWorkshop(null)}
-                className="px-4 py-2 rounded-xl bg-stone-200 dark:bg-slate-800 text-stone-800 dark:text-slate-200 font-bold cursor-pointer"
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-200 dark:bg-slate-800 text-stone-800 dark:text-slate-200 font-bold cursor-pointer"
               >
                 بستن
               </button>
@@ -1091,18 +1091,18 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
          ==================================================================== */}
       {selectedAnnouncement && (
         <div
-          className="fixed inset-0 z-[75] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[75] bg-slate-950/85 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden"
           dir="rtl"
           onClick={() => setSelectedAnnouncement(null)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-stone-200 dark:border-slate-800 shadow-2xl overflow-hidden text-xs max-h-[92vh] flex flex-col"
+            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-stone-200 dark:border-slate-800 shadow-2xl overflow-hidden text-xs max-h-[92dvh] sm:max-h-[92vh] flex flex-col"
           >
-            <div className="p-4 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="p-4 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className={`text-[11px] font-black ${
+                  className={`text-[11px] font-black shrink-0 ${
                     selectedAnnouncement.organizerType === 'external'
                       ? 'text-indigo-700 dark:text-indigo-300'
                       : 'text-emerald-700 dark:text-emerald-300'
@@ -1111,26 +1111,26 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                   {selectedAnnouncement.organizerType === 'external' ? 'دوره برون‌مرکزی' : 'دوره داخلی مرکز'}
                 </span>
                 <span aria-hidden="true" className="text-stone-300">·</span>
-                <h4 className="font-black text-sm text-stone-900 dark:text-white">
+                <h4 className="font-black text-sm text-stone-900 dark:text-white truncate">
                   {selectedAnnouncement.title || 'پوستر اطلاعیه دوره روان‌شناسی'}
                 </h4>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedAnnouncement(null)}
-                className="p-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                className="w-10 h-10 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0">
               {selectedAnnouncement.bannerUrl && (
                 <div className="rounded-2xl overflow-hidden bg-stone-100 dark:bg-slate-950 flex items-center justify-center">
                   <img
                     src={selectedAnnouncement.bannerUrl}
                     alt={selectedAnnouncement.title || 'پوستر دوره'}
-                    className="max-h-[62vh] w-auto object-contain mx-auto"
+                    className="max-h-[58dvh] w-auto object-contain mx-auto"
                   />
                 </div>
               )}
@@ -1170,13 +1170,13 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               )}
             </div>
 
-            <div className="p-4 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2 bg-stone-50 dark:bg-slate-950/50">
+            <div className="p-4 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2 bg-stone-50 dark:bg-slate-950/50 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
               {isSafeHttpUrl(selectedAnnouncement.externalUrl) ? (
                 <a
                   href={selectedAnnouncement.externalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black flex items-center gap-1.5"
+                  className="px-5 py-2.5 min-h-[42px] rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black flex items-center gap-1.5"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>مشاهده لینک دوره / ثبت‌نام</span>
@@ -1188,7 +1188,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               <button
                 type="button"
                 onClick={() => setSelectedAnnouncement(null)}
-                className="px-4 py-2 rounded-xl bg-stone-200 dark:bg-slate-800 text-stone-800 dark:text-slate-200 font-bold cursor-pointer"
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-200 dark:bg-slate-800 text-stone-800 dark:text-slate-200 font-bold cursor-pointer"
               >
                 بستن
               </button>

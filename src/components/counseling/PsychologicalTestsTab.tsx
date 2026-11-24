@@ -412,28 +412,29 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
 
         {/* Take Legacy In-App Test Modal */}
         {takingAssignment && (
-          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
+          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl">
             <form
               onSubmit={handleSubmitAlumniTest}
-              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
+              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90dvh]"
             >
-              <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-2">
+              <div className="shrink-0 p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="font-black text-sm truncate">{takingAssignment.testTitle}</h3>
                   {takingAssignment.instructions && (
-                    <p className="text-[11px] text-slate-300 mt-1">{takingAssignment.instructions}</p>
+                    <p className="text-[11px] text-slate-300 mt-1 line-clamp-1">{takingAssignment.instructions}</p>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={() => setTakingAssignment(null)}
-                  className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center shrink-0"
+                  aria-label="بستن"
+                  className="shrink-0 p-2 min-h-[40px] min-w-[40px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1">
+              <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 sm:space-y-5 flex-1 min-h-0">
                 {(takingAssignment.questions || psychologicalTests.find(t => t.id === takingAssignment.testId)?.questions || []).map(
                   (q, idx) => (
                     <div key={q.id} className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
@@ -476,7 +477,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                 )}
               </div>
 
-              <div className="p-3.5 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900">
+              <div className="shrink-0 p-3.5 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={() => setTakingAssignment(null)}
@@ -1062,60 +1063,76 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
 
       {/* Clinical Review Modal */}
       {reviewingResult && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
-          <form
-            onSubmit={handleSaveClinicalReview}
-            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xl"
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden"
+          dir="rtl"
+          onClick={() => setReviewingResult(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>ثبت جمع‌بندی بالینی برای {reviewingResult.userName}</span>
+            <div className="shrink-0 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 px-4 py-3.5 sm:px-6 sm:py-4">
+              <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2 truncate">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate">ثبت جمع‌بندی بالینی برای {reviewingResult.userName}</span>
               </h3>
-              <button type="button" onClick={() => setReviewingResult(null)} className="text-slate-400">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div>
-              <label className="block font-bold mb-1">خلاصه نمره / وضعیت ارزیابی:</label>
-              <input
-                type="text"
-                value={scoreSummaryInput}
-                onChange={e => setScoreSummaryInput(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold mb-1">تحلیل و توصیه روان‌شناس (نمایش در کارتابل متقاضی):</label>
-              <textarea
-                rows={4}
-                required
-                value={clinicalNoteInput}
-                onChange={e => setClinicalNoteInput(e.target.value)}
-                placeholder="تحلیل تخصصی نتایج و توصیه‌های جلسه..."
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setReviewingResult(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                aria-label="بستن"
+                className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              id="clinical-review-form"
+              onSubmit={handleSaveClinicalReview}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-4"
+            >
+              <div>
+                <label className="block font-bold mb-1">خلاصه نمره / وضعیت ارزیابی:</label>
+                <input
+                  type="text"
+                  value={scoreSummaryInput}
+                  onChange={e => setScoreSummaryInput(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1">تحلیل و توصیه روان‌شناس (نمایش در کارتابل متقاضی):</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={clinicalNoteInput}
+                  onChange={e => setClinicalNoteInput(e.target.value)}
+                  placeholder="تحلیل تخصصی نتایج و توصیه‌های جلسه..."
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                />
+              </div>
+            </form>
+
+            <div className="shrink-0 flex justify-end gap-2 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setReviewingResult(null)}
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-200 text-slate-700 font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
                 type="submit"
+                form="clinical-review-form"
                 disabled={savingReview}
-                className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+                className="flex-1 sm:flex-none px-5 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer disabled:opacity-50"
               >
                 {savingReview ? 'در حال ذخیره...' : 'ذخیره تحلیل بالینی'}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </div>

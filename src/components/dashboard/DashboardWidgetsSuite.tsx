@@ -629,12 +629,12 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
   const renderManagerModal = () => {
     if (!isManagerOpen) return null;
     return (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
         <div
-          className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-stone-200 space-y-4 sm:space-y-5"
+          className="bg-white rounded-t-[26px] sm:rounded-3xl max-w-3xl w-full max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-stone-200"
           dir="rtl"
         >
-          <div className="flex items-center justify-between pb-3.5 border-b border-stone-200 gap-2">
+          <div className="flex items-center justify-between p-4 sm:p-6 pb-3.5 border-b border-stone-200 gap-2 shrink-0">
             <div className="min-w-0">
               <h3 className="text-sm sm:text-lg font-extrabold text-stone-900 truncate">
                 مدیریت ویجت‌ها، تقویم و بنرهای اطلاع‌رسانی داشبورد
@@ -646,47 +646,51 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => setIsManagerOpen(false)}
-              className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer flex items-center justify-center shrink-0"
+              className="w-10 h-10 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer flex items-center justify-center shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl overflow-x-auto scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setActiveManagerTab('toggles')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                activeManagerTab === 'toggles'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              فعال/غیرفعال‌سازی ویجت و تقویم
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveManagerTab('banners')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                activeManagerTab === 'banners'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              بنرهای اطلاع‌رسانی ({toPersianNumbers(banners.length)})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveManagerTab('calendar')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                activeManagerTab === 'calendar'
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              تقویم رویدادها ({toPersianNumbers(events.length)})
-            </button>
+          <div className="px-4 sm:px-6 pt-3 pb-2 shrink-0 bg-white">
+            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl overflow-x-auto scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setActiveManagerTab('toggles')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                  activeManagerTab === 'toggles'
+                    ? 'bg-white text-stone-900 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                فعال/غیرفعال‌سازی ویجت و تقویم
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveManagerTab('banners')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                  activeManagerTab === 'banners'
+                    ? 'bg-white text-stone-900 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                بنرهای اطلاع‌رسانی ({toPersianNumbers(banners.length)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveManagerTab('calendar')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                  activeManagerTab === 'calendar'
+                    ? 'bg-white text-stone-900 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                تقویم رویدادها ({toPersianNumbers(events.length)})
+              </button>
+            </div>
           </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 pt-2 space-y-4 sm:space-y-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
 
           {activeManagerTab === 'toggles' && (
             <div className="space-y-4">
@@ -962,6 +966,7 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     );

@@ -262,45 +262,47 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[88vh]"
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[88vh]"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-[11px] text-emerald-400 font-bold block mb-0.5">
+          <div className="p-4 sm:p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2 shrink-0">
+            <div className="min-w-0">
+              <span className="text-[11px] text-emerald-400 font-bold block mb-0.5 truncate">
                 سامانه حضور و غیاب چندجلسه‌ای، لیست انتظار و صدور گواهینامه رسمی
               </span>
-              <h3 className="text-base font-black text-white">{course.title}</h3>
+              <h3 className="text-sm sm:text-base font-black text-white truncate">{course.title}</h3>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+              aria-label="بستن"
+              className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {toastMsg && (
-            <div className="mx-6 mt-4 p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2">
+            <div className="mx-4 sm:mx-6 mt-3 p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 shrink-0">
               <Check className="w-4 h-4 shrink-0" />
               <span>{toastMsg}</span>
             </div>
           )}
 
           {/* Navigation Tabs */}
-          <div className="px-6 pt-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto bg-slate-50 dark:bg-slate-950/50">
+          <div className="px-4 sm:px-6 pt-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto bg-slate-50 dark:bg-slate-950/50 shrink-0">
             <button
               onClick={() => setActiveTab('attendance')}
-              className={`px-4 py-2.5 rounded-t-2xl text-xs font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`px-4 py-2.5 rounded-t-2xl text-xs font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
                 activeTab === 'attendance'
                   ? 'border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -312,7 +314,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
 
             <button
               onClick={() => setActiveTab('waitlist')}
-              className={`px-4 py-2.5 rounded-t-2xl text-xs font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`px-4 py-2.5 rounded-t-2xl text-xs font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
                 activeTab === 'waitlist'
                   ? 'border-amber-500 text-amber-700 dark:text-amber-400 bg-white dark:bg-slate-900'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -327,7 +329,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
 
             <button
               onClick={() => setActiveTab('certificates')}
-              className={`px-4 py-2.5 rounded-t-2xl text-xs font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`px-4 py-2.5 rounded-t-2xl text-xs font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
                 activeTab === 'certificates'
                   ? 'border-indigo-500 text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900'
                   : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -339,7 +341,7 @@ export const CourseAttendanceWaitlistCertModal: React.FC<CourseAttendanceWaitlis
           </div>
 
           {/* Body */}
-          <div className="p-6 overflow-y-auto flex-1 space-y-5">
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-5">
             {loading && (
               <div className="text-xs text-slate-400 text-center py-2">در حال بارگذاری اطلاعات...</div>
             )}

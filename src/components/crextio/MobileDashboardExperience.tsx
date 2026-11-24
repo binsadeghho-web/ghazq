@@ -20,6 +20,7 @@ import { canViewSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
   AppSectionId,
   HonorAppointmentItem,
+  MobileDetailedShowcaseId,
   MobileSectionId,
   MobileServiceListTabId,
   MobileServiceShowcaseId,
@@ -58,6 +59,7 @@ import {
 
 interface MobileDashboardExperienceProps {
   onNavigateTab?: (tab: string) => void;
+  onNavigateDeep?: (tab: string, subTab?: string) => void;
   onOpenAllServices?: () => void;
   onBookGeneralCounseling?: () => void;
   onOpenIdentityCard: () => void;
@@ -118,12 +120,14 @@ const FALLBACK_HONORS: HonorAppointmentItem[] = [
 
 export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps> = ({
   onNavigateTab,
+  onNavigateDeep,
   onOpenAllServices,
   onBookGeneralCounseling,
   onOpenIdentityCard,
   onOpenStudio,
   onOpenCustomizer,
   onToggleAlumniPreview,
+  isAdmin,
   isRealAdmin,
   isAlumni,
   isAlumniPreview,
@@ -140,6 +144,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
     counselingRequests,
     welfareRequests,
     consumables,
+    welfarePortalConfig,
     synergyPosts,
     crextioConfig,
     generalShowcase,
@@ -326,7 +331,16 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
       : FALLBACK_HONORS;
 
   const activeCourses = courses.filter(c => !c.isDeleted).slice(0, 4);
-  const activeWorkshops = (generalShowcase.workshops || []).filter(w => w.isActive !== false);
+  const activeWorkshopCourses = courses.filter(
+    c =>
+      !c.isDeleted &&
+      c.courseScope === 'counseling_workshop' &&
+      (c.status === 'enrolling' || c.status === 'ongoing')
+  );
+  const activeShowcaseWorkshops = (generalShowcase.workshops || []).filter(w => w.isActive !== false);
+  const activeWorkshops = activeShowcaseWorkshops;
+  const activeAnnouncements = (generalShowcase.announcements || []).filter(a => a.isActive !== false);
+  const combinedWorkshopsCount = activeShowcaseWorkshops.length + activeWorkshopCourses.length;
   const featuredRulings = rulings.filter(r => r.isVisibleToAlumni !== false).slice(0, 4);
   const featuredProducts = products.filter(p => !p.isDeleted).slice(0, 4);
   const generalConsultants = consultants.filter(c => c.counselingType !== 'specialized_career');
@@ -337,7 +351,14 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
   const specializedFieldsList = counselingFields.filter(
     f => f.counselingType === 'specialized_career' && f.isActive !== false
   );
-  const activeConsumables = consumables.filter(c => c.stock > 0);
+  const activeConsumables = consumables.filter(c => c.stock > 0 && c.isActive !== false);
+  const navigateDeep = (tab: string, subTab?: string) => {
+    if (onNavigateDeep) {
+      onNavigateDeep(tab, subTab);
+    } else {
+      onNavigateTab?.(tab);
+    }
+  };
 
   const handleHonorCta = (item: HonorAppointmentItem) => {
     if (!item.ctaAction || item.ctaAction === 'none') {
@@ -378,151 +399,436 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
     }));
   }, [mobileConfig.showHonorsShowcase, crextioConfig.showHonorsShowcase, hiddenMap.honors_showcase, honorsList]);
 
-  // Services Showcase slides ordered cleanly by mobileConfig.showcaseOrder
+  // Services Showcase slides supporting Simple vs Detailed mode + inline overrides + custom cards + welfare module opt-ins
   const serviceDeckSlides = useMemo<VisualDeckSlide[]>(() => {
-    const mapById: Record<MobileServiceShowcaseId, VisualDeckSlide | null> = {
-      counseling:
-        crextioConfig.showCounselingGeneralShowcase !== false &&
-        !hiddenMap.counseling_general_showcase
-          ? {
-              id: 'counseling_deck',
-              kicker: `خدمات روانشناختی و مشاوره · ${toPersianNumbers(activeWorkshops.length)} کارگاه`,
-              title: crextioConfig.counselingGeneralShowcaseTitle || 'خدمات روانشناختی و مشاوره',
-              subtitle:
-                activeWorkshops[0]?.title ||
-                'مشاوره فردی، تحکیم خانواده، ازدواج، کودک و سنجش‌های روان‌شناختی',
-              metaText: `${toPersianNumbers(generalConsultants.length)} روان‌شناس و مشاور فعال`,
-              ctaLabel: 'رزرو نوبت',
-              imageUrl: resolveShowcaseImageUrl(
-                'counseling_general_showcase',
-                crextioConfig.showcaseImageOverrides
-              ),
-              accentGradient: 'from-[#1D1528] via-[#2B1F3A] to-[#0E2921]',
-              icon: HeartHandshake,
-              onPress: () =>
-                onBookGeneralCounseling
-                  ? onBookGeneralCounseling()
-                  : onNavigateTab?.('CounselingGeneral'),
-            }
-          : null,
-      counseling_specialized:
-        crextioConfig.showCounselingPromo !== false && !hiddenMap.counseling_promo
-          ? {
-              id: 'specialized_counseling_deck',
-              kicker: 'هدایت شغلی و ارتقای قضایی',
-              title: crextioConfig.counselingPromoTitle || 'مشاوره شغلی قضا',
-              subtitle: 'گفت‌وگوی محرمانه با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار',
-              metaText: `${toPersianNumbers(specializedConsultants.length)} استاد و قاضی پیشکسوت`,
-              ctaLabel: 'دریافت مشاوره',
-              imageUrl: resolveShowcaseImageUrl(
-                'counseling_promo',
-                crextioConfig.showcaseImageOverrides
-              ),
-              accentGradient: 'from-[#182230] via-[#243247] to-[#0B241B]',
-              icon: Compass,
-              onPress: () => onNavigateTab?.('SpecializedCounseling'),
-            }
-          : null,
-      courses:
-        crextioConfig.showCourseShowcase !== false && !hiddenMap.course_showcase
-          ? {
-              id: 'courses_deck',
-              kicker: `آموزش عالی و کارگاه‌ها · ${toPersianNumbers(courses.length)} دوره`,
-              title: crextioConfig.courseShowcaseTitle || 'دوره‌ها و نشست‌های تخصصی فقه و قضا',
-              subtitle: activeCourses[0]?.title || 'کارگاه‌های مهارت‌افزایی و آرشیو صوتی جلسات',
-              metaText: `${toPersianNumbers(myEnrolledCourses)} دوره ثبت‌نامی شما`,
-              ctaLabel: 'گالری دوره‌ها',
-              imageUrl: resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides),
-              accentGradient: 'from-[#082224] via-[#0E3A3D] to-[#071E17]',
-              icon: GraduationCap,
-              onPress: () => onNavigateTab?.('Courses'),
-            }
-          : null,
-      rulings:
-        crextioConfig.showRulingsShowcase !== false && !hiddenMap.rulings_showcase
-          ? {
-              id: 'rulings_deck',
-              kicker: `مباحثات قضایی · ${toPersianNumbers(rulings.length)} دادنامه`,
-              title: crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی',
-              subtitle:
-                featuredRulings[0]?.title ||
-                'بررسی استدلال‌های حقوقی و تبادل نظر قضات و نخبگان بر روی آراء منتخب',
-              metaText: 'نقد تحلیلی دیوان عالی و تجدیدنظر',
-              ctaLabel: 'ورود به تالار',
-              imageUrl: resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides),
-              accentGradient: 'from-[#1F180D] via-[#342611] to-[#142921]',
-              icon: Scale,
-              onPress: () => onNavigateTab?.('Rulings'),
-            }
-          : null,
-      research:
-        crextioConfig.showResearchPromoShowcase !== false && !hiddenMap.research_promo
-          ? {
-              id: 'research_deck',
-              kicker: `معاونت پژوهش · ${toPersianNumbers(researchMentorships.length)} پرونده`,
-              title: crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و مقالات',
-              subtitle: 'اساتید معین طراز اول، گرنت پژوهشی و تسهیل اسکان مطالعاتی در قم',
-              metaText: 'حمایت تخصصی تا مرحله دفاع',
-              ctaLabel: 'میز پژوهش',
-              imageUrl: resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides),
-              accentGradient: 'from-[#0A1F2C] via-[#123344] to-[#071E17]',
-              icon: Compass,
-              onPress: () => onNavigateTab?.('Research'),
-            }
-          : null,
-      welfare:
-        crextioConfig.showWelfareShowcase !== false && !hiddenMap.welfare_showcase
-          ? {
-              id: 'welfare_deck',
-              kicker: 'صندوق حامی و تعاونی مصرف',
-              title: crextioConfig.welfareShowcaseTitle || 'تسهیلات قرض‌الحسنه، اقامتگاه‌ها و رفاهیات',
-              subtitle: 'ثبت درخواست وام قرض‌الحسنه، اسکان خانوادگی مشهد و قم و فروشگاه تعاونی',
-              metaText: 'تسهیلات ویژه دانش‌آموختگان',
-              ctaLabel: 'میز رفاهیات',
-              imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
-              accentGradient: 'from-[#0C2621] via-[#133C33] to-[#071E17]',
-              icon: Gift,
-              onPress: () => onNavigateTab?.('Welfare'),
-            }
-          : null,
-      products:
-        crextioConfig.showProductsMiniPromo !== false && !hiddenMap.books_showcase
-          ? {
-              id: 'products_deck',
-              kicker: `نشر و رسانه علمی · ${toPersianNumbers(products.length)} اثر`,
-              title: crextioConfig.booksShowcaseTitle || 'کتاب‌ها، نشست‌ها و درس‌گفتارهای چندرسانه‌ای',
-              subtitle: featuredProducts[0]?.title || 'موسوعه‌های فقهی، آثار مرجع و فایل‌های صوتی جلسات',
-              metaText: 'دسترسی آنی به فایل و سفارش فیزیکی',
-              ctaLabel: 'نمایشگاه آثار',
-              imageUrl: resolveShowcaseImageUrl('books_showcase', crextioConfig.showcaseImageOverrides),
-              accentGradient: 'from-[#161B30] via-[#212947] to-[#0A221A]',
-              icon: BookMarked,
-              onPress: () => onNavigateTab?.('Products'),
-            }
-          : null,
-    };
-
     const orderedSlides: VisualDeckSlide[] = [];
     // If admin turned off separation, merge honors at the start of services showcase
     if (!mobileConfig.separateHonorsShowcase && honorDeckSlides.length > 0) {
       orderedSlides.push(...honorDeckSlides);
     }
 
-    mobileConfig.showcaseOrder.forEach(scId => {
-      if (mobileConfig.hiddenShowcases[scId]) return;
-      const slide = mapById[scId];
-      if (slide) orderedSlides.push(slide);
-    });
+    const applySlideOverride = (
+      base: VisualDeckSlide,
+      ov?: { kicker?: string; title?: string; subtitle?: string; metaText?: string; ctaLabel?: string; imageUrl?: string }
+    ): VisualDeckSlide => {
+      if (!ov) return base;
+      return {
+        ...base,
+        kicker: ov.kicker?.trim() ? ov.kicker : base.kicker,
+        title: ov.title?.trim() ? ov.title : base.title,
+        subtitle: ov.subtitle?.trim() ? ov.subtitle : base.subtitle,
+        metaText: ov.metaText?.trim() ? ov.metaText : base.metaText,
+        ctaLabel: ov.ctaLabel?.trim() ? ov.ctaLabel : base.ctaLabel,
+        imageUrl: ov.imageUrl?.trim() ? ov.imageUrl : base.imageUrl,
+      };
+    };
+
+    if (mobileConfig.showcaseMode === 'detailed') {
+      const welfareMods = welfarePortalConfig?.modulesConfig;
+      const isWelfareSlideEnabled = (
+        modKey: 'emergency_loan' | 'qarzolhasaneh_fund' | 'accommodation' | 'consumables' | 'installment_sales',
+        detailedId: MobileDetailedShowcaseId
+      ): boolean => {
+        const modCfg = welfareMods?.[modKey];
+        if (modCfg && modCfg.enabled === false) return false;
+        const explicitDetailed = mobileConfig.detailedShowcaseEnabled?.[detailedId];
+        if (modCfg?.showInMobileShowcase === true) return true;
+        return explicitDetailed === true;
+      };
+
+      const detailedMap: Record<MobileDetailedShowcaseId, VisualDeckSlide | null> = {
+        counseling_workshops:
+          mobileConfig.detailedShowcaseEnabled?.counseling_workshops !== false &&
+          crextioConfig.showCounselingGeneralShowcase !== false
+            ? {
+                id: 'detailed_counseling_workshops',
+                kicker: `کارگاه‌های روانشناختی · ${toPersianNumbers(combinedWorkshopsCount)} کارگاه فعال`,
+                title: 'کارگاه‌های تخصصی سلامت روان و خانواده',
+                subtitle:
+                  activeWorkshops[0]?.title ||
+                  activeWorkshopCourses[0]?.title ||
+                  'ثبت‌نام فوری کارگاه‌های آنلاین و حضوری مرکز',
+                metaText: 'خدمات روانشناختی و مشاوره',
+                ctaLabel: 'مشاهده کارگاه‌ها',
+                imageUrl:
+                  activeWorkshops[0]?.bannerUrl ||
+                  activeWorkshopCourses[0]?.coverImage ||
+                  resolveShowcaseImageUrl('counseling_general_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#161B2F] via-[#1B2B45] to-[#08221A]',
+                icon: GraduationCap,
+                onPress: () => navigateDeep('CounselingGeneral', 'workshops'),
+              }
+            : null,
+        counseling_announcements:
+          mobileConfig.detailedShowcaseEnabled?.counseling_announcements !== false &&
+          crextioConfig.showCounselingGeneralShowcase !== false
+            ? {
+                id: 'detailed_counseling_announcements',
+                kicker: `اطلاعیه‌های روانشناختی · ${toPersianNumbers(activeAnnouncements.length)} فراخوان`,
+                title: activeAnnouncements[0]?.title || 'اطلاعیه‌ها و برنامه‌های کلینیک مشاوره',
+                subtitle:
+                  activeAnnouncements[0]?.subtitle ||
+                  'برنامه نشست‌های روانشناختی، غربالگری و فراخوان‌های جدید',
+                metaText: 'اطلاع‌رسانی کلینیک مشاوره',
+                ctaLabel: 'مشاهده اطلاعیه‌ها',
+                imageUrl:
+                  activeAnnouncements[0]?.bannerUrl ||
+                  resolveShowcaseImageUrl('counseling_general_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#281C14] via-[#3A271B] to-[#0D251D]',
+                icon: Bell,
+                onPress: () => navigateDeep('CounselingGeneral', 'announcements'),
+              }
+            : null,
+        counseling_booking:
+          mobileConfig.detailedShowcaseEnabled?.counseling_booking !== false &&
+          crextioConfig.showCounselingGeneralShowcase !== false
+            ? {
+                id: 'detailed_counseling_booking',
+                kicker: 'کلینیک سلامت روان و خانواده',
+                title: crextioConfig.counselingGeneralShowcaseTitle || 'رزرو وقت خدمات روانشناختی و مشاوره',
+                subtitle: 'مشاوره فردی، زوج‌درمانی، پیش از ازدواج و سنجش‌های روان‌شناختی',
+                metaText: `${toPersianNumbers(generalConsultants.length)} روان‌شناس و مشاور فعال`,
+                ctaLabel: 'رزرو نوبت',
+                imageUrl: resolveShowcaseImageUrl(
+                  'counseling_general_showcase',
+                  crextioConfig.showcaseImageOverrides
+                ),
+                accentGradient: 'from-[#1D1528] via-[#2B1F3A] to-[#0E2921]',
+                icon: HeartHandshake,
+                onPress: () =>
+                  onBookGeneralCounseling
+                    ? onBookGeneralCounseling()
+                    : navigateDeep('CounselingGeneral', 'booking'),
+              }
+            : null,
+        counseling_career:
+          mobileConfig.detailedShowcaseEnabled?.counseling_career !== false &&
+          crextioConfig.showCounselingPromo !== false
+            ? {
+                id: 'detailed_counseling_career',
+                kicker: 'هدایت شغلی و ارتقای قضایی',
+                title: crextioConfig.counselingPromoTitle || 'مشاوره شغلی قضا',
+                subtitle: 'گفت‌وگوی محرمانه با قضات پیشکسوت دیوان عالی و ارتقای پایه',
+                metaText: `${toPersianNumbers(specializedConsultants.length)} استاد و قاضی پیشکسوت`,
+                ctaLabel: 'دریافت مشاوره',
+                imageUrl: resolveShowcaseImageUrl('counseling_promo', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#182230] via-[#243247] to-[#0B241B]',
+                icon: Compass,
+                onPress: () => navigateDeep('SpecializedCounseling'),
+              }
+            : null,
+        courses_active:
+          mobileConfig.detailedShowcaseEnabled?.courses_active !== false &&
+          crextioConfig.showCourseShowcase !== false
+            ? {
+                id: 'detailed_courses_active',
+                kicker: `آموزش عالی · ${toPersianNumbers(courses.length)} دوره`,
+                title: crextioConfig.courseShowcaseTitle || 'دوره‌ها و کارگاه‌های تخصصی فقه و قضا',
+                subtitle: activeCourses[0]?.title || 'دوره‌های مهارتی و آرشیو صوتی جلسات',
+                metaText: `${toPersianNumbers(myEnrolledCourses)} دوره ثبت‌نامی شما`,
+                ctaLabel: 'گالری دوره‌ها',
+                imageUrl: resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#082224] via-[#0E3A3D] to-[#071E17]',
+                icon: GraduationCap,
+                onPress: () => navigateDeep('Courses'),
+              }
+            : null,
+        rulings_featured:
+          mobileConfig.detailedShowcaseEnabled?.rulings_featured !== false &&
+          crextioConfig.showRulingsShowcase !== false
+            ? {
+                id: 'detailed_rulings_featured',
+                kicker: `مباحثات قضایی · ${toPersianNumbers(rulings.length)} دادنامه`,
+                title: crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی',
+                subtitle: featuredRulings[0]?.title || 'بررسی استدلال‌های حقوقی و تبادل نظر قضات',
+                metaText: 'نقد تحلیلی دیوان عالی',
+                ctaLabel: 'ورود به تالار',
+                imageUrl: resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#1F180D] via-[#342611] to-[#142921]',
+                icon: Scale,
+                onPress: () => navigateDeep('Rulings'),
+              }
+            : null,
+        research_guidance:
+          mobileConfig.detailedShowcaseEnabled?.research_guidance !== false &&
+          crextioConfig.showResearchPromoShowcase !== false
+            ? {
+                id: 'detailed_research_guidance',
+                kicker: `معاونت پژوهش · ${toPersianNumbers(researchMentorships.length)} پرونده`,
+                title: crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و مقالات',
+                subtitle: 'اساتید معین طراز اول، گرنت پژوهشی و تسهیل اسکان مطالعاتی',
+                metaText: 'حمایت تخصصی تا دفاع',
+                ctaLabel: 'میز پژوهش',
+                imageUrl: resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#0A1F2C] via-[#123344] to-[#071E17]',
+                icon: BookOpen,
+                onPress: () => navigateDeep('Research'),
+              }
+            : null,
+        welfare_emergency: isWelfareSlideEnabled('emergency_loan', 'welfare_emergency')
+          ? {
+              id: 'detailed_welfare_emergency',
+              kicker: 'رفاهیات · تسهیلات اضطراری',
+              title: 'درخواست تسهیلات اضطراری',
+              subtitle: 'ثبت سریع درخواست وام اضطراری با ثبت مبلغ و علت درخواست',
+              metaText: 'بررسی توسط مدیریت رفاهی',
+              ctaLabel: 'ثبت درخواست',
+              imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+              accentGradient: 'from-[#0C2621] via-[#133C33] to-[#071E17]',
+              icon: Gift,
+              onPress: () => navigateDeep('Welfare', 'emergency_loan'),
+            }
+          : null,
+        welfare_fund: isWelfareSlideEnabled('qarzolhasaneh_fund', 'welfare_fund')
+          ? {
+              id: 'detailed_welfare_fund',
+              kicker: 'رفاهیات · صندوق حامی',
+              title: 'صندوق قرض‌الحسنه مجتمع فقه و حقوق اسلامی',
+              subtitle: 'عضویت در صندوق، واریز حق عضویت ماهانه و مشاهده سوابق پرداخت',
+              metaText: 'صندوق قرض‌الحسنه اعضا',
+              ctaLabel: 'ورود به صندوق',
+              imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+              accentGradient: 'from-[#0B231C] via-[#12382D] to-[#071E17]',
+              icon: Wallet,
+              onPress: () => navigateDeep('Welfare', 'qarzolhasaneh_fund'),
+            }
+          : null,
+        welfare_accommodation: isWelfareSlideEnabled('accommodation', 'welfare_accommodation')
+          ? {
+              id: 'detailed_welfare_accommodation',
+              kicker: 'رفاهیات · زائرسرا و اسکان',
+              title: 'اسکان در قم و سایر شهرها',
+              subtitle: 'انتخاب شهر، تعداد شب و رزرو آنلاین با تقویم شمسی',
+              metaText: 'هماهنگی مستقیم با تماس ادمین',
+              ctaLabel: 'رزرو اسکان',
+              imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+              accentGradient: 'from-[#10262A] via-[#16383E] to-[#071E17]',
+              icon: Calendar,
+              onPress: () => navigateDeep('Welfare', 'accommodation'),
+            }
+          : null,
+        welfare_consumables: isWelfareSlideEnabled('consumables', 'welfare_consumables')
+          ? {
+              id: 'detailed_welfare_consumables',
+              kicker: `رفاهیات · ${toPersianNumbers(activeConsumables.length)} قلم فعال`,
+              title: 'تهیه اقلام مصرفی و فروشگاه تعاونی',
+              subtitle: 'سفارش اقلام مصرفی با نرخ تعاونی و انتخاب روش ارسال',
+              metaText: 'حضوری، پستی و پیک',
+              ctaLabel: 'مشاهده کالاها',
+              imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+              accentGradient: 'from-[#1B2418] via-[#263621] to-[#071E17]',
+              icon: Gift,
+              onPress: () => navigateDeep('Welfare', 'consumables'),
+            }
+          : null,
+        welfare_installments: isWelfareSlideEnabled('installment_sales', 'welfare_installments')
+          ? {
+              id: 'detailed_welfare_installments',
+              kicker: 'رفاهیات · خرید اقساطی',
+              title: 'فروش اقساطی (سرای ایرانی، آمال و ...)',
+              subtitle: 'مشاهده سقف اعتبار، شرایط اقساط و ثبت درخواست اعتبار خرید',
+              metaText: 'فروشگاه‌های طرف قرارداد',
+              ctaLabel: 'مشاهده شرایط',
+              imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+              accentGradient: 'from-[#221A12] via-[#36281A] to-[#0E241C]',
+              icon: Gift,
+              onPress: () => navigateDeep('Welfare', 'installment_sales'),
+            }
+          : null,
+        products_featured:
+          mobileConfig.detailedShowcaseEnabled?.products_featured !== false &&
+          crextioConfig.showProductsMiniPromo !== false
+            ? {
+                id: 'detailed_products_featured',
+                kicker: `نشر و رسانه علمی · ${toPersianNumbers(products.length)} اثر`,
+                title: crextioConfig.booksShowcaseTitle || 'کتاب‌ها، نشست‌ها و درس‌گفتارهای چندرسانه‌ای',
+                subtitle: featuredProducts[0]?.title || 'موسوعه‌های فقهی، آثار مرجع و فایل‌های صوتی جلسات',
+                metaText: 'دسترسی آنی به فایل و سفارش فیزیکی',
+                ctaLabel: 'نمایشگاه آثار',
+                imageUrl: resolveShowcaseImageUrl('books_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#161B30] via-[#212947] to-[#0A221A]',
+                icon: BookMarked,
+                onPress: () => navigateDeep('Products'),
+              }
+            : null,
+      };
+
+      mobileConfig.detailedShowcaseOrder.forEach(dId => {
+        const baseSlide = detailedMap[dId];
+        if (!baseSlide) return;
+        orderedSlides.push(applySlideOverride(baseSlide, mobileConfig.detailedShowcaseOverrides?.[dId]));
+      });
+    } else {
+      const mapById: Record<MobileServiceShowcaseId, VisualDeckSlide | null> = {
+        counseling:
+          crextioConfig.showCounselingGeneralShowcase !== false &&
+          !hiddenMap.counseling_general_showcase
+            ? {
+                id: 'counseling_deck',
+                kicker: `خدمات روانشناختی و مشاوره · ${toPersianNumbers(combinedWorkshopsCount)} کارگاه`,
+                title: crextioConfig.counselingGeneralShowcaseTitle || 'خدمات روانشناختی و مشاوره',
+                subtitle:
+                  activeWorkshops[0]?.title ||
+                  'مشاوره فردی، تحکیم خانواده، ازدواج، کودک و سنجش‌های روان‌شناختی',
+                metaText: `${toPersianNumbers(generalConsultants.length)} روان‌شناس و مشاور فعال`,
+                ctaLabel: 'رزرو نوبت',
+                imageUrl: resolveShowcaseImageUrl(
+                  'counseling_general_showcase',
+                  crextioConfig.showcaseImageOverrides
+                ),
+                accentGradient: 'from-[#1D1528] via-[#2B1F3A] to-[#0E2921]',
+                icon: HeartHandshake,
+                onPress: () =>
+                  onBookGeneralCounseling
+                    ? onBookGeneralCounseling()
+                    : navigateDeep('CounselingGeneral', 'booking'),
+              }
+            : null,
+        counseling_specialized:
+          crextioConfig.showCounselingPromo !== false && !hiddenMap.counseling_promo
+            ? {
+                id: 'specialized_counseling_deck',
+                kicker: 'هدایت شغلی و ارتقای قضایی',
+                title: crextioConfig.counselingPromoTitle || 'مشاوره شغلی قضا',
+                subtitle: 'گفت‌وگوی محرمانه با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار',
+                metaText: `${toPersianNumbers(specializedConsultants.length)} استاد و قاضی پیشکسوت`,
+                ctaLabel: 'دریافت مشاوره',
+                imageUrl: resolveShowcaseImageUrl(
+                  'counseling_promo',
+                  crextioConfig.showcaseImageOverrides
+                ),
+                accentGradient: 'from-[#182230] via-[#243247] to-[#0B241B]',
+                icon: Compass,
+                onPress: () => navigateDeep('SpecializedCounseling'),
+              }
+            : null,
+        courses:
+          crextioConfig.showCourseShowcase !== false && !hiddenMap.course_showcase
+            ? {
+                id: 'courses_deck',
+                kicker: `آموزش عالی و کارگاه‌ها · ${toPersianNumbers(courses.length)} دوره`,
+                title: crextioConfig.courseShowcaseTitle || 'دوره‌ها و نشست‌های تخصصی فقه و قضا',
+                subtitle: activeCourses[0]?.title || 'کارگاه‌های مهارت‌افزایی و آرشیو صوتی جلسات',
+                metaText: `${toPersianNumbers(myEnrolledCourses)} دوره ثبت‌نامی شما`,
+                ctaLabel: 'گالری دوره‌ها',
+                imageUrl: resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#082224] via-[#0E3A3D] to-[#071E17]',
+                icon: GraduationCap,
+                onPress: () => navigateDeep('Courses'),
+              }
+            : null,
+        rulings:
+          crextioConfig.showRulingsShowcase !== false && !hiddenMap.rulings_showcase
+            ? {
+                id: 'rulings_deck',
+                kicker: `مباحثات قضایی · ${toPersianNumbers(rulings.length)} دادنامه`,
+                title: crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی',
+                subtitle:
+                  featuredRulings[0]?.title ||
+                  'بررسی استدلال‌های حقوقی و تبادل نظر قضات و نخبگان بر روی آراء منتخب',
+                metaText: 'نقد تحلیلی دیوان عالی و تجدیدنظر',
+                ctaLabel: 'ورود به تالار',
+                imageUrl: resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#1F180D] via-[#342611] to-[#142921]',
+                icon: Scale,
+                onPress: () => navigateDeep('Rulings'),
+              }
+            : null,
+        research:
+          crextioConfig.showResearchPromoShowcase !== false && !hiddenMap.research_promo
+            ? {
+                id: 'research_deck',
+                kicker: `معاونت پژوهش · ${toPersianNumbers(researchMentorships.length)} پرونده`,
+                title: crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و مقالات',
+                subtitle: 'اساتید معین طراز اول، گرنت پژوهشی و تسهیل اسکان مطالعاتی در قم',
+                metaText: 'حمایت تخصصی تا مرحله دفاع',
+                ctaLabel: 'میز پژوهش',
+                imageUrl: resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#0A1F2C] via-[#123344] to-[#071E17]',
+                icon: BookOpen,
+                onPress: () => navigateDeep('Research'),
+              }
+            : null,
+        welfare:
+          crextioConfig.showWelfareShowcase !== false && !hiddenMap.welfare_showcase
+            ? {
+                id: 'welfare_deck',
+                kicker: 'صندوق حامی و تعاونی مصرف',
+                title: crextioConfig.welfareShowcaseTitle || 'تسهیلات قرض‌الحسنه، اقامتگاه‌ها و رفاهیات',
+                subtitle: 'تسهیلات اضطراری، صندوق قرض‌الحسنه، اسکان، اقلام مصرفی و فروش اقساطی',
+                metaText: 'تسهیلات ویژه دانش‌آموختگان',
+                ctaLabel: 'میز رفاهیات',
+                imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#0C2621] via-[#133C33] to-[#071E17]',
+                icon: Gift,
+                onPress: () => navigateDeep('Welfare'),
+              }
+            : null,
+        products:
+          crextioConfig.showProductsMiniPromo !== false && !hiddenMap.books_showcase
+            ? {
+                id: 'products_deck',
+                kicker: `نشر و رسانه علمی · ${toPersianNumbers(products.length)} اثر`,
+                title: crextioConfig.booksShowcaseTitle || 'کتاب‌ها، نشست‌ها و درس‌گفتارهای چندرسانه‌ای',
+                subtitle: featuredProducts[0]?.title || 'موسوعه‌های فقهی، آثار مرجع و فایل‌های صوتی جلسات',
+                metaText: 'دسترسی آنی به فایل و سفارش فیزیکی',
+                ctaLabel: 'نمایشگاه آثار',
+                imageUrl: resolveShowcaseImageUrl('books_showcase', crextioConfig.showcaseImageOverrides),
+                accentGradient: 'from-[#161B30] via-[#212947] to-[#0A221A]',
+                icon: BookMarked,
+                onPress: () => navigateDeep('Products'),
+              }
+            : null,
+      };
+
+      mobileConfig.showcaseOrder.forEach(scId => {
+        if (mobileConfig.hiddenShowcases[scId]) return;
+        const slide = mapById[scId];
+        if (slide) {
+          orderedSlides.push(applySlideOverride(slide, mobileConfig.showcaseOverrides?.[scId]));
+        }
+      });
+    }
+
+    // Append admin-enabled custom showcase cards (Workshops, Announcements, direct welfare promos, etc.)
+    (mobileConfig.customShowcaseCards || [])
+      .filter(c => c.enabled)
+      .forEach(customCard => {
+        orderedSlides.push({
+          id: `custom_${customCard.id}`,
+          kicker: customCard.kicker || 'ویترین ویژه',
+          title: customCard.title,
+          subtitle: customCard.subtitle,
+          metaText: customCard.metaText || 'دسترسی مستقیم',
+          ctaLabel: customCard.ctaLabel || 'مشاهده جزئیات',
+          imageUrl:
+            customCard.imageUrl ||
+            resolveShowcaseImageUrl('counseling_general_showcase', crextioConfig.showcaseImageOverrides),
+          accentGradient: 'from-[#0B231D] via-[#133B30] to-[#071E17]',
+          icon: Sparkles,
+          onPress: () => navigateDeep(customCard.targetView, customCard.subTab),
+        });
+      });
 
     return orderedSlides;
   }, [
     mobileConfig.separateHonorsShowcase,
+    mobileConfig.showcaseMode,
     mobileConfig.showcaseOrder,
     mobileConfig.hiddenShowcases,
+    mobileConfig.showcaseOverrides,
+    mobileConfig.detailedShowcaseOrder,
+    mobileConfig.detailedShowcaseEnabled,
+    mobileConfig.detailedShowcaseOverrides,
+    mobileConfig.customShowcaseCards,
+    welfarePortalConfig,
     honorDeckSlides,
     crextioConfig,
     hiddenMap,
     activeWorkshops,
+    activeWorkshopCourses,
+    activeAnnouncements,
+    combinedWorkshopsCount,
     generalConsultants.length,
     specializedConsultants.length,
     courses.length,
@@ -531,6 +837,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
     rulings.length,
     featuredRulings,
     researchMentorships.length,
+    activeConsumables.length,
     products.length,
     featuredProducts,
   ]);
@@ -1307,11 +1614,52 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
               </span>
             </div>
 
+            {/* Standout Active Workshops Spotlight inside Services List */}
+            {combinedWorkshopsCount > 0 && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.985 }}
+                onClick={() => navigateDeep('CounselingGeneral', 'workshops')}
+                className="w-full relative overflow-hidden rounded-[22px] bg-gradient-to-l from-[#071E17] via-[#0F3528] to-[#134232] text-white p-3.5 px-4 border border-[#F3D078]/35 shadow-[0_14px_30px_-16px_rgba(7,30,23,0.65)] text-right flex items-center justify-between gap-3 cursor-pointer"
+              >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/80 to-transparent"
+                />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-[#F3D078]/15 border border-[#F3D078]/40 text-[#F3D078] flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[#F3D078]">
+                      <span>کارگاه در حال برگزاری</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="tabular-nums">{toPersianNumbers(combinedWorkshopsCount)} کارگاه فعال</span>
+                    </div>
+                    <p className="text-xs font-black text-white truncate mt-0.5">
+                      {activeWorkshops[0]?.title || activeWorkshopCourses[0]?.title || 'کارگاه‌های تخصصی مرکز'}
+                    </p>
+                    {(activeWorkshops[0]?.scheduleText || activeWorkshopCourses[0]?.schedule) && (
+                      <p className="text-[10px] text-emerald-200/90 truncate mt-0.5">
+                        {activeWorkshops[0]?.scheduleText || activeWorkshopCourses[0]?.schedule}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-[#F3D078] text-[#071E17] text-[10px] font-black shrink-0 whitespace-nowrap flex items-center gap-1">
+                  <span>ثبت‌نام</span>
+                  <ArrowLeft className="w-3 h-3" />
+                </span>
+              </motion.button>
+            )}
+
             {/* Independent De-merged Segmented Service Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 -mx-1 px-1">
               {feedTabs.map(tab => {
                 const Icon = tab.icon;
                 const isSelected = resolvedFeedTab === tab.id;
+                const hasLiveWorkshop =
+                  combinedWorkshopsCount > 0 && (tab.id === 'counseling' || tab.id === 'courses');
                 return (
                   <button
                     key={tab.id}
@@ -1336,6 +1684,15 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                       }`}
                     />
                     <span className="relative z-10">{tab.label}</span>
+                    {hasLiveWorkshop && (
+                      <span
+                        className={`relative z-10 text-[10px] font-black tabular-nums ${
+                          isSelected ? 'text-[#F3D078]' : 'text-emerald-700'
+                        }`}
+                      >
+                        · {toPersianNumbers(combinedWorkshopsCount)} کارگاه
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1490,13 +1847,41 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                       </div>
                     )}
 
-                    {activeWorkshops[0] && (
-                      <div className="p-3.5 rounded-2xl bg-[#F4F1E7] border border-[#E2D9C2] space-y-1">
-                        <span className="text-[10px] font-black text-emerald-900">کارگاه ویژه مرکز:</span>
-                        <p className="text-xs font-black text-stone-900">{activeWorkshops[0].title}</p>
-                        {activeWorkshops[0].scheduleText && (
-                          <p className="text-[11px] text-stone-600">{activeWorkshops[0].scheduleText}</p>
-                        )}
+                    {activeWorkshops.length > 0 && (
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-l from-[#071E17] to-[#10382B] text-white border border-[#F3D078]/35 space-y-2.5 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-black text-[#F3D078] flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>کارگاه‌های فعال روانشناختی ({toPersianNumbers(activeWorkshops.length)})</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => navigateDeep('CounselingGeneral', 'workshops')}
+                            className="text-[10px] font-black text-[#F3D078] underline cursor-pointer"
+                          >
+                            مشاهده همه
+                          </button>
+                        </div>
+                        <div className="space-y-1.5">
+                          {activeWorkshops.slice(0, 2).map(wk => (
+                            <button
+                              key={wk.id}
+                              type="button"
+                              onClick={() => navigateDeep('CounselingGeneral', 'workshops')}
+                              className="w-full p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-right flex items-center justify-between gap-2 cursor-pointer"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-black text-white truncate">{wk.title}</p>
+                                {(wk.presenter || wk.scheduleText) && (
+                                  <p className="text-[10px] text-emerald-100/85 truncate mt-0.5">
+                                    {[wk.presenter, wk.scheduleText].filter(Boolean).join(' · ')}
+                                  </p>
+                                )}
+                              </div>
+                              <ChevronLeft className="w-4 h-4 text-[#F3D078] shrink-0" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -1506,7 +1891,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                         onClick={() =>
                           onBookGeneralCounseling
                             ? onBookGeneralCounseling()
-                            : onNavigateTab?.('CounselingGeneral')
+                            : navigateDeep('CounselingGeneral', 'booking')
                         }
                         className="py-3 px-3 min-h-[48px] rounded-2xl bg-[#071E17] text-[#F3D078] text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
                       >
@@ -1515,10 +1900,10 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                       </button>
                       <button
                         type="button"
-                        onClick={() => onNavigateTab?.('CounselingGeneral')}
+                        onClick={() => navigateDeep('CounselingGeneral', 'workshops')}
                         className="py-3 px-3 min-h-[48px] rounded-2xl bg-white border border-stone-300 text-stone-900 text-xs font-black cursor-pointer"
                       >
-                        صفحه خدمات و کارگاه‌ها
+                        کارگاه‌ها و اطلاعیه‌ها
                       </button>
                     </div>
                   </div>

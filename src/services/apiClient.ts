@@ -974,23 +974,228 @@ class ApiClient {
     });
   }
 
+  async updateWelfareRequest(id: string, updates: any) {
+    return this.request<any>(`/api/welfare/requests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async getWelfarePortalConfig() {
+    return this.request<any>('/api/welfare/portal-config');
+  }
+
+  async updateWelfarePortalConfig(config: any) {
+    return this.request<any>('/api/welfare/portal-config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  }
+
+  async submitAccommodationRequest(data: {
+    city: string;
+    checkInIso: string;
+    nights: number;
+    description?: string;
+    phone?: string;
+  }) {
+    return this.request<{ message: string; request: any }>('/api/welfare/accommodation-requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyFundMembership() {
+    return this.request<{ membership: any | null; payments: any[] }>('/api/welfare/fund/my');
+  }
+
+  async applyFundMembership(monthlyFeeAmount: number) {
+    return this.request<any>('/api/welfare/fund/membership', {
+      method: 'POST',
+      body: JSON.stringify({ monthlyFeeAmount }),
+    });
+  }
+
+  async editPendingFundMembership(id: string, monthlyFeeAmount: number) {
+    return this.request<any>(`/api/welfare/fund/membership/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ monthlyFeeAmount }),
+    });
+  }
+
+  async deletePendingFundMembership(id: string) {
+    return this.request<{ success: boolean; id: string }>(`/api/welfare/fund/membership/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAdminFundMemberships() {
+    return this.request<any[]>('/api/welfare/fund/admin/memberships');
+  }
+
+  async reviewFundMembership(id: string, status: 'approved' | 'rejected' | 'pending', adminNote?: string) {
+    return this.request<any>(`/api/welfare/fund/admin/memberships/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, adminNote }),
+    });
+  }
+
+  async payFundFee(data: { amount: number; periodLabel: string; paymentMethod: string; receiptUrl?: string }) {
+    return this.request<any>('/api/welfare/fund/payments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getAdminFundPayments() {
+    return this.request<any[]>('/api/welfare/fund/admin/payments');
+  }
+
+  async reviewFundPayment(id: string, status: 'verified' | 'rejected' | 'pending', adminNote?: string) {
+    return this.request<any>(`/api/welfare/fund/admin/payments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, adminNote }),
+    });
+  }
+
+  async getInstallmentPartners() {
+    return this.request<any[]>('/api/welfare/installments/partners');
+  }
+
+  async createInstallmentPartner(data: any) {
+    return this.request<any>('/api/welfare/installments/partners', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateInstallmentPartner(id: string, data: any) {
+    return this.request<any>(`/api/welfare/installments/partners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteInstallmentPartner(id: string) {
+    return this.request<{ success: boolean }>(`/api/welfare/installments/partners/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getInstallmentRequests() {
+    return this.request<any[]>('/api/welfare/installments/requests');
+  }
+
+  async submitInstallmentRequest(data: {
+    partnerId: string;
+    requestedAmount: number;
+    months: number;
+    description?: string;
+    phone?: string;
+  }) {
+    return this.request<any>('/api/welfare/installments/requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async reviewInstallmentRequest(
+    id: string,
+    status: 'pending' | 'approved' | 'rejected' | 'completed',
+    adminNote?: string
+  ) {
+    return this.request<any>(`/api/welfare/installments/requests/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, adminNote }),
+    });
+  }
+
   async getConsumables() {
     return this.request<any[]>('/api/welfare/consumables');
+  }
+
+  async createConsumableItem(data: any) {
+    return this.request<any>('/api/welfare/consumables', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateConsumableItem(id: string, updates: any) {
+    return this.request<any>(`/api/welfare/consumables/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteConsumableItem(id: string) {
+    return this.request<{ success: boolean }>(`/api/welfare/consumables/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateConsumableInventory(
+    id: string,
+    stockOrPayload: number | { stock: number; lowStockThreshold?: number; expectedVersion: number },
+    expectedVersion?: number,
+    lowStockThreshold?: number
+  ) {
+    const body =
+      typeof stockOrPayload === 'object'
+        ? stockOrPayload
+        : { stock: stockOrPayload, expectedVersion: expectedVersion ?? 1, lowStockThreshold };
+    return this.request<any>(`/api/welfare/consumables/${id}/inventory`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
   }
 
   async getConsumableOrders() {
     return this.request<any[]>('/api/welfare/orders');
   }
 
-  async placeConsumableOrder(items: any[], deliveryAddress: string) {
+  async placeConsumableOrder(
+    items: any[],
+    deliveryAddress: string,
+    deliveryMethod: 'in_person' | 'post' | 'courier' = 'post'
+  ) {
     return this.request<any>('/api/welfare/orders', {
       method: 'POST',
-      body: JSON.stringify({ items, deliveryAddress }),
+      body: JSON.stringify({ items, deliveryAddress, deliveryMethod }),
+    });
+  }
+
+  async updateConsumableOrderStatus(
+    orderId: string,
+    status: string,
+    notes?: string,
+    expectedVersion?: number
+  ) {
+    return this.request<any>(`/api/welfare/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, notes, expectedVersion }),
+    });
+  }
+
+  async updateConsumableOrderPostalTracking(
+    orderId: string,
+    data: { postalTrackingCode?: string; shippingStatus?: string; status?: string; expectedVersion: number }
+  ) {
+    return this.request<any>(`/api/welfare/orders/${orderId}/postal-tracking`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 
   async getProductProposals() {
     return this.request<any[]>('/api/welfare/proposals');
+  }
+
+  async submitProductProposal(data: any) {
+    return this.request<any>('/api/welfare/proposals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // Synergy endpoints
@@ -1720,19 +1925,8 @@ class ApiClient {
   }
 
   // Welfare Postal Tracking & Inventory Stock Control
-  async updateOrderPostalTracking(orderId: string, data: { postalTrackingCode: string; shippingStatus?: string; status?: string; expectedVersion: number }) {
+  async updateOrderPostalTracking(orderId: string, data: { postalTrackingCode?: string; shippingStatus?: string; status?: string; expectedVersion: number }) {
     return this.request<any>(`/api/welfare/orders/${orderId}/postal-tracking`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateConsumableOrderPostalTracking(orderId: string, data: { postalTrackingCode: string; shippingStatus?: string; status?: string; expectedVersion: number }) {
-    return this.updateOrderPostalTracking(orderId, data);
-  }
-
-  async updateConsumableInventory(consumableId: string, data: { stock: number; lowStockThreshold?: number; expectedVersion: number }) {
-    return this.request<any>(`/api/welfare/consumables/${consumableId}/inventory`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });

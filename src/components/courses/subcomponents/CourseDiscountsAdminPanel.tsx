@@ -393,25 +393,30 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
       {/* Create / Edit Modal */}
       {formOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
           onClick={() => setFormOpen(false)}
         >
           <form
             onSubmit={handleSave}
-            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-xs"
+            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh] text-xs"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <strong className="text-sm font-black flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>{editingCode ? `ویرایش کد تخفیف ${editingCode.code}` : 'تعریف کد تخفیف جدید (انواع کدهای تخفیف)'}</span>
+            <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-2 shrink-0">
+              <strong className="text-sm font-black flex items-center gap-2 min-w-0 truncate">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="truncate">{editingCode ? `ویرایش کد تخفیف ${editingCode.code}` : 'تعریف کد تخفیف جدید (انواع کدهای تخفیف)'}</span>
               </strong>
-              <button type="button" onClick={() => setFormOpen(false)} className="cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setFormOpen(false)}
+                aria-label="بستن"
+                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center shrink-0 cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold block">کد تخفیف (لاتین و حروف بزرگ):</label>
@@ -671,18 +676,18 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
               </label>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+            <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setFormOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 font-bold cursor-pointer"
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black cursor-pointer disabled:opacity-50"
               >
                 {submitting ? 'در حال ذخیره...' : editingCode ? 'ثبت تغییرات کد تخفیف' : 'ایجاد و انتشار کد تخفیف'}
               </button>
@@ -694,31 +699,36 @@ export const CourseDiscountsAdminPanel: React.FC<CourseDiscountsAdminPanelProps>
       {/* Full Specifications & Usage Report Modal */}
       {detailsModalCode && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
           onClick={() => setDetailsModalCode(null)}
         >
           <div
-            className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-xs"
+            className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh] text-xs"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="font-mono font-black px-3 py-1 rounded-xl bg-amber-500 text-stone-950">
+            <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="font-mono font-black px-3 py-1 rounded-xl bg-amber-500 text-stone-950 shrink-0">
                   {detailsModalCode.code}
                 </span>
-                <div>
-                  <h3 className="font-black text-sm">{detailsModalCode.title}</h3>
-                  <span className="text-[11px] text-slate-300">
+                <div className="min-w-0">
+                  <h3 className="font-black text-sm truncate">{detailsModalCode.title}</h3>
+                  <span className="text-[11px] text-slate-300 truncate block">
                     {DISCOUNT_CATEGORY_LABELS[detailsModalCode.discountCategory]}
                   </span>
                 </div>
               </div>
-              <button type="button" onClick={() => setDetailsModalCode(null)} className="cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setDetailsModalCode(null)}
+                aria-label="بستن"
+                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center shrink-0 cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto flex-1 space-y-5">
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-5">
               {/* Full Specifications Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">

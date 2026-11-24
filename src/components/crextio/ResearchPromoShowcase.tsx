@@ -259,38 +259,39 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
       {/* Quick Proposal Submission Modal */}
       <AnimatePresence>
         {quickModalOpen && (
-          <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-4" dir="rtl">
+          <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#FCFCFA] rounded-[32px] w-full max-w-lg border border-stone-200 shadow-2xl p-6 space-y-4 text-stone-900"
+              className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[32px] w-full max-w-lg max-h-[92dvh] flex flex-col border border-stone-200 shadow-2xl overflow-hidden text-stone-900"
             >
-              <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center">
+              <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
                     <Compass className="w-5 h-5 text-amber-300" />
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-sm text-stone-900">
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-sm text-stone-900 truncate">
                       ثبت سریع طرح پژوهشی و درخواست حمایت نخبگانی
                     </h3>
-                    <p className="text-[11px] text-stone-500">
+                    <p className="text-[11px] text-stone-500 truncate">
                       تطبیق فوری با استاد راهنما و بررسی گرنت پژوهشی
                     </p>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => setQuickModalOpen(false)}
-                  className="w-8 h-8 rounded-full hover:bg-stone-200/80 flex items-center justify-center text-stone-500 cursor-pointer"
+                  className="w-10 h-10 rounded-full hover:bg-stone-200/80 flex items-center justify-center text-stone-500 shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {successMsg ? (
-                <div className="p-6 text-center space-y-2">
+                <div className="p-6 text-center space-y-2 flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
                   <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 mx-auto flex items-center justify-center">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
@@ -300,88 +301,91 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
                   </p>
                 </div>
               ) : (
-                <form onSubmit={handleQuickSubmit} className="space-y-4 text-xs">
-                  <div>
-                    <label className="font-bold text-stone-700 block mb-1">
-                      عنوان رساله / پایان‌نامه / طرح پژوهشی:
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={thesisTitle}
-                      onChange={e => setThesisTitle(e.target.value)}
-                      placeholder="مثال: مسئولیت کیفری هوش مصنوعی در دادرسی‌های الکترونیک..."
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-stone-700 block mb-1">گرایش علمی تخصصی:</label>
-                    <select
-                      value={field}
-                      onChange={e => setField(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                    >
-                      <option value="فقه و حقوق جزا و جرم‌شناسی">فقه و حقوق جزا و جرم‌شناسی</option>
-                      <option value="فقه و حقوق خصوصی و قراردادها">فقه و حقوق خصوصی و قراردادها</option>
-                      <option value="فقه القضاء و رویه دادرسی">فقه القضاء و رویه دادرسی</option>
-                      <option value="حقوق عمومی و فقه حکومتی">حقوق عمومی و فقه حکومتی</option>
-                      <option value="حقوق تجارت بین‌الملل و داوری">حقوق تجارت بین‌الملل و داوری</option>
-                    </select>
-                  </div>
-
-                  {/* Accommodation Option */}
-                  <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-900">
+                <>
+                  <form id="research-quick-submit-form" onSubmit={handleQuickSubmit} className="p-5 space-y-4 text-xs flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        عنوان رساله / پایان‌نامه / طرح پژوهشی:
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={accommodation}
-                        onChange={e => setAccommodation(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-800 accent-emerald-800"
+                        type="text"
+                        required
+                        value={thesisTitle}
+                        onChange={e => setThesisTitle(e.target.value)}
+                        placeholder="مثال: مسئولیت کیفری هوش مصنوعی در دادرسی‌های الکترونیک..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                       />
-                      <span>تقاضای اسکان رایگان در مهمان‌سرای علمی نخبگان دارم</span>
-                    </label>
+                    </div>
 
-                    {accommodation && (
-                      <div className="pt-2 flex items-center gap-2 text-stone-700">
-                        <span className="font-semibold text-[11px]">شهر اقامت پژوهشی:</span>
-                        <div className="flex items-center gap-2">
-                          {(['قم', 'مشهد', 'تهران'] as const).map(c => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => setCity(c)}
-                              className={`px-3 py-1 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                                city === c
-                                  ? 'bg-amber-600 text-white border-amber-700'
-                                  : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
-                              }`}
-                            >
-                              {c}
-                            </button>
-                          ))}
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">گرایش علمی تخصصی:</label>
+                      <select
+                        value={field}
+                        onChange={e => setField(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                      >
+                        <option value="فقه و حقوق جزا و جرم‌شناسی">فقه و حقوق جزا و جرم‌شناسی</option>
+                        <option value="فقه و حقوق خصوصی و قراردادها">فقه و حقوق خصوصی و قراردادها</option>
+                        <option value="فقه القضاء و رویه دادرسی">فقه القضاء و رویه دادرسی</option>
+                        <option value="حقوق عمومی و فقه حکومتی">حقوق عمومی و فقه حکومتی</option>
+                        <option value="حقوق تجارت بین‌الملل و داوری">حقوق تجارت بین‌الملل و داوری</option>
+                      </select>
+                    </div>
+
+                    {/* Accommodation Option */}
+                    <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-900">
+                        <input
+                          type="checkbox"
+                          checked={accommodation}
+                          onChange={e => setAccommodation(e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-800 accent-emerald-800"
+                        />
+                        <span>تقاضای اسکان رایگان در مهمان‌سرای علمی نخبگان دارم</span>
+                      </label>
+
+                      {accommodation && (
+                        <div className="pt-2 flex flex-wrap items-center gap-2 text-stone-700">
+                          <span className="font-semibold text-[11px]">شهر اقامت پژوهشی:</span>
+                          <div className="flex items-center gap-2">
+                            {(['قم', 'مشهد', 'تهران'] as const).map(c => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => setCity(c)}
+                                className={`px-3 py-1 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                                  city === c
+                                    ? 'bg-amber-600 text-white border-amber-700'
+                                    : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </form>
 
-                  <div className="pt-2 flex items-center justify-end gap-2 border-t border-stone-200">
+                  <div className="px-5 py-3.5 border-t border-stone-200 bg-stone-50 flex items-center justify-end gap-2 shrink-0 text-xs pb-[max(0.875rem,env(safe-area-inset-bottom))]">
                     <button
                       type="button"
                       onClick={() => setQuickModalOpen(false)}
-                      className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 font-bold hover:bg-stone-100 transition-colors cursor-pointer"
+                      className="px-4 py-2.5 min-h-[42px] rounded-xl border border-stone-300 bg-white text-stone-700 font-bold hover:bg-stone-100 transition-colors cursor-pointer"
                     >
                       انصراف
                     </button>
                     <button
                       type="submit"
+                      form="research-quick-submit-form"
                       disabled={!thesisTitle.trim()}
-                      className="px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-black transition-colors cursor-pointer"
+                      className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-black transition-colors cursor-pointer"
                     >
                       ارسال و ثبت نهایی طرح
                     </button>
                   </div>
-                </form>
+                </>
               )}
             </motion.div>
           </div>

@@ -719,23 +719,23 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
       {/* Modal for Reading Full Ruling */}
       <AnimatePresence>
         {liveModalRuling && (
-          <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="bg-white rounded-3xl w-full max-w-2xl border border-stone-200 shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto text-stone-900"
+              className="bg-white rounded-t-[26px] sm:rounded-3xl w-full max-w-2xl border border-stone-200 shadow-2xl max-h-[92dvh] sm:max-h-[85vh] flex flex-col overflow-hidden text-stone-900"
             >
-              <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
+              <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
                     <Scale className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h4 className="font-black text-sm text-stone-900 line-clamp-1">
+                  <div className="min-w-0">
+                    <h4 className="font-black text-sm text-stone-900 truncate">
                       {liveModalRuling.title}
                     </h4>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
+                    <p className="text-[11px] text-stone-500 mt-0.5 truncate">
                       {liveModalRuling.courtBranch} · دادرس: {liveModalRuling.judgeName}
                     </p>
                   </div>
@@ -744,31 +744,33 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                 <button
                   type="button"
                   onClick={() => setFullModalRuling(null)}
-                  className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
+                  className="w-10 h-10 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-700 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {renderPublicBadges(liveModalRuling)}
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto overscroll-y-contain flex-1 min-h-0">
+                {renderPublicBadges(liveModalRuling)}
 
-              <div className="space-y-3 text-xs">
-                {liveModalRuling.summary && (
-                  <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
-                    <span className="font-bold text-amber-900 block">چکیده مبدأ استنباط:</span>
-                    <p className="text-stone-700 leading-relaxed">{liveModalRuling.summary}</p>
+                <div className="space-y-3 text-xs">
+                  {liveModalRuling.summary && (
+                    <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
+                      <span className="font-bold text-amber-900 block">چکیده مبدأ استنباط:</span>
+                      <p className="text-stone-700 leading-relaxed">{liveModalRuling.summary}</p>
+                    </div>
+                  )}
+
+                  <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-1.5">
+                    <span className="font-bold text-emerald-950 block">متن رسمی دادنامه:</span>
+                    <p className="text-stone-700 font-serif leading-loose text-xs whitespace-pre-line">
+                      {liveModalRuling.fullRulingText || liveModalRuling.summary}
+                    </p>
                   </div>
-                )}
-
-                <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-1.5 max-h-72 overflow-y-auto">
-                  <span className="font-bold text-emerald-950 block">متن رسمی دادنامه:</span>
-                  <p className="text-stone-700 font-serif leading-loose text-xs whitespace-pre-line">
-                    {liveModalRuling.fullRulingText || liveModalRuling.summary}
-                  </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-200 text-xs">
+              <div className="px-4 py-3.5 sm:px-6 flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 bg-stone-50 text-xs shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
                 {renderReactions(liveModalRuling)}
 
                 <button
@@ -777,7 +779,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                     setFullModalRuling(null);
                     if (onNavigateToRulings) onNavigateToRulings();
                   }}
-                  className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold transition-colors cursor-pointer mr-auto"
                 >
                   ورود به تالار نقد و ثبت مباحثه تفصیلی
                 </button>

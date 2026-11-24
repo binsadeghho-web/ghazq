@@ -17,6 +17,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db, generateUUIDv7 } from './src/server/platform/database';
 import { checkDatabaseConnection, isDatabaseConnected, validateDatabaseEnv } from './src/server/platform/mysqlDatabase';
+import { ensureDomainTablesAndIndexes } from './src/server/platform/domainTablesSetup';
 import { logger } from './src/server/platform/logger';
 import { idempotencyMiddleware } from './src/server/platform/idempotency';
 import { rateLimitMiddleware } from './src/server/platform/rateLimiter';
@@ -38,9 +39,13 @@ async function bootstrap() {
 
   // Item 1: Database DDL is executed ONLY via standalone 'npm run db:init', NOT on server startup.
   // Server only probes readiness for graceful health checks.
-  checkDatabaseConnection().catch(err => {
-    logger.warn('MySQL probe notice: ' + (err?.message || err));
-  });
+  checkDatabaseConnection()
+    .then(ok => {
+      if (ok) return ensureDomainTablesAndIndexes();
+    })
+    .catch(err => {
+      logger.warn('MySQL probe notice: ' + (err?.message || err));
+    });
 
   // Request body parsing with bounded size (supports up to 45MB audio/video/document attachments)
   app.use(express.json({ limit: '60mb' }));

@@ -328,32 +328,32 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
+      className="fixed inset-0 z-[80] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden"
       dir="rtl"
     >
-      <div className="w-full max-w-5xl max-h-[92vh] rounded-[28px] bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden text-xs">
+      <div className="w-full max-w-5xl max-h-[92dvh] sm:max-h-[92vh] rounded-t-[26px] sm:rounded-[28px] bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden text-xs">
         {/* Header */}
-        <div className="p-5 bg-gradient-to-l from-slate-900 via-emerald-950 to-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
-          <div>
-            <h3 className="text-sm sm:text-base font-black flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-amber-400" />
-              <span>مدیریت ویترین ۳ بخشی خدمات روانشناختی و مشاوره</span>
+        <div className="p-4 sm:p-5 bg-gradient-to-l from-slate-900 via-emerald-950 to-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-black flex items-center gap-2 truncate">
+              <Sliders className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="truncate">مدیریت ویترین ۳ بخشی خدمات روانشناختی و مشاوره</span>
             </h3>
-            <p className="text-[11px] text-slate-300 mt-1">
+            <p className="text-[11px] text-slate-300 mt-1 line-clamp-1">
               فعال/غیرفعال‌سازی مستقل هر کارت، مدیریت کارگاه‌ها و فایل‌های آرشیو، پوستر اطلاعیه‌ها و مشاورین معرفی‌شده
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer flex items-center justify-center shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="px-5 pt-3 pb-2 bg-stone-50 dark:bg-slate-950/40 border-b border-stone-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto shrink-0">
+        <div className="px-4 sm:px-5 pt-3 pb-2 bg-stone-50 dark:bg-slate-950/40 border-b border-stone-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto shrink-0">
           {[
             { id: 'overview', label: 'تنظیمات و فعال‌سازی کارت‌ها', icon: Sliders },
             { id: 'workshops', label: `۱. کارگاه‌های آموزشی (${toPersianNumbers(draft.workshops.length)})`, icon: GraduationCap },
@@ -381,7 +381,7 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-5">
+        <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-5">
           {/* TAB 0: OVERVIEW & TOGGLES */}
           {activeTab === 'overview' && (
             <div className="space-y-5">
@@ -1513,11 +1513,11 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-stone-50 dark:bg-slate-950/60 border-t border-stone-200 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
+        <div className="px-4 py-3.5 sm:p-4 bg-stone-50 dark:bg-slate-950/60 border-t border-stone-200 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-stone-200 dark:bg-slate-800 text-stone-800 dark:text-slate-200 font-bold cursor-pointer"
+            className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-200 dark:bg-slate-800 text-stone-800 dark:text-slate-200 font-bold cursor-pointer"
           >
             بستن
           </button>
@@ -1525,7 +1525,7 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
             type="button"
             disabled={saving}
             onClick={handleSaveAll}
-            className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-5 sm:px-6 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span>ذخیره نهایی تنظیمات ویترین ۳ بخشی</span>

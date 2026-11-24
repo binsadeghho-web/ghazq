@@ -200,7 +200,7 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
@@ -209,12 +209,12 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           onClick={e => e.stopPropagation()}
-          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
+          className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
         >
           {/* Header */}
-          <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
+          <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <span className="text-[11px] text-amber-400 font-bold block">
+              <span className="text-[11px] text-amber-400 font-bold block truncate">
                 مرحله {toPersianNumbers(step)} از ۳ ·{' '}
                 {step === 1
                   ? 'انتخاب نوع نسخه، روش تحویل و تایید مبلغ'
@@ -222,18 +222,19 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                   ? 'بازبینی مشخصات خریدار و پرداخت از درگاه یا فیش'
                   : 'تایید نهایی، کد رهگیری و دریافت لینک دانلود'}
               </span>
-              <h3 className="text-base font-black text-white truncate">{product.title}</h3>
+              <h3 className="text-sm sm:text-base font-black text-white truncate">{product.title}</h3>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
+              aria-label="بستن"
+              className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-5 flex-1 min-h-0 text-xs">
             {errorMsg && (
               <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -667,27 +668,27 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-slate-50/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2.5">
             {step === 2 ? (
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold cursor-pointer"
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold cursor-pointer shrink-0"
               >
-                بازگشت به مرحله قبل
+                بازگشت
               </button>
             ) : (
-              <div />
+              <div className="hidden sm:block" />
             )}
 
-            <div>
+            <div className="flex-1 sm:flex-none flex justify-end">
               {step === 1 && (
                 <button
                   type="button"
                   onClick={handleNextToStep2}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer"
                 >
-                  تایید نوع و مبلغ، ادامه به مشخصات و درگاه
+                  تایید و ادامه پرداخت
                 </button>
               )}
               {step === 2 && (
@@ -695,22 +696,22 @@ export const ProductCheckoutModal: React.FC<ProductCheckoutModalProps> = ({
                   type="button"
                   disabled={submitting}
                   onClick={handleFinalSubmit}
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {submitting
-                    ? 'در حال ثبت تراکنش...'
+                    ? 'در حال ثبت...'
                     : paymentMethod === 'online_gateway'
-                    ? 'پرداخت از درگاه و صدور کد رهگیری'
-                    : 'ثبت سفارش با فیش و صدور کد رهگیری'}
+                    ? 'پرداخت و صدور کد رهگیری'
+                    : 'ثبت فیش و صدور کد رهگیری'}
                 </button>
               )}
               {step === 3 && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black cursor-pointer"
                 >
-                  بستن و مشاهده کتابخانه / سفارش‌ها
+                  بستن و مشاهده کتابخانه
                 </button>
               )}
             </div>

@@ -64,28 +64,28 @@ export const PrivateFileViewerModal: React.FC<PrivateFileViewerModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md"
+        className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
           onClick={e => e.stopPropagation()}
         >
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-            <div className="flex items-center gap-2 text-xs sm:text-sm font-black">
-              <FileText className="w-4 h-4 text-emerald-400" />
-              <span>{title}</span>
+          <div className="p-4 bg-slate-900 text-white flex items-center justify-between gap-2 border-b border-slate-800 shrink-0">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-black min-w-0">
+              <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="truncate">{title}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {blobUrl && (
                 <a
                   href={blobUrl}
                   download={filename}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5"
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>دانلود فایل</span>
@@ -94,14 +94,15 @@ export const PrivateFileViewerModal: React.FC<PrivateFileViewerModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center cursor-pointer"
+                aria-label="بستن"
+                className="w-10 h-10 rounded-xl bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          <div className="p-4 flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 flex items-center justify-center min-h-[340px]">
+          <div className="p-4 flex-1 min-h-0 overflow-auto overscroll-y-contain bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
             {loading && (
               <div className="flex flex-col items-center gap-2 text-slate-500 text-xs">
                 <Loader2 className="w-7 h-7 animate-spin text-emerald-500" />

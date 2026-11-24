@@ -472,24 +472,25 @@ export const ConsultantManagementModule: React.FC = () => {
 
       {/* MODAL 1: ADD / EDIT CONSULTANT */}
       {isAddEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#182622] rounded-[36px] max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 dark:border-[#2A423B] max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#2A423B]">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-6 h-6 text-amber-500" />
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
+          <div className="bg-white dark:bg-[#182622] rounded-t-[26px] sm:rounded-[36px] max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-[#2A423B] max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 sm:px-8 sm:py-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-[#2A423B] shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
+                <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white truncate">
                   {editingConsultant ? `ویرایش اطلاعات: ${editingConsultant.name}` : 'افزودن مشاور/قاضی جدید به سامانه'}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setIsAddEditModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white font-bold flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white font-bold flex items-center justify-center shrink-0 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveConsultant} className="space-y-4 text-xs">
+            <form id="consultant-add-edit-form" onSubmit={handleSaveConsultant} className="p-4 sm:p-6 space-y-4 text-xs flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
               {/* Type Selection Radio Segment */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-700 dark:text-slate-300">
@@ -679,47 +680,49 @@ export const ConsultantManagementModule: React.FC = () => {
                 </label>
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-[#2A423B]">
-                <button
-                  type="button"
-                  onClick={() => setIsAddEditModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg"
-                >
-                  {editingConsultant ? 'ذخیره تغییرات' : 'افزودن مشاور'}
-                </button>
-              </div>
             </form>
+            {/* Pinned Footer */}
+            <div className="px-5 py-3.5 sm:px-8 sm:py-4 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-[#2A423B] shrink-0 bg-slate-50/90 dark:bg-[#121D1A] pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setIsAddEditModalOpen(false)}
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="consultant-add-edit-form"
+                className="px-6 py-2.5 min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg cursor-pointer"
+              >
+                {editingConsultant ? 'ذخیره تغییرات' : 'افزودن مشاور'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* MODAL 2: BULK TARIFF & FEE SETTINGS */}
       {showTariffPresetModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#182622] rounded-[36px] max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 dark:border-[#2A423B]">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#2A423B]">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-6 h-6 text-amber-500" />
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
+          <div className="bg-white dark:bg-[#182622] rounded-t-[26px] sm:rounded-[36px] max-w-xl w-full shadow-2xl border border-slate-200 dark:border-[#2A423B] max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 sm:px-8 sm:py-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-[#2A423B] shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
+                <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white truncate">
                   تنظیم هماهنگ تعرفه‌ها و یارانه‌های حق‌المشاوره
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowTariffPresetModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white font-bold flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white font-bold flex items-center justify-center shrink-0 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleApplyBulkTariffs} className="space-y-4 text-xs">
+            <form id="consultant-bulk-tariff-form" onSubmit={handleApplyBulkTariffs} className="p-4 sm:p-6 space-y-4 text-xs flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
               <div className="p-4 bg-amber-500/10 dark:bg-amber-500/10 rounded-2xl border border-amber-500/30 space-y-3">
                 <h4 className="font-extrabold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
                   <Scale className="w-4 h-4 text-amber-500" />
@@ -774,22 +777,23 @@ export const ConsultantManagementModule: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-[#2A423B]">
-                <button
-                  type="button"
-                  onClick={() => setShowTariffPresetModal(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-lg"
-                >
-                  اعمال همگانی تعرفه‌ها
-                </button>
-              </div>
             </form>
+            <div className="px-5 py-3.5 sm:px-8 sm:py-4 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-[#2A423B] shrink-0 bg-slate-50/90 dark:bg-[#121D1A] pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setShowTariffPresetModal(false)}
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="consultant-bulk-tariff-form"
+                className="px-6 py-2.5 min-h-[42px] rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg cursor-pointer"
+              >
+                اعمال همگانی تعرفه‌ها
+              </button>
+            </div>
           </div>
         </div>
       )}

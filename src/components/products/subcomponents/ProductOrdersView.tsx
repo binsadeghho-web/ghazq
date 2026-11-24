@@ -353,24 +353,24 @@ export const ProductOrdersView: React.FC<ProductOrdersViewProps> = ({
 
       {receiptPreview && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-hidden"
           onClick={closePreview}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="max-w-xl w-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
+            className="max-w-xl w-full max-h-[92dvh] sm:max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
           >
-            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between text-xs font-bold">
-              <span>{receiptPreview.title}</span>
-              <button onClick={closePreview} className="px-2.5 py-1 rounded-lg bg-slate-800 cursor-pointer">
+            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between gap-2 text-xs font-bold shrink-0">
+              <span className="truncate">{receiptPreview.title}</span>
+              <button type="button" onClick={closePreview} className="px-3 py-1.5 min-h-[36px] rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer shrink-0">
                 بستن
               </button>
             </div>
-            <div className="p-4 bg-slate-950 flex justify-center">
+            <div className="p-4 bg-slate-950 flex-1 min-h-0 overflow-y-auto overscroll-y-contain flex justify-center">
               <img
                 src={receiptPreview.url}
                 alt={receiptPreview.title}
-                className="max-h-[70vh] object-contain rounded-lg"
+                className="max-h-[68dvh] object-contain rounded-lg"
               />
             </div>
           </div>

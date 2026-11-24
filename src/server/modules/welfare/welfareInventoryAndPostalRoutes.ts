@@ -107,18 +107,29 @@ export function registerWelfareInventoryAndPostalRoutes(router: Router): void {
 
       const rows = await selectWithTimeout<any>(`SELECT * FROM consumables WHERE id = ? OR id = ? LIMIT 1`, [idBuf, req.params.id], 3000);
       const r = rows[0];
+      const price = Number(r.price ?? r.cooperative_price ?? 0);
+      let allowedDeliveryMethods: any[] = ['in_person', 'post', 'courier'];
+      try {
+        if (typeof r.allowed_delivery_methods === 'string') allowedDeliveryMethods = JSON.parse(r.allowed_delivery_methods);
+        else if (Array.isArray(r.allowed_delivery_methods)) allowedDeliveryMethods = r.allowed_delivery_methods;
+      } catch {}
       const updatedItem = {
         id: fromIdBuffer(r.id),
         title: r.title,
         name: r.title,
         category: r.category,
-        cooperativePrice: Number(r.cooperative_price || 0),
-        memberPrice: Number(r.cooperative_price || 0),
-        marketPrice: Number(r.market_price || 0),
-        unit: r.unit,
+        cooperativePrice: price,
+        memberPrice: price,
+        marketPrice: Number(r.market_price ?? Math.round(price * 1.2)),
+        unit: r.unit || 'عدد',
         stock: Number(r.stock || 0),
         lowStockThreshold: Number(r.low_stock_threshold ?? 5),
-        description: r.description,
+        imageUrl: r.image_url || undefined,
+        description: r.description || '',
+        visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
+        isActive: r.is_active !== undefined ? Boolean(r.is_active) : true,
+        showAsSoldOutInShowcase: r.show_as_sold_out_in_showcase !== undefined ? Boolean(r.show_as_sold_out_in_showcase) : false,
+        allowedDeliveryMethods,
         version: Number(r.version || 1),
       };
 

@@ -516,22 +516,28 @@ export const AdminSpecializedCounselingSuite: React.FC<AdminSpecializedCounselin
       {/* Schedule Modal */}
       <AnimatePresence>
         {selectedRequest && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
-            <motion.form
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onSubmit={handleSaveSchedule}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xl text-xs"
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl" onClick={() => setSelectedRequest(null)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 12 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl text-xs max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="font-black text-sm text-slate-900 dark:text-white">
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <h3 className="font-black text-sm text-slate-900 dark:text-white truncate">
                   تعیین وقت و مشاور: {selectedRequest.applicantName}
                 </h3>
-                <button type="button" onClick={() => setSelectedRequest(null)} className="text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRequest(null)}
+                  aria-label="بستن"
+                  className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0 cursor-pointer"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
+              <form id="admin-spec-schedule-form" onSubmit={handleSaveSchedule} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4">
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -603,22 +609,24 @@ export const AdminSpecializedCounselingSuite: React.FC<AdminSpecializedCounselin
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              </form>
+              <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSelectedRequest(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                  className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 text-slate-700 font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-800 text-white font-bold cursor-pointer"
+                  form="admin-spec-schedule-form"
+                  className="px-5 py-2.5 min-h-[42px] rounded-xl bg-indigo-800 text-white font-bold cursor-pointer"
                 >
                   ذخیره تغییرات
                 </button>
               </div>
-            </motion.form>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
@@ -626,16 +634,16 @@ export const AdminSpecializedCounselingSuite: React.FC<AdminSpecializedCounselin
       {/* Add/Edit Specialized Advisor Modal */}
       <AnimatePresence>
         {(isAddAdvisorOpen || editingAdvisor) && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
-            <motion.form
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onSubmit={handleSaveAdvisor}
-              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto"
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl" onClick={() => { setIsAddAdvisorOpen(false); setEditingAdvisor(null); }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 12 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl text-xs max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="font-black text-sm text-slate-900 dark:text-white">
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <h3 className="font-black text-sm text-slate-900 dark:text-white truncate">
                   {editingAdvisor ? `ویرایش مشاور: ${editingAdvisor.name}` : 'افزودن مشاور تخصصی شغلی/تحصیلی'}
                 </h3>
                 <button
@@ -644,11 +652,13 @@ export const AdminSpecializedCounselingSuite: React.FC<AdminSpecializedCounselin
                     setIsAddAdvisorOpen(false);
                     setEditingAdvisor(null);
                   }}
-                  className="text-slate-400"
+                  aria-label="بستن"
+                  className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
+              <form id="admin-spec-advisor-form" onSubmit={handleSaveAdvisor} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4">
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -731,25 +741,27 @@ export const AdminSpecializedCounselingSuite: React.FC<AdminSpecializedCounselin
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              </form>
+              <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAddAdvisorOpen(false);
                     setEditingAdvisor(null);
                   }}
-                  className="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                  className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 text-slate-700 font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-800 text-white font-bold cursor-pointer"
+                  form="admin-spec-advisor-form"
+                  className="px-5 py-2.5 min-h-[42px] rounded-xl bg-indigo-800 text-white font-bold cursor-pointer"
                 >
                   ذخیره در پایگاه داده
                 </button>
               </div>
-            </motion.form>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

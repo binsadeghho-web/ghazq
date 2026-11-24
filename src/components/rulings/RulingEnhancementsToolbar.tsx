@@ -292,35 +292,36 @@ export const RulingEnhancementsToolbar: React.FC<RulingEnhancementsToolbarProps>
       {/* مودال نسخه چاپی رسمی دادنامه */}
       {showPrintModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-hidden"
           onClick={() => setShowPrintModal(false)}
         >
           <div
-            className="w-full max-w-3xl bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-300 overflow-hidden max-h-[88vh] flex flex-col"
+            className="w-full max-w-3xl bg-white text-slate-900 rounded-t-[26px] sm:rounded-2xl shadow-2xl border border-slate-300 overflow-hidden max-h-[92dvh] sm:max-h-[88vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <span className="text-xs font-bold">پیش‌نمایش نسخه چاپی دادنامه و نقدهای برگزیده</span>
-              <div className="flex items-center gap-2">
+            <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between gap-2 shrink-0">
+              <span className="text-xs font-bold truncate">پیش‌نمایش نسخه چاپی دادنامه و نقدهای برگزیده</span>
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-3.5 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg bg-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>چاپ مستقیم / ذخیره PDF</span>
+                  <span>چاپ / PDF</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowPrintModal(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300"
+                  aria-label="بستن"
+                  className="w-10 h-10 rounded-lg hover:bg-slate-800 text-slate-300 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="p-8 overflow-y-auto space-y-5 text-right font-serif">
+            <div className="p-4 sm:p-8 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-5 text-right font-serif">
               <div className="text-center border-b-2 border-slate-800 pb-4 space-y-1">
                 <div className="text-xs font-bold text-slate-500">
                   مرکز تخصصی فقه و قضا — تالار نقد و تحلیل آراء قضایی

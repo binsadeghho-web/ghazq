@@ -485,24 +485,25 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-5 bg-slate-950/80 backdrop-blur-md overflow-hidden"
       dir="rtl"
+      onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] text-right font-sans"
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh] text-right font-sans"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-5 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white border-b border-emerald-900/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center font-black">
-              <Settings className="w-6 h-6" />
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white border-b border-emerald-900/40 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center font-black shrink-0">
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black">
                   پنل مدیریت ویژه {unitNoun}
                 </span>
@@ -514,11 +515,11 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
                     : `${unitNoun} ترکیبی/آفلاین`}
                 </span>
               </div>
-              <h3 className="text-base sm:text-lg font-black text-white mt-1">{course.title}</h3>
+              <h3 className="text-sm sm:text-lg font-black text-white mt-1 truncate">{course.title}</h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => onOpenBuilder(course)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
@@ -528,8 +529,10 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
               <span>ویرایش ساختار دوره</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="بستن"
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
@@ -537,7 +540,7 @@ export const CourseAdminPanelModal: React.FC<CourseAdminPanelModalProps> = ({
         </div>
 
         {/* 4 Main Action Tabs */}
-        <div className="flex items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-6 gap-2 text-xs font-bold overflow-x-auto">
+        <div className="flex items-center border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 sm:px-6 gap-2 text-xs font-bold overflow-x-auto shrink-0">
           <button
             onClick={() => setActiveTab('roster')}
             className={`py-3.5 px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${

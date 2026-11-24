@@ -65,28 +65,30 @@ export const CourseReceiptInspectionModal: React.FC<CourseReceiptInspectionModal
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden" onClick={onClose}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right p-6 space-y-4"
+          initial={{ opacity: 0, scale: 0.95, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 12 }}
+          className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-500" />
-              <span>بررسی تصویر فیش واریزی: {enrollment.userName}</span>
+          <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+              <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span className="truncate">بررسی تصویر فیش واریزی: {enrollment.userName}</span>
             </h3>
             <button
+              type="button"
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+              aria-label="بستن"
+              className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="space-y-3 text-xs">
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-3 text-xs">
             <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
               <div>
                 <span className="text-slate-400 block text-[10px]">کد رهگیری فیش:</span>
@@ -138,24 +140,26 @@ export const CourseReceiptInspectionModal: React.FC<CourseReceiptInspectionModal
                 )}
               </div>
             )}
+          </div>
 
-            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
-              <button
-                onClick={() => {
-                  onConfirm(enrollment.id);
-                  onClose();
-                }}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs shadow-md transition-colors cursor-pointer"
-              >
-                تایید نهایی و صدور ثبت‌نام قطعی
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
-              >
-                بستن
-              </button>
-            </div>
+          <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50 dark:bg-slate-950">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+            >
+              بستن
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm(enrollment.id);
+                onClose();
+              }}
+              className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs shadow-md transition-colors cursor-pointer"
+            >
+              تایید نهایی و صدور ثبت‌نام قطعی
+            </button>
           </div>
         </motion.div>
       </div>

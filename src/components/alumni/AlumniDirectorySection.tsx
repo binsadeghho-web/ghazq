@@ -661,28 +661,28 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
           MODAL 1: PROMINENT RED BUTTON MODAL «ایجاد کاربری»
           ======================================================================== */}
       {createAccountAlumnus && (
-        <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-4" dir="rtl">
+        <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-md border border-stone-200 shadow-2xl overflow-hidden p-6 space-y-5"
+            className="bg-white rounded-t-[26px] sm:rounded-3xl w-full max-w-md max-h-[92dvh] flex flex-col border border-stone-200 shadow-2xl overflow-hidden"
           >
-            <div className="flex items-center justify-between border-b pb-3 border-stone-200">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-800">
+            <div className="px-5 py-4 sm:p-6 flex items-center justify-between gap-2 border-b border-stone-200 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-800 shrink-0">
                   <UserPlus className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-black text-sm text-stone-900">ایجاد و فعال‌سازی حساب کاربری</h3>
-                  <p className="text-xs text-stone-500">برای {createAccountAlumnus.fullName}</p>
+                <div className="min-w-0">
+                  <h3 className="font-black text-sm text-stone-900 truncate">ایجاد و فعال‌سازی حساب کاربری</h3>
+                  <p className="text-xs text-stone-500 truncate">برای {createAccountAlumnus.fullName}</p>
                 </div>
               </div>
-              <button onClick={() => setCreateAccountAlumnus(null)} className="p-1 rounded-lg hover:bg-stone-100 text-stone-400">
+              <button type="button" onClick={() => setCreateAccountAlumnus(null)} className="w-10 h-10 rounded-full hover:bg-stone-100 text-stone-500 flex items-center justify-center shrink-0 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateAccountSubmit} className="space-y-4 text-xs">
+            <form id="alumni-create-account-form" onSubmit={handleCreateAccountSubmit} className="p-5 sm:p-6 space-y-4 text-xs flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
               <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-[11px] leading-relaxed">
                 طبق شیوه پیشنهادی: <strong>کد ملی به عنوان نام کاربری</strong> و <strong>شماره تلفن همراه به عنوان رمز عبور پیش‌فرض</strong> قرار گرفته است.
               </div>
@@ -718,24 +718,25 @@ export const AlumniDirectorySection: React.FC<AlumniDirectorySectionProps> = ({ 
                   className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 />
               </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCreateAccountAlumnus(null)}
-                  className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black flex items-center gap-1.5 shadow-md"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>تایید و ایجاد حساب کاربری</span>
-                </button>
-              </div>
             </form>
+
+            <div className="px-5 py-3.5 sm:px-6 bg-[#F5F4EE] border-t border-stone-200 flex items-center justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setCreateAccountAlumnus(null)}
+                className="px-4 py-2.5 min-h-[42px] rounded-xl border border-stone-200 bg-white text-stone-600 font-bold text-xs cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="alumni-create-account-form"
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>تایید و ایجاد حساب کاربری</span>
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
@@ -859,62 +860,64 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
   const hasAccount = alumni.hasAccount !== false;
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-4xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-4xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
         {/* Header */}
-        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             {alumni.profilePictureUrl ? (
-              <img src={alumni.profilePictureUrl} alt={alumni.fullName} className="w-12 h-12 rounded-2xl object-cover shrink-0 shadow-md border border-stone-200" />
+              <img src={alumni.profilePictureUrl} alt={alumni.fullName} className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl object-cover shrink-0 shadow-md border border-stone-200" />
             ) : (
-              <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-black text-lg shadow-md">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-black text-base sm:text-lg shadow-md shrink-0">
                 {alumni.avatarText || alumni.fullName.slice(0, 2)}
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-stone-900">پرونده جامع الکترونیک: {alumni.fullName}</h3>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-black text-stone-900 truncate">پرونده جامع الکترونیک: {alumni.fullName}</h3>
                 {hasAccount ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center gap-1 shrink-0">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     دارای حساب کاربری فعال
                   </span>
                 ) : (
                   <button
+                    type="button"
                     onClick={onOpenCreateAccount}
-                    className="px-3 py-1 rounded-full text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xs flex items-center gap-1 animate-pulse"
+                    className="px-3 py-1 rounded-full text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xs flex items-center gap-1 animate-pulse shrink-0 cursor-pointer"
                   >
                     <UserPlus className="w-3 h-3" />
-                    <span>ایجاد کاربری (دکمه قرمز)</span>
+                    <span>ایجاد کاربری</span>
                   </button>
                 )}
               </div>
-              <p className="text-xs text-stone-500 mt-0.5 font-medium">
-                کد ملی: {toPersianNumbers(alumni.nationalId)} · کد مرکز: <strong className="font-mono text-emerald-800">{formData.centerCode || 'ثبت نشده'}</strong> · شماره پرسنلی: {toPersianNumbers(alumni.personnelId || '---')} · تکمیل پرونده: {toPersianNumbers(calculateProfileCompletion({ ...alumni, ...formData }).percentage)}٪
+              <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium truncate">
+                کد ملی: {toPersianNumbers(alumni.nationalId)} · کد مرکز: <strong className="font-mono text-emerald-800">{formData.centerCode || 'ثبت نشده'}</strong> · تکمیل: {toPersianNumbers(calculateProfileCompletion({ ...alumni, ...formData }).percentage)}٪
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
+              type="button"
               onClick={() => window.print()}
-              className="p-2 rounded-xl bg-white border border-stone-200 text-stone-600 hover:bg-stone-100"
+              className="p-2 rounded-xl bg-white border border-stone-200 text-stone-600 hover:bg-stone-100 cursor-pointer hidden sm:flex"
               title="چاپ شناسنامه"
             >
               <Printer className="w-4 h-4" />
             </button>
-            <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
+            <button type="button" onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* 4 Tabs Navigation Bar */}
-        <div className="flex items-center border-b border-stone-200 bg-white px-6 overflow-x-auto gap-2 text-xs font-bold">
+        <div className="flex items-center border-b border-stone-200 bg-white px-4 sm:px-6 overflow-x-auto gap-2 text-xs font-bold shrink-0">
           {[
             { id: 'identity' as const, label: '۱. اطلاعات هویتی', icon: ShieldCheck },
             { id: 'academic' as const, label: '۲. سوابق حوزوی و دانشگاهی', icon: GraduationCap },
@@ -922,9 +925,10 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
             { id: 'career' as const, label: '۴. اطلاعات شغلی', icon: Briefcase },
           ].map(tab => (
             <button
+              type="button"
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3.5 px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+              className={`py-3 px-3 sm:px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? 'border-emerald-800 text-emerald-900 font-black'
                   : 'border-transparent text-stone-500 hover:text-stone-800'
@@ -937,7 +941,7 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
         </div>
 
         {/* Form Body for Selected Tab */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form id="alumni-dossier-form" onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0 text-xs">
           
           {/* TAB 1: اطلاعات هویتی */}
           {activeTab === 'identity' && (
@@ -1343,30 +1347,32 @@ const AlumniDossierModal: React.FC<AlumniDossierModalProps> = ({
             </div>
           )}
 
-          {/* Footer Save Actions */}
-          <div className="pt-4 border-t border-stone-200 flex items-center justify-between gap-3">
-            <span className="text-[11px] text-stone-500 font-medium">
-              * تغییرات اعمال شده بلافاصله در سوابق و پرونده الکترونیک ذخیره می‌گردد.
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2.5 rounded-full border border-stone-300 text-stone-700 font-bold"
-              >
-                انصراف
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-md flex items-center gap-1.5"
-              >
-                <Save className="w-4 h-4" />
-                <span>{saving ? 'در حال ذخیره‌سازی...' : 'ذخیره تغییرات پرونده'}</span>
-              </button>
-            </div>
-          </div>
         </form>
+
+        {/* Pinned Footer Save Actions */}
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#F5F4EE] border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+          <span className="text-[11px] text-stone-500 font-medium hidden sm:inline">
+            * تغییرات اعمال شده بلافاصله در سوابق و پرونده الکترونیک ذخیره می‌گردد.
+          </span>
+          <div className="flex items-center gap-2 mr-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 min-h-[42px] rounded-full border border-stone-300 bg-white text-stone-700 font-bold text-xs cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="alumni-dossier-form"
+              disabled={saving}
+              className="px-6 py-2.5 min-h-[42px] rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+            >
+              <Save className="w-4 h-4" />
+              <span>{saving ? 'در حال ذخیره‌سازی...' : 'ذخیره تغییرات پرونده'}</span>
+            </button>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
@@ -1501,29 +1507,29 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-4xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-4xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
-        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md">
-              <UserPlus className="w-6 h-6 text-emerald-300" />
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shrink-0">
+              <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-300" />
             </div>
-            <div>
-              <h3 className="text-lg font-black text-stone-900">ثبت پرونده دانش‌آموخته جدید در بانک جامع</h3>
-              <p className="text-xs text-stone-500">تکمیل شناسنامه الکترونیک در ۴ سربرگ استاندارد</p>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-lg font-black text-stone-900 truncate">ثبت پرونده دانش‌آموخته جدید در بانک جامع</h3>
+              <p className="text-[11px] sm:text-xs text-stone-500 truncate">تکمیل شناسنامه الکترونیک در ۴ سربرگ استاندارد</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
+          <button type="button" onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 shrink-0 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* 4 Tabs Navigation Bar */}
-        <div className="flex items-center border-b border-stone-200 bg-white px-6 overflow-x-auto gap-2 text-xs font-bold">
+        <div className="flex items-center border-b border-stone-200 bg-white px-4 sm:px-6 overflow-x-auto gap-2 text-xs font-bold shrink-0">
           {[
             { id: 'identity' as const, label: '۱. اطلاعات هویتی', icon: ShieldCheck },
             { id: 'academic' as const, label: '۲. سوابق حوزوی و دانشگاهی', icon: GraduationCap },
@@ -1531,9 +1537,10 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
             { id: 'career' as const, label: '۴. اطلاعات شغلی', icon: Briefcase },
           ].map(tab => (
             <button
+              type="button"
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3 px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+              className={`py-3 px-3 sm:px-4 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? 'border-emerald-800 text-emerald-900 font-black'
                   : 'border-transparent text-stone-500 hover:text-stone-800'
@@ -1545,7 +1552,7 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form id="alumni-register-form" onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0 text-xs">
           {formError && (
             <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold">
               {formError}
@@ -1811,24 +1818,26 @@ const RegisterNewAlumnusModal: React.FC<RegisterAlumnusModalProps> = ({ onClose,
             </div>
           )}
 
-          <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-stone-300 text-stone-700 font-bold"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-md flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4" />
-              <span>{loading ? 'در حال ثبت...' : 'ثبت در بانک جامع دانش‌آموختگان'}</span>
-            </button>
-          </div>
         </form>
+
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#F5F4EE] border-t border-stone-200 flex items-center justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 min-h-[42px] rounded-full border border-stone-300 bg-white text-stone-700 font-bold text-xs cursor-pointer"
+          >
+            انصراف
+          </button>
+          <button
+            type="submit"
+            form="alumni-register-form"
+            disabled={loading}
+            className="px-6 py-2.5 min-h-[42px] rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+          >
+            <Check className="w-4 h-4" />
+            <span>{loading ? 'در حال ثبت...' : 'ثبت در بانک جامع دانش‌آموختگان'}</span>
+          </button>
+        </div>
       </motion.div>
     </div>
   );

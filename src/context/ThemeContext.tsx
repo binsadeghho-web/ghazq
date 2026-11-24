@@ -6,6 +6,7 @@ import {
   DesignThemeType,
   MobileSectionId,
   MobileServiceShowcaseId,
+  MobileDetailedShowcaseId,
   MobileServiceListTabId,
 } from '../types';
 import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../data/mockData';
@@ -30,6 +31,22 @@ export const CANONICAL_MOBILE_SHOWCASE_ORDER: MobileServiceShowcaseId[] = [
   'research',
   'welfare',
   'products',
+];
+
+export const CANONICAL_MOBILE_DETAILED_SHOWCASE_ORDER: MobileDetailedShowcaseId[] = [
+  'counseling_workshops',
+  'counseling_announcements',
+  'counseling_booking',
+  'counseling_career',
+  'courses_active',
+  'rulings_featured',
+  'research_guidance',
+  'welfare_emergency',
+  'welfare_fund',
+  'welfare_accommodation',
+  'welfare_consumables',
+  'welfare_installments',
+  'products_featured',
 ];
 
 export const CANONICAL_MOBILE_SERVICES_LIST_ORDER: MobileServiceListTabId[] = [
@@ -73,12 +90,34 @@ export function resolveMobileConfig(
       ...(prev?.hiddenShowcases || {}),
       ...(incoming?.hiddenShowcases || {}),
     },
+    showcaseOverrides: {
+      ...(base.showcaseOverrides || {}),
+      ...(prev?.showcaseOverrides || {}),
+      ...(incoming?.showcaseOverrides || {}),
+    },
+    detailedShowcaseEnabled: {
+      ...(base.detailedShowcaseEnabled || {}),
+      ...(prev?.detailedShowcaseEnabled || {}),
+      ...(incoming?.detailedShowcaseEnabled || {}),
+    },
+    detailedShowcaseOverrides: {
+      ...(base.detailedShowcaseOverrides || {}),
+      ...(prev?.detailedShowcaseOverrides || {}),
+      ...(incoming?.detailedShowcaseOverrides || {}),
+    },
     hiddenServicesListItems: {
       ...(base.hiddenServicesListItems || {}),
       ...(prev?.hiddenServicesListItems || {}),
       ...(incoming?.hiddenServicesListItems || {}),
     },
   };
+  const customCards =
+    incoming?.customShowcaseCards !== undefined
+      ? incoming.customShowcaseCards
+      : prev?.customShowcaseCards !== undefined
+      ? prev.customShowcaseCards
+      : base.customShowcaseCards || [];
+
   return {
     showHeroBanner: merged.showHeroBanner !== false,
     showWelcomeQuickButtons: merged.showWelcomeQuickButtons === true,
@@ -91,8 +130,17 @@ export function resolveMobileConfig(
     honorsShowcaseTitle: merged.honorsShowcaseTitle || 'ویترین انتصاب و افتخارات',
     showServicesShowcase: merged.showServicesShowcase !== false,
     servicesShowcaseTitle: merged.servicesShowcaseTitle || 'ویترین خدمات',
+    showcaseMode: merged.showcaseMode === 'detailed' ? 'detailed' : 'simple',
     showcaseOrder: reconcileMobileOrder(merged.showcaseOrder, CANONICAL_MOBILE_SHOWCASE_ORDER),
     hiddenShowcases: merged.hiddenShowcases || {},
+    showcaseOverrides: merged.showcaseOverrides || {},
+    detailedShowcaseOrder: reconcileMobileOrder(
+      merged.detailedShowcaseOrder,
+      CANONICAL_MOBILE_DETAILED_SHOWCASE_ORDER
+    ),
+    detailedShowcaseEnabled: merged.detailedShowcaseEnabled || {},
+    detailedShowcaseOverrides: merged.detailedShowcaseOverrides || {},
+    customShowcaseCards: Array.isArray(customCards) ? customCards : [],
     showServicesList: merged.showServicesList !== false,
     servicesListTitle: merged.servicesListTitle || 'فهرست خدمات',
     servicesListOrder: reconcileMobileOrder(merged.servicesListOrder, CANONICAL_MOBILE_SERVICES_LIST_ORDER),

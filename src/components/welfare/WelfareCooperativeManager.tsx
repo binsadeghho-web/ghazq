@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ConsumableItem } from '../../types';
+import { ConsumableItem, DeliveryMethodType } from '../../types';
 import { CooperativeSectionInfo } from '../../types/welfare';
+import { api } from '../../services/apiClient';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   ShoppingBag,
@@ -9,15 +10,10 @@ import {
   Trash2,
   Edit3,
   Image,
-  Tag,
-  DollarSign,
-  Package,
   Check,
   Search,
-  Sparkles,
-  Sliders,
-  ExternalLink,
-  Save
+  Save,
+  Upload,
 } from 'lucide-react';
 
 const READY_PHOTO_PRESETS = [
@@ -52,6 +48,8 @@ export const WelfareCooperativeManager: React.FC = () => {
   const [headerForm, setHeaderForm] = useState<CooperativeSectionInfo>({ ...cooperativeSectionInfo });
   const [saveBanner, setSaveBanner] = useState(false);
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   // Form for Add / Edit product
   const [productForm, setProductForm] = useState<Partial<ConsumableItem>>({
     title: '',
@@ -65,7 +63,10 @@ export const WelfareCooperativeManager: React.FC = () => {
     unit: 'بسته',
     stock: 50,
     description: '',
-    imageUrl: READY_PHOTO_PRESETS[0].url
+    imageUrl: READY_PHOTO_PRESETS[0].url,
+    isActive: true,
+    showAsSoldOutInShowcase: false,
+    allowedDeliveryMethods: ['in_person', 'post', 'courier'],
   });
 
   const categories = ['all', ...Array.from(new Set(consumables.map(c => c.category)))];
@@ -84,11 +85,42 @@ export const WelfareCooperativeManager: React.FC = () => {
     setEditingItem(item);
     setProductForm({
       ...item,
-      imageUrl: item.imageUrl || READY_PHOTO_PRESETS[0].url
+      imageUrl: item.imageUrl || READY_PHOTO_PRESETS[0].url,
+      isActive: item.isActive !== false,
+      showAsSoldOutInShowcase: Boolean(item.showAsSoldOutInShowcase),
+      allowedDeliveryMethods:
+        item.allowedDeliveryMethods && item.allowedDeliveryMethods.length > 0
+          ? item.allowedDeliveryMethods
+          : ['in_person', 'post', 'courier'],
     });
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handlePhotoUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const uploaded = await api.uploadFile(file, 'misc');
+      if (uploaded?.url) {
+        setProductForm(prev => ({ ...prev, imageUrl: uploaded.url }));
+      }
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const toggleDeliveryMethod = (method: DeliveryMethodType) => {
+    setProductForm(prev => {
+      const curr = prev.allowedDeliveryMethods || ['in_person', 'post', 'courier'];
+      const exists = curr.includes(method);
+      const next = exists ? curr.filter(m => m !== method) : [...curr, method];
+      return {
+        ...prev,
+        allowedDeliveryMethods: next.length > 0 ? next : [method],
+      };
+    });
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const coopPrice = Number(productForm.cooperativePrice) || 0;
     const mktPrice = Number(productForm.marketPrice) || coopPrice;
@@ -106,14 +138,20 @@ export const WelfareCooperativeManager: React.FC = () => {
       unit: productForm.unit || 'بسته',
       stock: Number(productForm.stock) || 0,
       description: productForm.description || '',
-      imageUrl: productForm.imageUrl || READY_PHOTO_PRESETS[0].url
+      imageUrl: productForm.imageUrl || READY_PHOTO_PRESETS[0].url,
+      isActive: productForm.isActive !== false,
+      showAsSoldOutInShowcase: Boolean(productForm.showAsSoldOutInShowcase),
+      allowedDeliveryMethods:
+        productForm.allowedDeliveryMethods && productForm.allowedDeliveryMethods.length > 0
+          ? productForm.allowedDeliveryMethods
+          : ['in_person', 'post', 'courier'],
     };
 
     if (editingItem) {
-      updateConsumableItem(editingItem.id, payload);
+      await updateConsumableItem(editingItem.id, payload);
       setEditingItem(null);
     } else {
-      addConsumableItem(payload as Omit<ConsumableItem, 'id'>);
+      await addConsumableItem(payload as Omit<ConsumableItem, 'id'>);
       setIsAddModalOpen(false);
     }
 
@@ -175,7 +213,10 @@ export const WelfareCooperativeManager: React.FC = () => {
                   unit: 'بسته',
                   stock: 50,
                   description: '',
-                  imageUrl: READY_PHOTO_PRESETS[0].url
+                  imageUrl: READY_PHOTO_PRESETS[0].url,
+                  isActive: true,
+                  showAsSoldOutInShowcase: false,
+                  allowedDeliveryMethods: ['in_person', 'post', 'courier'],
                 });
                 setIsAddModalOpen(true);
               }}
@@ -294,13 +335,22 @@ export const WelfareCooperativeManager: React.FC = () => {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
                       <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
                         {item.category}
                       </span>
-                      <span className="text-[10px] font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                        {toPersianNumbers(discount)}٪ تخفیف اعضا
-                      </span>
+                      <div className="flex items-center gap-1">
+                        {item.isActive === false && (
+                          <span className="text-[10px] font-black text-stone-600 bg-stone-200 px-2 py-0.5 rounded-md">
+                            غیرفعال
+                          </span>
+                        )}
+                        {item.showAsSoldOutInShowcase && (
+                          <span className="text-[10px] font-black text-white bg-rose-600 px-2 py-0.5 rounded-md">
+                            تمام شد
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <h4 className="font-black text-xs text-stone-900 mt-1 line-clamp-1 leading-snug">
@@ -382,31 +432,46 @@ export const WelfareCooperativeManager: React.FC = () => {
         })}
       </div>
 
-      {/* MODAL FOR ADDING OR EDITING PRODUCT (WITH PHOTO CHANGER) */}
+      {/* MODAL FOR ADDING OR EDITING PRODUCT (MOBILE-SAFE PINNED LAYOUT + UPLOAD + DELIVERY & SOLD OUT) */}
       {(editingItem || isAddModalOpen) && (
-        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl border border-stone-200 space-y-4 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => {
+            setEditingItem(null);
+            setIsAddModalOpen(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full shadow-2xl border border-stone-200 max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-stone-200 bg-[#071E17] text-white">
               <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-teal-100 text-teal-800">
+                <span className="p-1.5 rounded-lg bg-white/10 text-[#F3D078]">
                   <Edit3 className="w-4 h-4" />
                 </span>
-                <h3 className="font-black text-base text-stone-900">
-                  {editingItem ? `ویرایش کامل کالای تعاونی: ${editingItem.title}` : 'افزودن کالای یارانه‌ای جدید به تعاونی'}
+                <h3 className="font-black text-sm sm:text-base">
+                  {editingItem ? `ویرایش کالای مصرفی: ${editingItem.title}` : 'افزودن کالای مصرفی جدید'}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setEditingItem(null);
                   setIsAddModalOpen(false);
                 }}
-                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center font-bold"
+                className="min-h-[40px] min-w-[40px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold cursor-pointer"
+                aria-label="بستن"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4">
+            <form
+              id="consumable-product-form"
+              onSubmit={handleSaveProduct}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-5 space-y-4"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-stone-700 block mb-1">نام و عنوان کالا *:</label>
@@ -416,7 +481,7 @@ export const WelfareCooperativeManager: React.FC = () => {
                     value={productForm.title || productForm.name || ''}
                     onChange={e => setProductForm(prev => ({ ...prev, title: e.target.value, name: e.target.value }))}
                     placeholder="مثال: برنج طارم هاشمی مازندران"
-                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
                   />
                 </div>
                 <div>
@@ -425,8 +490,8 @@ export const WelfareCooperativeManager: React.FC = () => {
                     type="text"
                     value={productForm.brand || ''}
                     onChange={e => setProductForm(prev => ({ ...prev, brand: e.target.value }))}
-                    placeholder="مثال: تعاونی کشاورزان دابودشت"
-                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
+                    placeholder="مثال: تعاونی مرکز"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
                   />
                 </div>
               </div>
@@ -438,8 +503,7 @@ export const WelfareCooperativeManager: React.FC = () => {
                     type="text"
                     value={productForm.category || ''}
                     onChange={e => setProductForm(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="غلات، روغن، خشکبار، لبنیات..."
-                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
                   />
                 </div>
                 <div>
@@ -448,8 +512,7 @@ export const WelfareCooperativeManager: React.FC = () => {
                     type="text"
                     value={productForm.unit || ''}
                     onChange={e => setProductForm(prev => ({ ...prev, unit: e.target.value }))}
-                    placeholder="کیسه ۱۰ کیلویی، بطری ۱ لیتری..."
-                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
                   />
                 </div>
                 <div>
@@ -458,12 +521,11 @@ export const WelfareCooperativeManager: React.FC = () => {
                     type="number"
                     value={productForm.stock ?? 50}
                     onChange={e => setProductForm(prev => ({ ...prev, stock: Number(e.target.value) || 0 }))}
-                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold font-mono"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-stone-300 font-bold font-mono"
                   />
                 </div>
               </div>
 
-              {/* Price Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
                 <div>
                   <label className="text-xs font-bold text-stone-700 block mb-1">قیمت بازار آزاد (تومان):</label>
@@ -471,11 +533,11 @@ export const WelfareCooperativeManager: React.FC = () => {
                     type="number"
                     value={productForm.marketPrice ?? 150000}
                     onChange={e => setProductForm(prev => ({ ...prev, marketPrice: Number(e.target.value) || 0 }))}
-                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold font-mono bg-white"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-stone-300 font-bold font-mono bg-white"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-teal-800 block mb-1">قیمت یارانه‌ای تعاونی سهم اعضا (تومان) *:</label>
+                  <label className="text-xs font-bold text-teal-800 block mb-1">قیمت تعاونی سهم اعضا (تومان) *:</label>
                   <input
                     type="number"
                     required
@@ -487,12 +549,61 @@ export const WelfareCooperativeManager: React.FC = () => {
                         memberPrice: Number(e.target.value) || 0
                       }))
                     }
-                    className="w-full p-2.5 text-xs rounded-xl border border-teal-400 font-black font-mono bg-white text-teal-900"
+                    className="w-full min-h-[42px] p-2.5 text-xs rounded-xl border border-teal-400 font-black font-mono bg-white text-teal-900"
                   />
                 </div>
               </div>
 
-              {/* PHOTO SELECTION & LIVE PREVIEW */}
+              {/* Showcase Visibility, Sold Out Badge & Delivery Methods */}
+              <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 text-xs font-black text-stone-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.isActive !== false}
+                      onChange={e => setProductForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                      className="w-4 h-4 accent-[#071E17]"
+                    />
+                    <span>فعال در فهرست اقلام مصرفی</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-black text-rose-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(productForm.showAsSoldOutInShowcase)}
+                      onChange={e => setProductForm(prev => ({ ...prev, showAsSoldOutInShowcase: e.target.checked }))}
+                      className="w-4 h-4 accent-rose-600"
+                    />
+                    <span>نمایش به‌عنوان تمام‌شده (نشان «تمام شد»)</span>
+                  </label>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-stone-200/70">
+                  <span className="text-xs font-black text-stone-700 block">روش‌های ارسال مجاز برای این کالا:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'in_person' as DeliveryMethodType, label: 'تحویل حضوری' },
+                      { id: 'post' as DeliveryMethodType, label: 'ارسال پستی' },
+                      { id: 'courier' as DeliveryMethodType, label: 'ارسال با پیک' },
+                    ].map(dm => {
+                      const active = (productForm.allowedDeliveryMethods || ['in_person', 'post', 'courier']).includes(dm.id);
+                      return (
+                        <button
+                          key={dm.id}
+                          type="button"
+                          onClick={() => toggleDeliveryMethod(dm.id)}
+                          className={`min-h-[38px] px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
+                            active ? 'bg-[#071E17] text-[#F3D078] border-[#071E17]' : 'bg-white text-stone-600 border-stone-300'
+                          }`}
+                        >
+                          {dm.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Photo Upload & Live Preview */}
               <div className="space-y-2 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
                 <label className="text-xs font-black text-stone-800 flex items-center gap-1.5">
                   <Image className="w-4 h-4 text-teal-800" />
@@ -509,20 +620,28 @@ export const WelfareCooperativeManager: React.FC = () => {
                   </div>
 
                   <div className="flex-1 w-full space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="min-h-[40px] px-3.5 py-2 rounded-xl bg-[#071E17] text-[#F3D078] text-xs font-black flex items-center gap-1.5 cursor-pointer">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingPhoto ? 'در حال آپلود...' : 'آپلود تصویر از دستگاه'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handlePhotoUpload(e.target.files?.[0])}
+                        />
+                      </label>
+                    </div>
                     <input
                       type="text"
-                      placeholder="لینک آدرس اینترنتی مستقیم عکس (URL)..."
+                      placeholder="یا لینک آدرس اینترنتی مستقیم عکس (URL)..."
                       value={productForm.imageUrl || ''}
                       onChange={e => setProductForm(prev => ({ ...prev, imageUrl: e.target.value }))}
                       className="w-full p-2 text-xs rounded-xl border border-stone-300 font-mono bg-white"
                     />
-                    <div className="text-[11px] text-stone-500 font-bold">
-                      یا انتخاب سریع از گالری تصاویر استاندارد ارزاق و محصولات:
-                    </div>
                   </div>
                 </div>
 
-                {/* Preset image buttons */}
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-2 pb-1">
                   {READY_PHOTO_PRESETS.map((preset, idx) => (
                     <button
@@ -548,31 +667,31 @@ export const WelfareCooperativeManager: React.FC = () => {
                   rows={2}
                   value={productForm.description || ''}
                   onChange={e => setProductForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="توضیحات پیرامون منشا تولید، درجه کیفی، نشان استاندارد و شرایط نگهداری..."
                   className="w-full p-2.5 text-xs rounded-xl border border-stone-300 leading-relaxed"
                 />
               </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingItem(null);
-                    setIsAddModalOpen(false);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-xl bg-teal-850 bg-teal-900 hover:bg-teal-950 text-white text-xs font-black transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{editingItem ? 'ثبت و اعمال تغییرات محصول' : 'افزودن قطعی به تعاونی'}</span>
-                </button>
-              </div>
             </form>
+
+            <div className="shrink-0 flex justify-end gap-2 px-5 py-3.5 border-t border-stone-200 bg-stone-50 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingItem(null);
+                  setIsAddModalOpen(false);
+                }}
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="consumable-product-form"
+                className="min-h-[44px] px-6 py-2 rounded-xl bg-[#071E17] hover:bg-[#0B2C22] text-[#F3D078] text-xs font-black transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{editingItem ? 'ثبت و اعمال تغییرات محصول' : 'افزودن قطعی کالا'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

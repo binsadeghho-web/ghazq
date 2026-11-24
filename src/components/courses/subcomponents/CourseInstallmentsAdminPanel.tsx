@@ -408,30 +408,35 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
       {/* Inline Schedule / Amount Edit Dialog */}
       {editingInstallment && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-hidden"
           onClick={() => setEditingInstallment(null)}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-xs"
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[90vh] overflow-hidden text-xs"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-              <strong className="text-sm font-black text-slate-900 dark:text-white">
+            <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <strong className="text-sm font-black text-slate-900 dark:text-white truncate">
                 تنظیم سررسید خودکار و مبلغ قسط ({editingInstallment.userName})
               </strong>
-              <button type="button" onClick={() => setEditingInstallment(null)} className="cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setEditingInstallment(null)}
+                aria-label="بستن"
+                className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-3">
               <div className="space-y-1">
                 <label className="font-bold block">تاریخ سررسید میلادی (مبنای بازشدن خودکار درگاه در پنل کاربر):</label>
                 <input
                   type="date"
                   value={editDueIso}
                   onChange={e => setEditDueIso(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-mono"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-mono"
                 />
               </div>
               <div className="space-y-1">
@@ -441,7 +446,7 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
                   value={editDueJalali}
                   onChange={e => setEditDueJalali(e.target.value)}
                   placeholder="۱۴۰۳/۱۰/۱۵"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
                 />
               </div>
               <div className="space-y-1">
@@ -450,7 +455,7 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
                   type="number"
                   value={editAmount}
                   onChange={e => setEditAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold"
                 />
               </div>
               <div className="space-y-1">
@@ -459,23 +464,23 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
                   type="text"
                   value={editNote}
                   onChange={e => setEditNote(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setEditingInstallment(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 font-bold cursor-pointer"
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
                 type="button"
                 onClick={handleSaveSchedule}
-                className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-black flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-600 text-white font-black flex items-center gap-1.5 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>ذخیره زمان‌بندی</span>
@@ -488,34 +493,46 @@ export const CourseInstallmentsAdminPanel: React.FC<CourseInstallmentsAdminPanel
       {/* Inline Reject Reason Dialog */}
       {rejectingInstallment && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-hidden"
           onClick={() => setRejectingInstallment(null)}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-xs"
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[90vh] overflow-hidden text-xs"
             onClick={e => e.stopPropagation()}
           >
-            <strong className="text-sm font-black text-rose-600 block">
-              علت رد فیش قسط «{rejectingInstallment.userName}»
-            </strong>
-            <textarea
-              rows={3}
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
-            />
-            <div className="flex justify-end gap-2">
+            <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <strong className="text-sm font-black text-rose-600 truncate">
+                علت رد فیش قسط «{rejectingInstallment.userName}»
+              </strong>
               <button
                 type="button"
                 onClick={() => setRejectingInstallment(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 font-bold cursor-pointer"
+                aria-label="بستن"
+                className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0">
+              <textarea
+                rows={3}
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+              />
+            </div>
+            <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setRejectingInstallment(null)}
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
                 type="button"
                 onClick={handleRejectInstallment}
-                className="px-5 py-2 rounded-xl bg-rose-600 text-white font-black cursor-pointer"
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-rose-600 text-white font-black cursor-pointer"
               >
                 تایید رد مستند
               </button>

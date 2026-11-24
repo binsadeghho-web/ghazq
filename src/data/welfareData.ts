@@ -1,5 +1,62 @@
-import { WelfareSectionConfig, WelfareLoanTermsAndRules, CooperativeSectionInfo } from '../types/welfare';
+import { WelfareSectionConfig, WelfareLoanTermsAndRules, CooperativeSectionInfo, WelfarePortalConfig } from '../types/welfare';
 import { ConsumableOrder } from '../types';
+
+export const DEFAULT_WELFARE_PORTAL_CONFIG: WelfarePortalConfig = {
+  modulesConfig: {
+    emergency_loan: {
+      enabled: true,
+      showInMobileShowcase: false,
+      title: 'تسهیلات اضطراری',
+      subtitle: 'ثبت درخواست وام ضروری و بررسی فوری توسط کارگروه رفاه',
+    },
+    qarzolhasaneh_fund: {
+      enabled: true,
+      showInMobileShowcase: false,
+      title: 'صندوق قرض‌الحسنه مجتمع فقه و حقوق اسلامی',
+      subtitle: 'عضویت در صندوق، واریز حق عضویت ماهانه و پیگیری سوابق پرداخت',
+    },
+    accommodation: {
+      enabled: true,
+      showInMobileShowcase: false,
+      title: 'اسکان در قم و سایر شهرها',
+      subtitle: 'رزرو آنلاین مهمانسرا با انتخاب تاریخ شمسی (حداکثر ۳ شب، رزرو از ۳ روز آینده)',
+    },
+    consumables: {
+      enabled: true,
+      showInMobileShowcase: false,
+      title: 'تهیه اقلام مصرفی',
+      subtitle: 'عرضه کالاهای اساسی و تعاونی با قیمت مصوب اعضای مجتمع',
+    },
+    installment_sales: {
+      enabled: true,
+      showInMobileShowcase: false,
+      title: 'فروش اقساطی',
+      subtitle: 'خرید اعتباری و اقساطی از فروشگاه‌های طرف قرارداد مجتمع',
+    },
+  },
+  emergencyLoanDescription:
+    'این تسهیلات با هدف پشتیبانی سریع در شرایط اضطراری درمان، مسکن، حوادث غیرمترقبه و نیازهای فوری خانواده دانش‌آموختگان و اساتید مجتمع فقه و حقوق اسلامی پیش‌بینی شده است. پس از ثبت مبلغ و علت درخواست، کارگروه رفاهی ظرف ۴۸ تا ۷۲ ساعت کاری درخواست را بررسی و نتیجه را در همین پنل و از طریق تماس تلفنی اعلام می‌نماید. اولویت تخصیص با موارد مستند و نیازمندی‌های فوری درمانی است.',
+  emergencyLoanMaxAmountLabel: 'بر اساس مصوبه کارگروه رفاه (قابل بررسی تا سقف جاری صندوق)',
+  contactsConfig: {
+    phone: '۰۲۵-۳۲۹۴۰۰۱۰',
+    extension: 'داخلی ۲۱۴ و ۲۱۵',
+    messengerOrMobile: '۰۹۱۹۰۰۰۰۲۱۴ (پاسخگویی در ایتا و پیامک)',
+    workingHours: 'شنبه تا چهارشنبه ۸:۰۰ الی ۱۶:۰۰ · پنج‌شنبه ۸:۰۰ الی ۱۲:۳۰',
+    address: 'قم، مجتمع فقه و حقوق اسلامی، طبقه همکف، واحد امور رفاهی و پشتیبانی',
+    noticeText: 'کارشناسان امور رفاهی در ساعات اداری آماده پاسخگویی و پیگیری پرونده‌های شما هستند.',
+  },
+  accommodationCities: ['قم', 'مشهد مقدس', 'تهران', 'شیراز', 'اصفهان'],
+  accommodationMaxNights: 3,
+  accommodationMinLeadDays: 3,
+  fundConfig: {
+    fundTitle: 'صندوق قرض‌الحسنه مجتمع فقه و حقوق اسلامی',
+    charterText:
+      'عضویت در صندوق قرض‌الحسنه مجتمع بر پایه همیاری مالی اعضای هیئت علمی، قضات و دانش‌آموختگان است. هر عضو با انتخاب مبلغ حق عضویت ماهانه و تایید درخواست توسط مدیریت صندوق، به صورت مستمر در چرخه قرض‌الحسنه مشارکت می‌نماید.',
+    presetTiers: [500000, 1000000, 2000000, 5000000],
+    minCustomAmount: 200000,
+    maxCustomAmount: 50000000,
+  },
+};
 
 export const DEFAULT_WELFARE_SECTIONS: WelfareSectionConfig[] = [
   {

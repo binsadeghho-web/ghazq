@@ -149,25 +149,27 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
   return (
     <>
       <AnimatePresence>
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden" onClick={onClose}>
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right flex flex-col max-h-[90vh]"
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] text-emerald-400 font-bold block mb-0.5">
+            <div className="p-4 sm:p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2 shrink-0">
+              <div className="min-w-0">
+                <span className="text-[11px] text-emerald-400 font-bold block mb-0.5 truncate">
                   فهرست شرکت‌کنندگان و سامانه پیام‌رسانی دوره
                 </span>
-                <h3 className="text-base font-black text-white">{course.title}</h3>
+                <h3 className="text-sm sm:text-base font-black text-white truncate">{course.title}</h3>
               </div>
               <button
+                type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                aria-label="بستن"
+                className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -226,7 +228,7 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
             </div>
 
             {/* Participants Roster List */}
-            <div className="p-4 overflow-y-auto space-y-2.5 flex-1 divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="p-4 overflow-y-auto overscroll-y-contain space-y-2.5 flex-1 min-h-0 divide-y divide-slate-100 dark:divide-slate-800">
               {inlineAction && (
                 <div className="p-3 mb-2 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-emerald-500/40 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-xs">
                   <span className="font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
@@ -462,95 +464,99 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
       {/* Nested SMS Modal */}
       <AnimatePresence>
         {smsModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden" onClick={() => setSmsModal(null)}>
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right p-6 space-y-4"
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-emerald-500" />
-                  <span>
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+                  <MessageSquare className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className="truncate">
                     {smsModal.recipient === 'all'
                       ? 'ارسال پیامک گروهی به کلیه شرکت‌کنندگان دوره'
                       : `ارسال پیامک اختصاصی به ${smsModal.recipient.userName}`}
                   </span>
                 </h3>
                 <button
+                  type="button"
                   onClick={() => setSmsModal(null)}
-                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                  aria-label="بستن"
+                  className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Recipient Details */}
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">دوره مربوطه:</span>
-                  <strong className="text-slate-800 dark:text-slate-200">{smsModal.course.title}</strong>
+              <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4">
+                {/* Recipient Details */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">دوره مربوطه:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{smsModal.course.title}</strong>
+                  </div>
+                  <div className="flex justify-between font-mono">
+                    <span className="text-slate-400">گیرنده(ها):</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400">
+                      {smsModal.recipient === 'all'
+                        ? `کلیه شرکت‌کنندگان دوره (${toPersianNumbers(courseEnrollmentsList.length)} شماره همراه)`
+                        : `${smsModal.recipient.userName} (${toPersianNumbers(smsModal.recipient.userPhone)})`}
+                    </strong>
+                  </div>
                 </div>
-                <div className="flex justify-between font-mono">
-                  <span className="text-slate-400">گیرنده(ها):</span>
-                  <strong className="text-emerald-600 dark:text-emerald-400">
-                    {smsModal.recipient === 'all'
-                      ? `کلیه شرکت‌کنندگان دوره (${toPersianNumbers(courseEnrollmentsList.length)} شماره همراه)`
-                      : `${smsModal.recipient.userName} (${toPersianNumbers(smsModal.recipient.userPhone)})`}
-                  </strong>
-                </div>
-              </div>
 
-              {/* Templates Dropdown */}
-              <div className="space-y-1.5 text-xs">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  انتخاب الگوی آماده پیامک:
-                </label>
-                <select
-                  value={smsTemplateKey}
-                  onChange={e => handleApplySmsTemplate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
-                >
-                  <option value="welcome">تایید ثبت‌نام و خوش‌آمدگویی</option>
-                  <option value="link">ارسال لینک مستقیم ورود به کلاس آنلاین</option>
-                  <option value="schedule">اطلاع‌رسانی زمان برگزاری و شروع جلسه</option>
-                  <option value="receipt_fix">یادآوری اصلاح یا بارگذاری مجدد فیش واریزی</option>
-                  <option value="certificate">اعلام صدور گواهی رسمی پایان دوره</option>
-                  <option value="custom">متن دلخواه و سفارشی</option>
-                </select>
-              </div>
-
-              {/* Message Text Area */}
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between items-center text-[11px] text-slate-400">
-                  <span>متن پیامک (ارسال از طریق سرشماره رسمی سامانه):</span>
-                  <span className="font-mono">{toPersianNumbers(smsMessage.length)} کاراکتر ({toPersianNumbers(Math.ceil(smsMessage.length / 70) || 1)} پیامک)</span>
+                {/* Templates Dropdown */}
+                <div className="space-y-1.5 text-xs">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    انتخاب الگوی آماده پیامک:
+                  </label>
+                  <select
+                    value={smsTemplateKey}
+                    onChange={e => handleApplySmsTemplate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
+                  >
+                    <option value="welcome">تایید ثبت‌نام و خوش‌آمدگویی</option>
+                    <option value="link">ارسال لینک مستقیم ورود به کلاس آنلاین</option>
+                    <option value="schedule">اطلاع‌رسانی زمان برگزاری و شروع جلسه</option>
+                    <option value="receipt_fix">یادآوری اصلاح یا بارگذاری مجدد فیش واریزی</option>
+                    <option value="certificate">اعلام صدور گواهی رسمی پایان دوره</option>
+                    <option value="custom">متن دلخواه و سفارشی</option>
+                  </select>
                 </div>
-                <textarea
-                  rows={4}
-                  value={smsMessage}
-                  onChange={e => setSmsMessage(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="متن پیامک را در این قسمت درج فرمایید..."
-                />
-              </div>
 
-              {/* Delivery Feedback */}
-              {smsFeedback && (
-                <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-                  <CheckCheck className="w-4 h-4 text-emerald-500" />
-                  <span>{smsFeedback}</span>
+                {/* Message Text Area */}
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between items-center text-[11px] text-slate-400">
+                    <span>متن پیامک (ارسال از طریق سرشماره رسمی سامانه):</span>
+                    <span className="font-mono">{toPersianNumbers(smsMessage.length)} کاراکتر ({toPersianNumbers(Math.ceil(smsMessage.length / 70) || 1)} پیامک)</span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={smsMessage}
+                    onChange={e => setSmsMessage(e.target.value)}
+                    className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="متن پیامک را در این قسمت درج فرمایید..."
+                  />
                 </div>
-              )}
+
+                {/* Delivery Feedback */}
+                {smsFeedback && (
+                  <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                    <CheckCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{smsFeedback}</span>
+                  </div>
+                )}
+              </div>
 
               {/* Footer Actions */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSmsModal(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+                  className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
@@ -558,7 +564,7 @@ export const CourseRosterModal: React.FC<CourseRosterModalProps> = ({
                   type="button"
                   disabled={isSendingSms || !smsMessage.trim()}
                   onClick={handleSendSms}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-md cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {isSendingSms ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   <span>ارسال پیامک از سرشماره ۳۰۰۰</span>

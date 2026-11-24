@@ -20,6 +20,8 @@ import {
   MapPin,
   GraduationCap,
   ArrowLeft,
+  Megaphone,
+  ExternalLink,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingFieldItem } from '../../types';
@@ -40,12 +42,16 @@ const CoursesSection = lazy(() =>
 interface CounselingSectionProps {
   initialTab?: 'request' | 'consultants' | 'tariffs' | 'tests' | 'my_history';
   initialPillar?: 'booking' | 'workshops';
+  initialSubTab?: 'workshops' | 'announcements' | 'booking' | 'consultants' | 'tariffs' | 'tests' | 'my_history';
+  deepLinkNonce?: number;
   autoOpenWizardNonce?: number;
 }
 
 export const CounselingSection: React.FC<CounselingSectionProps> = ({
   initialTab = 'request',
   initialPillar = 'booking',
+  initialSubTab,
+  deepLinkNonce,
   autoOpenWizardNonce,
 }) => {
   const {
@@ -54,6 +60,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
     counselingRequests,
     courses,
     generalConfig,
+    generalShowcase,
     counselingFields,
     counselingTariffs,
     testAssignments,
@@ -69,12 +76,38 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
   const [adminStartTab, setAdminStartTab] = useState<'queue' | 'tests_dossiers' | 'consultants' | 'tariffs' | 'form_builder'>('queue');
 
   // Dual-pillar top navigation: 'booking' (رزرو وقت مشاوره) vs 'workshops' (کارگاه‌های آموزشی)
-  const [activePillar, setActivePillar] = useState<'booking' | 'workshops'>(initialPillar);
-  const [activeTab, setActiveTab] = useState<'request' | 'consultants' | 'tariffs' | 'tests' | 'my_history'>(initialTab);
+  const [activePillar, setActivePillar] = useState<'booking' | 'workshops'>(
+    initialSubTab === 'workshops' ? 'workshops' : initialPillar
+  );
+  const [activeTab, setActiveTab] = useState<'request' | 'consultants' | 'tariffs' | 'tests' | 'my_history'>(
+    initialSubTab && initialSubTab !== 'workshops' && initialSubTab !== 'announcements' && initialSubTab !== 'booking'
+      ? initialSubTab
+      : initialTab
+  );
   const [wizardOpen, setWizardOpen] = useState(false);
   const [preselectedField, setPreselectedField] = useState<CounselingFieldItem | null>(null);
   const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
+  const [announcementsModalOpen, setAnnouncementsModalOpen] = useState(initialSubTab === 'announcements');
   const [selectedPsychologistModal, setSelectedPsychologistModal] = useState<Consultant | null>(null);
+
+  useEffect(() => {
+    if (!initialSubTab) return;
+    if (initialSubTab === 'workshops') {
+      setActivePillar('workshops');
+      setAnnouncementsModalOpen(false);
+    } else if (initialSubTab === 'announcements') {
+      setActivePillar('booking');
+      setAnnouncementsModalOpen(true);
+    } else if (initialSubTab === 'booking') {
+      setActivePillar('booking');
+      setActiveTab('request');
+      setAnnouncementsModalOpen(false);
+    } else {
+      setActivePillar('booking');
+      setActiveTab(initialSubTab);
+      setAnnouncementsModalOpen(false);
+    }
+  }, [initialSubTab, deepLinkNonce]);
 
   useEffect(() => {
     if (autoOpenWizardNonce && autoOpenWizardNonce > 0) {
@@ -84,6 +117,11 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
       setWizardOpen(true);
     }
   }, [autoOpenWizardNonce]);
+
+  const activeAnnouncements = useMemo(
+    () => (generalShowcase?.announcements || []).filter(a => a.isActive !== false),
+    [generalShowcase?.announcements]
+  );
 
   const activeWorkshopsCount = useMemo(
     () =>
@@ -192,14 +230,27 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setDescriptionModalOpen(true)}
-            className="px-3 py-2 min-h-[40px] rounded-xl bg-white/10 border border-white/15 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
-          >
-            <Info className="w-3.5 h-3.5" />
-            <span>راهنما</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {activeAnnouncements.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAnnouncementsModalOpen(true)}
+                className="px-2.5 py-2 min-h-[40px] rounded-xl bg-amber-400/20 border border-amber-300/35 text-amber-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                aria-label="اطلاعیه‌ها"
+              >
+                <Megaphone className="w-3.5 h-3.5" />
+                <span className="tabular-nums">{toPersianNumbers(activeAnnouncements.length)}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDescriptionModalOpen(true)}
+              className="px-3 py-2 min-h-[40px] rounded-xl bg-white/10 border border-white/15 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5" />
+              <span>راهنما</span>
+            </button>
+          </div>
         </div>
 
         {/* Instant 1-Tap Action Bar right inside Hero */}
@@ -257,14 +308,26 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setDescriptionModalOpen(true)}
-          className="relative z-10 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
-        >
-          <Info className="w-4 h-4 text-amber-400" />
-          <span>{generalConfig.descriptionButtonLabel || 'توضیحات'}</span>
-        </button>
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
+          {activeAnnouncements.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAnnouncementsModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-xs font-black flex items-center gap-2 whitespace-nowrap cursor-pointer"
+            >
+              <Megaphone className="w-4 h-4 text-amber-700" />
+              <span>اطلاعیه‌ها ({toPersianNumbers(activeAnnouncements.length)})</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDescriptionModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
+          >
+            <Info className="w-4 h-4 text-amber-400" />
+            <span>{generalConfig.descriptionButtonLabel || 'توضیحات'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Dual Major Pillars Switcher: Sleek Segmented Control on Mobile (< md), Dual Rich Cards on >= md */}
@@ -742,7 +805,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         </>
       )}
 
-      {/* Description Modal */}
+      {/* Description Modal (Mobile-safe pinned header/footer) */}
       <AnimatePresence>
         {descriptionModalOpen && (
           <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
@@ -750,9 +813,9 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto"
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
                 <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <Info className="w-4 h-4 text-amber-500" />
                   <span>{generalConfig.descriptionModalTitle}</span>
@@ -760,15 +823,17 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setDescriptionModalOpen(false)}
-                  className="p-2 min-h-[40px] min-w-[40px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
+                  className="p-2 min-h-[44px] min-w-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-7 whitespace-pre-line">
-                {generalConfig.descriptionModalBody}
-              </p>
-              <div className="flex justify-end pt-2">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6">
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-7 whitespace-pre-line">
+                  {generalConfig.descriptionModalBody}
+                </p>
+              </div>
+              <div className="p-4 sm:p-5 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 dark:border-slate-800 flex justify-end shrink-0 bg-white dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={() => setDescriptionModalOpen(false)}
@@ -782,7 +847,100 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Psychologist Resume Modal */}
+      {/* Psychological Announcements Modal */}
+      <AnimatePresence>
+        {announcementsModalOpen && (
+          <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="p-4 sm:p-5 bg-gradient-to-l from-[#071E17] to-[#113D30] text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Megaphone className="w-5 h-5 text-[#F3D078] shrink-0" />
+                  <h3 className="text-sm font-black truncate">
+                    {generalShowcase?.announcementsCardTitle || 'اطلاعیه‌ها و فراخوان‌های خدمات روانشناختی'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAnnouncementsModalOpen(false)}
+                  className="p-2 min-h-[44px] min-w-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-3">
+                {activeAnnouncements.length === 0 ? (
+                  <p className="py-10 text-center text-xs text-slate-500">
+                    در حال حاضر اطلاعیه فعالی ثبت نشده است.
+                  </p>
+                ) : (
+                  activeAnnouncements.map(ann => (
+                    <div
+                      key={ann.id}
+                      className="rounded-2xl border border-stone-200 bg-stone-50/70 overflow-hidden shadow-2xs"
+                    >
+                      {ann.bannerUrl && (
+                        <img
+                          src={ann.bannerUrl}
+                          alt={ann.title || 'اطلاعیه'}
+                          className="w-full h-40 object-cover"
+                        />
+                      )}
+                      <div className="p-4 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-emerald-800">
+                          <span>{ann.organizerName || 'کلینیک مشاوره مرکز'}</span>
+                          {ann.scheduleText && (
+                            <span className="text-amber-800">{toPersianNumbers(ann.scheduleText)}</span>
+                          )}
+                        </div>
+                        {ann.title && (
+                          <h4 className="text-sm font-black text-slate-900">{ann.title}</h4>
+                        )}
+                        {ann.subtitle && (
+                          <p className="text-xs font-bold text-slate-600">{ann.subtitle}</p>
+                        )}
+                        {ann.description && (
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">
+                            {ann.description}
+                          </p>
+                        )}
+                        {ann.externalUrl && (
+                          <a
+                            href={ann.externalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 hover:underline pt-1"
+                          >
+                            <span>مشاهده پیوند اطلاعیه</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-4 sm:p-5 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 dark:border-slate-800 flex justify-end shrink-0 bg-white dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => setAnnouncementsModalOpen(false)}
+                  className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl bg-slate-900 text-white text-xs font-black cursor-pointer"
+                >
+                  بستن
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Psychologist Resume Modal (Mobile-safe pinned header/footer) */}
       <AnimatePresence>
         {selectedPsychologistModal && (
           <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
@@ -790,9 +948,9 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto"
+              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
                   {selectedPsychologistModal.avatarUrl && (
                     <img
@@ -811,13 +969,13 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedPsychologistModal(null)}
-                  className="p-2 min-h-[40px] min-w-[40px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
+                  className="p-2 min-h-[44px] min-w-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-3 text-xs">
                 <p className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 leading-relaxed">
                   {selectedPsychologistModal.bio || selectedPsychologistModal.specialty}
                 </p>
@@ -837,7 +995,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 )}
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="p-4 sm:p-5 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row justify-end gap-2 shrink-0 bg-white dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={() => setSelectedPsychologistModal(null)}

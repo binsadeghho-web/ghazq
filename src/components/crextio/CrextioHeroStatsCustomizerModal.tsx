@@ -90,44 +90,45 @@ export const CrextioHeroStatsCustomizerModal: React.FC<CrextioHeroStatsCustomize
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
       >
         {/* Header */}
-        <div className="p-5 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md">
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shrink-0">
               <Sliders className="w-5 h-5 text-emerald-300" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-stone-900">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-black text-stone-900 truncate">
                   مدیریت آمار و شاخص‌های بنر دانش‌آموختگان
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-bold shrink-0">
                   ویژه مدیران
                 </span>
               </div>
-              <p className="text-xs text-stone-500 mt-0.5">
-                تغییر عناوین، ارقام، روندها، حذف یا افزودن شاخص‌های آماری بنر وی‌آی‌پی
+              <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 truncate">
+                تغییر عناوین، ارقام، روندها، حذف یا افزودن شاخص‌های آماری بنر
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 transition-colors"
+            className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* List of Stats */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0">
           <div className="flex items-center justify-between pb-1">
             <span className="text-xs font-bold text-stone-600">
               شاخص‌های آماری فعال ({toPersianNumbers(stats.length)} مورد):
@@ -236,17 +237,17 @@ export const CrextioHeroStatsCustomizerModal: React.FC<CrextioHeroStatsCustomize
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 bg-[#F5F4EE] border-t border-stone-200 flex items-center justify-between">
+        <div className="px-4 py-3.5 sm:p-5 bg-[#F5F4EE] border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={handleReset}
-            className="px-3.5 py-2 rounded-full border border-stone-300 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 min-h-[40px] rounded-full border border-stone-300 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>بازنشانی پیش‌فرض</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-auto">
             {successToast && (
               <span className="text-emerald-700 font-bold text-xs flex items-center gap-1 animate-pulse">
                 <Check className="w-4 h-4" /> ذخیره گردید
@@ -255,7 +256,7 @@ export const CrextioHeroStatsCustomizerModal: React.FC<CrextioHeroStatsCustomize
             <button
               type="button"
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs shadow-md transition-colors"
+              className="px-5 sm:px-6 py-2.5 min-h-[42px] rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs shadow-md transition-colors cursor-pointer"
             >
               ذخیره و اعمال در داشبورد
             </button>

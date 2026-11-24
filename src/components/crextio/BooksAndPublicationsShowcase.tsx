@@ -311,30 +311,30 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
       {/* Showcase Title Edit Modal */}
       <AnimatePresence>
         {isSettingsModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs" dir="rtl">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/55 backdrop-blur-xs overflow-hidden" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl w-full max-w-lg border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-5"
+              className="bg-white rounded-t-[26px] sm:rounded-3xl w-full max-w-lg max-h-[92dvh] flex flex-col border border-stone-200 shadow-2xl text-stone-900 overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-                <div className="flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-purple-700" />
-                  <h4 className="font-black text-sm text-stone-900">
+              <div className="px-5 py-4 flex items-center justify-between gap-2 border-b border-stone-200 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Edit3 className="w-5 h-5 text-purple-700 shrink-0" />
+                  <h4 className="font-black text-sm text-stone-900 truncate">
                     تنظیم عنوان و توضیح ویترین محصولات
                   </h4>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsSettingsModalOpen(false)}
-                  className="p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
+                  className="w-10 h-10 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-700 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="p-5 space-y-3 text-xs flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
                 <div>
                   <label className="font-bold text-stone-700 block mb-1">عنوان ویترین:</label>
                   <input
@@ -355,18 +355,18 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-200">
+              <div className="px-5 py-3.5 flex items-center justify-end gap-2 border-t border-stone-200 shrink-0 bg-stone-50 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
                 <button
                   type="button"
                   onClick={() => setIsSettingsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
+                  className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveSettings}
-                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md cursor-pointer"
+                  className="px-5 py-2.5 min-h-[42px] rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md cursor-pointer"
                 >
                   ذخیره تغییرات
                 </button>

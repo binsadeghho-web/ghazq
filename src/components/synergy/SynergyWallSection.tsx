@@ -767,22 +767,37 @@ export const SynergyWallSection: React.FC = () => {
 
       {/* PUBLIC REPLY MODAL */}
       {selectedPost && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h4 className="font-black text-sm text-stone-900">ارسال پاسخ و راهکار به درخواست هم‌افزایی</h4>
-              <button onClick={() => setSelectedPost(null)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/60 backdrop-blur-sm overflow-hidden"
+          onClick={() => setSelectedPost(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-lg bg-white rounded-t-[26px] sm:rounded-3xl border border-stone-200 shadow-2xl text-stone-900 max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          >
+            <div className="shrink-0 flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-3.5 sm:px-6 sm:py-4">
+              <h4 className="font-black text-sm text-stone-900 truncate">ارسال پاسخ و راهکار به درخواست هم‌افزایی</h4>
+              <button
+                type="button"
+                onClick={() => setSelectedPost(null)}
+                aria-label="بستن"
+                className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl hover:bg-stone-100 text-stone-500 flex items-center justify-center cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3 bg-stone-50 rounded-2xl text-xs space-y-1 border border-stone-200">
-              <span className="font-bold text-stone-800 block">عنوان درخواست:</span>
-              <p className="font-bold text-emerald-900">{selectedPost.title}</p>
-              <p className="text-stone-600 mt-1 line-clamp-2">{selectedPost.content}</p>
-            </div>
+            <form
+              id="synergy-public-reply-form"
+              onSubmit={handlePublicReply}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-4 text-xs"
+            >
+              <div className="p-3 bg-stone-50 rounded-2xl text-xs space-y-1 border border-stone-200">
+                <span className="font-bold text-stone-800 block">عنوان درخواست:</span>
+                <p className="font-bold text-emerald-900">{selectedPost.title}</p>
+                <p className="text-stone-600 mt-1 line-clamp-3">{selectedPost.content}</p>
+              </div>
 
-            <form onSubmit={handlePublicReply} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-stone-700 block mb-1">متن راهکار یا پاسخ شما:</label>
                 <textarea
@@ -794,39 +809,55 @@ export const SynergyWallSection: React.FC = () => {
                   className="w-full p-3 rounded-2xl bg-stone-50 border border-stone-300 font-medium focus:outline-emerald-600"
                 />
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setSelectedPost(null)}
-                  className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md"
-                >
-                  ثبت پاسخ عمومی
-                </button>
-              </div>
             </form>
+
+            <div className="shrink-0 flex items-center justify-end gap-2 px-4 py-3 sm:px-6 sm:py-4 border-t border-stone-200 bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setSelectedPost(null)}
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-stone-100 text-stone-700 text-xs font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="synergy-public-reply-form"
+                className="flex-1 sm:flex-none px-5 py-2.5 min-h-[44px] rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md cursor-pointer"
+              >
+                ثبت پاسخ عمومی
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* NEW SYNERGY REQUEST MODAL */}
       {newSynergyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h4 className="font-black text-sm text-stone-900">ثبت درخواست جدید در شبکه هم‌افزایی</h4>
-              <button onClick={() => setNewSynergyModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/60 backdrop-blur-sm overflow-hidden"
+          onClick={() => setNewSynergyModalOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-lg bg-white rounded-t-[26px] sm:rounded-3xl border border-stone-200 shadow-2xl text-stone-900 max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          >
+            <div className="shrink-0 flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-3.5 sm:px-6 sm:py-4">
+              <h4 className="font-black text-sm text-stone-900 truncate">ثبت درخواست جدید در شبکه هم‌افزایی</h4>
+              <button
+                type="button"
+                onClick={() => setNewSynergyModalOpen(false)}
+                aria-label="بستن"
+                className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl hover:bg-stone-100 text-stone-500 flex items-center justify-center cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSynergy} className="space-y-3 text-xs">
+            <form
+              id="synergy-new-request-form"
+              onSubmit={handleCreateSynergy}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-3 text-xs"
+            >
               <div>
                 <label className="font-bold text-stone-700 block mb-1">عنوان درخواست یا سوال:</label>
                 <input
@@ -839,7 +870,7 @@ export const SynergyWallSection: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="font-bold text-stone-700 block mb-1">شهر / استان:</label>
                   <input
@@ -848,7 +879,7 @@ export const SynergyWallSection: React.FC = () => {
                     placeholder="مثال: اصفهان، تهران، مشهد"
                     value={newSynergyCity}
                     onChange={e => setNewSynergyCity(e.target.value)}
-                    className="w-full p-2 rounded-xl bg-stone-50 border border-stone-300 font-medium"
+                    className="w-full p-2.5 rounded-xl bg-stone-50 border border-stone-300 font-medium"
                   />
                 </div>
                 <div>
@@ -856,7 +887,7 @@ export const SynergyWallSection: React.FC = () => {
                   <select
                     value={urgency}
                     onChange={e => setUrgency(e.target.value as any)}
-                    className="w-full p-2 rounded-xl bg-stone-50 border border-stone-300 font-bold"
+                    className="w-full p-2.5 rounded-xl bg-stone-50 border border-stone-300 font-bold"
                   >
                     <option value="عادی">عادی</option>
                     <option value="فوری">فوری (پاسخ ظرف ۲۴ ساعت)</option>
@@ -880,39 +911,55 @@ export const SynergyWallSection: React.FC = () => {
                 <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>هویت و مشخصات شما در سیستم با شناسه مستعار امن ثبت می‌گردد.</span>
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setNewSynergyModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md"
-                >
-                  انتشار درخواست
-                </button>
-              </div>
             </form>
+
+            <div className="shrink-0 flex items-center justify-end gap-2 px-4 py-3 sm:px-6 sm:py-4 border-t border-stone-200 bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setNewSynergyModalOpen(false)}
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-stone-100 text-stone-700 text-xs font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="synergy-new-request-form"
+                className="flex-1 sm:flex-none px-5 py-2.5 min-h-[44px] rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md cursor-pointer"
+              >
+                انتشار درخواست
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* NEW EXPERIENCE MODAL */}
       {newExperienceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-stone-200 shadow-2xl p-6 text-stone-900 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h4 className="font-black text-sm text-stone-900">ثبت تجربه علمی، قضایی یا اداری جدید</h4>
-              <button onClick={() => setNewExperienceModalOpen(false)} className="p-1 rounded-full hover:bg-stone-100 text-stone-400">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/60 backdrop-blur-sm overflow-hidden"
+          onClick={() => setNewExperienceModalOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-lg bg-white rounded-t-[26px] sm:rounded-3xl border border-stone-200 shadow-2xl text-stone-900 max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          >
+            <div className="shrink-0 flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-3.5 sm:px-6 sm:py-4">
+              <h4 className="font-black text-sm text-stone-900 truncate">ثبت تجربه علمی، قضایی یا اداری جدید</h4>
+              <button
+                type="button"
+                onClick={() => setNewExperienceModalOpen(false)}
+                aria-label="بستن"
+                className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl hover:bg-stone-100 text-stone-500 flex items-center justify-center cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateExperience} className="space-y-3 text-xs">
+            <form
+              id="synergy-new-experience-form"
+              onSubmit={handleCreateExperience}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-3 text-xs"
+            >
               <div>
                 <label className="font-bold text-stone-700 block mb-1">عنوان تجربه:</label>
                 <input
@@ -930,7 +977,7 @@ export const SynergyWallSection: React.FC = () => {
                 <select
                   value={newExpCategory}
                   onChange={e => setNewExpCategory(e.target.value as any)}
-                  className="w-full p-2 rounded-xl bg-stone-50 border border-stone-300 font-bold"
+                  className="w-full p-2.5 rounded-xl bg-stone-50 border border-stone-300 font-bold"
                 >
                   <option value="رویه قضایی">رویه قضایی</option>
                   <option value="چالش‌های شعبه">چالش‌های شعبه</option>
@@ -961,23 +1008,24 @@ export const SynergyWallSection: React.FC = () => {
                   className="w-full p-2.5 rounded-xl bg-stone-50 border border-stone-300 font-medium leading-relaxed"
                 />
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setNewExperienceModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black shadow-md"
-                >
-                  ثبت تجربه
-                </button>
-              </div>
             </form>
+
+            <div className="shrink-0 flex items-center justify-end gap-2 px-4 py-3 sm:px-6 sm:py-4 border-t border-stone-200 bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => setNewExperienceModalOpen(false)}
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-stone-100 text-stone-700 text-xs font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="synergy-new-experience-form"
+                className="flex-1 sm:flex-none px-5 py-2.5 min-h-[44px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black shadow-md cursor-pointer"
+              >
+                ثبت تجربه
+              </button>
+            </div>
           </div>
         </div>
       )}

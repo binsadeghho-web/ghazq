@@ -465,6 +465,8 @@ export type MobileSectionId =
   | 'services_showcase'
   | 'services_list';
 
+export type MobileShowcaseMode = 'simple' | 'detailed';
+
 export type MobileServiceShowcaseId =
   | 'counseling'
   | 'counseling_specialized'
@@ -473,6 +475,21 @@ export type MobileServiceShowcaseId =
   | 'research'
   | 'welfare'
   | 'products';
+
+export type MobileDetailedShowcaseId =
+  | 'counseling_workshops'
+  | 'counseling_announcements'
+  | 'counseling_booking'
+  | 'counseling_career'
+  | 'courses_active'
+  | 'rulings_featured'
+  | 'research_guidance'
+  | 'products_featured'
+  | 'welfare_emergency'
+  | 'welfare_fund'
+  | 'welfare_accommodation'
+  | 'welfare_consumables'
+  | 'welfare_installments';
 
 export type MobileServiceListTabId =
   | 'courses'
@@ -484,6 +501,30 @@ export type MobileServiceListTabId =
   | 'products'
   | 'cartable'
   | 'synergy';
+
+export interface CrextioMobileShowcaseOverride {
+  title?: string;
+  subtitle?: string;
+  kicker?: string;
+  metaText?: string;
+  ctaLabel?: string;
+  imageUrl?: string;
+  enabled?: boolean;
+  order?: number;
+}
+
+export interface CrextioMobileCustomCard {
+  id: string;
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  kicker: string;
+  metaText?: string;
+  ctaLabel: string;
+  imageUrl?: string;
+  targetView: string;
+  subTab?: string;
+}
 
 export interface CrextioMobileConfig {
   showHeroBanner?: boolean;
@@ -497,8 +538,14 @@ export interface CrextioMobileConfig {
   honorsShowcaseTitle?: string;
   showServicesShowcase?: boolean;
   servicesShowcaseTitle?: string;
+  showcaseMode?: MobileShowcaseMode;
   showcaseOrder?: MobileServiceShowcaseId[];
   hiddenShowcases?: Record<string, boolean>;
+  showcaseOverrides?: Record<string, CrextioMobileShowcaseOverride>;
+  detailedShowcaseOrder?: MobileDetailedShowcaseId[];
+  detailedShowcaseEnabled?: Record<string, boolean>;
+  detailedShowcaseOverrides?: Record<string, CrextioMobileShowcaseOverride>;
+  customShowcaseCards?: CrextioMobileCustomCard[];
   showServicesList?: boolean;
   servicesListTitle?: string;
   servicesListOrder?: MobileServiceListTabId[];
@@ -1776,17 +1823,20 @@ export interface JudicialRuling {
 
 export interface WelfareRequest {
   id: string;
-  type: 'loan' | 'accommodation';
+  type: 'loan' | 'emergency_loan' | 'accommodation' | string;
   typeTitle: string;
   applicantId: string;
   applicantName: string;
   title: string;
-  requestedValue: string; // e.g. "وام ۱۰۰ میلیون تومانی" or "اسکان ۴ روزه مشهد مقدس"
+  requestedValue: string; // e.g. "وام ۵۰ میلیون تومانی" or "اسکان ۳ شب در قم"
   status: 'pending' | 'approved' | 'disbursed' | 'rejected';
   description: string;
   rulesAcknowledged: boolean;
   adminNote?: string;
+  metadata?: Record<string, any>;
+  version?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ConsumableItem {
@@ -1799,12 +1849,17 @@ export interface ConsumableItem {
   marketPrice: number;
   unit: string;
   stock: number;
+  lowStockThreshold?: number;
   description: string;
   brand?: string;
   discountPercent?: number;
   rating?: number;
   imageUrl?: string;
   visibleToCustomer?: boolean;
+  isActive?: boolean;
+  showAsSoldOutInShowcase?: boolean;
+  allowedDeliveryMethods?: Array<'in_person' | 'post' | 'courier'>;
+  version?: number;
 }
 
 export interface ConsumableOrder {
@@ -1819,8 +1874,14 @@ export interface ConsumableOrder {
   }[];
   totalAmount: number;
   deliveryAddress: string;
+  deliveryMethod?: 'in_person' | 'post' | 'courier';
   status: 'registered' | 'prepared' | 'dispatched' | 'delivered' | 'cancelled';
   notes?: string;
+  paymentStatus?: string;
+  trackingCode?: string;
+  postalTrackingCode?: string;
+  shippingStatus?: string;
+  version?: number;
   createdAt: string;
 }
 

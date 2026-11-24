@@ -4,6 +4,7 @@ import { generateUUIDv7, toIdBuffer } from './uuidv7';
 import bcrypt from 'bcryptjs';
 
 let domainTablesInitialized = false;
+let setupPromise: Promise<void> | null = null;
 
 /**
  * Ensures all domain-specific tables, columns, and composite indexes exist in MySQL 8.
@@ -11,9 +12,42 @@ let domainTablesInitialized = false;
  */
 export async function ensureDomainTablesAndIndexes(): Promise<void> {
   if (domainTablesInitialized || !isDatabaseConnected()) return;
+  if (setupPromise) return setupPromise;
+  setupPromise = runDomainTablesSetup().finally(() => {
+    setupPromise = null;
+  });
+  return setupPromise;
+}
+
+async function runDomainTablesSetup(): Promise<void> {
+  if (domainTablesInitialized || !isDatabaseConnected()) return;
   const p = getPool();
 
   try {
+    // Fast-path: check if the newest tables and columns already exist in this schema (~150ms vs ~25s of sequential DDL)
+    try {
+      const [schemaCheck]: any = await p.query(
+        `SELECT
+           (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (
+             'welfare_fund_memberships', 'welfare_fund_payments', 'welfare_installment_partners', 'welfare_installment_requests',
+             'counseling_workshop_registrations', 'dashboard_banners', 'dashboard_events', 'alumni_privacy_settings', 'research_messages'
+           )) AS tbl_cnt,
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'consumables' AND column_name = 'allowed_delivery_methods') AS col1,
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'consumable_orders' AND column_name = 'delivery_method') AS col2,
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'welfare_requests' AND column_name = 'metadata') AS col3`
+      );
+      const row = schemaCheck?.[0];
+      if (row && Number(row.tbl_cnt) >= 9 && Number(row.col1) >= 1 && Number(row.col2) >= 1 && Number(row.col3) >= 1) {
+        const [pCnt]: any = await p.query(`SELECT COUNT(*) AS cnt FROM welfare_installment_partners`);
+        if (pCnt && Number(pCnt[0]?.cnt || 0) > 0) {
+          domainTablesInitialized = true;
+          return;
+        }
+      }
+    } catch {
+      // Proceed to full DDL setup if fast-check fails
+    }
+
     // 0. Critical Auth & Identity Columns First (users.center_code, auth_rate_limits, user_sessions)
     try { await p.query(`ALTER TABLE users ADD COLUMN center_code VARCHAR(64) NULL UNIQUE;`); } catch {}
     await p.query(`
@@ -1051,6 +1085,204 @@ export async function ensureDomainTablesAndIndexes(): Promise<void> {
         INDEX idx_cws_reg_ws (workshop_id, deleted_at, created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // 12. 5-Module Welfare & Facilities Suite Enhancements & Tables
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_requests (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        type VARCHAR(64) NOT NULL DEFAULT 'loan',
+        type_title VARCHAR(128) NOT NULL DEFAULT 'تسهیلات',
+        applicant_id BINARY(16) NOT NULL,
+        applicant_name VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        requested_value VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        rules_acknowledged TINYINT(1) NOT NULL DEFAULT 1,
+        status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        admin_note TEXT NULL,
+        metadata JSON NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_welfare_req_app (applicant_id, created_at),
+        INDEX idx_welfare_req_type_status (type, status, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS consumables (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        price DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
+        market_price DECIMAL(19,4) NULL,
+        unit VARCHAR(64) NOT NULL DEFAULT 'عدد',
+        stock INT NOT NULL DEFAULT 0,
+        low_stock_threshold INT NOT NULL DEFAULT 5,
+        category VARCHAR(128) NOT NULL DEFAULT 'عمومی',
+        image_url VARCHAR(512) NULL,
+        description TEXT NULL,
+        visible_to_customer TINYINT(1) NOT NULL DEFAULT 1,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        show_as_sold_out_in_showcase TINYINT(1) NOT NULL DEFAULT 0,
+        allowed_delivery_methods JSON NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const consumableAlters2 = [
+      `ADD COLUMN market_price DECIMAL(19,4) NULL`,
+      `ADD COLUMN unit VARCHAR(64) NOT NULL DEFAULT 'عدد'`,
+      `ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1`,
+      `ADD COLUMN show_as_sold_out_in_showcase TINYINT(1) NOT NULL DEFAULT 0`,
+      `ADD COLUMN allowed_delivery_methods JSON NULL`,
+    ];
+    for (const clause of consumableAlters2) {
+      try { await p.query(`ALTER TABLE consumables ${clause};`); } catch {}
+    }
+    try { await p.query(`ALTER TABLE consumable_orders ADD COLUMN delivery_method VARCHAR(32) NOT NULL DEFAULT 'post';`); } catch {}
+    const welfareReqAlters = [
+      `MODIFY COLUMN type VARCHAR(64) NOT NULL DEFAULT 'loan'`,
+      `ADD COLUMN admin_note TEXT NULL`,
+      `ADD COLUMN metadata JSON NULL`,
+    ];
+    for (const clause of welfareReqAlters) {
+      try { await p.query(`ALTER TABLE welfare_requests ${clause};`); } catch {}
+    }
+    try { await p.query(`CREATE INDEX idx_welfare_req_type_status ON welfare_requests (type, status, created_at);`); } catch {}
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_fund_memberships (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        user_id BINARY(16) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(32) NULL,
+        user_national_id VARCHAR(64) NULL,
+        monthly_fee_amount BIGINT NOT NULL DEFAULT 0,
+        status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+        admin_note TEXT NULL,
+        reviewed_by VARCHAR(128) NULL,
+        reviewed_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        UNIQUE KEY uq_fund_member_user (user_id),
+        INDEX idx_fund_member_status (status, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_fund_payments (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        membership_id BINARY(16) NOT NULL,
+        user_id BINARY(16) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        amount BIGINT NOT NULL DEFAULT 0,
+        period_label VARCHAR(128) NOT NULL,
+        payment_method VARCHAR(64) NOT NULL DEFAULT 'online_gateway',
+        tracking_code VARCHAR(64) NOT NULL,
+        receipt_url VARCHAR(512) NULL,
+        status ENUM('pending', 'verified', 'rejected') NOT NULL DEFAULT 'pending',
+        admin_note TEXT NULL,
+        reviewed_by VARCHAR(128) NULL,
+        reviewed_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_fund_pay_user (user_id, created_at),
+        INDEX idx_fund_pay_status (status, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_installment_partners (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        tagline VARCHAR(255) NULL,
+        description TEXT NULL,
+        max_credit_limit BIGINT NOT NULL DEFAULT 0,
+        credit_limit_display VARCHAR(128) NOT NULL,
+        installment_terms TEXT NOT NULL,
+        duration_months INT NOT NULL DEFAULT 12,
+        logo_url VARCHAR(512) NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        display_order INT NOT NULL DEFAULT 1,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_inst_partner_active (is_active, display_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_installment_requests (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        partner_id BINARY(16) NOT NULL,
+        partner_name VARCHAR(255) NOT NULL,
+        applicant_id BINARY(16) NOT NULL,
+        applicant_name VARCHAR(255) NOT NULL,
+        applicant_phone VARCHAR(32) NULL,
+        requested_amount BIGINT NOT NULL DEFAULT 0,
+        months INT NOT NULL DEFAULT 12,
+        description TEXT NULL,
+        status ENUM('pending', 'approved', 'rejected', 'completed') NOT NULL DEFAULT 'pending',
+        admin_note TEXT NULL,
+        reviewed_by VARCHAR(128) NULL,
+        reviewed_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_inst_req_app (applicant_id, created_at),
+        INDEX idx_inst_req_status (status, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const [existingPartners]: any = await p.query(`SELECT COUNT(*) as cnt FROM welfare_installment_partners`);
+    if (existingPartners && Number(existingPartners[0]?.cnt || 0) === 0) {
+      const seedPartners = [
+        {
+          name: 'سرای ایرانی',
+          tagline: 'فروشگاه بزرگ لوازم خانگی، فرش و کالای خواب',
+          description:
+            'تامین کلیه اقلام جهیزیه، لوازم خانگی برقی و صوتی تصویری، فرش و سرویس چوب با تخفیف توافقی ویژه اعضای مجتمع فقه و حقوق اسلامی.',
+          maxCreditLimit: 200000000,
+          creditLimitDisplay: 'تا سقف ۲۰۰,۰۰۰,۰۰۰ تومان',
+          installmentTerms:
+            'اقساط ۱۲ الی ۲۴ ماهه بدون پیش‌پرداخت اولیه · معرفی‌نامه رسمی مجتمع + چک صیادی یا کسر از حقوق',
+          durationMonths: 24,
+          displayOrder: 1,
+        },
+        {
+          name: 'آمال',
+          tagline: 'تجهیزات دیجیتال، اداری و اقلام خانگی منتخب',
+          description:
+            'خرید اقساطی لپ‌تاپ، تلفن همراه، تجهیزات اداری و لوازم منتخب منزل با نرخ ترجیحی کارگروه رفاه و تحویل فوری از شعب منتخب.',
+          maxCreditLimit: 120000000,
+          creditLimitDisplay: 'تا سقف ۱۲۰,۰۰۰,۰۰۰ تومان',
+          installmentTerms:
+            'اقساط ۶ الی ۱۸ ماهه با کارمزد ترجیحی تفاهم‌نامه مجتمع · صدور معرفی‌نامه الکترونیکی ظرف ۴۸ ساعت',
+          durationMonths: 18,
+          displayOrder: 2,
+        },
+      ];
+      for (const sp of seedPartners) {
+        await p.query(
+          `INSERT INTO welfare_installment_partners (
+            id, name, tagline, description, max_credit_limit, credit_limit_display, installment_terms, duration_months, is_active, display_order, version
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 1)`,
+          [
+            toIdBuffer(generateUUIDv7()),
+            sp.name,
+            sp.tagline,
+            sp.description,
+            sp.maxCreditLimit,
+            sp.creditLimitDisplay,
+            sp.installmentTerms,
+            sp.durationMonths,
+            sp.displayOrder,
+          ]
+        );
+      }
+    }
 
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');

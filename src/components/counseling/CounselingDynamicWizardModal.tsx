@@ -671,12 +671,12 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
         {/* Top Modal Header with Persistent Description Button */}
         <div className="p-4 sm:p-6 bg-gradient-to-l from-emerald-950 via-slate-900 to-slate-950 text-white flex items-center justify-between gap-2.5 shrink-0">
@@ -700,7 +700,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             <button
               type="button"
               onClick={onOpenDescriptionModal}
-              className="px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 min-h-[40px] rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Info className="w-3.5 h-3.5 text-amber-300" />
               <span>{descriptionButtonLabel || 'توضیحات'}</span>
@@ -708,10 +708,10 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             <button
               type="button"
               onClick={onClose}
-              className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
               aria-label="بستن"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -732,7 +732,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         )}
 
         {/* Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-5 text-xs">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4 sm:space-y-5 text-xs">
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />

@@ -170,36 +170,41 @@ export const CartableNewRequestModal: React.FC<CartableNewRequestModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
       onClick={onClose}
       dir="rtl"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[92vh] flex flex-col"
+        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[92dvh] sm:max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-5 sm:p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base sm:text-lg font-black text-white">
+        <div className="shrink-0 p-4 sm:p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-lg font-black text-white truncate">
               ثبت درخواست جدید در کارتابل خدمات
             </h3>
-            <p className="text-xs text-slate-300 mt-1">
+            <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 line-clamp-1">
               درخواست شما مستقیماً به مسئول مربوطه ارجاع داده شده و کد پیگیری یکتا دریافت می‌کنید.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="بستن"
+            className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <form
+          id="cartable-new-request-form"
+          onSubmit={handleSubmit}
+          className="p-4 sm:p-6 space-y-4 overflow-y-auto overscroll-y-contain flex-1 min-h-0"
+        >
           {/* Quick Button: Followable Cases of Islamic Law & Jurisprudence Center (اصلاحیه ۴) */}
           {followableEnabled && (
             <div className="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/25 flex flex-wrap items-center justify-between gap-2">
@@ -296,7 +301,7 @@ export const CartableNewRequestModal: React.FC<CartableNewRequestModalProps> = (
                     : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-800'
                 }`}
               >
-                فوری (نیازمند اقدام سریع / بررسی ظرف ۲۴ ساعت)
+                فوری (پاسخ ۲۴ ساعته)
               </button>
             </div>
           </div>
@@ -315,7 +320,7 @@ export const CartableNewRequestModal: React.FC<CartableNewRequestModalProps> = (
             />
           </div>
 
-          {/* Secure Disk Attachment Uploader (اصلاح ۱: تصویر، PDF و Word فقط - ذخیره در پوشه دیسک دانش‌آموختگان) */}
+          {/* Secure Disk Attachment Uploader */}
           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
@@ -383,25 +388,27 @@ export const CartableNewRequestModal: React.FC<CartableNewRequestModalProps> = (
               </div>
             )}
           </div>
-
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || uploading}
-              className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
-            >
-              {submitting ? 'در حال ثبت...' : 'ارسال درخواست'}
-            </button>
-          </div>
         </form>
+
+        <div className="shrink-0 p-4 sm:px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 flex items-center justify-end gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-3 min-h-[44px] rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+          >
+            انصراف
+          </button>
+          <button
+            type="submit"
+            form="cartable-new-request-form"
+            disabled={submitting || uploading}
+            className="flex-1 sm:flex-none px-6 py-3 min-h-[44px] rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+          >
+            {submitting ? 'در حال ثبت...' : 'ارسال درخواست'}
+          </button>
+        </div>
       </motion.div>
     </div>
   );
 };
+

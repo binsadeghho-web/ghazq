@@ -730,7 +730,7 @@ export const ShowcaseQuickEditModal: React.FC<ShowcaseQuickEditModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
+        className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
@@ -740,7 +740,7 @@ export const ShowcaseQuickEditModal: React.FC<ShowcaseQuickEditModalProps> = ({
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.18 }}
           onClick={e => e.stopPropagation()}
-          className="w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl border border-stone-200 shadow-2xl flex flex-col overflow-hidden"
+          className="w-full max-w-2xl max-h-[92dvh] sm:max-h-[90vh] bg-white rounded-t-[26px] sm:rounded-3xl border border-stone-200 shadow-2xl flex flex-col overflow-hidden"
         >
           <input
             ref={fileInputRef}
@@ -765,14 +765,14 @@ export const ShowcaseQuickEditModal: React.FC<ShowcaseQuickEditModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label="بستن"
-              className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center cursor-pointer shrink-0"
+              className="w-10 h-10 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center cursor-pointer shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-5 space-y-5">
             {/* Showcase Image Section */}
             {imageKey && (
               <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-200 space-y-3">
@@ -901,11 +901,11 @@ export const ShowcaseQuickEditModal: React.FC<ShowcaseQuickEditModalProps> = ({
           </div>
 
           {/* Modal Footer */}
-          <div className="px-5 py-3.5 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-3 shrink-0">
+          <div className="px-4 sm:px-5 py-3.5 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-3 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 text-xs font-bold cursor-pointer"
+              className="px-4 py-2.5 min-h-[42px] rounded-xl bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 text-xs font-bold cursor-pointer"
             >
               انصراف
             </button>
@@ -914,7 +914,7 @@ export const ShowcaseQuickEditModal: React.FC<ShowcaseQuickEditModalProps> = ({
               type="button"
               onClick={handleSave}
               disabled={uploading}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black shadow-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black shadow-xs cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>ذخیره تغییرات ویترین</span>

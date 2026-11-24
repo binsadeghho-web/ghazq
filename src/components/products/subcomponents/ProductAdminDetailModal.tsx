@@ -366,13 +366,13 @@ export const ProductAdminDetailModal: React.FC<ProductAdminDetailModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/75 backdrop-blur-sm overflow-hidden"
       dir="rtl"
       onClick={onClose}
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-6xl max-h-[92vh] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-6xl max-h-[92dvh] sm:max-h-[92vh] bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Top Admin Management Header */}
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0">
@@ -1168,20 +1168,20 @@ export const ProductAdminDetailModal: React.FC<ProductAdminDetailModalProps> = (
       {/* Secure Receipt / Document Lightbox */}
       {receiptPreview && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/90 backdrop-blur-sm overflow-hidden"
           onClick={handleCloseReceipt}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="max-w-2xl w-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
+            className="max-w-2xl w-full bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-2xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col max-h-[92dvh]"
           >
-            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between text-xs font-bold gap-2">
+            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between text-xs font-bold gap-2 shrink-0">
               <span className="truncate">{receiptPreview.title}</span>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => handleDownloadDocument(receiptPreview.rawUrl, 'order-document')}
-                  className="px-3 py-1 rounded-lg bg-amber-500 text-stone-950 font-black cursor-pointer flex items-center gap-1"
+                  className="px-3 py-1.5 min-h-[38px] rounded-lg bg-amber-500 text-stone-950 font-black cursor-pointer flex items-center gap-1"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>دانلود مدرک</span>
@@ -1189,24 +1189,24 @@ export const ProductAdminDetailModal: React.FC<ProductAdminDetailModalProps> = (
                 <button
                   type="button"
                   onClick={handleCloseReceipt}
-                  className="px-3 py-1 rounded-lg bg-slate-800 cursor-pointer"
+                  className="px-3 py-1.5 min-h-[38px] rounded-lg bg-slate-800 cursor-pointer"
                 >
                   بستن
                 </button>
               </div>
             </div>
-            <div className="p-4 bg-slate-950 flex justify-center">
+            <div className="p-4 bg-slate-950 flex justify-center overflow-y-auto overscroll-y-contain flex-1 min-h-0">
               {receiptPreview.isPdf ? (
                 <iframe
                   src={receiptPreview.url}
                   title={receiptPreview.title}
-                  className="w-full h-[70vh] rounded-lg bg-white"
+                  className="w-full h-[70dvh] rounded-lg bg-white"
                 />
               ) : (
                 <img
                   src={receiptPreview.url}
                   alt={receiptPreview.title}
-                  className="max-h-[70vh] object-contain rounded-lg"
+                  className="max-h-[70dvh] object-contain rounded-lg"
                 />
               )}
             </div>

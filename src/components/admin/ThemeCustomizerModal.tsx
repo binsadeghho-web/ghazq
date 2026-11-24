@@ -163,27 +163,27 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-3xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-3xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
         {/* Header */}
-        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md">
-              <SlidersHorizontal className="w-6 h-6 text-emerald-300" />
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shrink-0">
+              <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-300" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-extrabold text-stone-900">سفارشی‌ساز فوق‌پیشرفته تم ۲ (پرتال دانش‌آموختگان)</h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-extrabold text-stone-900 truncate">سفارشی‌ساز فوق‌پیشرفته تم ۲ (پرتال دانش‌آموختگان)</h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] sm:text-[11px] font-bold shrink-0">
                   ویژه مدیران
                 </span>
               </div>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
                 تغییر زنده و پویا در نحوه چیدمان، ویترین‌ها، کارت‌ها و نحوه نمایش بخش‌های داشبورد تم دوم
               </p>
             </div>
@@ -192,17 +192,19 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-10 h-10 rounded-full hover:bg-stone-200/80 flex items-center justify-center text-stone-500 transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-full hover:bg-stone-200/80 flex items-center justify-center text-stone-500 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation Tabs Bar */}
-        <CustomizerTabBar activeTab={activeTab} onSelectTab={setActiveTab} />
+        <div className="shrink-0">
+          <CustomizerTabBar activeTab={activeTab} onSelectTab={setActiveTab} />
+        </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-stone-800 text-xs">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-6 flex-1 min-h-0 text-stone-800 text-xs">
           {activeTab === 'modules' && (
             <CustomizerModulesTab
               crextioConfig={crextioConfig}
@@ -322,24 +324,24 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-5 bg-[#F5F4EE] border-t border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="px-4 py-3.5 sm:p-5 bg-[#F5F4EE] border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => {
                 resetCrextioConfig();
                 triggerSuccess();
               }}
-              className="px-4 py-2 rounded-full border border-stone-300 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3.5 sm:px-4 py-2 min-h-[40px] rounded-full border border-stone-300 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>بازنشانی به پیش‌فرض کارخانه</span>
+              <span>بازنشانی</span>
             </button>
 
             {successToast && (
               <span className="text-emerald-700 font-bold text-xs flex items-center gap-1 animate-pulse">
                 <CheckCircle2 className="w-4 h-4" />
-                تغییرات آنی اعمال گردید
+                تغییرات اعمال شد
               </span>
             )}
           </div>
@@ -347,7 +349,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer"
+            className="px-5 sm:px-6 py-2.5 min-h-[42px] rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer"
           >
             بستن و ذخیره تغییرات
           </button>

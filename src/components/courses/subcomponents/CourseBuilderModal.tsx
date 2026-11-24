@@ -414,22 +414,22 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92vh]"
+          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
           onClick={e => e.stopPropagation()}
         >
-          <div className="p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <span className="text-[11px] text-amber-400 font-bold block mb-0.5">
+          <div className="p-4 sm:p-5 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2 shrink-0">
+            <div className="min-w-0">
+              <span className="text-[11px] text-amber-400 font-bold block mb-0.5 truncate">
                 {isWorkshop
                   ? 'پنل هوشمند ویژه مسئول مشاوره و آموزش کارگاه‌ها (رزومه استاد، فیلدهای پویا، اقساط زمان‌بندی‌شده و جلسات)'
                   : 'پنل هوشمند ویژه مسئول آموزش (رزومه استاد، فیلدهای پویا، اقساط زمان‌بندی‌شده و سرفصل‌ها)'}
               </span>
-              <h3 className="text-base font-black text-white">
+              <h3 className="text-sm sm:text-base font-black text-white truncate">
                 {courseToEdit
                   ? `ویرایش مشخصات و فیلدهای ${unitNoun}`
                   : isWorkshop
@@ -440,13 +440,14 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="بستن"
+              className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+          <form id="course-builder-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0">
             {saveError && (
               <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
                 {saveError}
@@ -1005,24 +1006,26 @@ export const CourseBuilderModal: React.FC<CourseBuilderModalProps> = ({
               coursePrice={builderForm.price}
             />
 
-            {/* Modal Actions */}
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
-              >
-                انصراف
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || uploadingCover}
-                className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
-              >
-                {isSubmitting ? 'در حال ثبت...' : courseToEdit ? 'ذخیره تغییرات دوره' : 'ثبت و انتشار دوره'}
-              </button>
-            </div>
           </form>
+
+          {/* Pinned Modal Actions */}
+          <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              form="course-builder-form"
+              disabled={isSubmitting || uploadingCover}
+              className="px-6 py-2.5 min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'در حال ثبت...' : courseToEdit ? 'ذخیره تغییرات دوره' : 'ثبت و انتشار دوره'}
+            </button>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>

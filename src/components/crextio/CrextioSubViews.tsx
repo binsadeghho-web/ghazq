@@ -48,12 +48,16 @@ import { CounselingSection } from '../counseling/CounselingSection';
 interface CrextioSubViewsProps {
   activeNav: string;
   onNavigate: (tab: string) => void;
+  deepLinkSubTab?: string;
+  deepLinkNonce?: number;
   autoOpenGeneralBookingNonce?: number;
 }
 
 export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({
   activeNav,
   onNavigate,
+  deepLinkSubTab,
+  deepLinkNonce,
   autoOpenGeneralBookingNonce,
 }) => {
   const {
@@ -127,7 +131,24 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({
      4. COUNSELING CLINIC (کلینیک مشاوره عمومی و تخصصی)
      ======================================================================== */
   if (activeNav === 'Apps' || activeNav === 'Counseling' || activeNav === 'CounselingGeneral') {
-    return <CounselingSection initialTab="request" autoOpenWizardNonce={autoOpenGeneralBookingNonce} />;
+    const validCounselingSubTab =
+      deepLinkSubTab === 'workshops' ||
+      deepLinkSubTab === 'announcements' ||
+      deepLinkSubTab === 'booking' ||
+      deepLinkSubTab === 'consultants' ||
+      deepLinkSubTab === 'tariffs' ||
+      deepLinkSubTab === 'tests' ||
+      deepLinkSubTab === 'my_history'
+        ? deepLinkSubTab
+        : undefined;
+    return (
+      <CounselingSection
+        initialTab="request"
+        initialSubTab={validCounselingSubTab}
+        deepLinkNonce={deepLinkNonce}
+        autoOpenWizardNonce={autoOpenGeneralBookingNonce}
+      />
+    );
   }
   if (activeNav === 'SpecializedCounseling' || activeNav === 'CounselingSpecial' || activeNav === 'counseling_specialized') {
     return (
@@ -143,7 +164,10 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({
   if (activeNav === 'Salary' || activeNav === 'Welfare') {
     return (
       <Suspense fallback={<ModuleFallback />}>
-        <WelfareSection />
+        <WelfareSection
+          initialModuleTab={deepLinkSubTab as any}
+          deepLinkNonce={deepLinkNonce}
+        />
       </Suspense>
     );
   }

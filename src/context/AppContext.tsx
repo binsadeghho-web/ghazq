@@ -43,6 +43,12 @@ import {
   PsychologicalTestResult,
   CounselingBasicClient,
   CounselingGeneralShowcaseConfig,
+  WelfarePortalConfig,
+  WelfareFundMembership,
+  WelfareFundPayment,
+  WelfareInstallmentPartner,
+  WelfareInstallmentRequest,
+  DeliveryMethodType,
 } from '../types';
 import { api } from '../services/apiClient';
 
@@ -257,15 +263,59 @@ export interface AppContextType {
   toggleRulingDislike: (rulingId: string) => Promise<void>;
 
   // Welfare & Consumables methods
-  submitWelfareRequest: (data: Omit<WelfareRequest, 'id' | 'status' | 'createdAt'>) => Promise<void>;
-  updateWelfareStatus: (requestId: string, status: WelfareRequest['status'], adminNote?: string) => void;
-  placeConsumableOrder: (items: { itemId: string; title: string; quantity: number; unitPrice: number }[], deliveryAddress: string) => Promise<void>;
-  submitProductProposal: (data: Omit<MemberProductProposal, 'id' | 'status' | 'createdAt'>) => void;
-  updateConsumableStock: (itemId: string, newStock: number) => void;
-  updateConsumableItem: (id: string, updates: Partial<ConsumableItem>) => void;
-  addConsumableItem: (item: Omit<ConsumableItem, 'id'>) => void;
-  deleteConsumableItem: (id: string) => void;
-  updateConsumableOrderStatus: (orderId: string, status: ConsumableOrder['status'], notes?: string) => void;
+  submitWelfareRequest: (data: Omit<WelfareRequest, 'id' | 'status' | 'createdAt'>) => Promise<WelfareRequest>;
+  updateWelfareStatus: (requestId: string, status: WelfareRequest['status'], adminNote?: string) => Promise<void>;
+  submitAccommodationRequest: (data: {
+    city: string;
+    checkInIso: string;
+    nights: number;
+    description?: string;
+    phone?: string;
+  }) => Promise<{ message: string; request: WelfareRequest }>;
+  welfarePortalConfig: WelfarePortalConfig;
+  updateWelfarePortalConfig: (updates: Partial<WelfarePortalConfig>) => Promise<WelfarePortalConfig>;
+  myFundMembership: WelfareFundMembership | null;
+  myFundPayments: WelfareFundPayment[];
+  allFundMemberships: WelfareFundMembership[];
+  allFundPayments: WelfareFundPayment[];
+  applyFundMembership: (monthlyFeeAmount: number) => Promise<WelfareFundMembership>;
+  editPendingFundMembership: (id: string, monthlyFeeAmount: number) => Promise<WelfareFundMembership>;
+  deletePendingFundMembership: (id: string) => Promise<void>;
+  reviewFundMembership: (id: string, status: 'approved' | 'rejected' | 'pending', adminNote?: string) => Promise<void>;
+  payFundFee: (data: { amount: number; periodLabel: string; paymentMethod: string; receiptUrl?: string }) => Promise<WelfareFundPayment>;
+  reviewFundPayment: (id: string, status: 'verified' | 'rejected' | 'pending', adminNote?: string) => Promise<void>;
+  installmentPartners: WelfareInstallmentPartner[];
+  installmentRequests: WelfareInstallmentRequest[];
+  createInstallmentPartner: (data: Omit<WelfareInstallmentPartner, 'id' | 'version' | 'createdAt'>) => Promise<WelfareInstallmentPartner>;
+  updateInstallmentPartner: (id: string, updates: Partial<WelfareInstallmentPartner>) => Promise<WelfareInstallmentPartner>;
+  deleteInstallmentPartner: (id: string) => Promise<void>;
+  submitInstallmentRequest: (data: {
+    partnerId: string;
+    requestedAmount: number;
+    months: number;
+    description?: string;
+    phone?: string;
+  }) => Promise<WelfareInstallmentRequest>;
+  reviewInstallmentRequest: (
+    id: string,
+    status: WelfareInstallmentRequest['status'],
+    adminNote?: string
+  ) => Promise<void>;
+  placeConsumableOrder: (
+    items: { itemId: string; title: string; quantity: number; unitPrice: number }[],
+    deliveryAddress: string,
+    deliveryMethod?: DeliveryMethodType
+  ) => Promise<ConsumableOrder>;
+  submitProductProposal: (data: Omit<MemberProductProposal, 'id' | 'status' | 'createdAt'>) => Promise<void>;
+  updateConsumableStock: (itemId: string, newStock: number) => Promise<void>;
+  updateConsumableItem: (id: string, updates: Partial<ConsumableItem>) => Promise<void>;
+  addConsumableItem: (item: Omit<ConsumableItem, 'id'>) => Promise<void>;
+  deleteConsumableItem: (id: string) => Promise<void>;
+  updateConsumableOrderStatus: (orderId: string, status: ConsumableOrder['status'], notes?: string) => Promise<void>;
+  updateConsumablePostalTracking: (
+    orderId: string,
+    data: { postalTrackingCode?: string; shippingStatus?: string; status?: string; expectedVersion: number }
+  ) => Promise<void>;
 
   // Configurable Welfare Sections, Loan Rules & Cooperative Settings
   welfareSectionsConfig: WelfareSectionConfig[];
@@ -558,8 +608,28 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     welfareSectionsConfig: welfare.welfareSectionsConfig,
     loanTermsAndRules: welfare.loanTermsAndRules,
     cooperativeSectionInfo: welfare.cooperativeSectionInfo,
+    welfarePortalConfig: welfare.welfarePortalConfig,
+    myFundMembership: welfare.myFundMembership,
+    myFundPayments: welfare.myFundPayments,
+    allFundMemberships: welfare.allFundMemberships,
+    allFundPayments: welfare.allFundPayments,
+    installmentPartners: welfare.installmentPartners,
+    installmentRequests: welfare.installmentRequests,
     submitWelfareRequest: welfare.submitWelfareRequest,
     updateWelfareStatus: welfare.updateWelfareStatus,
+    submitAccommodationRequest: welfare.submitAccommodationRequest,
+    updateWelfarePortalConfig: welfare.updateWelfarePortalConfig,
+    applyFundMembership: welfare.applyFundMembership,
+    editPendingFundMembership: welfare.editPendingFundMembership,
+    deletePendingFundMembership: welfare.deletePendingFundMembership,
+    reviewFundMembership: welfare.reviewFundMembership,
+    payFundFee: welfare.payFundFee,
+    reviewFundPayment: welfare.reviewFundPayment,
+    createInstallmentPartner: welfare.createInstallmentPartner,
+    updateInstallmentPartner: welfare.updateInstallmentPartner,
+    deleteInstallmentPartner: welfare.deleteInstallmentPartner,
+    submitInstallmentRequest: welfare.submitInstallmentRequest,
+    reviewInstallmentRequest: welfare.reviewInstallmentRequest,
     placeConsumableOrder: welfare.placeConsumableOrder,
     submitProductProposal: welfare.submitProductProposal,
     updateConsumableStock: welfare.updateConsumableStock,
@@ -567,6 +637,7 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     addConsumableItem: welfare.addConsumableItem,
     deleteConsumableItem: welfare.deleteConsumableItem,
     updateConsumableOrderStatus: welfare.updateConsumableOrderStatus,
+    updateConsumablePostalTracking: welfare.updateConsumablePostalTracking,
     updateWelfareSectionsConfig: welfare.updateWelfareSectionsConfig,
     updateLoanTermsAndRules: welfare.updateLoanTermsAndRules,
     updateCooperativeSectionInfo: welfare.updateCooperativeSectionInfo,
@@ -677,7 +748,7 @@ const AuthConsumerBridge: React.FC<{ children: React.ReactNode }> = ({ children 
       <CoursesProvider currentUser={currentUser} securityPin={securityPin}>
         <ProductsProvider currentUser={currentUser}>
           <CounselingProvider currentUser={currentUser}>
-            <WelfareProvider>
+            <WelfareProvider currentUser={currentUser}>
               <ResearchAndRulingsProvider currentUser={currentUser}>
                 <AppContextBridge>
                   {children}

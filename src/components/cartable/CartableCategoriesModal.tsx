@@ -62,27 +62,27 @@ export const CartableCategoriesModal: React.FC<CartableCategoriesModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
       onClick={onClose}
       dir="rtl"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[90vh] flex flex-col"
+        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+        className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[92dvh] sm:max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-5 sm:p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+        <div className="shrink-0 p-4 sm:p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
               <Sliders className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-white">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-lg font-black text-white truncate">
                 مدیریت دسته‌بندی‌ها و ماتریس ارجاع خودکار
               </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 truncate">
                 تعریف دسته‌ها، فعال/غیرفعال‌سازی و هدایت مستقیم تمام درخواست‌ها به مدیر دانش‌آموختگان
               </p>
             </div>
@@ -91,13 +91,14 @@ export const CartableCategoriesModal: React.FC<CartableCategoriesModalProps> = (
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="بستن"
+            className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 text-xs sm:text-sm">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-5 flex-1 min-h-0 text-xs sm:text-sm">
           {/* Master Toggle: Disable All Categories -> Route to Alumni Manager (اصلاح ۳) */}
           <div
             className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
@@ -329,11 +330,11 @@ export const CartableCategoriesModal: React.FC<CartableCategoriesModalProps> = (
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-end gap-3">
+        <div className="shrink-0 p-4 sm:px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 flex items-center justify-end gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+            className="px-4 py-2.5 min-h-[44px] rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
           >
             انصراف
           </button>
@@ -341,7 +342,7 @@ export const CartableCategoriesModal: React.FC<CartableCategoriesModalProps> = (
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+            className="flex-1 sm:flex-none px-6 py-2.5 min-h-[44px] rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
           >
             {saving ? 'در حال ثبت در دیتابیس...' : 'ذخیره تنظیمات در پایگاه داده'}
           </button>

@@ -105,43 +105,44 @@ export const CrextioBentoCustomizerModal: React.FC<CrextioBentoCustomizerModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-black/70 backdrop-blur-md overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="bg-[#12221D] rounded-3xl border border-emerald-500/30 text-white shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[88vh]"
+        className="bg-[#12221D] rounded-t-[26px] sm:rounded-3xl border border-emerald-500/30 text-white shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]"
         dir="rtl"
       >
         {/* هدر مودال مدیریت */}
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-950 via-[#132A21] to-[#1A382C] border-b border-white/10 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center">
+        <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-950 via-[#132A21] to-[#1A382C] border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center shrink-0">
               <Sliders className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span>مدیریت جایگاه، اندازه و محتوای کارت‌های داشبورد</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2 flex-wrap">
+                <span className="truncate">مدیریت جایگاه، اندازه و محتوای کارت‌های داشبورد</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 shrink-0">
                   پنل ادمین
                 </span>
               </h3>
-              <p className="text-xs text-stone-300 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-stone-300 mt-0.5 truncate">
                 تغییر اولویت و مکان کارت‌ها، تنظیم عرض و ویرایش متون و زیرخدمات
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* لیست کارت‌ها با قابلیت تغییر ترتیب، سایز و ویرایش محتوا */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-3.5 flex-1 divide-y divide-white/5">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-3.5 flex-1 min-h-0 divide-y divide-white/5">
           {cards.map((card, idx) => {
             const isEditing = editingCardId === card.id;
 
@@ -292,31 +293,34 @@ export const CrextioBentoCustomizerModal: React.FC<CrextioBentoCustomizerModalPr
         </div>
 
         {/* فوتر دکمه‌های ذخیره و بازنشانی */}
-        <div className="p-4 px-6 bg-[#0E1A16] border-t border-white/10 flex items-center justify-between shrink-0">
+        <div className="px-4 py-3.5 sm:p-4 sm:px-6 bg-[#0E1A16] border-t border-white/10 flex flex-wrap items-center justify-between gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
           <button
+            type="button"
             onClick={handleReset}
-            className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-2 rounded-xl hover:bg-rose-950/40 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-2 min-h-[40px] rounded-xl hover:bg-rose-950/40 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>بازنشانی به چیدمان اولیه</span>
+            <span>بازنشانی</span>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 mr-auto">
             {savedNotice && (
               <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
                 <Check className="w-4 h-4" />
-                <span>تنظیمات ذخیره شد</span>
+                <span>ذخیره شد</span>
               </span>
             )}
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-white/20 text-xs font-bold text-stone-300 hover:bg-white/10 transition-colors"
+              className="px-4 py-2.5 min-h-[42px] rounded-xl border border-white/20 text-xs font-bold text-stone-300 hover:bg-white/10 transition-colors cursor-pointer"
             >
               انصراف
             </button>
             <button
+              type="button"
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-xl text-xs font-black text-stone-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+              className="px-5 sm:px-6 py-2.5 min-h-[42px] rounded-xl text-xs font-black text-stone-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>ذخیره و اعمال چیدمان</span>

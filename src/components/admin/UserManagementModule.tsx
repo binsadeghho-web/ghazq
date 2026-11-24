@@ -675,141 +675,143 @@ export const UserManagementModule: React.FC = () => {
           MODAL 3: SECURITY PIN & SMS OTP MODAL
           ======================================================================== */}
       {isPinModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-4" dir="rtl">
+        <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-md border border-stone-200 shadow-2xl overflow-hidden p-6 space-y-5"
+            className="bg-white rounded-t-[26px] sm:rounded-3xl w-full max-w-md max-h-[92dvh] flex flex-col border border-stone-200 shadow-2xl overflow-hidden"
           >
-            <div className="flex items-center justify-between border-b pb-3 border-stone-200">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-800">
+            <div className="px-5 py-4 sm:p-6 flex items-center justify-between gap-2 border-b border-stone-200 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-800 shrink-0">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-stone-900">
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-sm text-stone-900 truncate">
                     {pinModalMode === 'verify' ? 'ورود پین کد امنیتی مدیر' : 'فعال‌سازی / تغییر پین کد با پیامک'}
                   </h3>
-                  <p className="text-xs text-stone-500">حفاظت از پایگاه داده و اطلاعات هویتی اعضا</p>
+                  <p className="text-xs text-stone-500 truncate">حفاظت از پایگاه داده و اطلاعات هویتی اعضا</p>
                 </div>
               </div>
-              <button onClick={() => setIsPinModalOpen(false)} className="p-1 rounded-lg hover:bg-stone-100 text-stone-400">
+              <button type="button" onClick={() => setIsPinModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-stone-100 text-stone-500 flex items-center justify-center shrink-0 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {pinFeedback && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{pinFeedback}</span>
-              </div>
-            )}
-
-            {pinModalMode === 'verify' ? (
-              <form onSubmit={handleVerifyPinSubmit} className="space-y-4 text-xs">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-stone-700">پین کد امنیتی را وارد فرمایید:</label>
-                  <input
-                    type="password"
-                    maxLength={8}
-                    required
-                    value={inputPin}
-                    onChange={e => setInputPin(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-center font-mono text-lg font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                    placeholder="••••••"
-                  />
-                  <p className="text-[11px] text-stone-500">پین کد پیش‌فرض تستی: <code className="font-mono font-bold text-emerald-800">123456</code></p>
+            <div className="p-5 sm:p-6 flex-1 min-h-0 overflow-y-auto overscroll-y-contain space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {pinFeedback && (
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{pinFeedback}</span>
                 </div>
+              )}
 
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPinModalMode('setup_otp');
-                      setPinFeedback(null);
-                    }}
-                    className="text-emerald-700 font-bold hover:underline"
-                  >
-                    پین را فراموش کرده‌اید؟ پیامک کد تایید OTP
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-sm"
-                  >
-                    تایید پین کد
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleSaveNewPin} className="space-y-4 text-xs">
-                <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-950 text-[11px] space-y-1.5">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <Smartphone className="w-4 h-4 text-blue-700" />
-                    ارسال کد تایید پیامکی به موبایل مدیر ({toPersianNumbers('09121112233')}):
-                  </p>
-                  <p className="text-blue-800">جهت برقراری بالاترین استاندارد امنیتی، کد ۶ رقمی به شماره همراه راهبر ارسال می‌گردد.</p>
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    className="mt-2 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>ارسال پیامک تایید (SMS OTP)</span>
-                  </button>
-                </div>
-
-                {otpSentCode && (
-                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                    پیامک دریافتی در تلفن مدیر: <strong className="font-mono text-sm bg-amber-200 px-2 py-0.5 rounded-md">{otpSentCode}</strong>
+              {pinModalMode === 'verify' ? (
+                <form onSubmit={handleVerifyPinSubmit} className="space-y-4 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-stone-700">پین کد امنیتی را وارد فرمایید:</label>
+                    <input
+                      type="password"
+                      maxLength={8}
+                      required
+                      value={inputPin}
+                      onChange={e => setInputPin(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-center font-mono text-lg font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                      placeholder="••••••"
+                    />
+                    <p className="text-[11px] text-stone-500">پین کد پیش‌فرض تستی: <code className="font-mono font-bold text-emerald-800">123456</code></p>
                   </div>
-                )}
 
-                <div className="space-y-1.5">
-                  <label className="font-bold text-stone-700">کد تایید پیامکی (۶ رقم):</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={inputOtp}
-                    onChange={e => setInputOtp(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-center font-mono font-bold text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                    placeholder="123456"
-                  />
-                </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPinModalMode('setup_otp');
+                        setPinFeedback(null);
+                      }}
+                      className="text-emerald-700 font-bold hover:underline cursor-pointer"
+                    >
+                      فراموشی پین / پیامک OTP
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-sm cursor-pointer"
+                    >
+                      تایید پین کد
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleSaveNewPin} className="space-y-4 text-xs">
+                  <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-950 text-[11px] space-y-1.5">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4 text-blue-700" />
+                      ارسال کد تایید پیامکی به موبایل مدیر ({toPersianNumbers('09121112233')}):
+                    </p>
+                    <p className="text-blue-800">جهت برقراری بالاترین استاندارد امنیتی، کد ۶ رقمی به شماره همراه راهبر ارسال می‌گردد.</p>
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      className="mt-2 px-3 py-2 min-h-[38px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>ارسال پیامک تایید (SMS OTP)</span>
+                    </button>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-bold text-stone-700">تعیین پین کد جدید امنیتی مدیر:</label>
-                  <input
-                    type="password"
-                    required
-                    maxLength={8}
-                    value={newPinCode}
-                    onChange={e => setNewPinCode(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-center font-mono font-bold text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                    placeholder="مثال: 654321"
-                  />
-                </div>
+                  {otpSentCode && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                      پیامک دریافتی در تلفن مدیر: <strong className="font-mono text-sm bg-amber-200 px-2 py-0.5 rounded-md">{otpSentCode}</strong>
+                    </div>
+                  )}
 
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPinModalMode('verify');
-                      setPinFeedback(null);
-                    }}
-                    className="text-stone-500 font-bold hover:underline"
-                  >
-                    بازگشت به ورود پین
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-sm"
-                  >
-                    ثبت و فعال‌سازی پین کد
-                  </button>
-                </div>
-              </form>
-            )}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-stone-700">کد تایید پیامکی (۶ رقم):</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={inputOtp}
+                      onChange={e => setInputOtp(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-center font-mono font-bold text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                      placeholder="123456"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-stone-700">تعیین پین کد جدید امنیتی مدیر:</label>
+                    <input
+                      type="password"
+                      required
+                      maxLength={8}
+                      value={newPinCode}
+                      onChange={e => setNewPinCode(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-2xl bg-[#F5F4EE] border border-stone-200 text-center font-mono font-bold text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                      placeholder="مثال: 654321"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPinModalMode('verify');
+                        setPinFeedback(null);
+                      }}
+                      className="text-stone-500 font-bold hover:underline cursor-pointer"
+                    >
+                      بازگشت به ورود پین
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 min-h-[42px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-sm cursor-pointer"
+                    >
+                      ثبت و فعال‌سازی پین کد
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </motion.div>
         </div>
       )}
@@ -923,62 +925,65 @@ const UserPermissionsMatrixModal: React.FC<UserPermissionsMatrixModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-4xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-4xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
         {/* Header */}
-        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md">
-              <SlidersHorizontal className="w-6 h-6 text-emerald-300" />
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shrink-0">
+              <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-300" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-stone-900">ماتریس جامع تنظیم سطح دسترسی کاربر</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-black text-stone-900 truncate">ماتریس جامع تنظیم سطح دسترسی کاربر</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 shrink-0">
                   {user.fullName}
                 </span>
               </div>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 truncate">
                 نقش فعلی: {user.roleTitle} · کد ملی: {toPersianNumbers(user.nationalId)}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
+          <button type="button" onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 shrink-0 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Quick Presets Bar */}
-        <div className="px-6 py-3 bg-white border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <span className="font-bold text-stone-600">اعمال سریع الگوهای استاندارد:</span>
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white border-b border-stone-200 flex items-center justify-between gap-2 text-xs overflow-x-auto shrink-0">
+          <span className="font-bold text-stone-600 whitespace-nowrap shrink-0">الگوهای آماده:</span>
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={applyAdminPreset}
-              className="px-3 py-1.5 rounded-full bg-purple-50 text-purple-900 border border-purple-200 font-bold hover:bg-purple-100 transition-colors"
+              className="px-3 py-1.5 rounded-full bg-purple-50 text-purple-900 border border-purple-200 font-bold hover:bg-purple-100 transition-colors whitespace-nowrap cursor-pointer"
             >
-              الگوی مدیر ارشد (دسترسی کامل)
+              مدیر ارشد
             </button>
             <button
+              type="button"
               onClick={applySupervisorPreset}
-              className="px-3 py-1.5 rounded-full bg-teal-50 text-teal-900 border border-teal-200 font-bold hover:bg-teal-100 transition-colors"
+              className="px-3 py-1.5 rounded-full bg-teal-50 text-teal-900 border border-teal-200 font-bold hover:bg-teal-100 transition-colors whitespace-nowrap cursor-pointer"
             >
-              الگوی مسئول کارتابل و خدمات
+              مسئول خدمات
             </button>
             <button
+              type="button"
               onClick={applyAlumniPreset}
-              className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold hover:bg-emerald-100 transition-colors"
+              className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold hover:bg-emerald-100 transition-colors whitespace-nowrap cursor-pointer"
             >
-              الگوی دانش‌آموخته قضایی (حریم شخصی)
+              دانش‌آموخته قضایی
             </button>
           </div>
         </div>
 
         {/* Permissions List */}
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0">
           <div className="space-y-3">
             {SYSTEM_SECTIONS.map((section, idx) => {
               const currentLevel = permissions[section.id] || 'none';
@@ -1043,21 +1048,21 @@ const UserPermissionsMatrixModal: React.FC<UserPermissionsMatrixModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-5 bg-[#F5F4EE] border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="px-4 py-3.5 sm:p-5 bg-[#F5F4EE] border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => onApplyToRole(user.role, permissions)}
-            className="text-stone-700 hover:text-emerald-800 font-extrabold flex items-center gap-1.5 underline"
+            className="text-stone-700 hover:text-emerald-800 font-extrabold flex items-center gap-1.5 underline cursor-pointer text-[11px]"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>تعمیم این الگو به کلیه اعضای دارای نقش «{user.role === 'admin' ? 'مدیر' : user.role === 'supervisor' ? 'مسئول' : 'دانش‌آموخته'}»</span>
+            <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+            <span>تعمیم به هم‌نقش‌ها («{user.role === 'admin' ? 'مدیر' : user.role === 'supervisor' ? 'مسئول' : 'دانش‌آموخته'}»)</span>
           </button>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-stone-300 text-stone-700 font-bold"
+              className="px-5 py-2.5 min-h-[42px] rounded-full border border-stone-300 bg-white text-stone-700 font-bold cursor-pointer"
             >
               انصراف
             </button>
@@ -1065,7 +1070,7 @@ const UserPermissionsMatrixModal: React.FC<UserPermissionsMatrixModalProps> = ({
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-md flex items-center gap-1.5"
+              className="px-6 py-2.5 min-h-[42px] rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
             >
               <Check className="w-4 h-4" />
               <span>{saving ? 'در حال اعمال...' : 'ذخیره سطح دسترسی'}</span>
@@ -1256,28 +1261,28 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
   const isAlumni = userCategory === 'alumni';
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
-        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md">
-              <UserPlus className="w-6 h-6 text-emerald-300" />
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shrink-0">
+              <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-300" />
             </div>
-            <div>
-              <h3 className="text-lg font-extrabold text-stone-900">ایجاد کاربر و حساب جدید</h3>
-              <p className="text-xs text-stone-500">پشتیبانی از انواع کاربران (قضایی، مسئول، کارمند اداری، مدیر ارشد)</p>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-lg font-extrabold text-stone-900 truncate">ایجاد کاربر و حساب جدید</h3>
+              <p className="text-[11px] sm:text-xs text-stone-500 truncate">پشتیبانی از انواع کاربران (قضایی، مسئول، کارمند اداری، مدیر ارشد)</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
+          <button type="button" onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 shrink-0 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form id="new-user-reg-form" onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0 text-xs">
           {/* 9 ORGANIZATIONAL ROLES SELECTOR */}
           <div className="space-y-2 p-3.5 rounded-2xl bg-stone-100/90 border border-stone-200">
             <label className="font-extrabold text-stone-800 block">
@@ -1538,24 +1543,26 @@ const NewUserRegistrationModal: React.FC<NewUserModalProps> = ({ onClose, onRegi
             * کد ملی به طور پیوسته همگام با نام کاربری و شماره موبایل همگام با رمز عبور ثبت می‌شوند؛ در صورت تمایل می‌توانید در فیلدهای مربوطه آن‌ها را شخصی‌سازی نمایید.
           </div>
 
-          <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-stone-300 text-stone-700 font-bold"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold shadow-md flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4" />
-              <span>{loading ? 'در حال ثبت...' : 'ایجاد حساب کاربری'}</span>
-            </button>
-          </div>
         </form>
+
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#F5F4EE] border-t border-stone-200 flex items-center justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 min-h-[42px] rounded-full border border-stone-300 bg-white text-stone-700 font-bold text-xs cursor-pointer"
+          >
+            انصراف
+          </button>
+          <button
+            type="submit"
+            form="new-user-reg-form"
+            disabled={loading}
+            className="px-6 py-2.5 min-h-[42px] rounded-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+          >
+            <Check className="w-4 h-4" />
+            <span>{loading ? 'در حال ثبت...' : 'ایجاد حساب کاربری'}</span>
+          </button>
+        </div>
       </motion.div>
     </div>
   );
@@ -1694,33 +1701,33 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
   const isAlumni = userCategory === 'alumni';
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#FCFCFA] rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-[#FCFCFA] rounded-t-[26px] sm:rounded-[36px] w-full max-w-2xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
-        <div className="p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-md">
-              <Edit className="w-6 h-6" />
+        <div className="p-4 sm:p-6 bg-[#F5F4EE] border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-md shrink-0">
+              <Edit className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-extrabold text-stone-900">ویرایش کامل اطلاعات و مشخصات کاربر</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-extrabold text-stone-900 truncate">ویرایش کامل اطلاعات کاربر</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
                   {user.fullName}
                 </span>
               </div>
-              <p className="text-xs text-stone-500">ویرایش تمامی مشخصات هویتی، نام کاربری، رمز عبور، نقش و عنوان سازمانی</p>
+              <p className="text-[11px] sm:text-xs text-stone-500 truncate">ویرایش مشخصات هویتی، نام کاربری، رمز عبور و نقش</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500">
+          <button type="button" onClick={onClose} className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 shrink-0 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form id="edit-user-full-form" onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-4 flex-1 min-h-0 text-xs">
           {/* 9 ORGANIZATIONAL ROLES SELECTOR */}
           <div className="space-y-2 p-3.5 rounded-2xl bg-stone-100/90 border border-stone-200">
             <label className="font-extrabold text-stone-800 block">
@@ -1955,24 +1962,26 @@ const EditUserFullModal: React.FC<EditUserFullModalProps> = ({ user, onClose, on
             </div>
           </div>
 
-          <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-stone-300 text-stone-700 font-bold"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold shadow-md flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              <span>{loading ? 'در حال ثبت تغییرات...' : 'ذخیره کامل تغییرات کاربر'}</span>
-            </button>
-          </div>
         </form>
+
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#F5F4EE] border-t border-stone-200 flex items-center justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 min-h-[42px] rounded-full border border-stone-300 bg-white text-stone-700 font-bold text-xs cursor-pointer"
+          >
+            انصراف
+          </button>
+          <button
+            type="submit"
+            form="edit-user-full-form"
+            disabled={loading}
+            className="px-6 py-2.5 min-h-[42px] rounded-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+          >
+            <Save className="w-4 h-4" />
+            <span>{loading ? 'در حال ثبت تغییرات...' : 'ذخیره کامل تغییرات کاربر'}</span>
+          </button>
+        </div>
       </motion.div>
     </div>
   );

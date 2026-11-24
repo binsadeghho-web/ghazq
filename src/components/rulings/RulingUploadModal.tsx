@@ -163,23 +163,23 @@ export const RulingUploadModal: React.FC<RulingUploadModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/65 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-stone-950/65 backdrop-blur-xs overflow-hidden"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-[#FBF9F5] dark:bg-slate-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-2xl bg-[#FBF9F5] dark:bg-slate-900 rounded-t-[26px] sm:rounded-2xl shadow-2xl border border-stone-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 bg-stone-900 dark:bg-slate-950 text-white flex items-center justify-between border-b border-stone-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-stone-900 dark:bg-slate-950 text-white flex items-center justify-between gap-2 border-b border-stone-800 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0">
               <Scale className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">بارگذاری رأی</h3>
-              <p className="text-[11px] text-stone-300 mt-0.5">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-white truncate">بارگذاری رأی</h3>
+              <p className="text-[11px] text-stone-300 mt-0.5 line-clamp-1">
                 {isOfficial
                   ? 'ثبت دادنامه جدید در تالار رأی؛ جزئیات تکمیلی پس از ثبت نیز قابل ویرایش و برچسب‌گذاری است'
                   : 'فرم ساده ثبت رأی — پس از بررسی علمی و تکمیل مستندات توسط دبیرخانه، در تالار منتشر خواهد شد'}
@@ -189,14 +189,15 @@ export const RulingUploadModal: React.FC<RulingUploadModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 cursor-pointer"
+            aria-label="بستن"
+            className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl text-stone-300 hover:text-white hover:bg-stone-800 flex items-center justify-center cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto text-right">
+        <form id="ruling-upload-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 overflow-y-auto overscroll-y-contain flex-1 min-h-0 text-right">
           {uploadError && (
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -458,25 +459,27 @@ export const RulingUploadModal: React.FC<RulingUploadModalProps> = ({
             </div>
           )}
 
-          {/* Footer Buttons */}
-          <div className="pt-3 border-t border-stone-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-stone-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || uploading || !title.trim() || !fullRulingText.trim()}
-              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-stone-950 disabled:opacity-45 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>ثبت و بارگذاری رأی</span>
-            </button>
-          </div>
         </form>
+
+        {/* Pinned Footer Buttons */}
+        <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-stone-200 dark:border-slate-800 bg-[#FBF9F5] dark:bg-slate-900 flex items-center justify-end gap-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 min-h-[44px] text-xs font-bold text-stone-700 dark:text-slate-300 bg-stone-200/80 dark:bg-slate-800 hover:bg-stone-200 dark:hover:bg-slate-700 rounded-xl cursor-pointer"
+          >
+            انصراف
+          </button>
+          <button
+            type="submit"
+            form="ruling-upload-form"
+            disabled={submitting || uploading || !title.trim() || !fullRulingText.trim()}
+            className="flex-1 sm:flex-none px-5 py-2.5 min-h-[44px] bg-stone-900 hover:bg-stone-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-stone-950 disabled:opacity-45 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            <span>ثبت و بارگذاری رأی</span>
+          </button>
+        </div>
       </div>
     </div>
   );

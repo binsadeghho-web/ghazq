@@ -138,7 +138,7 @@ export const ProductIntroModal: React.FC<ProductIntroModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
@@ -147,28 +147,29 @@ export const ProductIntroModal: React.FC<ProductIntroModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           onClick={e => e.stopPropagation()}
-          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[90vh]"
+          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
         >
-          <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
+          <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <span className="text-[11px] text-amber-400 font-bold block">
+              <span className="text-[11px] text-amber-400 font-bold block truncate">
                 {getProductCategoryLabel(product.format, product.formatTitle, storeConfig)}
                 {product.subjectIndex ? ` · نمایه: ${product.subjectIndex}` : ''}
               </span>
-              <h3 className="text-base sm:text-lg font-black text-white truncate">
+              <h3 className="text-sm sm:text-lg font-black text-white truncate">
                 {product.title}
               </h3>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
+              aria-label="بستن"
+              className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
             {/* Gallery Column */}
             <div className="lg:col-span-5 space-y-3">
               <div
@@ -480,11 +481,11 @@ export const ProductIntroModal: React.FC<ProductIntroModalProps> = ({
             </div>
           </div>
 
-          <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-slate-50/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              className="px-4 sm:px-5 py-2.5 min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
             >
               بستن
             </button>
@@ -495,7 +496,7 @@ export const ProductIntroModal: React.FC<ProductIntroModalProps> = ({
                 onClose();
                 onOpenPurchase(prod);
               }}
-              className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5"
+              className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-md cursor-pointer flex items-center justify-center gap-1.5"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>{product.isOwned ? 'سفارش نسخه دیگر' : 'ثبت‌نام / خرید و دریافت'}</span>

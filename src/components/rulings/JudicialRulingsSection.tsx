@@ -900,12 +900,12 @@ export const JudicialRulingsSection: React.FC = () => {
       {/* Drawer / Modal Reader for Grid & Archive Modes */}
       {drawerRuling && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/65 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-stone-950/65 backdrop-blur-xs overflow-hidden"
           dir="rtl"
           onClick={() => setDrawerRulingId(null)}
         >
           <div
-            className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-2xl border border-stone-200 dark:border-slate-800 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-y-contain"
             onClick={e => e.stopPropagation()}
           >
             <RulingDetailReader

@@ -70,7 +70,7 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-5 bg-slate-950/80 backdrop-blur-md overflow-hidden"
         dir="rtl"
         onClick={onClose}
       >
@@ -78,11 +78,11 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] text-right text-slate-900 dark:text-slate-100"
+          className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh] text-right text-slate-900 dark:text-slate-100"
           onClick={e => e.stopPropagation()}
         >
           {/* Hero Header / Cover Photo */}
-          <div className="relative h-52 sm:h-64 bg-slate-900 shrink-0 overflow-hidden">
+          <div className="relative h-40 sm:h-64 bg-slate-900 shrink-0 overflow-hidden">
             {course.coverImage ? (
               <>
                 <img
@@ -147,7 +147,8 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-9 h-9 rounded-xl bg-black/50 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer"
+                  aria-label="بستن"
+                  className="w-10 h-10 rounded-xl bg-black/50 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -159,14 +160,14 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
               {isVisible('level') && course.level && (
                 <span className="text-[11px] text-emerald-300 font-bold block">{course.level}</span>
               )}
-              <h2 className="text-lg sm:text-2xl font-black text-white leading-snug drop-shadow">
+              <h2 className="text-base sm:text-2xl font-black text-white leading-snug drop-shadow line-clamp-2">
                 {course.title}
               </h2>
             </div>
           </div>
 
           {/* Scrollable Body */}
-          <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6 text-xs sm:text-sm">
+          <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-6 text-xs sm:text-sm">
             {/* Key Metrics Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {isVisible('holdingTime') && (
@@ -533,11 +534,11 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
           </div>
 
           {/* Modal Footer CTA */}
-          <div className="p-4 sm:px-6 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="p-3.5 sm:px-6 pb-[max(0.875rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              className="px-4 py-2.5 min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
             >
               بستن پنجره
             </button>

@@ -1006,33 +1006,40 @@ export const CommandCenterSection: React.FC = () => {
 
       {/* MODAL 1: ROLLBACK CONFIRMATION */}
       {selectedAuditRollbackItem && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#182622] rounded-[32px] max-w-lg w-full p-6 space-y-5 shadow-2xl border border-amber-500/40 text-xs">
-            <div className="flex items-center gap-2 text-amber-600 font-extrabold text-sm">
-              <RotateCcw className="w-5 h-5" />
-              <span>تایید بازگردانی ۱۰۰٪ اقدام مدیر</span>
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
+          <div className="bg-white dark:bg-[#182622] rounded-t-[26px] sm:rounded-[32px] max-w-lg w-full max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl border border-amber-500/40 text-xs">
+            <div className="px-5 py-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 text-amber-600 font-extrabold text-sm">
+                <RotateCcw className="w-5 h-5" />
+                <span>تایید بازگردانی ۱۰۰٪ اقدام مدیر</span>
+              </div>
+              <button type="button" onClick={() => setSelectedAuditRollbackItem(null)} className="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 flex items-center justify-center cursor-pointer">✕</button>
             </div>
 
-            <p className="text-stone-700 dark:text-stone-300 leading-relaxed font-medium">
-              آیا اطمینان دارید که مایل به لغو تغییرات اقدام زیر و بازگردانی ۱۰۰٪ به وضعیت قبل هستید؟
-            </p>
+            <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
+              <p className="text-stone-700 dark:text-stone-300 leading-relaxed font-medium">
+                آیا اطمینان دارید که مایل به لغو تغییرات اقدام زیر و بازگردانی ۱۰۰٪ به وضعیت قبل هستید؟
+              </p>
 
-            <div className="p-3 bg-stone-100 dark:bg-stone-800 rounded-xl space-y-1 font-mono text-[11px]">
-              <div>اقدام: {selectedAuditRollbackItem.details}</div>
-              <div>وضعیت قبل: {JSON.stringify(selectedAuditRollbackItem.beforeState)}</div>
+              <div className="p-3 bg-stone-100 dark:bg-stone-800 rounded-xl space-y-1 font-mono text-[11px] break-all">
+                <div>اقدام: {selectedAuditRollbackItem.details}</div>
+                <div>وضعیت قبل: {JSON.stringify(selectedAuditRollbackItem.beforeState)}</div>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="px-5 py-3.5 border-t border-stone-200 dark:border-stone-800 flex justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
               <button
+                type="button"
                 onClick={() => setSelectedAuditRollbackItem(null)}
-                className="px-4 py-2 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold"
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
+                type="button"
                 disabled={isRollbacking}
                 onClick={handleRollbackConfirm}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-lg cursor-pointer"
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-lg cursor-pointer"
               >
                 {isRollbacking ? 'در حال بازگردانی...' : 'تایید و بازگردانی ۱۰۰٪'}
               </button>
@@ -1043,44 +1050,47 @@ export const CommandCenterSection: React.FC = () => {
 
       {/* MODAL 2: EMERGENCY SMS ALERT */}
       {smsModalAlert && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#182622] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 dark:border-[#2A423B] text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
+          <div className="bg-white dark:bg-[#182622] rounded-t-[26px] sm:rounded-[32px] max-w-md w-full max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl border border-stone-200 dark:border-[#2A423B] text-xs">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-stone-200 dark:border-stone-800 shrink-0">
               <span className="font-extrabold text-stone-900 dark:text-white flex items-center gap-2">
                 <Send className="w-4 h-4 text-amber-500" />
                 <span>شبیه‌ساز درگاه ارسال پیامک اضطراری</span>
               </span>
-              <button onClick={() => setSmsModalAlert(null)} className="font-bold text-stone-400">✕</button>
+              <button type="button" onClick={() => setSmsModalAlert(null)} className="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 font-bold text-stone-500 flex items-center justify-center cursor-pointer">✕</button>
             </div>
 
-            <div className="space-y-2">
-              <label className="font-bold text-stone-700 dark:text-stone-300">شماره گیرنده پیامک ادمین:</label>
-              <input
-                type="text"
-                value={smsPhoneInput}
-                onChange={e => setSmsPhoneInput(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono text-stone-900 dark:text-white"
-              />
+            <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
+              <div className="space-y-2">
+                <label className="font-bold text-stone-700 dark:text-stone-300">شماره گیرنده پیامک ادمین:</label>
+                <input
+                  type="text"
+                  value={smsPhoneInput}
+                  onChange={e => setSmsPhoneInput(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono text-stone-900 dark:text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-bold text-stone-700 dark:text-stone-300">متن پیامک هشدار:</label>
+                <textarea
+                  rows={3}
+                  value={smsMessageInput}
+                  onChange={e => setSmsMessageInput(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="font-bold text-stone-700 dark:text-stone-300">متن پیامک هشدار:</label>
-              <textarea
-                rows={3}
-                value={smsMessageInput}
-                onChange={e => setSmsMessageInput(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setSmsModalAlert(null)} className="px-4 py-2 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-700 font-bold">
+            <div className="px-5 py-3.5 border-t border-stone-200 dark:border-stone-800 flex justify-end gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              <button type="button" onClick={() => setSmsModalAlert(null)} className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-700 font-bold cursor-pointer">
                 انصراف
               </button>
               <button
+                type="button"
                 disabled={isSendingSms}
                 onClick={handleSendSms}
-                className="px-5 py-2 rounded-xl bg-amber-500 text-slate-950 font-black shadow-lg cursor-pointer"
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-amber-500 text-slate-950 font-black shadow-lg cursor-pointer"
               >
                 {isSendingSms ? 'در حال ارسال...' : 'ارسال پیامک فوری'}
               </button>
@@ -1091,17 +1101,19 @@ export const CommandCenterSection: React.FC = () => {
 
       {/* MODAL 3: STACK TRACE VIEW */}
       {stackTraceModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 text-slate-100 rounded-[32px] max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-slate-800 text-xs font-mono">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="font-bold text-amber-400">Stack Trace error log #{stackTraceModalItem.id}</span>
-              <button onClick={() => setStackTraceModalItem(null)} className="font-bold text-slate-400">✕</button>
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden">
+          <div className="bg-slate-900 text-slate-100 rounded-t-[26px] sm:rounded-[32px] max-w-2xl w-full max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl border border-slate-800 text-xs font-mono">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+              <span className="font-bold text-amber-400 truncate">Stack Trace error log #{stackTraceModalItem.id}</span>
+              <button type="button" onClick={() => setStackTraceModalItem(null)} className="w-9 h-9 rounded-full bg-slate-800 font-bold text-slate-300 flex items-center justify-center shrink-0 cursor-pointer">✕</button>
             </div>
-            <pre className="p-4 bg-slate-950 rounded-2xl overflow-x-auto text-[11px] leading-relaxed text-rose-300">
-              {stackTraceModalItem.stack || stackTraceModalItem.message}
-            </pre>
-            <div className="flex justify-end">
-              <button onClick={() => setStackTraceModalItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-white font-bold">
+            <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
+              <pre className="p-4 bg-slate-950 rounded-2xl overflow-x-auto text-[11px] leading-relaxed text-rose-300">
+                {stackTraceModalItem.stack || stackTraceModalItem.message}
+              </pre>
+            </div>
+            <div className="px-5 py-3.5 border-t border-slate-800 flex justify-end shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              <button type="button" onClick={() => setStackTraceModalItem(null)} className="px-5 py-2.5 min-h-[42px] rounded-xl bg-slate-800 text-white font-bold cursor-pointer">
                 بستن
               </button>
             </div>

@@ -50,41 +50,42 @@ export const CartableGuideModal: React.FC<CartableGuideModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-hidden"
       onClick={onClose}
       dir="rtl"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[90vh] flex flex-col"
+        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right text-slate-900 dark:text-slate-100 max-h-[92dvh] sm:max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+        <div className="shrink-0 p-4 sm:p-6 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-white">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-lg font-black text-white truncate">
                 {isEditing ? 'ویرایش راهنمای ثبت درخواست' : guide.title}
               </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 truncate">
                 راهنمای رسمی مراحل، ضوابط و رهگیری در کارتابل خدمات
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {canEdit && !isEditing && (
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold transition-colors cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>ویرایش راهنما</span>
+                <span className="hidden sm:inline">ویرایش راهنما</span>
+                <span className="sm:hidden">ویرایش</span>
               </button>
             )}
             <button
@@ -93,14 +94,15 @@ export const CartableGuideModal: React.FC<CartableGuideModalProps> = ({
                 setIsEditing(false);
                 onClose();
               }}
-              className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="بستن"
+              className="shrink-0 min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs sm:text-sm">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain space-y-5 flex-1 min-h-0 text-xs sm:text-sm">
           {isEditing ? (
             <div className="space-y-4">
               <div>
@@ -160,35 +162,6 @@ export const CartableGuideModal: React.FC<CartableGuideModalProps> = ({
                   className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 resize-none leading-relaxed text-xs"
                 />
               </div>
-
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={handleDisableGuide}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>غیرفعال‌سازی راهنما</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="px-4 py-2.5 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => handleSave({ ...editForm, enabled: true })}
-                    className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
-                  >
-                    {saving ? 'در حال ذخیره...' : 'ذخیره در پایگاه داده'}
-                  </button>
-                </div>
-              </div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -239,22 +212,54 @@ export const CartableGuideModal: React.FC<CartableGuideModalProps> = ({
           )}
         </div>
 
-        {!isEditing && (
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
-            <span className="text-[11px] text-slate-400 font-medium">
-              {guide.updatedBy ? `آخرین بروزرسانی توسط: ${guide.updatedBy}` : 'مرکز خدمات اداری و دانش‌آموختگان'}
-            </span>
-            <button
-              type="button"
-              onClick={onStartNewRequest}
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-            >
-              <span>شروع ثبت درخواست</span>
-              <ArrowRight className="w-4 h-4 rotate-180" />
-            </button>
-          </div>
-        )}
+        <div className="shrink-0 p-4 sm:px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 flex flex-wrap items-center justify-between gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={handleDisableGuide}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[42px] rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>غیرفعال‌سازی</span>
+              </button>
+
+              <div className="flex items-center gap-2 mr-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2.5 min-h-[42px] rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleSave({ ...editForm, enabled: true })}
+                  className="px-5 py-2.5 min-h-[42px] rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {saving ? 'در حال ذخیره...' : 'ذخیره'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                {guide.updatedBy ? `آخرین بروزرسانی توسط: ${guide.updatedBy}` : 'مرکز خدمات اداری و دانش‌آموختگان'}
+              </span>
+              <button
+                type="button"
+                onClick={onStartNewRequest}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+              >
+                <span>شروع ثبت درخواست</span>
+                <ArrowRight className="w-4 h-4 rotate-180" />
+              </button>
+            </>
+          )}
+        </div>
       </motion.div>
     </div>
   );
 };
+

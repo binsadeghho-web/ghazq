@@ -458,22 +458,26 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
 
       {/* Detailed Official Review Modal */}
       {selectedForReview && (
-        <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700 p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden" dir="rtl" onClick={() => setSelectedForReview(null)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl w-full max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 shadow-2xl"
+          >
+            <div className="p-4 sm:p-5 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
                 بررسی تخصصی، تغییر وضعیت و انتصاب استاد
               </h3>
               <button
                 type="button"
                 onClick={() => setSelectedForReview(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+                aria-label="بستن"
+                className="w-10 h-10 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveReviewModal} className="space-y-4 text-xs">
+            <form id="research-admin-review-form" onSubmit={handleSaveReviewModal} className="p-4 sm:p-6 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">
                   وضعیت پرونده:
@@ -504,7 +508,7 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-200 mb-1">
                     عنوان مرحله فعلی:
@@ -556,24 +560,25 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setSelectedForReview(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  disabled={busyId === selectedForReview.id}
-                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-black cursor-pointer disabled:opacity-50"
-                >
-                  {busyId === selectedForReview.id ? 'در حال ذخیره...' : 'ذخیره بررسی و همگام‌سازی'}
-                </button>
-              </div>
             </form>
+
+            <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-50 dark:bg-slate-950 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-800 shrink-0 text-xs">
+              <button
+                type="button"
+                onClick={() => setSelectedForReview(null)}
+                className="px-4 py-2.5 min-h-[42px] rounded-xl border border-slate-300 dark:border-slate-700 font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                form="research-admin-review-form"
+                disabled={busyId === selectedForReview.id}
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-black cursor-pointer disabled:opacity-50"
+              >
+                {busyId === selectedForReview.id ? 'در حال ذخیره...' : 'ذخیره بررسی و همگام‌سازی'}
+              </button>
+            </div>
           </div>
         </div>
       )}
