@@ -9,10 +9,13 @@ import {
   XCircle,
   Banknote,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { formatIsoToJalali } from '../../utils/jalaliDate';
+
+const QUICK_AMOUNT_PRESETS = [10000000, 20000000, 30000000, 50000000];
 
 export const WelfareEmergencyLoanTab: React.FC = () => {
   const { currentUser, welfareRequests, welfarePortalConfig, submitWelfareRequest } = useApp();
@@ -65,7 +68,7 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
       setReasonInput('');
       setFeedback({
         type: 'success',
-        text: 'درخواست تسهیلات اضطراری شما با موفقیت ثبت شد و برای بررسی به کارگروه رفاه ارسال گردید.',
+        text: 'درخواست تسهیلات اضطراری شما ثبت شد و در صف رسیدگی ۴۸ ساعته کارگروه قرار گرفت.',
       });
     } catch (err: any) {
       setFeedback({ type: 'error', text: err?.message || 'خطا در ثبت درخواست تسهیلات.' });
@@ -74,28 +77,31 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
     }
   };
 
-  const renderStatus = (status: string) => {
-    if (status === 'approved')
+  const renderStatusLabel = (status: string) => {
+    if (status === 'approved') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
-          <CheckCircle2 className="w-3.5 h-3.5" /> تایید شده
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> تایید شده
         </span>
       );
-    if (status === 'disbursed')
+    }
+    if (status === 'disbursed') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-teal-50 text-teal-900 border border-teal-200">
-          <Banknote className="w-3.5 h-3.5" /> واریز شده
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-teal-900 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-lg">
+          <Banknote className="w-3.5 h-3.5 shrink-0" /> واریز شده
         </span>
       );
-    if (status === 'rejected')
+    }
+    if (status === 'rejected') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200">
-          <XCircle className="w-3.5 h-3.5" /> رد شده
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+          <XCircle className="w-3.5 h-3.5 shrink-0" /> رد شده
         </span>
       );
+    }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black bg-amber-50 text-amber-800 border border-amber-200">
-        <Clock className="w-3.5 h-3.5" /> در حال بررسی
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+        <Clock className="w-3.5 h-3.5 shrink-0" /> در حال بررسی کارگروه
       </span>
     );
   };
@@ -104,40 +110,56 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Header Card with Prominent "توضیحات" Button */}
-      <div className="rounded-3xl bg-gradient-to-l from-[#071E17] via-[#0B2C22] to-[#0D3327] text-white p-5 sm:p-6 shadow-md border border-emerald-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-[#F3D078]" />
-            <h2 className="text-base sm:text-lg font-black">
+      {/* Dedicated Page Header */}
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-bl from-[#071E17] via-[#0B2C22] to-[#113D2F] text-white p-5 sm:p-7 border border-[#F3D078]/30 shadow-md">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/70 to-transparent"
+        />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#F3D078]">
+              <CreditCard className="w-4 h-4 shrink-0" />
+              <span>صفحه اختصاصی بخش ۰۱ · حمایت مالی فوری</span>
+            </div>
+            <h1 className="text-lg sm:text-2xl font-black text-white">
               {welfarePortalConfig.modulesConfig.emergency_loan.title}
-            </h2>
-          </div>
-          <p className="text-xs text-stone-200 leading-relaxed max-w-2xl">
-            {welfarePortalConfig.modulesConfig.emergency_loan.subtitle}
-          </p>
-          {welfarePortalConfig.emergencyLoanMaxAmountLabel && (
-            <p className="text-[11px] text-[#F3D078] font-bold">
-              {toPersianNumbers(welfarePortalConfig.emergencyLoanMaxAmountLabel)}
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-100/85 leading-relaxed">
+              {welfarePortalConfig.modulesConfig.emergency_loan.subtitle}
             </p>
-          )}
-        </div>
+            {welfarePortalConfig.emergencyLoanMaxAmountLabel && (
+              <p className="text-xs font-black text-[#F3D078] tabular-nums pt-1">
+                {toPersianNumbers(welfarePortalConfig.emergencyLoanMaxAmountLabel)}
+              </p>
+            )}
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setIsDescModalOpen(true)}
-          className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-[#F3D078] hover:bg-amber-300 text-[#071E17] text-xs font-black flex items-center justify-center gap-2 shrink-0 transition-all shadow-sm cursor-pointer"
-        >
-          <Info className="w-4 h-4" />
-          <span>توضیحات و ضوابط</span>
-        </button>
-      </div>
+          <div className="flex flex-wrap items-center gap-4 shrink-0">
+            <div className="text-right border-l border-white/15 pl-4">
+              <div className="text-[11px] text-emerald-200/75 font-bold">پرونده‌های شما</div>
+              <div className="text-xl font-black text-white tabular-nums mt-0.5">
+                {toPersianNumbers(myLoanRequests.length)} مورد
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsDescModalOpen(true)}
+              className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-[#F3D078] hover:bg-amber-300 text-[#071E17] text-xs font-black flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors shadow-sm cursor-pointer"
+            >
+              <Info className="w-4 h-4 shrink-0" />
+              <span>ضوابط و راهنمای دریافت</span>
+            </button>
+          </div>
+        </div>
+      </section>
 
       {feedback && (
         <div
-          className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center gap-2 ${
+          className={`p-4 rounded-2xl border text-xs sm:text-sm font-bold flex items-center gap-2.5 ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
               : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}
         >
@@ -150,46 +172,73 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Request Form */}
+      {/* Split Focus Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Form Workspace */}
         <form
           onSubmit={handleSubmit}
-          className="lg:col-span-5 rounded-3xl border border-stone-200/90 bg-white p-5 sm:p-6 shadow-2xs space-y-4"
+          className="lg:col-span-5 rounded-[26px] border border-[#E2DAC3] bg-white p-5 sm:p-6 shadow-2xs space-y-5"
         >
-          <h3 className="text-sm font-black text-[#071E17] border-b border-stone-100 pb-3">
-            ثبت درخواست جدید تسهیلات اضطراری
-          </h3>
+          <div className="border-b border-stone-100 pb-3.5 space-y-1">
+            <h2 className="text-sm sm:text-base font-black text-[#071E17]">
+              فرم ثبت درخواست تسهیلات اضطراری
+            </h2>
+            <p className="text-[11px] text-stone-500">
+              رسیدگی اولیه ظرف ۴۸ ساعت کاری در کارگروه رفاه انجام می‌شود.
+            </p>
+          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-stone-700 block">
-              مبلغ درخواستی (تومان) <span className="text-rose-500">*</span>
+          <div className="space-y-2.5">
+            <label className="text-xs font-black text-stone-800 block">
+              انتخاب سریع یا درج مبلغ درخواستی (تومان) <span className="text-rose-500">*</span>
             </label>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
+              {QUICK_AMOUNT_PRESETS.map((preset) => {
+                const isSelected = rawNum === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setAmountInput(String(preset))}
+                    className={`min-h-[40px] px-3 py-2 rounded-xl border text-xs font-black tabular-nums transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#071E17] text-[#F3D078] border-[#071E17]'
+                        : 'bg-[#FCFCF9] text-stone-700 border-stone-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    {toPersianNumbers((preset / 1000000).toLocaleString('fa-IR'))} میلیون تومان
+                  </button>
+                );
+              })}
+            </div>
+
             <input
               type="text"
               inputMode="numeric"
               required
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value.replace(/[^\d]/g, ''))}
-              placeholder="مثال: 30000000"
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-black tabular-nums bg-stone-50 focus:bg-white focus:border-[#071E17] outline-none"
+              placeholder="یا مبلغ دلخواه به تومان، مثال: 30000000"
+              className="w-full min-h-[46px] px-4 py-2.5 rounded-xl border border-stone-300 text-sm font-black tabular-nums bg-stone-50 focus:bg-white focus:border-[#071E17] outline-none"
             />
             {rawNum > 0 && (
-              <p className="text-[11px] text-emerald-800 font-bold tabular-nums">
-                معادل: {toPersianNumbers(rawNum.toLocaleString('fa-IR'))} تومان
+              <p className="text-xs text-emerald-800 font-black tabular-nums">
+                معادل عددی: {toPersianNumbers(rawNum.toLocaleString('fa-IR'))} تومان
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-black text-stone-700 block">
-              علت درخواست و شرح نیاز اضطراری <span className="text-rose-500">*</span>
+            <label className="text-xs font-black text-stone-800 block">
+              علت درخواست و شرح نیاز <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={4}
               required
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              placeholder="موضوع ضرورت، هزینه درمان، مسکن یا شرایط پیش‌آمده را به صورت مختصر شرح دهید..."
+              placeholder="موضوع ضرورت، هزینه درمان، ودیعه مسکن یا شرایط پیش‌آمده را به صورت روشن شرح دهید..."
               className="w-full p-3.5 rounded-xl border border-stone-300 text-xs leading-relaxed bg-stone-50 focus:bg-white focus:border-[#071E17] outline-none"
             />
           </div>
@@ -197,55 +246,108 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full min-h-[46px] rounded-2xl bg-[#071E17] hover:bg-[#0B2C22] text-[#F3D078] text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-60"
+            className="w-full min-h-[48px] rounded-2xl bg-[#071E17] hover:bg-[#0B2C22] text-[#F3D078] text-xs font-black flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer disabled:opacity-60"
           >
-            <Send className="w-4 h-4" />
-            <span>{isSubmitting ? 'در حال ثبت درخواست...' : 'ارسال درخواست تسهیلات اضطراری'}</span>
+            <Send className="w-4 h-4 shrink-0" />
+            <span>{isSubmitting ? 'در حال ثبت درخواست...' : 'ارسال نهایی درخواست تسهیلات'}</span>
           </button>
         </form>
 
-        {/* Request History */}
-        <div className="lg:col-span-7 rounded-3xl border border-stone-200/90 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <h3 className="text-sm font-black text-[#071E17]">سوابق درخواست‌های تسهیلات من</h3>
+        {/* Live Tracking Ledger */}
+        <div className="lg:col-span-7 rounded-[26px] border border-[#E2DAC3] bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-3.5">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#071E17]" />
+              <h2 className="text-sm sm:text-base font-black text-[#071E17]">
+                کارنامه و وضعیت درخواست‌های من
+              </h2>
+            </div>
             <span className="text-xs font-bold text-stone-500 tabular-nums">
               {toPersianNumbers(myLoanRequests.length)} پرونده
             </span>
           </div>
 
           {myLoanRequests.length === 0 ? (
-            <div className="py-10 text-center space-y-2 text-stone-400">
+            <div className="py-12 text-center space-y-2.5 text-stone-400">
               <CreditCard className="w-10 h-10 mx-auto opacity-30" />
-              <p className="text-xs font-bold">تاکنون درخواستی برای تسهیلات اضطراری ثبت نکرده‌اید.</p>
+              <p className="text-xs font-bold text-stone-500">
+                تاکنون درخواستی برای تسهیلات اضطراری ثبت نکرده‌اید.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {myLoanRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="p-4 rounded-2xl border border-stone-200/80 bg-[#FCFCF9] space-y-2"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-black text-xs sm:text-sm text-[#071E17] tabular-nums">
-                      {req.requestedValue || req.title}
+            <div className="space-y-3.5">
+              {myLoanRequests.map((req) => {
+                const isDone = req.status === 'approved' || req.status === 'disbursed';
+                const isRejected = req.status === 'rejected';
+                return (
+                  <div
+                    key={req.id}
+                    className="p-4 sm:p-5 rounded-2xl border border-stone-200/85 bg-[#FCFCF9] space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-black text-sm text-[#071E17] tabular-nums">
+                        {req.requestedValue || req.title}
+                      </div>
+                      {renderStatusLabel(req.status)}
                     </div>
-                    {renderStatus(req.status)}
+
+                    <p className="text-xs text-stone-600 leading-relaxed">{req.description}</p>
+
+                    {/* 3-Step Visual Progress */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 text-[10px] font-bold">
+                      <div className="space-y-1">
+                        <div className="h-1.5 rounded-full bg-emerald-700" />
+                        <span className="text-emerald-900 block">۱. ثبت پرونده</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div
+                          className={`h-1.5 rounded-full ${
+                            isDone
+                              ? 'bg-emerald-700'
+                              : isRejected
+                              ? 'bg-rose-400'
+                              : 'bg-amber-400'
+                          }`}
+                        />
+                        <span className="text-stone-700 block">۲. بررسی کارگروه</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div
+                          className={`h-1.5 rounded-full ${
+                            req.status === 'disbursed'
+                              ? 'bg-emerald-700'
+                              : isDone
+                              ? 'bg-emerald-400'
+                              : isRejected
+                              ? 'bg-rose-600'
+                              : 'bg-stone-200'
+                          }`}
+                        />
+                        <span className="text-stone-600 block">
+                          {isRejected ? '۳. عدم تایید' : '۳. تایید و واریز'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500 pt-2 border-t border-stone-200/70">
+                      <span className="tabular-nums">
+                        تاریخ ثبت: {formatIsoToJalali(req.createdAt)}
+                      </span>
+                      {req.adminNote && (
+                        <span className="text-emerald-900 font-bold">
+                          پاسخ کارشناس: {req.adminNote}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-stone-600 leading-relaxed">{req.description}</p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500 pt-1 border-t border-stone-200/60">
-                    <span className="tabular-nums">تاریخ ثبت: {formatIsoToJalali(req.createdAt)}</span>
-                    {req.adminNote && (
-                      <span className="text-emerald-900 font-bold">پاسخ کارشناس: {req.adminNote}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* Mobile-Safe Pinned Description Modal */}
+      {/* Mobile-Safe Pinned Terms Modal */}
       {isDescModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
@@ -258,7 +360,7 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
             <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-stone-200 bg-[#071E17] text-white">
               <div className="flex items-center gap-2">
                 <Info className="w-5 h-5 text-[#F3D078]" />
-                <h3 className="text-sm font-black">توضیحات و ضوابط تسهیلات اضطراری</h3>
+                <h3 className="text-sm font-black">ضوابط و شرایط تسهیلات اضطراری</h3>
               </div>
               <button
                 type="button"
@@ -276,7 +378,7 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
                   'این بخش جهت رسیدگی به درخواست‌های ضروری اعضا طراحی شده است.'}
               </p>
               {welfarePortalConfig.emergencyLoanMaxAmountLabel && (
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-bold">
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-bold tabular-nums">
                   سقف و شرایط فعلی: {toPersianNumbers(welfarePortalConfig.emergencyLoanMaxAmountLabel)}
                 </div>
               )}

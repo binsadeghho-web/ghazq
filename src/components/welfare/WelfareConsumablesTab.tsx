@@ -47,6 +47,7 @@ export const WelfareConsumablesTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethodType>('post');
   const [deliveryAddress, setDeliveryAddress] = useState<string>(
     (currentUser as any)?.residentialAddress || ''
@@ -161,61 +162,69 @@ export const WelfareConsumablesTab: React.FC = () => {
 
   const myOrders = useMemo(
     () =>
-      consumableOrders.filter(
-        (o) => !currentUser || o.applicantId === currentUser.id
-      ),
+      consumableOrders.filter((o) => !currentUser || o.applicantId === currentUser.id),
     [consumableOrders, currentUser]
   );
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Header + Sub-tabs */}
-      <div className="rounded-3xl bg-gradient-to-l from-[#071E17] via-[#0B2C22] to-[#0D3327] text-white p-5 sm:p-6 shadow-md border border-emerald-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-[#F3D078]" />
-            <h2 className="text-base sm:text-lg font-black">
-              {welfarePortalConfig.modulesConfig.consumables.title}
-            </h2>
-          </div>
-          <p className="text-xs text-stone-200 leading-relaxed max-w-2xl">
-            {welfarePortalConfig.modulesConfig.consumables.subtitle}
-          </p>
-        </div>
+      {/* Dedicated Storefront Header */}
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-bl from-[#071E17] via-[#0B2C22] to-[#113D2F] text-white p-5 sm:p-7 border border-[#F3D078]/30 shadow-md">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/70 to-transparent"
+        />
 
-        <div className="flex items-center gap-2 p-1 rounded-2xl bg-white/10 border border-white/15 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('catalog')}
-            className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all ${
-              activeSubTab === 'catalog'
-                ? 'bg-[#F3D078] text-[#071E17]'
-                : 'text-white hover:bg-white/10'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>فهرست کالاها</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('orders')}
-            className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all ${
-              activeSubTab === 'orders'
-                ? 'bg-[#F3D078] text-[#071E17]'
-                : 'text-white hover:bg-white/10'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>سفارش‌های من ({toPersianNumbers(myOrders.length)})</span>
-          </button>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#F3D078]">
+              <ShoppingBag className="w-4 h-4 shrink-0" />
+              <span>صفحه اختصاصی بخش ۰۴ · عرضه مستقیم با نرخ تعاونی</span>
+            </div>
+            <h1 className="text-lg sm:text-2xl font-black text-white">
+              {welfarePortalConfig.modulesConfig.consumables.title}
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-100/85 leading-relaxed">
+              {welfarePortalConfig.modulesConfig.consumables.subtitle}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/10 border border-white/15 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('catalog')}
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors ${
+                activeSubTab === 'catalog'
+                  ? 'bg-[#F3D078] text-[#071E17]'
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <Package className="w-4 h-4 shrink-0" />
+              <span>فهرست کالاها</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('orders')}
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors ${
+                activeSubTab === 'orders'
+                  ? 'bg-[#F3D078] text-[#071E17]'
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <History className="w-4 h-4 shrink-0" />
+              <span className="tabular-nums">
+                سفارش‌های من ({toPersianNumbers(myOrders.length)})
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
 
       {feedback && (
         <div
-          className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center gap-2 ${
+          className={`p-4 rounded-2xl border text-xs sm:text-sm font-bold flex items-center gap-2.5 ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
               : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}
         >
@@ -231,15 +240,15 @@ export const WelfareConsumablesTab: React.FC = () => {
       {activeSubTab === 'catalog' ? (
         <div className="space-y-5">
           {/* Search & Category Filter */}
-          <div className="rounded-2xl border border-stone-200 bg-white p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="rounded-2xl border border-[#E2DAC3] bg-white p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 sm:max-w-xs">
-              <Search className="w-4 h-4 text-stone-400 absolute right-3 top-3 pointer-events-none" />
+              <Search className="w-4 h-4 text-stone-400 absolute right-3.5 top-3.5 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="جستجوی کالا..."
-                className="w-full min-h-[40px] pr-9 pl-3 rounded-xl border border-stone-200 bg-stone-50 text-xs font-medium focus:bg-white"
+                placeholder="جستجوی نام یا توضیح کالا..."
+                className="w-full min-h-[42px] pr-10 pl-3 rounded-xl border border-stone-200 bg-stone-50 text-xs font-medium focus:bg-white focus:border-[#071E17] outline-none"
               />
             </div>
 
@@ -249,13 +258,13 @@ export const WelfareConsumablesTab: React.FC = () => {
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap cursor-pointer ${
+                  className={`min-h-[40px] px-4 py-1.5 rounded-xl text-xs font-black whitespace-nowrap cursor-pointer transition-colors ${
                     selectedCategory === cat
                       ? 'bg-[#071E17] text-[#F3D078]'
-                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                      : 'bg-[#FCFCF9] border border-stone-200 text-stone-700 hover:bg-stone-100'
                   }`}
                 >
-                  {cat === 'all' ? 'همه کالاها' : cat}
+                  {cat === 'all' ? 'همه دسته‌ها' : cat}
                 </button>
               ))}
             </div>
@@ -263,66 +272,88 @@ export const WelfareConsumablesTab: React.FC = () => {
 
           {/* Product Grid */}
           {filteredItems.length === 0 ? (
-            <div className="rounded-3xl border border-stone-200 bg-white py-12 text-center text-stone-400 space-y-2">
+            <div className="rounded-[26px] border border-[#E2DAC3] bg-white py-14 text-center text-stone-400 space-y-2.5">
               <ShoppingBag className="w-10 h-10 mx-auto opacity-30" />
-              <p className="text-xs font-bold">در حال حاضر کالایی در این بخش عرضه نشده است.</p>
+              <p className="text-xs font-bold text-stone-500">
+                در حال حاضر کالایی مطابق جستجوی شما یافت نشد.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {filteredItems.map((item) => {
                 const isSoldOut = Boolean(item.showAsSoldOutInShowcase) || item.stock <= 0;
                 const price = Number(item.cooperativePrice || item.memberPrice || 0);
                 const mkt = Number(item.marketPrice || price);
+                const savings = mkt > price ? mkt - price : 0;
                 const qty = cartQuantities[item.id] || 0;
+                const showImg = Boolean(item.imageUrl) && !failedImages[item.id];
 
                 return (
-                  <div
+                  <article
                     key={item.id}
-                    className={`rounded-3xl border bg-white p-4 shadow-2xs flex flex-col justify-between space-y-3 transition-all ${
-                      isSoldOut ? 'border-stone-200 opacity-85' : 'border-stone-200/90 hover:border-emerald-300'
+                    className={`rounded-[24px] border bg-white p-4 shadow-2xs flex flex-col justify-between space-y-3.5 transition-all ${
+                      isSoldOut
+                        ? 'border-stone-200 opacity-85'
+                        : 'border-[#E2DAC3] hover:border-emerald-500/60 hover:shadow-md'
                     }`}
                   >
                     <div className="space-y-3">
-                      <div className="relative h-44 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/70">
-                        {item.imageUrl ? (
+                      <div className="relative h-44 rounded-2xl overflow-hidden bg-gradient-to-br from-[#F4EFE0] to-[#EAE3CF] border border-stone-200/70">
+                        {showImg ? (
                           <img
                             src={item.imageUrl}
                             alt={item.title}
-                            className={`w-full h-full object-cover ${isSoldOut ? 'grayscale opacity-70' : ''}`}
+                            referrerPolicy="no-referrer"
+                            onError={() =>
+                              setFailedImages((prev) => ({ ...prev, [item.id]: true }))
+                            }
+                            className={`w-full h-full object-cover ${
+                              isSoldOut ? 'grayscale opacity-70' : ''
+                            }`}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-stone-300">
+                          <div className="w-full h-full flex items-center justify-center text-[#071E17]/25">
                             <Package className="w-12 h-12" />
                           </div>
                         )}
                         {isSoldOut && (
                           <div className="absolute inset-0 bg-stone-950/45 flex items-center justify-center">
                             <span className="px-4 py-1.5 rounded-xl bg-rose-600 text-white text-sm font-black shadow-lg">
-                              تمام شد
+                              ناموجود
                             </span>
                           </div>
                         )}
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-[#071E17]/85 text-[#F3D078] text-[10px] font-bold">
-                          {item.category}
-                        </span>
                       </div>
 
                       <div className="space-y-1">
-                        <h3 className="text-sm font-black text-[#071E17] line-clamp-1">{item.title}</h3>
+                        <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-emerald-800">
+                          <span>{item.category}</span>
+                          {savings > 0 && (
+                            <span className="tabular-nums text-amber-800">
+                              صرفه‌جویی {toPersianNumbers(savings.toLocaleString('fa-IR'))} ت
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-sm font-black text-[#071E17] line-clamp-1">
+                          {item.title}
+                        </h3>
                         <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
-                          {item.description || 'کالای عرضه شده با نرخ تعاونی ویژه اعضا'}
+                          {item.description || 'عرضه‌شده با نرخ تعاونی ویژه اعضا'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="space-y-3 pt-2 border-t border-stone-100">
-                      <div className="flex items-center justify-between text-xs">
+                    <div className="space-y-3 pt-2.5 border-t border-stone-100">
+                      <div className="flex items-end justify-between text-xs">
                         <div>
-                          <div className="text-[10px] text-stone-400 line-through tabular-nums">
-                            {mkt > price ? `${toPersianNumbers(mkt.toLocaleString('fa-IR'))} تومان` : ''}
-                          </div>
-                          <div className="text-sm font-black text-[#071E17] tabular-nums">
-                            {toPersianNumbers(price.toLocaleString('fa-IR'))} تومان
+                          {mkt > price && (
+                            <div className="text-[10px] text-stone-400 line-through tabular-nums">
+                              {toPersianNumbers(mkt.toLocaleString('fa-IR'))} تومان
+                            </div>
+                          )}
+                          <div className="text-sm sm:text-base font-black text-[#071E17] tabular-nums">
+                            {toPersianNumbers(price.toLocaleString('fa-IR'))}{' '}
+                            <span className="text-[11px] font-bold text-stone-600">تومان</span>
                           </div>
                         </div>
                         <span className="text-[11px] font-bold text-stone-500 tabular-nums">
@@ -346,6 +377,7 @@ export const WelfareConsumablesTab: React.FC = () => {
                             type="button"
                             onClick={() => updateQty(item, -1)}
                             className="min-h-[40px] min-w-[40px] rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-800 cursor-pointer"
+                            aria-label="کاهش تعداد"
                           >
                             <Minus className="w-4 h-4" />
                           </button>
@@ -356,6 +388,7 @@ export const WelfareConsumablesTab: React.FC = () => {
                             type="button"
                             onClick={() => updateQty(item, 1)}
                             className="min-h-[40px] min-w-[40px] rounded-lg bg-[#071E17] text-[#F3D078] flex items-center justify-center cursor-pointer"
+                            aria-label="افزایش تعداد"
                           >
                             <Plus className="w-4 h-4" />
                           </button>
@@ -366,37 +399,60 @@ export const WelfareConsumablesTab: React.FC = () => {
                           onClick={() => updateQty(item, 1)}
                           className="w-full min-h-[44px] rounded-xl bg-[#071E17] hover:bg-[#0B2C22] text-[#F3D078] text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-4 h-4 shrink-0" />
                           <span>افزودن به سبد خرید</span>
                         </button>
                       )}
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
           )}
 
-          {/* Checkout Form when Cart has items */}
+          {/* Checkout Panel */}
           {cartItems.length > 0 && (
             <form
               onSubmit={handleCheckout}
-              className="rounded-3xl border-2 border-[#071E17] bg-[#FCFCF9] p-5 sm:p-6 shadow-lg space-y-4"
+              className="rounded-[26px] border-2 border-[#071E17] bg-[#FCFCF9] p-5 sm:p-7 shadow-lg space-y-5"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3.5">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-[#071E17]" />
-                  <h3 className="text-sm font-black text-[#071E17]">تکمیل سفارش و انتخاب روش تحویل</h3>
+                  <h2 className="text-sm sm:text-base font-black text-[#071E17]">
+                    نهایی‌سازی سبد خرید و انتخاب نحوه تحویل
+                  </h2>
                 </div>
-                <span className="text-sm font-black text-emerald-900 tabular-nums">
+                <span className="text-sm sm:text-base font-black text-emerald-900 tabular-nums">
                   جمع کل: {toPersianNumbers(cartTotal.toLocaleString('fa-IR'))} تومان
                 </span>
               </div>
 
-              {/* Delivery Method Picker */}
+              {/* Compact Cart Item Breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                {cartItems.map(({ item, qty }) => (
+                  <div
+                    key={item.id}
+                    className="px-3 py-2 rounded-xl bg-white border border-stone-200 flex items-center justify-between gap-2"
+                  >
+                    <span className="font-bold text-[#071E17] truncate">
+                      {item.title} × {toPersianNumbers(qty)}
+                    </span>
+                    <span className="font-black text-emerald-900 tabular-nums shrink-0">
+                      {toPersianNumbers(
+                        (
+                          Number(item.cooperativePrice || item.memberPrice || 0) * qty
+                        ).toLocaleString('fa-IR')
+                      )}{' '}
+                      ت
+                    </span>
+                  </div>
+                ))}
+              </div>
+
               <div className="space-y-2">
                 <label className="text-xs font-black text-stone-800 block">
-                  انتخاب روش دریافت کالا:
+                  روش تحویل کالا:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {(['in_person', 'post', 'courier'] as DeliveryMethodType[]).map((method) => {
@@ -407,7 +463,7 @@ export const WelfareConsumablesTab: React.FC = () => {
                         type="button"
                         disabled={!isAllowed}
                         onClick={() => setDeliveryMethod(method)}
-                        className={`min-h-[48px] px-3.5 py-2.5 rounded-2xl border text-xs font-black flex items-center justify-center gap-2 transition-all ${
+                        className={`min-h-[48px] px-3.5 py-2.5 rounded-2xl border text-xs font-black flex items-center justify-center gap-2 transition-colors ${
                           !isAllowed
                             ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
                             : effectiveDeliveryMethod === method
@@ -416,9 +472,9 @@ export const WelfareConsumablesTab: React.FC = () => {
                         }`}
                       >
                         {method === 'in_person' ? (
-                          <Store className="w-4 h-4" />
+                          <Store className="w-4 h-4 shrink-0" />
                         ) : (
-                          <Truck className="w-4 h-4" />
+                          <Truck className="w-4 h-4 shrink-0" />
                         )}
                         <span>{DELIVERY_LABELS[method]}</span>
                       </button>
@@ -444,7 +500,7 @@ export const WelfareConsumablesTab: React.FC = () => {
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     placeholder="استان، شهر، خیابان، پلاک، واحد و شماره تماس گیرنده..."
-                    className="w-full p-3 rounded-xl border border-stone-300 text-xs bg-white"
+                    className="w-full p-3.5 rounded-xl border border-stone-300 text-xs bg-white focus:border-[#071E17] outline-none"
                   />
                 </div>
               )}
@@ -453,23 +509,28 @@ export const WelfareConsumablesTab: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="min-h-[46px] px-7 py-2.5 rounded-2xl bg-[#071E17] hover:bg-[#0B2C22] text-[#F3D078] text-xs font-black flex items-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto min-h-[48px] px-8 py-2.5 rounded-2xl bg-[#071E17] hover:bg-[#0B2C22] text-[#F3D078] text-xs font-black flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>{submitting ? 'در حال ثبت سفارش...' : 'ثبت قطعی سفارش'}</span>
+                  <Send className="w-4 h-4 shrink-0" />
+                  <span>{submitting ? 'در حال ثبت سفارش...' : 'ثبت قطعی سفارش تعاونی'}</span>
                 </button>
               </div>
             </form>
           )}
         </div>
       ) : (
-        <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
-          <h3 className="text-sm font-black text-[#071E17] border-b border-stone-100 pb-3">
-            سوابق سفارش‌های اقلام مصرفی من
-          </h3>
+        <div className="rounded-[26px] border border-[#E2DAC3] bg-white p-5 sm:p-7 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-3.5">
+            <h2 className="text-sm sm:text-base font-black text-[#071E17]">
+              سوابق سفارش‌های اقلام مصرفی من
+            </h2>
+            <span className="text-xs font-bold text-stone-500 tabular-nums">
+              {toPersianNumbers(myOrders.length)} سفارش
+            </span>
+          </div>
 
           {myOrders.length === 0 ? (
-            <div className="py-10 text-center text-stone-400 text-xs font-bold">
+            <div className="py-12 text-center text-stone-400 text-xs font-bold">
               تاکنون سفارشی ثبت نکرده‌اید.
             </div>
           ) : (
@@ -477,7 +538,7 @@ export const WelfareConsumablesTab: React.FC = () => {
               {myOrders.map((ord) => (
                 <div
                   key={ord.id}
-                  className="p-4 rounded-2xl border border-stone-200/80 bg-[#FCFCF9] space-y-2.5"
+                  className="p-4 sm:p-5 rounded-2xl border border-stone-200/85 bg-[#FCFCF9] space-y-2.5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs sm:text-sm font-black text-[#071E17] tabular-nums">
@@ -501,9 +562,10 @@ export const WelfareConsumablesTab: React.FC = () => {
                       .join(' · ')}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-stone-500 pt-1 border-t border-stone-200/60 tabular-nums">
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-stone-500 pt-2 border-t border-stone-200/70 tabular-nums">
                     <span>
-                      روش تحویل: {DELIVERY_LABELS[(ord.deliveryMethod as DeliveryMethodType) || 'post']}
+                      روش تحویل:{' '}
+                      {DELIVERY_LABELS[(ord.deliveryMethod as DeliveryMethodType) || 'post']}
                     </span>
                     <span>تاریخ: {formatIsoToJalali(ord.createdAt)}</span>
                     {ord.postalTrackingCode && (
