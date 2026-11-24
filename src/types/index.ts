@@ -1669,6 +1669,19 @@ export interface ResearchWizardOption {
   enabled: boolean;
 }
 
+export type ResearchCategory = 'thesis' | 'article' | 'session_proposal';
+
+export interface ResearchPillarCardConfig {
+  id: ResearchCategory;
+  indexLabel: string;
+  badgeText: string;
+  title: string;
+  subtitle: string;
+  highlights: string[];
+  ctaLabel: string;
+  enabled: boolean;
+}
+
 export interface ResearchPortalConfig {
   sectionTitle: string;
   sectionSubtitle: string;
@@ -1688,6 +1701,7 @@ export interface ResearchPortalConfig {
   accommodationEnabledInWizard: boolean;
   accommodationCityLabel: string;
   submissionSuccessMessage: string;
+  pillarCards?: ResearchPillarCardConfig[];
   wizardConfig: {
     step1Title: string;
     step1Options: ResearchWizardOption[];
@@ -1725,10 +1739,10 @@ export interface ResearchMentorship {
   id: string;
   applicantId: string;
   applicantName: string;
-  researchCategory?: 'thesis' | 'article';
-  serviceScope?: 'full_pack' | 'partial_mentorship';
+  researchCategory?: ResearchCategory;
+  serviceScope?: 'full_pack' | 'partial_mentorship' | 'session_proposal';
   selectedPartialTopics?: string[];
-  deliveryMode?: 'in_person' | 'online';
+  deliveryMode?: 'in_person' | 'online' | 'hybrid';
   thesisTitle: string;
   field: string;
   briefSummary?: string;

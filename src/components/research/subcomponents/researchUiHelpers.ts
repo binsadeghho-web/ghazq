@@ -64,16 +64,20 @@ export function getResearchStatusMeta(rawStatus?: string): ResearchStatusMeta {
 }
 
 export function getResearchCategoryLabel(cat?: ResearchMentorship['researchCategory']): string {
-  return cat === 'article' ? 'راهبری مقاله' : 'راهبری پایان‌نامه';
+  if (cat === 'session_proposal') return 'پیشنهاد نشست علمی';
+  if (cat === 'article') return 'همکاری و انتشار مقاله';
+  return 'راهبری پایان‌نامه';
 }
 
 export function getServiceScopeLabel(scope?: ResearchMentorship['serviceScope']): string {
+  if (scope === 'session_proposal') return 'پیشنهاد موضوع و برگزاری نشست';
   return scope === 'partial_mentorship'
-    ? 'مشورت و راهبری موردی (بخشی از اثر)'
+    ? 'مشورت و همکاری موردی (بخشی از اثر / انتشار)'
     : 'پک کامل راهبری';
 }
 
 export function getDeliveryModeLabel(mode?: ResearchMentorship['deliveryMode']): string {
+  if (mode === 'hybrid') return 'ترکیبی (حضوری و آنلاین)';
   return mode === 'online' ? 'آنلاین (غیرحضوری)' : 'حضوری';
 }
 

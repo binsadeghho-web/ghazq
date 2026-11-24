@@ -18,9 +18,10 @@ import {
   Home,
   BookOpen,
   FileText,
+  Mic,
   Settings,
 } from 'lucide-react';
-import { ResearchMentorship } from '../../../types';
+import { ResearchCategory, ResearchMentorship } from '../../../types';
 import { ResearchConversationThread } from './ResearchConversationThread';
 import {
   formatResearchDateFa,
@@ -56,6 +57,7 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
   onOpenConfigEditor,
 }) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | ResearchCategory>('all');
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -120,6 +122,8 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
   const filteredRequests = requests.filter(r => {
     const normStatus = getResearchStatusMeta(r.status).key;
     if (filter !== 'all' && normStatus !== filter) return false;
+    const cat = r.researchCategory || 'thesis';
+    if (categoryFilter !== 'all' && cat !== categoryFilter) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     const prof = r.applicantProfile;
@@ -147,6 +151,13 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
     completed: requests.filter(r => getResearchStatusMeta(r.status).key === 'completed').length,
   };
 
+  const catCounts = {
+    all: requests.length,
+    thesis: requests.filter(r => (r.researchCategory || 'thesis') === 'thesis').length,
+    article: requests.filter(r => r.researchCategory === 'article').length,
+    session_proposal: requests.filter(r => r.researchCategory === 'session_proposal').length,
+  };
+
   return (
     <div className="space-y-5">
       {/* Toolbar */}
@@ -154,27 +165,50 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-black text-slate-900 dark:text-white">
-              کارتابل بررسی و راهبری درخواست‌های پژوهش ({requests.length})
+              کارتابل بررسی پایان‌نامه‌ها، مقالات و پیشنهادهای نشست ({requests.length})
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              مشاهده مشخصات کامل متقاضیان، تغییر وضعیت (در حال بررسی / تایید / رد) و گفت‌وگوی مستقیم در تمام مراحل
+              مشاهده مشخصات کامل متقاضیان، تغییر وضعیت، انتصاب استاد/دبیر نشست و گفت‌وگوی مستقیم
             </p>
           </div>
 
           <button
             type="button"
             onClick={onOpenConfigEditor}
-            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-2 shrink-0 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
           >
             <Settings className="w-4 h-4" />
-            <span>ویرایشگر ۱۰۰٪ متن‌ها، تلفن‌ها و مراحل الگوریتم</span>
+            <span>ویرایشگر متن‌ها، کارت‌ها و تلفن‌های بخش</span>
           </button>
+        </div>
+
+        {/* Category Filter Strip */}
+        <div className="flex items-center gap-1.5 flex-wrap text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+          {[
+            { id: 'all', label: `همه بخش‌ها (${catCounts.all})` },
+            { id: 'thesis', label: `راهبری پایان‌نامه (${catCounts.thesis})` },
+            { id: 'article', label: `همکاری و انتشار مقاله (${catCounts.article})` },
+            { id: 'session_proposal', label: `پیشنهاد نشست علمی (${catCounts.session_proposal})` },
+          ].map(ct => (
+            <button
+              key={ct.id}
+              type="button"
+              onClick={() => setCategoryFilter(ct.id as any)}
+              className={`px-3 py-1.5 rounded-xl font-black transition-colors cursor-pointer whitespace-nowrap ${
+                categoryFilter === ct.id
+                  ? 'bg-[#071E17] text-[#F3D078]'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {ct.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-1.5 flex-wrap text-xs">
             {[
-              { id: 'all', label: `همه (${counts.all})` },
+              { id: 'all', label: `همه وضعیت‌ها (${counts.all})` },
               { id: 'pending', label: `در انتظار بررسی (${counts.pending})` },
               { id: 'in_review', label: `در حال بررسی (${counts.in_review})` },
               { id: 'approved', label: `تایید شده (${counts.approved})` },
@@ -212,14 +246,15 @@ export const ResearchAdminReviewPanel: React.FC<ResearchAdminReviewPanelProps> =
       {/* Request Cards */}
       {filteredRequests.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/90 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-          درخواستی مطابق با فیلتر فعلی یافت نشد.
+          درخواست یا پیشنهادی مطابق با فیلتر فعلی یافت نشد.
         </div>
       ) : (
         <div className="space-y-5">
           {filteredRequests.map(req => {
             const statusMeta = getResearchStatusMeta(req.status);
             const prof = req.applicantProfile;
-            const CategoryIcon = req.researchCategory === 'article' ? FileText : BookOpen;
+            const isSession = req.researchCategory === 'session_proposal';
+            const CategoryIcon = isSession ? Mic : req.researchCategory === 'article' ? FileText : BookOpen;
             const isBusy = busyId === req.id;
 
             return (

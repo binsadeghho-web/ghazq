@@ -250,18 +250,28 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
       stageTitle,
     } = req.body || {};
 
-    const researchCategory: 'thesis' | 'article' =
-      rawCat === 'article' ? 'article' : 'thesis';
-    const serviceScope: 'full_pack' | 'partial_mentorship' =
-      rawScope === 'partial_mentorship' ? 'partial_mentorship' : 'full_pack';
-    const deliveryMode: 'in_person' | 'online' =
-      rawDelivery === 'online' ? 'online' : 'in_person';
+    const researchCategory: 'thesis' | 'article' | 'session_proposal' =
+      rawCat === 'session_proposal'
+        ? 'session_proposal'
+        : rawCat === 'article'
+        ? 'article'
+        : 'thesis';
+    const serviceScope: 'full_pack' | 'partial_mentorship' | 'session_proposal' =
+      researchCategory === 'session_proposal'
+        ? 'session_proposal'
+        : rawScope === 'partial_mentorship'
+        ? 'partial_mentorship'
+        : 'full_pack';
+    const deliveryMode: 'in_person' | 'online' | 'hybrid' =
+      rawDelivery === 'hybrid' ? 'hybrid' : rawDelivery === 'online' ? 'online' : 'in_person';
 
     const cleanSummary = String(briefSummary || '').trim();
     const cleanTitle = String(thesisTitle || cleanSummary.split('\n')[0] || '').trim().slice(0, 240);
     if (!cleanTitle || cleanSummary.length < 5) {
       throw AppError.badRequest(
-        'لطفاً شرح مختصر درخواست راهبری (شامل عنوان، هدف پژوهش و نهاد مقصد) را تکمیل فرمایید.'
+        researchCategory === 'session_proposal'
+          ? 'لطفاً عنوان پیشنهادی نشست و شرح ضرورت و اهداف برگزاری را تکمیل فرمایید.'
+          : 'لطفاً شرح مختصر درخواست راهبری (شامل عنوان، هدف پژوهش و نهاد مقصد) را تکمیل فرمایید.'
       );
     }
 
@@ -269,12 +279,13 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
       ? selectedPartialTopics.map((t: any) => String(t).trim()).filter(Boolean)
       : [];
 
-    if (serviceScope === 'partial_mentorship' && partialTopicsList.length === 0) {
-      throw AppError.badRequest('لطفاً حداقل یک بخش مورد نیاز برای راهبری موردی را انتخاب نمایید.');
+    if (researchCategory !== 'session_proposal' && serviceScope === 'partial_mentorship' && partialTopicsList.length === 0) {
+      throw AppError.badRequest('لطفاً حداقل یک بخش مورد نیاز برای همکاری یا راهبری موردی را انتخاب نمایید.');
     }
 
     // Reform 33: Accommodation only applies in Path A (full_pack) + In-Person + enabled by Admin
     const accommodationRequested =
+      researchCategory !== 'session_proposal' &&
       serviceScope === 'full_pack' &&
       deliveryMode === 'in_person' &&
       portalCfg.accommodationEnabledInWizard &&
@@ -289,11 +300,21 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
     const uBuf = toIdBuffer(currentUser.id);
     const p = getPool();
 
+    const modeLabel =
+      deliveryMode === 'hybrid' ? 'ترکیبی (حضوری و آنلاین)' : deliveryMode === 'online' ? 'آنلاین' : 'حضوری';
+    const categoryLabel =
+      researchCategory === 'session_proposal'
+        ? 'پیشنهاد برگزاری نشست علمی'
+        : researchCategory === 'article'
+        ? 'همکاری در مقاله'
+        : 'راهبری پایان‌نامه';
     const defaultStageDesc =
       stageTitle ||
-      (serviceScope === 'full_pack'
-        ? `${researchCategory === 'thesis' ? 'راهبری پایان‌نامه' : 'راهبری مقاله'} · پک کامل (${deliveryMode === 'in_person' ? 'حضوری' : 'آنلاین'})`
-        : `${researchCategory === 'thesis' ? 'راهبری پایان‌نامه' : 'راهبری مقاله'} · راهبری موردی (${deliveryMode === 'in_person' ? 'حضوری' : 'آنلاین'})`);
+      (researchCategory === 'session_proposal'
+        ? `پیشنهاد برگزاری نشست علمی (${modeLabel}) — در انتظار بررسی شورا`
+        : serviceScope === 'full_pack'
+        ? `${categoryLabel} · پک کامل (${modeLabel})`
+        : `${categoryLabel} · همکاری موردی (${modeLabel})`);
 
     await p.query(
       `INSERT INTO research_mentorships (
@@ -314,7 +335,9 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
         String(field || 'فقه و حقوق اسلامی').trim(),
         cleanSummary,
         targetInstitution ? String(targetInstitution).trim() : null,
-        'در انتظار تعیین توسط شورای پژوهشی',
+        researchCategory === 'session_proposal'
+          ? 'در انتظار بررسی شورای علمی نشست‌ها'
+          : 'در انتظار تعیین توسط شورای پژوهشی',
         accommodationRequested ? 1 : 0,
         accommodationCity,
         defaultStageDesc,
@@ -330,7 +353,10 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
       actorName: currentUser.fullName,
       actorRole: currentUser.role,
       ip: req.ip || '127.0.0.1',
-      details: `ثبت درخواست راهبری پژوهش (${researchCategory === 'thesis' ? 'پایان‌نامه' : 'مقاله'} - ${serviceScope === 'full_pack' ? 'پک کامل' : 'موردی'}): ${cleanTitle}`,
+      details:
+        researchCategory === 'session_proposal'
+          ? `ثبت پیشنهاد برگزاری نشست علمی (${modeLabel}): ${cleanTitle}`
+          : `ثبت درخواست ${categoryLabel} (${serviceScope === 'full_pack' ? 'پک کامل' : 'موردی'}): ${cleanTitle}`,
       severity: 'info',
     });
 
@@ -383,15 +409,21 @@ researchRouter.put('/:id', async (req: Request, res: Response, next) => {
     const body = req.body || {};
 
     const nextCategory =
-      body.researchCategory === 'article' || body.researchCategory === 'thesis'
+      body.researchCategory === 'session_proposal' ||
+      body.researchCategory === 'article' ||
+      body.researchCategory === 'thesis'
         ? body.researchCategory
         : existing.researchCategory || 'thesis';
     const nextScope =
-      body.serviceScope === 'partial_mentorship' || body.serviceScope === 'full_pack'
+      nextCategory === 'session_proposal'
+        ? 'session_proposal'
+        : body.serviceScope === 'partial_mentorship' || body.serviceScope === 'full_pack'
         ? body.serviceScope
         : existing.serviceScope || 'full_pack';
     const nextDelivery =
-      body.deliveryMode === 'online' || body.deliveryMode === 'in_person'
+      body.deliveryMode === 'hybrid' ||
+      body.deliveryMode === 'online' ||
+      body.deliveryMode === 'in_person'
         ? body.deliveryMode
         : existing.deliveryMode || 'in_person';
     const nextPartialTopics = Array.isArray(body.selectedPartialTopics)
@@ -412,7 +444,10 @@ researchRouter.put('/:id', async (req: Request, res: Response, next) => {
         : existing.targetInstitution || null;
 
     const nextAcc =
-      nextScope === 'full_pack' && nextDelivery === 'in_person' && portalCfg.accommodationEnabledInWizard
+      nextCategory !== 'session_proposal' &&
+      nextScope === 'full_pack' &&
+      nextDelivery === 'in_person' &&
+      portalCfg.accommodationEnabledInWizard
         ? body.accommodationRequested !== undefined
           ? Boolean(body.accommodationRequested)
           : Boolean(existing.accommodationRequested)

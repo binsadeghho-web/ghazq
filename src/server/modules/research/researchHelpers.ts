@@ -2,26 +2,76 @@ import { getPool, ensureDatabaseConnection } from '../../platform/mysqlDatabase'
 import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { fromIdBuffer } from '../../platform/uuidv7';
 import {
+  ResearchCategory,
   ResearchMentorship,
   ResearchMessage,
+  ResearchPillarCardConfig,
   ResearchPortalConfig,
 } from '../../../types';
 
+export const DEFAULT_RESEARCH_PILLAR_CARDS: ResearchPillarCardConfig[] = [
+  {
+    id: 'thesis',
+    indexLabel: '۰۱',
+    badgeText: 'پک کامل و راهبری موردی',
+    title: 'راهبری پایان‌نامه‌ها و رساله‌ها',
+    subtitle:
+      'همراهی جامع از ایده‌پردازی، انتخاب موضوع نوآورانه و تصویب پروپوزال تا تدوین فصول، نقد علمی، آماده‌سازی دفاع و تسهیل اسکان مطالعاتی در قم.',
+    highlights: [
+      'پک کامل راهبری یا مشورت موردی تخصصی',
+      'انتصاب استاد راهنمای برجسته حوزه و دانشگاه',
+      'امکان درخواست اسکان مطالعاتی قم (حضوری)',
+    ],
+    ctaLabel: 'ثبت درخواست راهبری پایان‌نامه',
+    enabled: true,
+  },
+  {
+    id: 'article',
+    indexLabel: '۰۲',
+    badgeText: 'نگارش تا چاپ علمی‌پژوهشی',
+    title: 'همکاری در مقاله و کمک به انتشار',
+    subtitle:
+      'تمامی خدمات پیشین تدوین، ساختار و نقد علمی مقاله به همراه پشتیبانی تخصصی برای معرفی نشریات معتبر، استانداردسازی و کمک در ارسال و انتشار مقاله.',
+    highlights: [
+      'کمک در انتخاب موضوع، ساختار و نقد علمی مقاله',
+      'کمک در انتشار و ارسال به نشریات علمی‌پژوهشی',
+      'همراهی در پاسخ به داوران تا پذیرش نهایی',
+    ],
+    ctaLabel: 'ثبت درخواست همکاری در مقاله',
+    enabled: true,
+  },
+  {
+    id: 'session_proposal',
+    indexLabel: '۰۳',
+    badgeText: 'پیشنهاد موضوع نشست علمی',
+    title: 'پیشنهاد برگزاری نشست علمی',
+    subtitle:
+      'پیشنهاد موضوعات به‌روز فقهی و حقوقی برای برگزاری نشست‌های علمی، کرسی‌های ترویجی و میزگردهای تخصصی مرکز با حضور صاحب‌نظران و اساتید.',
+    highlights: [
+      'پیشنهاد عنوان، محورهای کلیدی و ضرورت نشست',
+      'معرفی سخنرانان یا اساتید پیشنهادی و مخاطبان',
+      'انتخاب شیوه برگزاری حضوری، آنلاین یا ترکیبی',
+    ],
+    ctaLabel: 'پیشنهاد برگزاری نشست علمی',
+    enabled: true,
+  },
+];
+
 export const DEFAULT_RESEARCH_PORTAL_CONFIG: ResearchPortalConfig = {
-  sectionTitle: 'راهبری پژوهش و مقاله (خدمات پژوهشی)',
+  sectionTitle: 'پژوهش، مقاله و نشست‌های علمی',
   sectionSubtitle:
-    'همراهی گام‌به‌گام اساتید و پژوهشگران برجسته مرکز در تدوین پایان‌نامه، رساله و مقالات علمی‌پژوهشی',
-  landingIntroTitle: 'در کلینیک راهبری پژوهش و مقاله مرکز فقه و حقوق اسلامی چه خدماتی ارائه می‌شود؟',
+    'سه مسیر تخصصی معاونت پژوهش: راهبری پایان‌نامه‌ها، همکاری در نگارش و انتشار مقالات، و پیشنهاد برگزاری نشست‌های علمی',
+  landingIntroTitle: 'میز یکپارچه خدمات پژوهشی مرکز فقه و حقوق اسلامی',
   landingIntroBody:
-    'این مرکز ویژه دانش‌آموختگان و پژوهشگران عرصه فقه و حقوق اسلامی راه‌اندازی شده است تا از نخستین گام پژوهش تا مرحله دفاع یا انتشار علمی همراه شما باشد. خدمات شامل مشاوره انتخاب موضوع نوآورانه، نگارش و تصویب پروپوزال، تعیین ساختار و فصل‌بندی علمی، انتصاب استاد راهنما و ناظر، نقد و بازبینی فصول و مقالات، و همچنین تسهیل اسکان مطالعاتی در شهر مقدس قم (برای بسته‌های کامل حضوری) است.',
-  landingCalloutTitle: 'آماده شروع یا ارتقای پژوهش علمی خود هستید؟',
+    'تمامی خدمات پژوهشی این بخش در سه محور تخصصی متمرکز شده است: راهبری جامع یا موردی پایان‌نامه‌ها و رساله‌ها، همکاری علمی در تدوین و انتشار مقالات پژوهشی، و دریافت پیشنهادهای شما برای برگزاری نشست‌های علمی و میزگردهای تخصصی قضایی.',
+  landingCalloutTitle: 'مسیر پژوهشی متناسب با نیاز خود را از سه کارت زیر انتخاب کنید',
   landingCalloutSubtitle:
-    'اگر نیاز به کمک و راهبری در انجام پایان‌نامه یا مقاله دارید، روی دکمه ثبت درخواست راهبری کلیک کنید تا الگوریتم هوشمند خدمات پژوهش متناسب با نیاز شما فعال شود.',
-  ctaButtonLabel: 'ثبت درخواست راهبری',
-  guidanceNotesTitle: 'توضیحات، ضوابط و راهنمای کامل راهبری پژوهش',
+    'با انتخاب هر کارت، فرم تخصصی همان بخش بدون مراحل اضافه باز شده و تمامی پرونده‌ها و پیشنهادهای شما در همین صفحه قابل پیگیری خواهد بود.',
+  ctaButtonLabel: 'ثبت درخواست یا پیشنهاد پژوهشی',
+  guidanceNotesTitle: 'توضیحات، ضوابط و راهنمای کامل بخش پژوهش',
   guidanceNotesBody:
-    '۱. پس از ثبت درخواست، پرونده شما با وضعیت «در انتظار بررسی» برای شورای پژوهشی مرکز ارسال می‌شود.\n۲. تا پیش از ورود درخواست به وضعیت «در حال بررسی»، امکان ویرایش یا حذف درخواست برای شما فعال است؛ پس از آغاز بررسی کارشناسی، اطلاعات پرونده قفل می‌شود.\n۳. در تمامی مراحل (انتظار، در حال بررسی، تایید یا نیاز به تکمیل)، می‌توانید از طریق بخش گفت‌وگوی پرونده با مسئول پژوهش در ارتباط مستقیم باشید.\n۴. تسهیلات اسکان موقت مطالعاتی در قم منحصراً برای متقاضیان «پک کامل راهبری حضوری» (در صورت فعال بودن سهمیه اسکان) در دسترس است.',
-  contactCenterTitle: 'راه‌های ارتباطی و پشتیبانی دبیرخانه راهبری پژوهش',
+    '۱. بخش پژوهش شامل سه محور مستقل است: راهبری پایان‌نامه‌ها، همکاری در مقاله (شامل کمک در نگارش تا انتشار علمی) و پیشنهاد برگزاری نشست علمی.\n۲. پس از ثبت درخواست یا پیشنهاد نشست، پرونده شما با وضعیت «در انتظار بررسی» برای شورای پژوهشی مرکز ارسال می‌شود.\n۳. تا پیش از ورود درخواست به وضعیت «در حال بررسی»، امکان ویرایش یا حذف درخواست برای شما فعال است؛ پس از آغاز بررسی کارشناسی، اطلاعات پرونده قفل می‌شود.\n۴. در تمامی مراحل می‌توانید از طریق بخش گفت‌وگوی پرونده با مسئول پژوهش در ارتباط مستقیم باشید و تسهیلات اسکان قم برای متقاضیان پک کامل حضوری فعال است.',
+  contactCenterTitle: 'راه‌های ارتباطی و پشتیبانی دبیرخانه پژوهش',
   contactPhone: '۰۲۵-۳۷۷۴۱۲۹۰',
   contactExtension: 'داخلی ۲۰۲ و ۲۰۵',
   contactMobileOrMessenger: '۰۹۱۲۰۵۸۴۱۲۰ (ایتا و پیام‌رسان بله)',
@@ -30,9 +80,10 @@ export const DEFAULT_RESEARCH_PORTAL_CONFIG: ResearchPortalConfig = {
   accommodationEnabledInWizard: true,
   accommodationCityLabel: 'اسکان موقت مطالعاتی در شهر مقدس قم',
   submissionSuccessMessage:
-    'درخواست راهبری پژوهش شما با موفقیت ثبت شد. کارشناسان معاونت پژوهش پرونده را بررسی کرده و با شما تماس گرفته می‌شود.',
+    'درخواست یا پیشنهاد شما با موفقیت ثبت شد. کارشناسان معاونت پژوهش پرونده را بررسی کرده و نتیجه در همین صفحه و از طریق تماس با شما اطلاع‌رسانی می‌شود.',
+  pillarCards: DEFAULT_RESEARCH_PILLAR_CARDS,
   wizardConfig: {
-    step1Title: 'نوع پژوهش مورد نظر خود را انتخاب نمایید:',
+    step1Title: 'نوع خدمت یا پیشنهاد پژوهشی مورد نظر خود را انتخاب نمایید:',
     step1Options: [
       {
         id: 'thesis',
@@ -42,8 +93,14 @@ export const DEFAULT_RESEARCH_PORTAL_CONFIG: ResearchPortalConfig = {
       },
       {
         id: 'article',
-        label: 'راهبری مقاله',
-        description: 'نگارش، ساختاربندی، ویراستاری علمی و آماده‌سازی مقالات علمی‌پژوهشی و ترویجی',
+        label: 'همکاری در مقاله و انتشار',
+        description: 'نگارش، ساختاربندی، نقد علمی و کمک در ارسال و انتشار مقالات علمی‌پژوهشی',
+        enabled: true,
+      },
+      {
+        id: 'session_proposal',
+        label: 'پیشنهاد برگزاری نشست علمی',
+        description: 'پیشنهاد موضوع، محورها و سخنرانان برای برگزاری نشست یا میزگرد علمی در مرکز',
         enabled: true,
       },
     ],
@@ -57,8 +114,8 @@ export const DEFAULT_RESEARCH_PORTAL_CONFIG: ResearchPortalConfig = {
       },
       {
         id: 'partial_mentorship',
-        label: 'نیاز به مشورت و یا راهبری موردی دارم (بخشی از پایان‌نامه / مقاله)',
-        description: 'راهبری متمرکز در یک یا چند بخش مشخص (مانند موضوع، پروپوزال، ساختار یا بازبینی)',
+        label: 'نیاز به مشورت و یا همکاری موردی دارم (بخشی از اثر یا انتشار)',
+        description: 'همکاری متمرکز در یک یا چند بخش مشخص (موضوع، ساختار، نقد علمی یا کمک در انتشار)',
         enabled: true,
       },
     ],
@@ -66,17 +123,22 @@ export const DEFAULT_RESEARCH_PORTAL_CONFIG: ResearchPortalConfig = {
     fullPackInPersonLabel: 'راهبری حضوری می‌خواهم',
     fullPackOnlineLabel: 'راهبری آنلاین می‌خواهم',
     accommodationQuestionLabel: 'آیا در طول جلسات راهبری حضوری، نیاز به اسکان موقت در قم دارید؟',
-    briefSummaryLabel: 'شرح مختصر از درخواست راهبری (عنوان، هدف از پژوهش، برای ارائه به کدام نهاد)',
+    briefSummaryLabel: 'شرح مختصر درخواست (موضوع، هدف، و در صورت مقاله نام نشریه یا نهاد هدف)',
     briefSummaryPlaceholder:
-      'لطفاً عنوان احتمالی یا موضوع مد نظر، هدف اصلی پژوهش و نام دانشگاه، حوزه علمیه یا نهاد/نشریه مقصد را به اختصار بنویسید...',
-    partialTopicsTitle: 'در کدام بخش‌ها نیاز به مشورت یا راهبری موردی دارید؟',
+      'لطفاً موضوع یا ایده مد نظر، وضعیت فعلی اثر و در صورت نیاز دانشگاه، حوزه یا نشریه علمی مقصد را به اختصار بنویسید...',
+    partialTopicsTitle: 'در کدام بخش‌ها نیاز به مشورت، همکاری یا کمک در انتشار دارید؟',
     partialTopics: [
       { id: 'topic_selection', label: 'انتخاب موضوع نوآورانه و مسئله‌محور', enabled: true },
       { id: 'proposal_writing', label: 'نوشتن پروپوزال و تصویب عنوان', enabled: true },
       { id: 'structure_outline', label: 'تدوین ساختار و فصل‌بندی مقاله / پایان‌نامه', enabled: true },
       { id: 'scientific_review', label: 'درخواست بازبینی، نقد علمی و بررسی متن دارم', enabled: true },
+      {
+        id: 'article_publication',
+        label: 'کمک در انتشار مقاله، معرفی نشریه معتبر و فرآیند ارسال و داوری',
+        enabled: true,
+      },
     ],
-    partialDeliveryTitle: 'امکان حضور شما در جلسات مشورت و راهبری چگونه است؟',
+    partialDeliveryTitle: 'امکان حضور شما در جلسات مشورت و همکاری چگونه است؟',
     partialInPersonLabel: 'امکان حضور دارم',
     partialOnlineLabel: 'امکان حضور ندارم (آنلاین)',
     reviewStepTitle: 'بازبینی مشخصات هویتی و جزئیات درخواست پیش از ثبت نهایی',
@@ -150,14 +212,100 @@ export function mapResearchMentorshipRow(
       ? 100
       : 10;
 
-  const researchCategory: 'thesis' | 'article' =
-    row.research_category === 'article' ? 'article' : 'thesis';
-  const serviceScope: 'full_pack' | 'partial_mentorship' =
-    row.service_scope === 'partial_mentorship' ? 'partial_mentorship' : 'full_pack';
-  const deliveryMode: 'in_person' | 'online' =
-    row.delivery_mode === 'online' ? 'online' : 'in_person';
+  const researchCategory: ResearchCategory =
+    row.research_category === 'session_proposal'
+      ? 'session_proposal'
+      : row.research_category === 'article'
+      ? 'article'
+      : 'thesis';
+  const serviceScope: 'full_pack' | 'partial_mentorship' | 'session_proposal' =
+    researchCategory === 'session_proposal' || row.service_scope === 'session_proposal'
+      ? 'session_proposal'
+      : row.service_scope === 'partial_mentorship'
+      ? 'partial_mentorship'
+      : 'full_pack';
+  const deliveryMode: 'in_person' | 'online' | 'hybrid' =
+    row.delivery_mode === 'hybrid'
+      ? 'hybrid'
+      : row.delivery_mode === 'online'
+      ? 'online'
+      : 'in_person';
 
   const selectedPartialTopics = parseJsonSafe<string[]>(row.selected_partial_topics, []);
+
+  const isSessionProposal = researchCategory === 'session_proposal';
+  const defaultStageTitle = isSessionProposal
+    ? status === 'pending'
+      ? 'پیشنهاد نشست ثبت شد — در انتظار بررسی شورا'
+      : status === 'in_review'
+      ? 'در حال بررسی موضوع و زمان‌بندی نشست'
+      : status === 'approved'
+      ? 'پیشنهاد تایید شد — در حال برنامه‌ریزی برگزاری نشست'
+      : status === 'rejected'
+      ? 'نیازمند بازنگری / عدم تصویب نشست'
+      : 'نشست علمی برگزار / تکمیل شد'
+    : status === 'pending'
+    ? 'ثبت‌شده — در انتظار بررسی معاونت پژوهش'
+    : status === 'in_review'
+    ? 'در حال بررسی کارشناسی و تطبیق استاد'
+    : status === 'approved'
+    ? 'تایید نهایی — در حال راهبری فعال'
+    : status === 'rejected'
+    ? 'نیازمند بازنگری / رد درخواست'
+    : 'تکمیل‌شده';
+
+  const milestones = isSessionProposal
+    ? [
+        {
+          title: 'ثبت پیشنهاد برگزاری نشست علمی در سامانه',
+          isDone: true,
+          date: row.created_at ? new Date(row.created_at).toLocaleDateString('fa-IR') : 'ثبت‌شده',
+        },
+        {
+          title: 'ارزیابی موضوع و ضرورت در شورای پژوهشی',
+          isDone: status === 'in_review' || status === 'approved' || status === 'completed',
+          date: status === 'pending' ? 'در انتظار' : 'انجام شده',
+        },
+        {
+          title: 'تصویب نشست و هماهنگی با سخنرانان',
+          isDone: status === 'approved' || status === 'completed',
+          date: status === 'approved' || status === 'completed' ? 'مصوب' : 'در نوبت',
+        },
+        {
+          title: 'برگزاری نشست علمی و انتشار گزارش',
+          isDone: status === 'completed',
+          date: status === 'completed' ? 'برگزار شده' : 'آتی',
+        },
+      ]
+    : [
+        {
+          title: 'ثبت درخواست در سامانه و دریافت مشخصات پژوهش',
+          isDone: true,
+          date: row.created_at ? new Date(row.created_at).toLocaleDateString('fa-IR') : 'ثبت‌شده',
+        },
+        {
+          title: 'بررسی شورای پژوهشی و تخصیص استاد / همکار',
+          isDone: status === 'in_review' || status === 'approved' || status === 'completed',
+          date: status === 'pending' ? 'در انتظار' : 'انجام شده',
+        },
+        {
+          title:
+            serviceScope === 'full_pack'
+              ? researchCategory === 'article'
+                ? 'اجرای راهبری کامل و همراهی تا انتشار مقاله'
+                : 'اجرای پک کامل راهبری و نقد فصول/بخش‌ها'
+              : researchCategory === 'article'
+              ? 'انجام جلسات همکاری موردی یا پشتیبانی انتشار مقاله'
+              : 'انجام جلسات مشورت و راهبری موردی',
+          isDone: status === 'approved' || status === 'completed',
+          date: status === 'approved' || status === 'completed' ? 'فعال' : 'در نوبت',
+        },
+        {
+          title: researchCategory === 'article' ? 'تکمیل و انتشار نهایی مقاله' : 'تکمیل و جمع‌بندی نهایی پژوهش',
+          isDone: status === 'completed',
+          date: status === 'completed' ? 'تکمیل‌شده' : 'آتی',
+        },
+      ];
 
   const mapped: ResearchMentorship & { version: number } = {
     id: fromIdBuffer(row.id),
@@ -172,17 +320,7 @@ export function mapResearchMentorshipRow(
     briefSummary: row.brief_summary || row.description || '',
     targetInstitution: row.target_institution || undefined,
     stage,
-    stageTitle:
-      row.description ||
-      (status === 'pending'
-        ? 'ثبت‌شده — در انتظار بررسی معاونت پژوهش'
-        : status === 'in_review'
-        ? 'در حال بررسی کارشناسی و تطبیق استاد'
-        : status === 'approved'
-        ? 'تایید نهایی — در حال راهبری فعال'
-        : status === 'rejected'
-        ? 'نیازمند بازنگری / رد درخواست'
-        : 'تکمیل‌شده'),
+    stageTitle: row.description || defaultStageTitle,
     progressPercent,
     assignedSupervisor: row.supervisor_professor || undefined,
     accommodationRequested: Boolean(row.accommodation_requested),
@@ -191,31 +329,7 @@ export function mapResearchMentorshipRow(
     adminNote: row.admin_note || undefined,
     reviewedBy: row.reviewed_by || undefined,
     reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
-    milestones: [
-      {
-        title: 'ثبت درخواست در سامانه و دریافت مشخصات پژوهش',
-        isDone: true,
-        date: row.created_at ? new Date(row.created_at).toLocaleDateString('fa-IR') : 'ثبت‌شده',
-      },
-      {
-        title: 'بررسی شورای پژوهشی و تخصیص استاد راهبر',
-        isDone: status === 'in_review' || status === 'approved' || status === 'completed',
-        date: status === 'pending' ? 'در انتظار' : 'انجام شده',
-      },
-      {
-        title:
-          serviceScope === 'full_pack'
-            ? 'اجرای پک کامل راهبری و نقد فصول/بخش‌ها'
-            : 'انجام جلسات مشورت و راهبری موردی',
-        isDone: status === 'approved' || status === 'completed',
-        date: status === 'approved' || status === 'completed' ? 'فعال' : 'در نوبت',
-      },
-      {
-        title: 'تکمیل و جمع‌بندی نهایی پژوهش',
-        isDone: status === 'completed',
-        date: status === 'completed' ? 'تکمیل‌شده' : 'آتی',
-      },
-    ],
+    milestones,
     messages,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
@@ -256,24 +370,48 @@ export async function loadResearchPortalConfig(): Promise<ResearchPortalConfig> 
   }
 
   const parsed = parseJsonSafe<Partial<ResearchPortalConfig>>(rows[0].setting_value, {});
+
+  const storedStep1 =
+    Array.isArray(parsed.wizardConfig?.step1Options) && parsed.wizardConfig!.step1Options.length > 0
+      ? parsed.wizardConfig!.step1Options
+      : DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.step1Options;
+  const step1Options = storedStep1.some(o => o.id === 'session_proposal')
+    ? storedStep1
+    : [...storedStep1, DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.step1Options[2]];
+
+  const storedPartial =
+    Array.isArray(parsed.wizardConfig?.partialTopics) && parsed.wizardConfig!.partialTopics.length > 0
+      ? parsed.wizardConfig!.partialTopics
+      : DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.partialTopics;
+  const articlePubDefault = DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.partialTopics.find(
+    o => o.id === 'article_publication'
+  );
+  const partialTopics =
+    articlePubDefault && !storedPartial.some(o => o.id === 'article_publication')
+      ? [...storedPartial, articlePubDefault]
+      : storedPartial;
+
+  const storedPillars = Array.isArray(parsed.pillarCards) && parsed.pillarCards.length > 0
+    ? parsed.pillarCards
+    : DEFAULT_RESEARCH_PILLAR_CARDS;
+  const pillarCards = DEFAULT_RESEARCH_PILLAR_CARDS.map(defCard => {
+    const match = storedPillars.find(c => c.id === defCard.id);
+    return match ? { ...defCard, ...match } : defCard;
+  });
+
   return {
     ...DEFAULT_RESEARCH_PORTAL_CONFIG,
     ...parsed,
+    pillarCards,
     wizardConfig: {
       ...DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig,
       ...(parsed.wizardConfig || {}),
-      step1Options:
-        Array.isArray(parsed.wizardConfig?.step1Options) && parsed.wizardConfig!.step1Options.length > 0
-          ? parsed.wizardConfig!.step1Options
-          : DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.step1Options,
+      step1Options,
       step2Options:
         Array.isArray(parsed.wizardConfig?.step2Options) && parsed.wizardConfig!.step2Options.length > 0
           ? parsed.wizardConfig!.step2Options
           : DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.step2Options,
-      partialTopics:
-        Array.isArray(parsed.wizardConfig?.partialTopics) && parsed.wizardConfig!.partialTopics.length > 0
-          ? parsed.wizardConfig!.partialTopics
-          : DEFAULT_RESEARCH_PORTAL_CONFIG.wizardConfig.partialTopics,
+      partialTopics,
     },
     version: Number(rows[0].version || 1),
   };

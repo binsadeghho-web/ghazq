@@ -2062,11 +2062,11 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                     <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80 space-y-1.5 text-xs text-stone-700">
                       <div className="flex items-center gap-2 font-bold">
                         <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>ثبت درخواست راهبری مقاله و رساله دکتری</span>
+                        <span>راهبری پایان‌نامه‌ها و همکاری در نگارش و انتشار مقاله</span>
                       </div>
                       <div className="flex items-center gap-2 font-bold">
                         <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>رزرو اتاق مطالعه و اسکان پژوهشی در قم</span>
+                        <span>پیشنهاد برگزاری نشست‌های علمی تخصصی و اسکان قم</span>
                       </div>
                     </div>
 

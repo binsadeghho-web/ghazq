@@ -240,7 +240,7 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
               </div>
 
               <div>
-                <label className="block font-bold mb-1">توضیح باکس فراخوان:</label>
+                <label className="block font-bold mb-1">توضیح باکس معرفی بالای کارت‌ها:</label>
                 <textarea
                   rows={2}
                   value={draft.landingCalloutSubtitle}
@@ -248,6 +248,86 @@ export const ResearchConfigEditorModal: React.FC<ResearchConfigEditorModalProps>
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                 />
               </div>
+
+              {Array.isArray(draft.pillarCards) && draft.pillarCards.length > 0 && (
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <span className="font-black text-slate-900 dark:text-white block">
+                    ویرایش متون سه کارت درخشان صفحه پژوهش:
+                  </span>
+                  <div className="space-y-3">
+                    {draft.pillarCards.map((card, cIdx) => (
+                      <div
+                        key={card.id}
+                        className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-black text-emerald-800 dark:text-amber-300">
+                            کارت {card.indexLabel}: {card.title}
+                          </span>
+                          <label className="flex items-center gap-1.5 cursor-pointer font-bold">
+                            <input
+                              type="checkbox"
+                              checked={card.enabled !== false}
+                              onChange={e => {
+                                const nextCards = [...(draft.pillarCards || [])];
+                                nextCards[cIdx] = { ...nextCards[cIdx], enabled: e.target.checked };
+                                setDraft(p => ({ ...p, pillarCards: nextCards }));
+                              }}
+                            />
+                            <span>فعال</span>
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={card.title}
+                            onChange={e => {
+                              const nextCards = [...(draft.pillarCards || [])];
+                              nextCards[cIdx] = { ...nextCards[cIdx], title: e.target.value };
+                              setDraft(p => ({ ...p, pillarCards: nextCards }));
+                            }}
+                            placeholder="عنوان کارت"
+                            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+                          />
+                          <input
+                            type="text"
+                            value={card.badgeText}
+                            onChange={e => {
+                              const nextCards = [...(draft.pillarCards || [])];
+                              nextCards[cIdx] = { ...nextCards[cIdx], badgeText: e.target.value };
+                              setDraft(p => ({ ...p, pillarCards: nextCards }));
+                            }}
+                            placeholder="برچسب کارت"
+                            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          />
+                          <input
+                            type="text"
+                            value={card.ctaLabel}
+                            onChange={e => {
+                              const nextCards = [...(draft.pillarCards || [])];
+                              nextCards[cIdx] = { ...nextCards[cIdx], ctaLabel: e.target.value };
+                              setDraft(p => ({ ...p, pillarCards: nextCards }));
+                            }}
+                            placeholder="متن دکمه کارت"
+                            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          />
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={card.subtitle}
+                          onChange={e => {
+                            const nextCards = [...(draft.pillarCards || [])];
+                            nextCards[cIdx] = { ...nextCards[cIdx], subtitle: e.target.value };
+                            setDraft(p => ({ ...p, pillarCards: nextCards }));
+                          }}
+                          placeholder="توضیحات کارت"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
                 <div>

@@ -5,10 +5,12 @@ import {
   Info,
   BookOpen,
   FileText,
+  Mic,
   Layers,
   ListChecks,
   MapPin,
   Monitor,
+  Globe2,
   Home,
   CheckCircle2,
   ChevronRight,
@@ -19,7 +21,12 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { ResearchMentorship, ResearchPortalConfig, User } from '../../../types';
+import {
+  ResearchCategory,
+  ResearchMentorship,
+  ResearchPortalConfig,
+  User,
+} from '../../../types';
 import { getDeliveryModeLabel } from './researchUiHelpers';
 
 interface ResearchWizardModalProps {
@@ -27,6 +34,7 @@ interface ResearchWizardModalProps {
   onClose: () => void;
   config: ResearchPortalConfig;
   currentUser: User | null;
+  initialCategory?: ResearchCategory | null;
   editingRequest?: ResearchMentorship | null;
   onOpenGuidance: () => void;
   onSubmitNew: (payload: any) => Promise<ResearchMentorship | null>;
@@ -34,13 +42,32 @@ interface ResearchWizardModalProps {
   onDoneSuccess: () => void;
 }
 
-type WizardStep = 1 | 2 | 3 | 4 | 'review' | 'success';
+type WizardStep = 1 | 2 | 3 | 4 | 'session_form' | 'review' | 'success';
+
+const SESSION_FIELD_PRESETS = [
+  'فقه القضاء و رویه دادرسی',
+  'حقوق جزا و جرم‌شناسی',
+  'حقوق خصوصی و قراردادها',
+  'حقوق عمومی و فقه حکومتی',
+  'حقوق خانواده و تحولات اجتماعی',
+  'فناوری‌های نوین و حقوق دیجیتال',
+];
+
+const SESSION_AXES_SUGGESTIONS = [
+  'واکاوی آرای متعارض قضایی',
+  'بررسی فقهی و مبانی شرعی موضوع',
+  'نقد و بررسی قانون یا لایحه جدید',
+  'چالش‌های اجرایی در محاکم و دادسراها',
+  'تجربیات تطبیقی و نظام‌های حقوقی',
+  'کرسی ترویجی و مناظره علمی',
+];
 
 export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   isOpen,
   onClose,
   config,
   currentUser,
+  initialCategory,
   editingRequest,
   onOpenGuidance,
   onSubmitNew,
@@ -50,31 +77,31 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   const w = config.wizardConfig;
 
   const [step, setStep] = useState<WizardStep>(1);
-  const [researchCategory, setResearchCategory] = useState<'thesis' | 'article'>('thesis');
+  const [researchCategory, setResearchCategory] = useState<ResearchCategory>('thesis');
   const [selectedStep1Label, setSelectedStep1Label] = useState('راهبری پایان‌نامه');
-  const [serviceScope, setServiceScope] = useState<'full_pack' | 'partial_mentorship'>('full_pack');
+  const [serviceScope, setServiceScope] = useState<'full_pack' | 'partial_mentorship' | 'session_proposal'>('full_pack');
   const [selectedStep2Label, setSelectedStep2Label] = useState('نیاز به پک کامل راهبری دارم');
   const [selectedPartialTopics, setSelectedPartialTopics] = useState<string[]>([]);
-  const [deliveryMode, setDeliveryMode] = useState<'in_person' | 'online'>('in_person');
+  const [deliveryMode, setDeliveryMode] = useState<'in_person' | 'online' | 'hybrid'>('in_person');
   const [accommodationRequested, setAccommodationRequested] = useState<boolean>(false);
   const [briefSummary, setBriefSummary] = useState('');
   const [thesisTitle, setThesisTitle] = useState('');
-  const [field, setField] = useState('فقه و حقوق جزا و جرم‌شناسی');
+  const [field, setField] = useState('فقه القضاء و رویه دادرسی');
   const [targetInstitution, setTargetInstitution] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Track open transitions so background 10s polling / SSE config updates NEVER reset the active wizard step or user inputs
   const wasOpenRef = useRef(false);
   const lastEditingIdRef = useRef<string | null>(null);
   const latestWizardConfigRef = useRef(w);
   latestWizardConfigRef.current = w;
   const latestEditingRequestRef = useRef(editingRequest);
   latestEditingRequestRef.current = editingRequest;
+  const latestInitialCatRef = useRef(initialCategory);
+  latestInitialCatRef.current = initialCategory;
 
   const currentEditingId = editingRequest?.id ?? null;
 
-  // Sync state ONLY when opening the modal (false -> true) or switching to a different editingRequest ID
   useEffect(() => {
     if (!isOpen) {
       wasOpenRef.current = false;
@@ -93,46 +120,81 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
 
     const currentWizard = latestWizardConfigRef.current;
     const activeEdit = latestEditingRequestRef.current;
+    const initCat = latestInitialCatRef.current;
 
     setErrorMsg('');
     if (activeEdit) {
-      setStep(1);
-      setResearchCategory(activeEdit.researchCategory || 'thesis');
-      const matchedStep1 = currentWizard.step1Options.find(
-        o => o.id === (activeEdit.researchCategory || 'thesis')
-      );
+      const cat: ResearchCategory = activeEdit.researchCategory || 'thesis';
+      setResearchCategory(cat);
+      const matchedStep1 = currentWizard.step1Options.find(o => o.id === cat);
       setSelectedStep1Label(
-        matchedStep1?.label || (activeEdit.researchCategory === 'article' ? 'راهبری مقاله' : 'راهبری پایان‌نامه')
+        matchedStep1?.label ||
+          (cat === 'session_proposal'
+            ? 'پیشنهاد برگزاری نشست علمی'
+            : cat === 'article'
+            ? 'همکاری در مقاله و انتشار'
+            : 'راهبری پایان‌نامه')
       );
-      setServiceScope(activeEdit.serviceScope || 'full_pack');
-      const matchedStep2 = currentWizard.step2Options.find(
-        o => o.id === (activeEdit.serviceScope || 'full_pack')
-      );
-      setSelectedStep2Label(
-        matchedStep2?.label ||
-          (activeEdit.serviceScope === 'partial_mentorship'
-            ? 'نیاز به راهبری بخشی از پژوهش دارم'
-            : 'نیاز به پک کامل راهبری دارم')
-      );
+
+      if (cat === 'session_proposal') {
+        setStep('session_form');
+        setServiceScope('session_proposal');
+        setSelectedStep2Label('پیشنهاد برگزاری نشست علمی');
+      } else {
+        setStep(2);
+        const scopeVal = activeEdit.serviceScope === 'partial_mentorship' ? 'partial_mentorship' : 'full_pack';
+        setServiceScope(scopeVal);
+        const matchedStep2 = currentWizard.step2Options.find(o => o.id === scopeVal);
+        setSelectedStep2Label(
+          matchedStep2?.label ||
+            (scopeVal === 'partial_mentorship'
+              ? 'نیاز به مشورت و یا همکاری موردی دارم'
+              : 'نیاز به پک کامل راهبری دارم')
+        );
+      }
+
       setSelectedPartialTopics(activeEdit.selectedPartialTopics || []);
       setDeliveryMode(activeEdit.deliveryMode || 'in_person');
       setAccommodationRequested(Boolean(activeEdit.accommodationRequested));
       setBriefSummary(activeEdit.briefSummary || '');
       setThesisTitle(activeEdit.thesisTitle || '');
-      setField(activeEdit.field || 'فقه و حقوق جزا و جرم‌شناسی');
+      setField(activeEdit.field || 'فقه القضاء و رویه دادرسی');
       setTargetInstitution(activeEdit.targetInstitution || '');
     } else {
-      setStep(1);
-      setResearchCategory('thesis');
-      setSelectedStep1Label(currentWizard.step1Options[0]?.label || 'راهبری پایان‌نامه');
-      setServiceScope('full_pack');
-      setSelectedStep2Label(currentWizard.step2Options[0]?.label || 'نیاز به پک کامل راهبری دارم');
+      const startCat: ResearchCategory = initCat || 'thesis';
+      setResearchCategory(startCat);
+      const matchedOpt = currentWizard.step1Options.find(o => o.id === startCat);
+      setSelectedStep1Label(
+        matchedOpt?.label ||
+          (startCat === 'session_proposal'
+            ? 'پیشنهاد برگزاری نشست علمی'
+            : startCat === 'article'
+            ? 'همکاری در مقاله و انتشار'
+            : 'راهبری پایان‌نامه')
+      );
+
+      if (initCat === 'session_proposal') {
+        setStep('session_form');
+        setServiceScope('session_proposal');
+        setSelectedStep2Label('پیشنهاد برگزاری نشست علمی');
+        setDeliveryMode('hybrid');
+      } else if (initCat === 'thesis' || initCat === 'article') {
+        setStep(2);
+        setServiceScope('full_pack');
+        setSelectedStep2Label(currentWizard.step2Options[0]?.label || 'نیاز به پک کامل راهبری دارم');
+        setDeliveryMode('in_person');
+      } else {
+        setStep(1);
+        setServiceScope('full_pack');
+        setSelectedStep2Label(currentWizard.step2Options[0]?.label || 'نیاز به پک کامل راهبری دارم');
+        setDeliveryMode('in_person');
+      }
+
       setSelectedPartialTopics([]);
-      setDeliveryMode('in_person');
       setAccommodationRequested(false);
       setBriefSummary('');
       setThesisTitle('');
-      setField('فقه و حقوق جزا و جرم‌شناسی');
+      setField('فقه القضاء و رویه دادرسی');
       setTargetInstitution('');
     }
   }, [isOpen, currentEditingId]);
@@ -143,17 +205,35 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   const enabledStep2 = w.step2Options.filter(o => o.enabled);
   const enabledPartialTopics = w.partialTopics.filter(o => o.enabled);
 
+  const isSessionMode = researchCategory === 'session_proposal';
   const showAccommodationQuestion =
+    !isSessionMode &&
     serviceScope === 'full_pack' &&
     deliveryMode === 'in_person' &&
     Boolean(config.accommodationEnabledInWizard);
 
   const handleSelectStep1 = (optId: string, optLabel: string) => {
-    const normalized: 'thesis' | 'article' = optId === 'article' ? 'article' : 'thesis';
+    const normalized: ResearchCategory =
+      optId === 'session_proposal'
+        ? 'session_proposal'
+        : optId === 'article'
+        ? 'article'
+        : 'thesis';
     setResearchCategory(normalized);
     setSelectedStep1Label(optLabel);
     setErrorMsg('');
-    setStep(2);
+
+    if (normalized === 'session_proposal') {
+      setServiceScope('session_proposal');
+      setSelectedStep2Label('پیشنهاد برگزاری نشست علمی');
+      setDeliveryMode('hybrid');
+      setAccommodationRequested(false);
+      setStep('session_form');
+    } else {
+      setServiceScope('full_pack');
+      if (deliveryMode === 'hybrid') setDeliveryMode('in_person');
+      setStep(2);
+    }
   };
 
   const handleSelectStep2 = (optId: string, optLabel: string) => {
@@ -179,13 +259,13 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
     setErrorMsg('');
     if (serviceScope === 'full_pack') {
       if (!briefSummary.trim() || briefSummary.trim().length < 8) {
-        setErrorMsg('لطفاً شرح مختصری از درخواست راهبری (حداقل ۸ کاراکتر) وارد نمایید.');
+        setErrorMsg('لطفاً شرح مختصری از درخواست (حداقل ۸ کاراکتر) وارد نمایید.');
         return;
       }
       setStep('review');
     } else {
       if (enabledPartialTopics.length > 0 && selectedPartialTopics.length === 0) {
-        setErrorMsg('لطفاً حداقل یک مورد از بخش‌های مورد نیاز برای مشورت یا راهبری موردی را انتخاب کنید.');
+        setErrorMsg('لطفاً حداقل یک مورد از بخش‌های مورد نیاز را انتخاب کنید.');
         return;
       }
       setStep(4);
@@ -195,7 +275,20 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   const handleNextFromStep4 = () => {
     setErrorMsg('');
     if (!briefSummary.trim() || briefSummary.trim().length < 8) {
-      setErrorMsg('لطفاً شرح مختصری از درخواست راهبری (حداقل ۸ کاراکتر) وارد نمایید.');
+      setErrorMsg('لطفاً شرح مختصری از درخواست (حداقل ۸ کاراکتر) وارد نمایید.');
+      return;
+    }
+    setStep('review');
+  };
+
+  const handleNextFromSessionForm = () => {
+    setErrorMsg('');
+    if (!thesisTitle.trim() || thesisTitle.trim().length < 4) {
+      setErrorMsg('لطفاً موضوع یا عنوان پیشنهادی نشست علمی را وارد نمایید.');
+      return;
+    }
+    if (!briefSummary.trim() || briefSummary.trim().length < 8) {
+      setErrorMsg('لطفاً شرح ضرورت، اهداف و محورهای برگزاری نشست را (حداقل ۸ کاراکتر) وارد نمایید.');
       return;
     }
     setStep('review');
@@ -203,10 +296,14 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
 
   const handleBack = () => {
     setErrorMsg('');
-    if (step === 2) setStep(1);
+    if (step === 'session_form') setStep(1);
+    else if (step === 2) setStep(1);
     else if (step === 3) setStep(2);
     else if (step === 4) setStep(3);
-    else if (step === 'review') setStep(serviceScope === 'full_pack' ? 3 : 4);
+    else if (step === 'review') {
+      if (isSessionMode) setStep('session_form');
+      else setStep(serviceScope === 'full_pack' ? 3 : 4);
+    }
   };
 
   const handleFinalSubmit = async () => {
@@ -221,8 +318,9 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
 
       const payload = {
         researchCategory,
-        serviceScope,
-        selectedPartialTopics: serviceScope === 'partial_mentorship' ? selectedPartialTopics : [],
+        serviceScope: isSessionMode ? 'session_proposal' : serviceScope,
+        selectedPartialTopics:
+          isSessionMode || serviceScope === 'partial_mentorship' ? selectedPartialTopics : [],
         deliveryMode,
         accommodationRequested: showAccommodationQuestion ? accommodationRequested : false,
         accommodationCity: showAccommodationQuestion && accommodationRequested ? 'قم' : undefined,
@@ -246,14 +344,39 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
     }
   };
 
-  const stepIndexDisplay =
-    step === 'review'
-      ? serviceScope === 'full_pack'
-        ? '۴ از ۴'
-        : '۵ از ۵'
+  const stepIndexDisplay = isSessionMode
+    ? step === 'session_form'
+      ? '۱ از ۲'
+      : step === 'review'
+      ? '۲ از ۲'
       : step === 'success'
       ? 'تکمیل'
-      : `${step} از ${serviceScope === 'full_pack' ? '۴' : '۵'}`;
+      : 'انتخاب بخش'
+    : step === 'review'
+    ? serviceScope === 'full_pack'
+      ? '۴ از ۴'
+      : '۵ از ۵'
+    : step === 'success'
+    ? 'تکمیل'
+    : `${step} از ${serviceScope === 'full_pack' ? '۴' : '۵'}`;
+
+  const modalTitle = editingRequest
+    ? isSessionMode
+      ? 'ویرایش پیشنهاد برگزاری نشست علمی'
+      : 'ویرایش درخواست پژوهشی'
+    : isSessionMode
+    ? 'پیشنهاد برگزاری نشست علمی'
+    : researchCategory === 'article'
+    ? 'همکاری در مقاله و کمک به انتشار'
+    : step === 1
+    ? 'ثبت درخواست یا پیشنهاد پژوهشی'
+    : 'ثبت درخواست راهبری پایان‌نامه';
+
+  const ModalHeaderIcon = isSessionMode
+    ? Mic
+    : researchCategory === 'article'
+    ? FileText
+    : Sparkles;
 
   return (
     <AnimatePresence>
@@ -271,15 +394,15 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
           onClick={e => e.stopPropagation()}
           className="bg-white dark:bg-slate-900 rounded-t-[26px] sm:rounded-3xl w-full max-w-3xl max-h-[92dvh] sm:max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
         >
-          {/* Persistent Header with Reform 36 "توضیحات" Button */}
+          {/* Persistent Header */}
           <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 flex items-center justify-between gap-2 shrink-0">
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#071E17] text-[#F3D078] flex items-center justify-center shrink-0">
+                <ModalHeaderIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                  {editingRequest ? 'ویرایش درخواست راهبری پژوهش' : 'ثبت درخواست راهبری پژوهش و مقاله'}
+                  {modalTitle}
                 </h2>
                 <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="font-mono tabular-nums font-bold text-amber-700 dark:text-amber-400">
@@ -292,7 +415,6 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {/* Reform 36: Persistent Explanations Button on every wizard step */}
               <button
                 type="button"
                 onClick={onOpenGuidance}
@@ -322,7 +444,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               </div>
             )}
 
-            {/* STEP 1: Research Type */}
+            {/* STEP 1: Select Pillar (All 3 Tracks) */}
             {step === 1 && (
               <div className="space-y-5">
                 <div className="space-y-1">
@@ -330,40 +452,47 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                     {w.step1Title}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    نوع اثر پژوهشی خود را جهت هدایت به مسیر متناسب انتخاب فرمایید.
+                    مسیر پژوهشی یا پیشنهادی خود را انتخاب فرمایید.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {enabledStep1.map(opt => {
-                    const isSelected = researchCategory === (opt.id === 'article' ? 'article' : 'thesis');
-                    const Icon = opt.id === 'article' ? FileText : BookOpen;
+                    const isSelected = researchCategory === opt.id;
+                    const Icon =
+                      opt.id === 'session_proposal'
+                        ? Mic
+                        : opt.id === 'article'
+                        ? FileText
+                        : BookOpen;
                     return (
                       <button
                         key={opt.id}
                         type="button"
                         onClick={() => handleSelectStep1(opt.id, opt.label)}
-                        className={`p-5 rounded-2xl border-2 text-right transition-all space-y-3 cursor-pointer group ${
+                        className={`p-4 sm:p-5 rounded-2xl border-2 text-right transition-all space-y-3 cursor-pointer group flex flex-col justify-between ${
                           isSelected
                             ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/30 shadow-md'
                             : 'border-slate-200 dark:border-slate-700 hover:border-amber-400/70 bg-white dark:bg-slate-800/60'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="w-11 h-11 rounded-2xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 flex items-center justify-center">
-                            <Icon className="w-5 h-5" />
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="w-11 h-11 rounded-2xl bg-[#071E17] text-[#F3D078] flex items-center justify-center">
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-amber-600 transition-transform group-hover:-translate-x-1" />
                           </div>
-                          <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-amber-600 transition-transform group-hover:-translate-x-1" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="text-sm font-black text-slate-900 dark:text-white">
-                            {opt.label}
+                          <div className="space-y-1">
+                            <div className="text-sm font-black text-slate-900 dark:text-white">
+                              {opt.label}
+                            </div>
+                            {opt.description && (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                {opt.description}
+                              </p>
+                            )}
                           </div>
-                          {opt.description && (
-                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                              {opt.description}
-                            </p>
-                          )}
                         </div>
                       </button>
                     );
@@ -372,16 +501,164 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               </div>
             )}
 
-            {/* STEP 2: Service Scope */}
-            {step === 2 && (
+            {/* SESSION PROPOSAL DEDICATED STREAMLINED FORM */}
+            {step === 'session_form' && (
+              <div className="space-y-5">
+                <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-950 dark:text-emerald-100 leading-relaxed">
+                  <strong>پیشنهاد برگزاری نشست علمی:</strong> ایده، مسئله حقوقی یا موضوع فقهی مد نظر خود را پیشنهاد دهید تا پس از بررسی شورای علمی مرکز، در قالب نشست تخصصی یا کرسی ترویجی برنامه‌ریزی و برگزار شود.
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-black text-slate-800 dark:text-slate-100 mb-1.5">
+                      موضوع یا عنوان پیشنهادی نشست علمی <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={thesisTitle}
+                      onChange={e => setThesisTitle(e.target.value)}
+                      placeholder="مثال: چالش‌های فقهی و حقوقی ادله الکترونیک در آرای جدید دیوان عالی کشور..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-black text-slate-800 dark:text-slate-100 mb-1.5">
+                      حوزه تخصصی نشست:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {SESSION_FIELD_PRESETS.map(preset => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setField(preset)}
+                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold cursor-pointer transition-colors ${
+                            field === preset
+                              ? 'bg-[#071E17] text-[#F3D078] border-[#071E17]'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={field}
+                      onChange={e => setField(e.target.value)}
+                      placeholder="یا حوزه تخصصی دیگری وارد نمایید..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-black text-slate-800 dark:text-slate-100 mb-1.5">
+                      شیوه پیشنهادی برگزاری نشست:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {[
+                        { id: 'in_person', label: 'حضوری (در مجتمع مرکز)', Icon: MapPin },
+                        { id: 'online', label: 'آنلاین (برخط)', Icon: Monitor },
+                        { id: 'hybrid', label: 'ترکیبی (حضوری + آنلاین)', Icon: Globe2 },
+                      ].map(mode => {
+                        const active = deliveryMode === mode.id;
+                        return (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            onClick={() => setDeliveryMode(mode.id as any)}
+                            className={`p-3 rounded-xl border-2 text-right flex items-center gap-2.5 cursor-pointer transition-all ${
+                              active
+                                ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/30 font-black'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 font-bold'
+                            }`}
+                          >
+                            <mode.Icon className={`w-4 h-4 shrink-0 ${active ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'}`} />
+                            <span className="text-xs text-slate-900 dark:text-white">{mode.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-black text-slate-800 dark:text-slate-100 mb-1.5">
+                      محورها و قالب پیشنهادی نشست (اختیاری):
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {SESSION_AXES_SUGGESTIONS.map(axis => {
+                        const checked = selectedPartialTopics.includes(axis);
+                        return (
+                          <button
+                            key={axis}
+                            type="button"
+                            onClick={() => togglePartialTopic(axis)}
+                            className={`p-2.5 rounded-xl border text-right flex items-center gap-2 cursor-pointer transition-colors ${
+                              checked
+                                ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/30 font-bold'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50'
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                checked
+                                  ? 'bg-amber-500 border-amber-500 text-slate-950'
+                                  : 'border-slate-300 dark:border-slate-600'
+                              }`}
+                            >
+                              {checked && <CheckCircle2 className="w-3 h-3" />}
+                            </div>
+                            <span className="text-slate-900 dark:text-white">{axis}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      اساتید، سخنرانان یا نهاد همکار پیشنهادی (اختیاری):
+                    </label>
+                    <input
+                      type="text"
+                      value={targetInstitution}
+                      onChange={e => setTargetInstitution(e.target.value)}
+                      placeholder="نام اساتید مدعو، قضات، یا مخاطبان هدف نشست..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-black text-slate-800 dark:text-slate-100 mb-1.5">
+                      شرح ضرورت علمی، پرسش‌های محوری و خروجی مورد انتظار <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={briefSummary}
+                      onChange={e => setBriefSummary(e.target.value)}
+                      placeholder="توضیح دهید چرا طرح این موضوع در شرایط فعلی ضروری است و چه ابهامات یا نیازهای علمی و قضایی را پاسخ می‌دهد..."
+                      className="w-full p-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Service Scope (For Thesis or Article) */}
+            {step === 2 && !isSessionMode && (
               <div className="space-y-5">
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                    انتخاب مرحله قبل: {selectedStep1Label}
+                    بخش انتخابی: {selectedStep1Label}
                   </div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white">
                     {w.step2Title}
                   </h3>
+                  {researchCategory === 'article' && (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
+                      همکاری در مقاله شامل تدوین، نقد علمی و همچنین کمک در معرفی نشریه معتبر، ارسال و انتشار مقاله است.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
@@ -390,6 +667,10 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       opt.id === 'partial_mentorship' ? 'partial_mentorship' : 'full_pack';
                     const isSelected = serviceScope === scopeVal;
                     const Icon = scopeVal === 'full_pack' ? Layers : ListChecks;
+                    const customDesc =
+                      researchCategory === 'article' && scopeVal === 'full_pack'
+                        ? 'همراهی کامل از ایده و نگارش تا استانداردسازی، ارسال به نشریه معتبر علمی‌پژوهشی و پیگیری انتشار'
+                        : opt.description;
                     return (
                       <button
                         key={opt.id}
@@ -402,7 +683,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                         }`}
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-11 h-11 rounded-2xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 flex items-center justify-center shrink-0">
+                          <div className="w-11 h-11 rounded-2xl bg-[#071E17] text-[#F3D078] flex items-center justify-center shrink-0">
                             <Icon className="w-5 h-5" />
                           </div>
                           <div className="space-y-1">
@@ -412,9 +693,9 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                             <div className="text-sm font-black text-slate-900 dark:text-white">
                               {opt.label}
                             </div>
-                            {opt.description && (
+                            {customDesc && (
                               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                                {opt.description}
+                                {customDesc}
                               </p>
                             )}
                           </div>
@@ -428,7 +709,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
             )}
 
             {/* STEP 3 — PATH A: Full Pack Delivery + Qom Accommodation + Brief Summary */}
-            {step === 3 && serviceScope === 'full_pack' && (
+            {step === 3 && !isSessionMode && serviceScope === 'full_pack' && (
               <div className="space-y-5">
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-amber-700 dark:text-amber-400">
@@ -438,6 +719,12 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                     {w.fullPackDeliveryTitle}
                   </h3>
                 </div>
+
+                {researchCategory === 'article' && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-950 dark:text-emerald-100 leading-relaxed">
+                    در بسته کامل <strong>همکاری و انتشار مقاله</strong>، علاوه بر راهبری ساختار و محتوا، کارشناسان در معرفی نشریه مناسب علمی‌پژوهشی، آماده‌سازی فایل ارسال و اصلاحات داوری تا چاپ کنار شما خواهند بود.
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <button
@@ -488,7 +775,6 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                   </button>
                 </div>
 
-                {/* Conditional Qom Accommodation Question (Only Option 1 + Admin enabled) */}
                 {showAccommodationQuestion && (
                   <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-3">
                     <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white">
@@ -522,7 +808,6 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                   </div>
                 )}
 
-                {/* Brief Summary & Details on SAME page per Reform 33 */}
                 <div className="space-y-4 pt-1 border-t border-slate-200 dark:border-slate-800">
                   <div>
                     <label className="block text-xs font-black text-slate-800 dark:text-slate-100 mb-1.5">
@@ -532,7 +817,11 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       rows={4}
                       value={briefSummary}
                       onChange={e => setBriefSummary(e.target.value)}
-                      placeholder={w.briefSummaryPlaceholder}
+                      placeholder={
+                        researchCategory === 'article'
+                          ? 'موضوع یا چکیده مقاله، وضعیت نگارش فعلی، و اینکه آیا نشریه علمی‌پژوهشی خاصی مد نظرتان هست را بنویسید...'
+                          : w.briefSummaryPlaceholder
+                      }
                       className="w-full p-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                     />
                   </div>
@@ -540,7 +829,9 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
                     <div>
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        عنوان پیشنهادی / مصوب (اختیاری):
+                        {researchCategory === 'article'
+                          ? 'عنوان پیشنهادی یا فعلی مقاله (اختیاری):'
+                          : 'عنوان پیشنهادی / مصوب پایان‌نامه (اختیاری):'}
                       </label>
                       <input
                         type="text"
@@ -552,13 +843,19 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        نهاد، دانشگاه یا مجله هدف (اختیاری):
+                        {researchCategory === 'article'
+                          ? 'مجله یا فصلنامه علمی هدف (اختیاری):'
+                          : 'نهاد یا دانشگاه هدف (اختیاری):'}
                       </label>
                       <input
                         type="text"
                         value={targetInstitution}
                         onChange={e => setTargetInstitution(e.target.value)}
-                        placeholder="مثلاً: دانشگاه علوم قضایی، پژوهشگاه حوزه..."
+                        placeholder={
+                          researchCategory === 'article'
+                            ? 'مثلاً: فصلنامه مطالعات فقه و حقوق، مجله علمی‌پژوهشی...'
+                            : 'مثلاً: دانشگاه علوم قضایی، پژوهشگاه حوزه...'
+                        }
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       />
                     </div>
@@ -579,8 +876,8 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               </div>
             )}
 
-            {/* STEP 3 — PATH B: Partial Mentorship Checklist */}
-            {step === 3 && serviceScope === 'partial_mentorship' && (
+            {/* STEP 3 — PATH B: Partial Mentorship Checklist (Includes Article Publication Help!) */}
+            {step === 3 && !isSessionMode && serviceScope === 'partial_mentorship' && (
               <div className="space-y-5">
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-amber-700 dark:text-amber-400">
@@ -590,21 +887,27 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                     {w.partialTopicsTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    یک یا چند مورد از محورهای زیر را که نیاز به راهبری یا مشورت دارید انتخاب کنید.
+                    یک یا چند مورد از محورهای زیر را که نیاز به همکاری، مشورت یا پشتیبانی انتشار دارید انتخاب کنید.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {enabledPartialTopics.map(topic => {
                     const checked = selectedPartialTopics.includes(topic.label);
+                    const isPubOption =
+                      topic.id === 'article_publication' || topic.label.includes('انتشار');
                     return (
                       <button
                         key={topic.id}
                         type="button"
                         onClick={() => togglePartialTopic(topic.label)}
                         className={`p-4 rounded-2xl border-2 text-right transition-all flex items-center gap-3 cursor-pointer ${
+                          isPubOption && researchCategory === 'article' ? 'sm:col-span-2' : ''
+                        } ${
                           checked
                             ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/30'
+                            : isPubOption && researchCategory === 'article'
+                            ? 'border-emerald-300 dark:border-emerald-700/70 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-500'
                             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-amber-400/60'
                         }`}
                       >
@@ -627,8 +930,8 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
               </div>
             )}
 
-            {/* STEP 4 — PATH B: Presence Option + Brief Summary (NO Accommodation Question per Reform 33) */}
-            {step === 4 && serviceScope === 'partial_mentorship' && (
+            {/* STEP 4 — PATH B: Presence Option + Brief Summary */}
+            {step === 4 && !isSessionMode && serviceScope === 'partial_mentorship' && (
               <div className="space-y-5">
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-amber-700 dark:text-amber-400">
@@ -684,7 +987,11 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       rows={4}
                       value={briefSummary}
                       onChange={e => setBriefSummary(e.target.value)}
-                      placeholder={w.briefSummaryPlaceholder}
+                      placeholder={
+                        researchCategory === 'article'
+                          ? 'توضیح دهید مقاله در چه مرحله‌ای است و کدام بخش (نگارش، اصلاح یا انتشار در نشریه) مد نظر شماست...'
+                          : w.briefSummaryPlaceholder
+                      }
                       className="w-full p-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                     />
                   </div>
@@ -710,7 +1017,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                         type="text"
                         value={targetInstitution}
                         onChange={e => setTargetInstitution(e.target.value)}
-                        placeholder="نام دانشگاه، حوزه یا مجله..."
+                        placeholder="نام دانشگاه، حوزه یا مجله علمی‌پژوهشی..."
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       />
                     </div>
@@ -727,7 +1034,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                     {w.reviewStepTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    مشخصات هویتی شما به صورت خودکار به پرونده پیوست می‌شود تا کارشناسان با شما تماس بگیرند.
+                    مشخصات هویتی شما به صورت خودکار به پرونده پیوست می‌شود تا کارشناسان با شما در ارتباط باشند.
                   </p>
                 </div>
 
@@ -735,7 +1042,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
                   <div className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-emerald-600" />
-                    <span>مشخصات متقاضی (ارسالی برای کارشناس مرکز):</span>
+                    <span>مشخصات ثبت‌کننده (ارسالی برای کارشناس مرکز):</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300">
                     <div>نام و نام خانوادگی: <strong>{currentUser?.fullName || '—'}</strong></div>
@@ -748,28 +1055,45 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                 {/* Selected Wizard Summary */}
                 <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/60 space-y-2.5 text-xs">
                   <div className="font-black text-amber-900 dark:text-amber-300">
-                    خلاصه انتخاب‌های شما:
+                    خلاصه اطلاعات ثبتی شما:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800 dark:text-slate-200">
-                    <div>نوع پژوهش: <strong>{selectedStep1Label}</strong></div>
-                    <div>نوع راهبری: <strong>{selectedStep2Label}</strong></div>
-                    <div>نحوه برگزاری: <strong>{getDeliveryModeLabel(deliveryMode)}</strong></div>
-                    {showAccommodationQuestion && (
-                      <div>
-                        اسکان موقت در قم: <strong>{accommodationRequested ? 'بله، نیاز دارم' : 'خیر'}</strong>
-                      </div>
+                    <div>بخش انتخابی: <strong>{selectedStep1Label}</strong></div>
+                    {isSessionMode ? (
+                      <>
+                        <div>موضوع نشست: <strong>{thesisTitle}</strong></div>
+                        <div>حوزه تخصصی: <strong>{field}</strong></div>
+                        <div>شیوه برگزاری: <strong>{getDeliveryModeLabel(deliveryMode)}</strong></div>
+                      </>
+                    ) : (
+                      <>
+                        <div>سطح خدمات: <strong>{selectedStep2Label}</strong></div>
+                        <div>نحوه برگزاری: <strong>{getDeliveryModeLabel(deliveryMode)}</strong></div>
+                        {showAccommodationQuestion && (
+                          <div>
+                            اسکان موقت در قم: <strong>{accommodationRequested ? 'بله، نیاز دارم' : 'خیر'}</strong>
+                          </div>
+                        )}
+                      </>
                     )}
-                    {serviceScope === 'partial_mentorship' && selectedPartialTopics.length > 0 && (
+
+                    {selectedPartialTopics.length > 0 && (
                       <div className="sm:col-span-2">
-                        محورهای مورد نیاز: <strong>{selectedPartialTopics.join('، ')}</strong>
+                        {isSessionMode ? 'محورهای کلیدی نشست:' : 'محورهای مورد نیاز:'}{' '}
+                        <strong>{selectedPartialTopics.join('، ')}</strong>
                       </div>
                     )}
                     {targetInstitution && (
-                      <div className="sm:col-span-2">نهاد مقصد: <strong>{targetInstitution}</strong></div>
+                      <div className="sm:col-span-2">
+                        {isSessionMode ? 'سخنرانان / نهاد همکار پیشنهادی:' : 'نهاد یا نشریه مقصد:'}{' '}
+                        <strong>{targetInstitution}</strong>
+                      </div>
                     )}
                   </div>
                   <div className="pt-2 border-t border-amber-200/70 dark:border-amber-800/50">
-                    <span className="text-slate-500 dark:text-slate-400 block mb-1">شرح مختصر درخواست:</span>
+                    <span className="text-slate-500 dark:text-slate-400 block mb-1">
+                      {isSessionMode ? 'شرح ضرورت و اهداف نشست:' : 'شرح مختصر درخواست:'}
+                    </span>
                     <p className="text-slate-900 dark:text-white leading-relaxed whitespace-pre-wrap font-medium">
                       {briefSummary}
                     </p>
@@ -785,7 +1109,11 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  {editingRequest ? 'تغییرات درخواست با موفقیت ذخیره شد' : 'درخواست شما با موفقیت ثبت شد'}
+                  {editingRequest
+                    ? 'تغییرات با موفقیت ذخیره شد'
+                    : isSessionMode
+                    ? 'پیشنهاد برگزاری نشست علمی شما ثبت شد'
+                    : 'درخواست شما با موفقیت ثبت شد'}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-7">
                   {config.submissionSuccessMessage}
@@ -794,16 +1122,16 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                   <button
                     type="button"
                     onClick={onDoneSuccess}
-                    className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black transition-colors cursor-pointer"
+                    className="px-6 py-3 min-h-[44px] rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] text-xs font-black transition-colors cursor-pointer"
                   >
-                    مشاهده وضعیت در درخواست‌های من
+                    مشاهده و پیگیری در همین صفحه
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Footer Navigation + Reform 37 Center Contact Strip */}
+          {/* Footer Navigation */}
           {step !== 'success' && (
             <div className="px-4 sm:px-6 py-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-950/95 space-y-2.5 shrink-0">
               <div className="flex items-center justify-between gap-2.5">
@@ -815,19 +1143,25 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       className="px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                     >
                       <ChevronRight className="w-4 h-4" />
-                      <span>مرحله قبل</span>
+                      <span>{step === 2 || step === 'session_form' ? 'تغییر بخش' : 'مرحله قبل'}</span>
                     </button>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {(step === 3 || step === 4) && (
+                  {(step === 3 || step === 4 || step === 'session_form') && (
                     <button
                       type="button"
-                      onClick={step === 3 ? handleNextFromStep3 : handleNextFromStep4}
-                      className="px-5 py-2.5 min-h-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                      onClick={
+                        step === 'session_form'
+                          ? handleNextFromSessionForm
+                          : step === 3
+                          ? handleNextFromStep3
+                          : handleNextFromStep4
+                      }
+                      className="px-5 py-2.5 min-h-[44px] rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] text-xs font-black flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>مرحله بعد</span>
+                      <span>بازبینی و مرحله بعد</span>
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                   )}
@@ -844,7 +1178,9 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                         {submitting
                           ? 'در حال ثبت...'
                           : editingRequest
-                          ? 'ذخیره تغییرات درخواست'
+                          ? 'ذخیره تغییرات'
+                          : isSessionMode
+                          ? 'ثبت پیشنهاد نشست'
                           : 'ثبت نهایی درخواست'}
                       </span>
                     </button>
@@ -852,7 +1188,6 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                 </div>
               </div>
 
-              {/* Reform 37 compact phone strip inside wizard */}
               <div className="hidden sm:flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/70 dark:border-slate-800 pt-2">
                 <div className="flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
