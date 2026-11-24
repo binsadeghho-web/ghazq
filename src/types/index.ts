@@ -272,6 +272,7 @@ export interface CrextioDashboardConfig {
     accent?: string;
     bgClass?: string;
     imageUrl?: string;
+    moduleKey?: import('./welfare').WelfareModuleKey;
   }>;
 
   // ویترین کتاب و محصولات چند رسانه‌ای

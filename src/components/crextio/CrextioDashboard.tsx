@@ -1018,7 +1018,11 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
         }
         return (
           <div className={scale === 'compact' ? 'origin-top scale-[0.98]' : ''}>
-            <WelfareAndLoansShowcase onNavigateToWelfare={() => onNavigateTab?.('Welfare')} />
+            <WelfareAndLoansShowcase
+              onNavigateToWelfare={modKey =>
+                modKey && onNavigateDeep ? onNavigateDeep('Welfare', modKey) : onNavigateTab?.('Welfare')
+              }
+            />
           </div>
         );
 
@@ -1055,7 +1059,12 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
         );
 
       case 'bento_grid':
-        return <CrextioServicesBento onNavigateTab={tab => onNavigateTab?.(tab)} />;
+        return (
+          <CrextioServicesBento
+            onNavigateTab={tab => onNavigateTab?.(tab)}
+            onNavigateDeep={onNavigateDeep}
+          />
+        );
 
       case 'books_showcase':
         if (density === 'minimal') {

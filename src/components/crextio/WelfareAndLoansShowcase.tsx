@@ -29,8 +29,10 @@ import {
   Camera,
 } from 'lucide-react';
 
+import { WelfareModuleKey } from '../../types';
+
 interface WelfareAndLoansShowcaseProps {
-  onNavigateToWelfare?: () => void;
+  onNavigateToWelfare?: (moduleKey?: WelfareModuleKey) => void;
 }
 
 const AVAILABLE_ICONS = [
@@ -79,10 +81,11 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
   const defaultWelfareCards = [
     {
       id: 'welf-1',
-      title: 'وام قرض‌الحسنه حمایت قضایی',
-      amount: '۱۰۰,۰۰۰,۰۰۰ تومان',
-      subtext: 'اقساط ۳۶ ماهه بدون کارمزد با تسریع در صدور',
-      tag: 'تسهیلات مالی',
+      moduleKey: 'emergency_loan' as WelfareModuleKey,
+      title: 'تسهیلات اضطراری',
+      amount: 'بررسی فوری کارگروه',
+      subtext: 'ثبت درخواست وام ضروری با درج مبلغ و علت درخواست و پیگیری وضعیت',
+      tag: 'حمایت مالی',
       iconId: 'CreditCard',
       accent: '#059669',
       bgClass: 'bg-emerald-50/60 border-emerald-200',
@@ -90,35 +93,50 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
     },
     {
       id: 'welf-2',
-      title: 'اسکان زیارتی مشهد و قم',
-      amount: 'تخفیف ۷۰٪ اعضا',
-      subtext: 'رزرو آنلاین هتل‌های ۵ ستاره طرف قرارداد کانون',
-      tag: 'سفر و اقامت',
-      iconId: 'Building2',
+      moduleKey: 'qarzolhasaneh_fund' as WelfareModuleKey,
+      title: 'صندوق قرض‌الحسنه مجتمع فقه و حقوق اسلامی',
+      amount: 'عضویت و حق عضویت',
+      subtext: 'ثبت درخواست عضویت با انتخاب مبلغ ماهانه، واریز حق عضویت و سوابق پرداخت',
+      tag: 'صندوق قرض‌الحسنه',
+      iconId: 'Coins',
       accent: '#D97706',
       bgClass: 'bg-amber-50/60 border-amber-200',
       imageUrl: '',
     },
     {
       id: 'welf-3',
-      title: 'کمک‌هزینه درمان و سلامت خانواده',
-      amount: 'پوشش تا ۵۰ میلیون',
-      subtext: 'صندوق حمایت از بیماران خاص و زوج‌درمانی',
-      tag: 'سلامت',
-      iconId: 'Heart',
-      accent: '#E11D48',
-      bgClass: 'bg-rose-50/60 border-rose-200',
+      moduleKey: 'accommodation' as WelfareModuleKey,
+      title: 'اسکان در قم و سایر شهرها',
+      amount: 'حداکثر ۳ شب (تقویم شمسی)',
+      subtext: 'انتخاب شهر، تعداد شب و تاریخ ورود از تقویم شمسی (حداقل از ۳ روز آینده)',
+      tag: 'سفر و اقامت',
+      iconId: 'Building2',
+      accent: '#0D9488',
+      bgClass: 'bg-teal-50/60 border-teal-200',
       imageUrl: '',
     },
     {
       id: 'welf-4',
-      title: 'سبد معیشتی تعاونی اعضا',
-      amount: 'تخفیف ویژه ۳۵٪',
-      subtext: 'عرضه مستقیم اقلام خوراکی و استراتژیک خانوار',
-      tag: 'تعاونی اعضا',
+      moduleKey: 'consumables' as WelfareModuleKey,
+      title: 'تهیه اقلام مصرفی',
+      amount: `${consumables.filter(c => c.isActive !== false && c.stock > 0).length} قلم فعال`,
+      subtext: 'سفارش اقلام تعاونی با قیمت مصوب و تحویل حضوری، پست یا پیک',
+      tag: 'تعاونی مصرف',
       iconId: 'ShoppingBag',
-      accent: '#2563EB',
-      bgClass: 'bg-blue-50/60 border-blue-200',
+      accent: '#4F46E5',
+      bgClass: 'bg-indigo-50/60 border-indigo-200',
+      imageUrl: '',
+    },
+    {
+      id: 'welf-5',
+      moduleKey: 'installment_sales' as WelfareModuleKey,
+      title: 'فروش اقساطی',
+      amount: 'سرای ایرانی و آمال',
+      subtext: 'مشاهده سقف اعتبار، شرایط اقساط و ثبت درخواست با تب سوابق اختصاصی',
+      tag: 'خرید اقساطی',
+      iconId: 'Briefcase',
+      accent: '#B45309',
+      bgClass: 'bg-orange-50/60 border-orange-200',
       imageUrl: '',
     }
   ];
@@ -127,6 +145,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
     crextioConfig.welfareShowcaseCards && crextioConfig.welfareShowcaseCards.length > 0
       ? crextioConfig.welfareShowcaseCards.map(c => ({
           id: c.id,
+          moduleKey: c.moduleKey,
           title: c.title,
           amount: c.amount || '',
           subtext: c.subtext || c.subtitle || '',
@@ -140,7 +159,20 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
 
   const [editTitle, setEditTitle] = useState(title);
   const [editSubtitle, setEditSubtitle] = useState(subtitle);
-  const [welfareCards, setWelfareCards] = useState(normalizedSavedCards);
+  const [welfareCards, setWelfareCards] = useState<
+    Array<{
+      id: string;
+      moduleKey?: WelfareModuleKey;
+      title: string;
+      amount: string;
+      subtext: string;
+      tag: string;
+      iconId: string;
+      accent: string;
+      bgClass: string;
+      imageUrl: string;
+    }>
+  >(normalizedSavedCards);
 
   useEffect(() => {
     setEditTitle(title);
@@ -149,6 +181,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       setWelfareCards(
         crextioConfig.welfareShowcaseCards.map(c => ({
           id: c.id,
+          moduleKey: c.moduleKey,
           title: c.title,
           amount: c.amount || '',
           subtext: c.subtext || c.subtitle || '',
@@ -193,6 +226,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
   const handleAddCard = () => {
     const newCard = {
       id: `welf-${Date.now()}`,
+      moduleKey: undefined as WelfareModuleKey | undefined,
       title: 'خدمت رفاهی جدید',
       amount: 'تخفیف ویژه ۵۰٪',
       subtext: 'توضیحات کوتاه خدمت جدید',
@@ -250,7 +284,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
           )}
 
           <button
-            onClick={onNavigateToWelfare}
+            onClick={() => onNavigateToWelfare?.()}
             className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
           >
             <span>ورود به سامانه رفاهیات</span>
@@ -260,7 +294,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       </div>
 
       {/* Welfare Grid */}
-      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 sm:overflow-visible sm:pb-0">
+      <div className={`flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 ${welfareCards.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} sm:gap-3.5 sm:overflow-visible sm:pb-0`}>
         {welfareCards.map(item => {
           const Icon = getIconComponent(item.iconId);
 
@@ -268,7 +302,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
             <motion.div
               key={item.id}
               whileHover={{ y: -3 }}
-              onClick={onNavigateToWelfare}
+              onClick={() => onNavigateToWelfare?.(item.moduleKey)}
               className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${item.bgClass}`}
             >
               <div className="space-y-2.5">
@@ -402,6 +436,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                             ...prev,
                             {
                               id: `welf-${Date.now()}`,
+                              moduleKey: 'consumables',
                               title: selectedItem.title,
                               amount: `قیمت تعاونی: ${selectedItem.cooperativePrice.toLocaleString('fa-IR')} تومان`,
                               subtext: `${selectedItem.description} (بازار: ${selectedItem.marketPrice.toLocaleString('fa-IR')} تومان)`,

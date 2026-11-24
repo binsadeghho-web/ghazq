@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
-import { CrextioBentoCardConfig } from '../../types';
+import { CrextioBentoCardConfig, WelfareModuleKey } from '../../types';
 import { DEFAULT_BENTO_CARDS } from '../../data/mockData';
 import { CrextioBentoCustomizerModal } from './CrextioBentoCustomizerModal';
 import {
@@ -23,6 +23,7 @@ import {
 
 interface CrextioServicesBentoProps {
   onNavigateTab: (tab: string) => void;
+  onNavigateDeep?: (tab: string, subTab?: string) => void;
 }
 
 const ICON_MAP: Record<string, any> = {
@@ -44,8 +45,11 @@ const SIZE_CLASS_MAP: Record<string, string> = {
   'full': 'col-span-1 md:col-span-3 lg:col-span-4 row-span-1'
 };
 
-export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNavigateTab }) => {
-  const { crextioConfig, currentUser, cartableRequests, isAlumniPreview } = useApp();
+export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
+  onNavigateTab,
+  onNavigateDeep,
+}) => {
+  const { crextioConfig, currentUser, cartableRequests, welfarePortalConfig, isAlumniPreview } = useApp();
   const [hoveredTile, setHoveredTile] = useState<string | null>(null);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
@@ -185,28 +189,77 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({ onNa
                   </p>
                 </div>
 
-                {/* فهرست زیرخدمات ویرایش‌شده */}
-                {card.subServices && card.subServices.length > 0 && (
-                  <div className="hidden md:block pt-2 border-t border-stone-200/70 space-y-1.5">
-                    <div className="text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                {/* فهرست زیرخدمات ویرایش‌شده (با لینک مستقیم ۵ بخش برای کارت رفاهیات) */}
+                {card.id === 'Welfare' ? (
+                  <div className="pt-2 border-t border-stone-200/70 space-y-1">
+                    <div className="text-[10px] font-black text-stone-500 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                      <span>زیرخدمات و امکانات:</span>
+                      <span>بخش‌های ۵گانه رفاهیات:</span>
                     </div>
                     <div className="grid grid-cols-1 gap-1 text-[11px] text-stone-700">
-                      {card.subServices.map((sub, sIdx) => (
-                        <div
-                          key={sIdx}
-                          className="flex items-center gap-1.5 py-0.5 group-hover:text-stone-900 transition-colors"
-                        >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ backgroundColor: accentColor }}
-                          />
-                          <span className="truncate">{sub}</span>
-                        </div>
-                      ))}
+                      {(
+                        [
+                          'emergency_loan',
+                          'qarzolhasaneh_fund',
+                          'accommodation',
+                          'consumables',
+                          'installment_sales',
+                        ] as WelfareModuleKey[]
+                      )
+                        .filter(mk => welfarePortalConfig?.modulesConfig?.[mk]?.enabled !== false)
+                        .map(mk => {
+                          const title = welfarePortalConfig?.modulesConfig?.[mk]?.title || mk;
+                          return (
+                            <button
+                              key={mk}
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (onNavigateDeep) {
+                                  onNavigateDeep('Welfare', mk);
+                                } else {
+                                  onNavigateTab('Welfare');
+                                }
+                              }}
+                              className="w-full text-right flex items-center justify-between gap-1.5 py-1 px-1.5 rounded-lg hover:bg-emerald-50 text-stone-800 hover:text-emerald-900 font-bold transition-colors cursor-pointer"
+                            >
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: accentColor }}
+                                />
+                                <span className="truncate">{title}</span>
+                              </span>
+                              <ArrowLeft className="w-3 h-3 shrink-0 opacity-60" />
+                            </button>
+                          );
+                        })}
                     </div>
                   </div>
+                ) : (
+                  card.subServices &&
+                  card.subServices.length > 0 && (
+                    <div className="hidden md:block pt-2 border-t border-stone-200/70 space-y-1.5">
+                      <div className="text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                        <span>زیرخدمات و امکانات:</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1 text-[11px] text-stone-700">
+                        {card.subServices.map((sub, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className="flex items-center gap-1.5 py-0.5 group-hover:text-stone-900 transition-colors"
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: accentColor }}
+                            />
+                            <span className="truncate">{sub}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
 

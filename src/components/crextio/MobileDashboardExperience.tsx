@@ -24,6 +24,7 @@ import {
   MobileSectionId,
   MobileServiceListTabId,
   MobileServiceShowcaseId,
+  WelfareModuleKey,
 } from '../../types';
 import type { Theme2StudioTab } from './Theme2StudioDrawer';
 import {
@@ -55,6 +56,11 @@ import {
   Clock,
   CheckCircle2,
   MessageSquare,
+  CreditCard,
+  Landmark,
+  Building2,
+  ShoppingBag,
+  Store,
 } from 'lucide-react';
 
 interface MobileDashboardExperienceProps {
@@ -145,6 +151,8 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
     welfareRequests,
     consumables,
     welfarePortalConfig,
+    myFundMembership,
+    installmentPartners,
     synergyPosts,
     crextioConfig,
     generalShowcase,
@@ -2073,59 +2081,190 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                   </div>
                 )}
 
-                {/* 6. INDEPENDENT WELFARE EXPANDED VIEW */}
-                {resolvedFeedTab === 'welfare' && (
-                  <div className="p-5 space-y-4">
-                    <div className="flex items-start gap-3.5">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0B2922] to-[#071E17] text-[#F3D078] flex items-center justify-center shrink-0 border border-[#F3D078]/30">
-                        <Gift className="w-7 h-7" />
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <h3 className="text-[15px] font-black text-stone-900">
-                          {crextioConfig.welfareShowcaseTitle || 'صندوق رفاهی حامی، اقامتگاه‌ها و تعاونی مصرف'}
-                        </h3>
-                        <p className="text-xs text-stone-600 leading-relaxed">
-                          تسهیلات قرض‌الحسنه ویژه اعضا، رزرو زائرسرای مشهد و اقامتگاه قم، هدایای مناسبتی و سفارش اقلام تعاونی با قیمت یارانه‌ای.
-                        </p>
-                      </div>
-                    </div>
+                {/* 6. INDEPENDENT WELFARE EXPANDED VIEW — 5 LUMINOUS SUB-MODULES */}
+                {resolvedFeedTab === 'welfare' && (() => {
+                  const activePartnersList = (installmentPartners || []).filter(p => p.isActive !== false);
+                  const fundStatusSubtitle =
+                    myFundMembership?.status === 'approved'
+                      ? 'عضو فعال صندوق · واریز حق عضویت و مشاهده سوابق'
+                      : myFundMembership?.status === 'pending'
+                        ? 'درخواست عضویت در حال بررسی · امکان ویرایش یا لغو'
+                        : 'عضویت آنلاین با انتخاب مبلغ حق عضویت ماهانه';
+                  const welfareSubCards: Array<{
+                    key: WelfareModuleKey;
+                    indexLabel: string;
+                    title: string;
+                    subtitle: string;
+                    metaText: string;
+                    icon: any;
+                    iconClass: string;
+                    glowBg: string;
+                    featured?: boolean;
+                  }> = [
+                    {
+                      key: 'emergency_loan' as WelfareModuleKey,
+                      indexLabel: '۰۱',
+                      title: welfarePortalConfig.modulesConfig.emergency_loan?.title || 'تسهیلات اضطراری',
+                      subtitle:
+                        welfarePortalConfig.modulesConfig.emergency_loan?.subtitle ||
+                        'ثبت درخواست وام ضروری با درج مبلغ و علت درخواست',
+                      metaText: 'بررسی کارگروه رفاه · ۴۸ تا ۷۲ ساعت کاری',
+                      icon: CreditCard,
+                      iconClass: 'bg-[#F3D078]/15 text-[#F3D078] border-[#F3D078]/40',
+                      glowBg: 'from-[#071E17] via-[#0B2D22] to-[#124030] text-white border-[#F3D078]/50',
+                      featured: true,
+                    },
+                    {
+                      key: 'qarzolhasaneh_fund' as WelfareModuleKey,
+                      indexLabel: '۰۲',
+                      title:
+                        welfarePortalConfig.modulesConfig.qarzolhasaneh_fund?.title ||
+                        'صندوق قرض‌الحسنه مجتمع فقه و حقوق اسلامی',
+                      subtitle: fundStatusSubtitle,
+                      metaText: `${toPersianNumbers((welfarePortalConfig.fundConfig?.presetTiers || []).length)} پلن پیشنهادی + مبلغ دلخواه`,
+                      icon: Landmark,
+                      iconClass: 'bg-amber-50 text-amber-800 border-amber-200',
+                      glowBg: 'from-white via-white to-[#FBF5E4]/80 text-stone-900 border-[#E5DEC9]',
+                    },
+                    {
+                      key: 'accommodation' as WelfareModuleKey,
+                      indexLabel: '۰۳',
+                      title:
+                        welfarePortalConfig.modulesConfig.accommodation?.title ||
+                        'اسکان در قم و سایر شهرها',
+                      subtitle: 'انتخاب شهر، تعداد شب و ثبت تاریخ ورود از تقویم شمسی',
+                      metaText: `${toPersianNumbers(welfarePortalConfig.accommodationCities.length)} شهر · حداکثر ${toPersianNumbers(welfarePortalConfig.accommodationMaxNights)} شب`,
+                      icon: Building2,
+                      iconClass: 'bg-teal-50 text-teal-800 border-teal-200',
+                      glowBg: 'from-white via-white to-teal-50/50 text-stone-900 border-[#E5DEC9]',
+                    },
+                    {
+                      key: 'consumables' as WelfareModuleKey,
+                      indexLabel: '۰۴',
+                      title:
+                        welfarePortalConfig.modulesConfig.consumables?.title ||
+                        'تهیه اقلام مصرفی',
+                      subtitle: 'سفارش اقلام تعاونی با قیمت مصوب و مقایسه نرخ بازار',
+                      metaText: `${toPersianNumbers(activeConsumables.length)} قلم فعال · تحویل حضوری، پست یا پیک`,
+                      icon: ShoppingBag,
+                      iconClass: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+                      glowBg: 'from-white via-white to-indigo-50/45 text-stone-900 border-[#E5DEC9]',
+                    },
+                    {
+                      key: 'installment_sales' as WelfareModuleKey,
+                      indexLabel: '۰۵',
+                      title:
+                        welfarePortalConfig.modulesConfig.installment_sales?.title ||
+                        'فروش اقساطی',
+                      subtitle: 'خرید اعتباری و اقساطی از فروشگاه‌های طرف قرارداد',
+                      metaText: `${activePartnersList.slice(0, 2).map(p => p.name).join(' و ') || 'سرای ایرانی و آمال'} · تب سوابق`,
+                      icon: Store,
+                      iconClass: 'bg-orange-50 text-orange-800 border-orange-200',
+                      glowBg: 'from-white via-white to-amber-50/55 text-stone-900 border-[#E5DEC9]',
+                    },
+                  ].filter(item => {
+                    const cfg = welfarePortalConfig?.modulesConfig?.[item.key];
+                    if (cfg && cfg.enabled === false) return false;
+                    if (currentUser?.role === 'customer' && item.key !== 'consumables') return false;
+                    return true;
+                  });
 
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80">
-                        <span className="text-[10px] font-bold text-stone-500 block">سقف وام قرض‌الحسنه</span>
-                        <span className="text-sm font-black text-emerald-900 mt-1 block">
-                          {crextioConfig.welfareShowcaseLoanAmount || '۱۰۰ میلیون تومان'}
-                        </span>
+                  return (
+                    <div className="p-4 sm:p-5 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0B2922] to-[#071E17] text-[#F3D078] flex items-center justify-center shrink-0 border border-[#F3D078]/35 shadow-sm">
+                          <Gift className="w-6 h-6" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-800">
+                            <span>میز خدمات رفاهی مجتمع</span>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums">{toPersianNumbers(welfareSubCards.length)} بخش مستقل</span>
+                          </div>
+                          <h3 className="text-[15px] font-black text-stone-900">
+                            {crextioConfig.welfareShowcaseTitle || 'تسهیلات و رفاهیات مجتمع فقه و حقوق اسلامی'}
+                          </h3>
+                          <p className="text-[11px] text-stone-600 leading-relaxed">
+                            هر یک از ۵ خدمت رفاهی زیر را لمس کنید تا مستقیم به صفحه ثبت درخواست و سوابق آن بخش بروید.
+                          </p>
+                        </div>
                       </div>
-                      <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80">
-                        <span className="text-[10px] font-bold text-stone-500 block">اقلام فعال تعاونی</span>
-                        <span className="text-sm font-black text-amber-800 mt-1 block tabular-nums">
-                          {toPersianNumbers(activeConsumables.length)} قلم کالا
-                        </span>
-                      </div>
-                    </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80 space-y-1.5 text-xs text-stone-700">
-                      <div className="flex items-center gap-2 font-bold">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>درخواست آنلاین تسهیلات قرض‌الحسنه و ودیعه مسکن</span>
+                      <div className="space-y-2.5">
+                        {welfareSubCards.map(item => {
+                          const SubIcon = item.icon;
+                          return (
+                            <motion.button
+                              key={item.key}
+                              type="button"
+                              whileTap={{ scale: 0.985 }}
+                              onClick={() => navigateDeep('Welfare', item.key)}
+                              className={`relative overflow-hidden w-full text-right p-3.5 rounded-2xl border bg-gradient-to-l ${item.glowBg} shadow-xs transition-all flex items-center justify-between gap-3 cursor-pointer min-h-[68px]`}
+                            >
+                              {item.featured && (
+                                <span
+                                  aria-hidden="true"
+                                  className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/80 to-transparent"
+                                />
+                              )}
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <div
+                                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.iconClass}`}
+                                >
+                                  <SubIcon className="w-5 h-5" />
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={`text-[10px] font-black tabular-nums ${
+                                        item.featured ? 'text-[#F3D078]' : 'text-stone-400'
+                                      }`}
+                                    >
+                                      {item.indexLabel}
+                                    </span>
+                                    <span className="text-xs font-black truncate">{item.title}</span>
+                                  </div>
+                                  <p
+                                    className={`text-[11px] leading-snug line-clamp-1 ${
+                                      item.featured ? 'text-emerald-100/90' : 'text-stone-600'
+                                    }`}
+                                  >
+                                    {item.subtitle}
+                                  </p>
+                                  <p
+                                    className={`text-[10px] font-bold truncate ${
+                                      item.featured ? 'text-[#F3D078]/85' : 'text-emerald-800'
+                                    }`}
+                                  >
+                                    {item.metaText}
+                                  </p>
+                                </div>
+                              </div>
+                              <span
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                  item.featured
+                                    ? 'bg-[#F3D078]/15 text-[#F3D078]'
+                                    : 'bg-stone-100 text-stone-600'
+                                }`}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </span>
+                            </motion.button>
+                          );
+                        })}
                       </div>
-                      <div className="flex items-center gap-2 font-bold">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>رزرو اسکان خانوادگی در مشهد مقدس و قم</span>
-                      </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onNavigateTab?.('Welfare')}
-                      className="w-full py-3 min-h-[48px] rounded-2xl bg-[#071E17] hover:bg-[#0E3226] text-[#F3D078] text-xs font-black flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                    >
-                      <span>ورود به میز رفاهیات و تسهیلات</span>
-                      <ArrowLeft className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        onClick={() => navigateDeep('Welfare')}
+                        className="w-full py-3 min-h-[48px] rounded-2xl bg-[#071E17] hover:bg-[#0E3226] text-[#F3D078] text-xs font-black flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                      >
+                        <span>ورود به نمای کامل میز تسهیلات و رفاهیات</span>
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* 7. PRODUCTS & PUBLICATIONS EXPANDED VIEW */}
                 {resolvedFeedTab === 'products' && (
