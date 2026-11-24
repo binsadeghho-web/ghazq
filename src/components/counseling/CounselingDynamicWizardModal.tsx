@@ -671,19 +671,19 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 12 }}
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh]"
       >
         {/* Top Modal Header with Persistent Description Button */}
-        <div className="p-5 sm:p-6 bg-gradient-to-l from-emerald-950 via-slate-900 to-slate-950 text-white flex items-center justify-between gap-3 shrink-0">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 text-[11px] text-amber-300 font-bold">
+        <div className="p-4 sm:p-6 bg-gradient-to-l from-emerald-950 via-slate-900 to-slate-950 text-white flex items-center justify-between gap-2.5 shrink-0">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-bold truncate">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>{sectionTitle}</span>
+              <span className="truncate">{sectionTitle}</span>
             </div>
             <h3 className="text-sm sm:text-base font-black truncate">
               {isSubmitted
@@ -696,11 +696,11 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             </h3>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={onOpenDescriptionModal}
-              className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Info className="w-3.5 h-3.5 text-amber-300" />
               <span>{descriptionButtonLabel || 'توضیحات'}</span>
@@ -708,7 +708,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
               aria-label="بستن"
             >
               <X className="w-4 h-4" />
@@ -718,8 +718,8 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
 
         {/* Stepper Progress Bar */}
         {!isSubmitted && totalStepsCount > 1 && (
-          <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shrink-0">
-            <span className="font-bold text-slate-600 dark:text-slate-300">
+          <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shrink-0">
+            <span className="font-bold text-slate-600 dark:text-slate-300 tabular-nums shrink-0">
               مرحله {toPersianNumbers(safeStepIndex + 1)} از {toPersianNumbers(totalStepsCount)}
             </span>
             <div className="flex-1 max-w-xs h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
@@ -732,7 +732,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         )}
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5 text-xs">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-5 text-xs">
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -780,7 +780,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 {activeFieldsList.map(f => {
                   const selected = selectedFieldId === f.id;
                   return (
@@ -797,7 +797,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                         }
                         setErrorMsg('');
                       }}
-                      className={`p-4 rounded-2xl border text-right transition-all space-y-1.5 cursor-pointer ${
+                      className={`p-3.5 sm:p-4 min-h-[54px] rounded-2xl border text-right transition-all space-y-1 cursor-pointer ${
                         selected
                           ? 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/30 text-slate-900 dark:text-white'
                           : 'border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-emerald-300'
@@ -1089,12 +1089,12 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
 
         {/* Footer Controls */}
         {!isSubmitted && (
-          <div className="p-4 sm:px-6 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900 flex items-center justify-between gap-3 shrink-0">
+          <div className="p-3.5 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900 flex items-center justify-between gap-2.5 shrink-0">
             <button
               type="button"
               onClick={handleBack}
               disabled={safeStepIndex === 0}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+              className="px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
               <span>{prevButtonLabel || 'مرحله قبل'}</span>
@@ -1105,7 +1105,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 type="button"
                 onClick={handleFinalSubmit}
                 disabled={submitting}
-                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
                 <span>{submitting ? 'در حال ثبت...' : submitButtonLabel || 'ثبت درخواست مشاوره'}</span>
@@ -1114,7 +1114,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center gap-2 cursor-pointer shadow-md"
+                className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
                 <span>{nextButtonLabel || 'ادامه و مرحله بعد'}</span>
                 <ChevronLeft className="w-4 h-4" />
@@ -1127,12 +1127,12 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
       {/* Rates Modal inside Wizard End */}
       <AnimatePresence>
         {showTariffPopup && (
-          <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
+          <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -1142,7 +1142,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 <button
                   type="button"
                   onClick={() => setShowTariffPopup(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
+                  className="p-2 min-h-[40px] min-w-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1159,15 +1159,15 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                         key={t.id}
                         className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1.5"
                       >
-                        <div className="flex items-center justify-between font-black text-slate-900 dark:text-white">
+                        <div className="flex items-center justify-between gap-2 font-black text-slate-900 dark:text-white">
                           <span>{t.serviceTitle}</span>
-                          <span className="text-emerald-700 dark:text-emerald-400 font-mono">
+                          <span className="text-emerald-700 dark:text-emerald-400 font-mono tabular-nums shrink-0">
                             سهم عضو: {toPersianNumbers(t.alumniSubsidizedFee.toLocaleString('en-US'))} تومان
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
                           <span>مدت جلسه: {toPersianNumbers(t.sessionDurationMinutes)} دقیقه · {t.meetingMode}</span>
-                          <span className="line-through">تعرفه آزاد: {toPersianNumbers(t.standardFee.toLocaleString('en-US'))} تومان</span>
+                          <span className="line-through tabular-nums">تعرفه آزاد: {toPersianNumbers(t.standardFee.toLocaleString('en-US'))} تومان</span>
                         </div>
                         {t.notes && <p className="text-[11px] text-slate-600 dark:text-slate-400">{t.notes}</p>}
                       </div>
@@ -1179,7 +1179,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                 <button
                   type="button"
                   onClick={() => setShowTariffPopup(false)}
-                  className="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer"
                 >
                   بستن و بازگشت به ثبت درخواست
                 </button>

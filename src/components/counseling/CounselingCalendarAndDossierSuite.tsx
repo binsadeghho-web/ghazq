@@ -183,7 +183,7 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
     : dossiers.filter(d => d.applicantId === currentUser?.id);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-5" dir="rtl">
+    <div className="bg-white dark:bg-slate-900 rounded-[22px] sm:rounded-3xl p-4 sm:p-6 border border-stone-200/80 sm:border-slate-200/90 dark:border-slate-800 shadow-xs space-y-4 sm:space-y-5" dir="rtl">
       {toastMsg && (
         <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-2">
           <Check className="w-4 h-4 shrink-0" />
@@ -192,22 +192,22 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
       )}
 
       {/* Header & Sub-Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b border-slate-100 dark:border-slate-800 pb-3.5 sm:pb-4">
         <div>
           <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-amber-500" />
-            <span>سامانه تقویم نوبت‌دهی، مدیریت حضور مشاوران، پرونده جلسات و کنترل هویت</span>
+            <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>سامانه تقویم نوبت‌دهی و پرونده جلسات</span>
           </h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            انتخاب تعاملی وقت از تقویم حضور اساتید، ثبت پرونده بالینی جلسات و کنترل نمایش یا مخفی‌سازی هویت مراجعان توسط ادمین
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+            انتخاب تعاملی وقت از تقویم حضور اساتید و مشاهده پرونده جلسات مشاوره
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs">
           <button
             type="button"
             onClick={() => setActiveSubTab('booking_calendar')}
-            className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+            className={`px-3.5 py-2 min-h-[38px] rounded-xl font-bold whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-all ${
               activeSubTab === 'booking_calendar'
                 ? 'bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
@@ -220,7 +220,7 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
           <button
             type="button"
             onClick={() => setActiveSubTab('dossiers')}
-            className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+            className={`px-3.5 py-2 min-h-[38px] rounded-xl font-bold whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-all tabular-nums ${
               activeSubTab === 'dossiers'
                 ? 'bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
@@ -235,7 +235,7 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
               <button
                 type="button"
                 onClick={() => setActiveSubTab('schedule_manager')}
-                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+                className={`px-3.5 py-2 min-h-[38px] rounded-xl font-bold whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-all ${
                   activeSubTab === 'schedule_manager'
                     ? 'bg-emerald-700 text-white'
                     : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
@@ -248,7 +248,7 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
               <button
                 type="button"
                 onClick={() => setActiveSubTab('identity_privacy')}
-                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+                className={`px-3.5 py-2 min-h-[38px] rounded-xl font-bold whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-all ${
                   activeSubTab === 'identity_privacy'
                     ? 'bg-indigo-700 text-white'
                     : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
@@ -314,7 +314,7 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
                       );
                       showToast(`نوبت «روز ${slot.dayOfWeek} ساعت ${slot.timeRange}» با ${activeConsultant.name} در فرم درخواست درج شد.`);
                     }}
-                    className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black cursor-pointer transition-all"
+                    className="w-full py-2.5 min-h-[42px] rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black cursor-pointer transition-all"
                   >
                     انتخاب این نوبت از تقویم
                   </button>
@@ -571,8 +571,8 @@ export const CounselingCalendarAndDossierSuite: React.FC<CounselingCalendarAndDo
             در این بخش ادمین می‌تواند برای هر درخواست مشاوره، نمایش یا مخفی‌سازی نام و هویت متقاضی را فعال یا غیرفعال نماید.
           </div>
 
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <table className="w-full text-right text-xs">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-right text-xs">
               <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black">
                 <tr>
                   <th className="p-3">نام متقاضی</th>

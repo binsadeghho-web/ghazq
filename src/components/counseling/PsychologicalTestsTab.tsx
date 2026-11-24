@@ -271,19 +271,19 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
     const myResults = testResults.filter(r => r.userId === currentUser?.id);
 
     return (
-      <div className="space-y-5 text-xs">
-        <div className="bg-gradient-to-l from-slate-900 to-indigo-950 text-white rounded-3xl p-6 space-y-2 shadow-md">
-          <h2 className="text-base font-black flex items-center gap-2">
-            <ClipboardCheck className="w-5 h-5 text-amber-400" />
+      <div className="space-y-4 sm:space-y-5 text-xs">
+        <div className="bg-gradient-to-l from-slate-900 to-indigo-950 text-white rounded-[22px] sm:rounded-3xl p-4 sm:p-6 space-y-1.5 shadow-md">
+          <h2 className="text-sm sm:text-base font-black flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
             <span>تست‌ها و سنجش‌های روان‌شناختی اختصاصی شما</span>
           </h2>
-          <p className="text-slate-300 leading-relaxed max-w-2xl">
+          <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed max-w-2xl">
             لینک تست‌ها یا آزمون‌هایی که توسط روان‌شناس مرکز اختصاصاً برای پرونده شما صادر و فعال شده‌اند در این بخش نمایش داده می‌شوند.
           </p>
         </div>
 
         {myAssignments.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 text-center border border-slate-200 dark:border-slate-800 space-y-2">
             <ClipboardCheck className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="font-bold text-slate-700 dark:text-slate-200">
               در حال حاضر تستی برای شما فعال نشده است
@@ -293,7 +293,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {myAssignments.map(a => {
               const hasExternalUrl = isSafeHttpUrl(a.externalTestUrl);
               const relatedRes = myResults.find(r => r.assignmentId === a.id);
@@ -304,34 +304,34 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
               return (
                 <div
                   key={a.id}
-                  className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between gap-4 shadow-2xs"
+                  className="bg-white dark:bg-slate-900 rounded-[22px] sm:rounded-3xl p-4 sm:p-5 border border-stone-200/80 sm:border-slate-200/90 dark:border-slate-800 flex flex-col justify-between gap-3 sm:gap-4 shadow-2xs"
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
                           {hasExternalUrl
                             ? 'تست اختصاصی برون‌سایتی'
                             : a.testCategory || 'آزمون روان‌شناختی'}
                         </span>
-                        <h3 className="font-black text-sm text-slate-900 dark:text-white mt-0.5">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-white mt-0.5 truncate">
                           {displayTitle}
                         </h3>
                       </div>
 
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0 ${
+                        className={`text-[10px] font-black shrink-0 ${
                           a.status === 'reviewed'
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            ? 'text-emerald-700 dark:text-emerald-400'
                             : a.status === 'completed'
-                            ? 'bg-blue-50 text-blue-800 border-blue-200'
-                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                            ? 'text-blue-700 dark:text-blue-400'
+                            : 'text-amber-700 dark:text-amber-400'
                         }`}
                       >
                         {hasExternalUrl
                           ? 'آماده انجام'
                           : a.status === 'reviewed'
-                          ? 'بررسی‌شده توسط روان‌شناس'
+                          ? 'بررسی‌شده'
                           : a.status === 'completed'
                           ? 'تکمیل‌شده'
                           : 'آماده پاسخگویی'}
@@ -344,7 +344,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                       </p>
                     )}
 
-                    <div className="text-[11px] text-slate-500 flex items-center gap-3">
+                    <div className="text-[11px] text-slate-500 flex items-center gap-2 sm:gap-3 flex-wrap">
                       <span>تجویزکننده: {a.assignedByName}</span>
                       {!hasExternalUrl && (
                         <>
@@ -365,7 +365,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                     )}
 
                     {relatedRes && (
-                      <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-1.5">
+                      <div className="p-3 sm:p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-1.5">
                         <div className="font-bold text-emerald-900 dark:text-emerald-300">
                           وضعیت ثبت: {relatedRes.scoreSummary}
                         </div>
@@ -384,7 +384,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                       href={a.externalTestUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-black flex items-center justify-center gap-2 transition-colors"
+                      className="w-full py-2.5 px-4 min-h-[44px] rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-black flex items-center justify-center gap-2 transition-colors"
                     >
                       <ExternalLink className="w-4 h-4" />
                       <span>ورود به سایت و انجام تست</span>
@@ -397,7 +397,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                           setTakingAssignment(a);
                           setAnswerMap({});
                         }}
-                        className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <Unlock className="w-4 h-4" />
                         <span>شروع و پاسخگویی به تست</span>
@@ -412,14 +412,14 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
 
         {/* Take Legacy In-App Test Modal */}
         {takingAssignment && (
-          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
+          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
             <form
               onSubmit={handleSubmitAlumniTest}
-              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
             >
-              <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-                <div>
-                  <h3 className="font-black text-sm">{takingAssignment.testTitle}</h3>
+              <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="font-black text-sm truncate">{takingAssignment.testTitle}</h3>
                   {takingAssignment.instructions && (
                     <p className="text-[11px] text-slate-300 mt-1">{takingAssignment.instructions}</p>
                   )}
@@ -427,16 +427,16 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setTakingAssignment(null)}
-                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+                  className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1">
                 {(takingAssignment.questions || psychologicalTests.find(t => t.id === takingAssignment.testId)?.questions || []).map(
                   (q, idx) => (
-                    <div key={q.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div key={q.id} className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
                       <p className="font-bold text-slate-900 dark:text-white">
                         {toPersianNumbers(idx + 1)}. {q.prompt}
                       </p>
@@ -459,7 +459,7 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                                 key={opt}
                                 type="button"
                                 onClick={() => setAnswerMap({ ...answerMap, [q.id]: opt })}
-                                className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
+                                className={`p-3 min-h-[44px] rounded-xl border text-right transition-all cursor-pointer ${
                                   selected
                                     ? 'border-emerald-500 bg-emerald-500/10 font-black text-emerald-900 dark:text-emerald-300'
                                     : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
@@ -476,21 +476,21 @@ export const PsychologicalTestsTab: React.FC<PsychologicalTestsTabProps> = ({
                 )}
               </div>
 
-              <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900">
+              <div className="p-3.5 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={() => setTakingAssignment(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold cursor-pointer"
+                  className="px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="submit"
                   disabled={submittingTest}
-                  className="px-6 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
-                  <span>{submittingTest ? 'در حال ثبت...' : 'ارسال پاسخ‌نامه برای روان‌شناس'}</span>
+                  <span>{submittingTest ? 'در حال ثبت...' : 'ارسال پاسخ‌نامه'}</span>
                 </button>
               </div>
             </form>

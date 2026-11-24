@@ -93,14 +93,14 @@ export const GeneralCounselingTariffsTab: React.FC<GeneralCounselingTariffsTabPr
   };
 
   return (
-    <div className="space-y-5 text-xs">
-      <div className="bg-gradient-to-l from-slate-900 to-emerald-950 text-white rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
-        <div className="space-y-1.5">
-          <h2 className="text-base font-black flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-amber-400" />
+    <div className="space-y-4 sm:space-y-5 text-xs">
+      <div className="bg-gradient-to-l from-slate-900 to-emerald-950 text-white rounded-[22px] sm:rounded-3xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-md">
+        <div className="space-y-1">
+          <h2 className="text-sm sm:text-base font-black flex items-center gap-2">
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
             <span>نرخ‌نامه مصوب خدمات مشاوره و روان‌شناسان مرکز</span>
           </h2>
-          <p className="text-slate-300 leading-relaxed max-w-2xl">
+          <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed max-w-2xl">
             تعرفه‌های رسمی جلسات فردی، خانواده و سنجش‌های روان‌شناختی با اعمال یارانه ویژه دانش‌آموختگان مرکز در این بخش قابل مشاهده است.
           </p>
         </div>
@@ -109,7 +109,7 @@ export const GeneralCounselingTariffsTab: React.FC<GeneralCounselingTariffsTabPr
           <button
             type="button"
             onClick={openAdd}
-            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-4 py-2.5 min-h-[42px] rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>افزودن ردیف نرخ‌نامه</span>
@@ -228,18 +228,18 @@ export const GeneralCounselingTariffsTab: React.FC<GeneralCounselingTariffsTabPr
         </form>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {visibleTariffs.length === 0 ? (
-          <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200 dark:border-slate-800 text-slate-500">
+          <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 text-center border border-slate-200 dark:border-slate-800 text-slate-500">
             هیچ ردیف نرخ‌نامه‌ای ثبت نشده است.
           </div>
         ) : (
           visibleTariffs.map(t => (
             <div
               key={t.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between gap-4 shadow-2xs"
+              className="bg-white dark:bg-slate-900 rounded-[22px] sm:rounded-3xl p-4 sm:p-5 border border-stone-200/80 sm:border-slate-200/90 dark:border-slate-800 flex flex-col justify-between gap-3 sm:gap-4 shadow-2xs"
             >
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-black text-sm text-slate-900 dark:text-white">{t.serviceTitle}</h3>
                   {!t.isActive && (
@@ -249,19 +249,19 @@ export const GeneralCounselingTariffsTab: React.FC<GeneralCounselingTariffsTabPr
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
-                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px] tabular-nums">
+                  <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span>{toPersianNumbers(t.sessionDurationMinutes)} دقیقه</span>
                   <span>·</span>
                   <span>{t.meetingMode}</span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
-                  <div className="flex justify-between text-slate-500">
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1.5 tabular-nums">
+                  <div className="flex justify-between gap-2 text-slate-500">
                     <span>تعرفه مصوب آزاد:</span>
                     <span className="font-mono line-through">{toPersianNumbers(t.standardFee.toLocaleString('en-US'))} تومان</span>
                   </div>
-                  <div className="flex justify-between font-black text-emerald-700 dark:text-emerald-400">
+                  <div className="flex justify-between gap-2 font-black text-emerald-700 dark:text-emerald-400">
                     <span>سهم پرداختی عضو مرکز:</span>
                     <span className="font-mono text-sm">
                       {t.alumniSubsidizedFee === 0

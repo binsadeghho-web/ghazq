@@ -19,6 +19,7 @@ import {
   Edit3,
   MapPin,
   GraduationCap,
+  ArrowLeft,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Consultant, CounselingFieldItem } from '../../types';
@@ -137,11 +138,11 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-3.5 sm:space-y-6" dir="rtl">
       {isOfficial && previewStudentMode && (
-        <div className="bg-amber-100/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100 rounded-2xl p-3 px-5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+        <div className="bg-amber-100/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100 rounded-2xl p-3 px-4 sm:px-5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
           <span className="text-xs font-bold flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+            <Info className="w-4 h-4 text-amber-700 shrink-0" />
             در حال مشاهده پیش‌نمایش دانش‌آموخته در بخش مشاوره عمومی و کارگاه‌های آموزشی هستید.
           </span>
           <div className="flex items-center gap-2">
@@ -172,10 +173,11 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         </div>
       )}
 
-      {/* Luxury Mobile Hero Header (< sm) */}
-      <div className="sm:hidden relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white p-4 border border-amber-400/20 shadow-[0_14px_34px_-16px_rgba(7,30,23,0.65)]">
+      {/* Unified Mobile Command Hero (< sm): Title + Subtitle + Integrated Primary Booking CTA */}
+      <div className="sm:hidden relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#08221A] text-white p-4 border border-amber-400/20 shadow-[0_16px_38px_-18px_rgba(7,30,23,0.7)] space-y-3.5">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-300/60 to-transparent" />
+
         <div className="relative z-10 flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-300/35 text-amber-300 flex items-center justify-center shrink-0">
@@ -185,7 +187,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
               <h1 className="text-sm font-black text-white truncate">
                 {generalConfig.sectionTitle}
               </h1>
-              <p className="text-[10px] text-emerald-100/80 truncate mt-0.5">
+              <p className="text-[11px] text-emerald-100/80 truncate mt-0.5">
                 {generalConfig.sectionSubtitle}
               </p>
             </div>
@@ -193,11 +195,44 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
           <button
             type="button"
             onClick={() => setDescriptionModalOpen(true)}
-            className="px-3 py-2 min-h-[38px] rounded-xl bg-white/12 border border-white/15 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+            className="px-3 py-2 min-h-[40px] rounded-xl bg-white/10 border border-white/15 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
           >
             <Info className="w-3.5 h-3.5" />
             <span>راهنما</span>
           </button>
+        </div>
+
+        {/* Instant 1-Tap Action Bar right inside Hero */}
+        <div className="relative z-10 flex items-center gap-2">
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              setActivePillar('booking');
+              startWizard();
+            }}
+            className="flex-1 min-h-[46px] px-4 rounded-2xl bg-gradient-to-l from-amber-300 via-amber-400 to-yellow-300 text-[#071E17] font-black text-xs flex items-center justify-between gap-2 shadow-[0_10px_24px_-10px_rgba(251,191,36,0.65)] cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span className="truncate">{generalConfig.ctaButtonLabel || 'رزرو سریع وقت مشاوره'}</span>
+            </span>
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+          </motion.button>
+
+          {myGeneralRequests.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setActivePillar('booking');
+                setActiveTab('my_history');
+              }}
+              className="min-h-[46px] px-3.5 rounded-2xl bg-white/10 border border-white/15 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 tabular-nums cursor-pointer"
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-300" />
+              <span>{toPersianNumbers(myGeneralRequests.length)}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -232,45 +267,47 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         </button>
       </div>
 
-      {/* Dual Major Pillars Switcher: Compact Luxury Segment on Mobile (< md), Dual Rich Cards on >= md */}
-      <div className="md:hidden grid grid-cols-2 gap-2">
-        <motion.button
+      {/* Dual Major Pillars Switcher: Sleek Segmented Control on Mobile (< md), Dual Rich Cards on >= md */}
+      <div className="md:hidden p-1 rounded-2xl bg-stone-200/75 dark:bg-slate-800/80 grid grid-cols-2 gap-1">
+        <button
           type="button"
-          whileTap={{ scale: 0.96 }}
           onClick={() => setActivePillar('booking')}
-          className={`relative overflow-hidden p-3 min-h-[62px] rounded-2xl border text-right flex flex-col justify-between gap-1 cursor-pointer transition-all ${
+          className={`relative py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
             activePillar === 'booking'
-              ? 'bg-gradient-to-br from-[#071E17] to-emerald-800 text-white border-amber-400/35 shadow-md'
-              : 'bg-white dark:bg-slate-900 text-stone-800 dark:text-slate-200 border-stone-200 dark:border-slate-800'
+              ? 'text-white'
+              : 'text-stone-700 dark:text-slate-300'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <Calendar className={`w-4 h-4 ${activePillar === 'booking' ? 'text-amber-300' : 'text-emerald-700'}`} />
-            <span className={`text-[10px] font-black tabular-nums ${activePillar === 'booking' ? 'text-amber-200' : 'text-stone-400'}`}>
-              {toPersianNumbers(generalFields.length)} زمینه
-            </span>
-          </div>
-          <span className="text-xs font-black truncate">رزرو وقت مشاوره</span>
-        </motion.button>
+          {activePillar === 'booking' && (
+            <motion.span
+              layoutId="counseling-pillar-pill-mobile"
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+              className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#071E17] to-emerald-800 shadow-sm"
+            />
+          )}
+          <Calendar className={`relative z-10 w-3.5 h-3.5 ${activePillar === 'booking' ? 'text-amber-300' : 'text-emerald-700'}`} />
+          <span className="relative z-10 truncate">رزرو مشاوره ({toPersianNumbers(generalFields.length)})</span>
+        </button>
 
-        <motion.button
+        <button
           type="button"
-          whileTap={{ scale: 0.96 }}
           onClick={() => setActivePillar('workshops')}
-          className={`relative overflow-hidden p-3 min-h-[62px] rounded-2xl border text-right flex flex-col justify-between gap-1 cursor-pointer transition-all ${
+          className={`relative py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
             activePillar === 'workshops'
-              ? 'bg-gradient-to-br from-[#071E17] to-emerald-800 text-white border-amber-400/35 shadow-md'
-              : 'bg-white dark:bg-slate-900 text-stone-800 dark:text-slate-200 border-stone-200 dark:border-slate-800'
+              ? 'text-white'
+              : 'text-stone-700 dark:text-slate-300'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <GraduationCap className={`w-4 h-4 ${activePillar === 'workshops' ? 'text-amber-300' : 'text-teal-700'}`} />
-            <span className={`text-[10px] font-black tabular-nums ${activePillar === 'workshops' ? 'text-amber-200' : 'text-stone-400'}`}>
-              {toPersianNumbers(activeWorkshopsCount)} کارگاه
-            </span>
-          </div>
-          <span className="text-xs font-black truncate">کارگاه‌های آموزشی</span>
-        </motion.button>
+          {activePillar === 'workshops' && (
+            <motion.span
+              layoutId="counseling-pillar-pill-mobile"
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+              className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#071E17] to-emerald-800 shadow-sm"
+            />
+          )}
+          <GraduationCap className={`relative z-10 w-3.5 h-3.5 ${activePillar === 'workshops' ? 'text-amber-300' : 'text-teal-700'}`} />
+          <span className="relative z-10 truncate">کارگاه‌ها ({toPersianNumbers(activeWorkshopsCount)})</span>
+        </button>
       </div>
 
       <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -389,71 +426,74 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
       {/* PILLAR 1: COUNSELING APPOINTMENT BOOKING */}
       {activePillar === 'booking' && (
         <>
-          {/* Navigation Sub-Tabs */}
-          <div className="flex items-center gap-2 p-1.5 glass-panel bg-white/70 dark:bg-slate-900/65 backdrop-blur-xl rounded-2xl border border-white/60 dark:border-white/10 text-xs overflow-x-auto shadow-xs">
+          {/* Navigation Sub-Tabs: Clean concise labels on mobile (< sm), frosted bar on >= sm */}
+          <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-white/90 sm:glass-panel sm:bg-white/70 dark:bg-slate-900/65 backdrop-blur-xl rounded-2xl border border-stone-200/80 sm:border-white/60 dark:border-white/10 text-[11px] sm:text-xs overflow-x-auto scrollbar-none shadow-2xs">
             <button
               type="button"
               onClick={() => setActiveTab('request')}
-              className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                 activeTab === 'request'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  ? 'bg-emerald-900 sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <span>{generalConfig.tabRequestLabel || 'رزرو وقت و زمینه‌های مشاوره'}</span>
+              <Sparkles className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'request' ? 'text-amber-300 sm:text-emerald-600' : 'text-emerald-600'}`} />
+              <span className="sm:hidden">موضوعات</span>
+              <span className="hidden sm:inline">{generalConfig.tabRequestLabel || 'رزرو وقت و زمینه‌های مشاوره'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('consultants')}
-              className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer tabular-nums ${
                 activeTab === 'consultants'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  ? 'bg-emerald-900 sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <UserCheck className="w-4 h-4 text-teal-600" />
-              <span>{generalConfig.tabConsultantsLabel || 'روان‌شناسان مرکز'} ({toPersianNumbers(generalConsultants.length)})</span>
+              <UserCheck className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'consultants' ? 'text-amber-300 sm:text-teal-600' : 'text-teal-600'}`} />
+              <span className="sm:hidden">روان‌شناسان ({toPersianNumbers(generalConsultants.length)})</span>
+              <span className="hidden sm:inline">{generalConfig.tabConsultantsLabel || 'روان‌شناسان مرکز'} ({toPersianNumbers(generalConsultants.length)})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('tariffs')}
-              className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                 activeTab === 'tariffs'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  ? 'bg-emerald-900 sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <DollarSign className="w-4 h-4 text-amber-600" />
+              <DollarSign className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'tariffs' ? 'text-amber-300 sm:text-amber-600' : 'text-amber-600'}`} />
               <span>{generalConfig.tabTariffsLabel || 'نرخ‌نامه'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('tests')}
-              className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer tabular-nums ${
                 activeTab === 'tests'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  ? 'bg-emerald-900 sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ClipboardCheck className="w-4 h-4 text-indigo-600" />
+              <ClipboardCheck className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'tests' ? 'text-amber-300 sm:text-indigo-600' : 'text-indigo-600'}`} />
               <span>{generalConfig.tabTestsLabel || 'تست‌ها'} ({toPersianNumbers(myUnlockedTestsCount)})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('my_history')}
-              className={`px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 min-h-[38px] rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer tabular-nums ${
                 activeTab === 'my_history'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  ? 'bg-emerald-900 sm:bg-white sm:dark:bg-slate-700 text-white sm:text-slate-900 sm:dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Clock className="w-4 h-4 text-blue-600" />
-              <span>{generalConfig.tabHistoryLabel || 'سوابق مشاوره'} ({toPersianNumbers(myGeneralRequests.length)})</span>
+              <Clock className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'my_history' ? 'text-amber-300 sm:text-blue-600' : 'text-blue-600'}`} />
+              <span className="sm:hidden">سوابق ({toPersianNumbers(myGeneralRequests.length)})</span>
+              <span className="hidden sm:inline">{generalConfig.tabHistoryLabel || 'سوابق مشاوره'} ({toPersianNumbers(myGeneralRequests.length)})</span>
             </button>
           </div>
 
@@ -490,62 +530,64 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
 
           {/* Tab 2: Psychologists Directory & Resumes */}
           {activeTab === 'consultants' && (
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
               {generalConsultants.length === 0 ? (
-                <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-3xl p-10 text-center border border-slate-200 dark:border-slate-800 text-xs text-slate-500">
+                <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-3xl p-8 sm:p-10 text-center border border-slate-200 dark:border-slate-800 text-xs text-slate-500">
                   هنوز روان‌شناسی در سامانه ثبت نشده است.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
                   {generalConsultants.map(c => (
                     <div
                       key={c.id}
-                      className="bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-3xl border border-white/60 dark:border-white/10 p-5 flex flex-col justify-between gap-4 shadow-sm hover:shadow-lg transition-all"
+                      className="bg-white/95 sm:bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-[22px] sm:rounded-3xl border border-stone-200/80 sm:border-white/60 dark:border-white/10 p-4 sm:p-5 flex flex-col justify-between gap-3 sm:gap-4 shadow-2xs sm:shadow-sm hover:shadow-lg transition-all"
                     >
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
+                      <div className="space-y-2.5 sm:space-y-3">
+                        <div className="flex items-center gap-3">
                           {c.avatarUrl ? (
                             <img
                               src={c.avatarUrl}
                               alt={c.name}
-                              className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                             />
                           ) : (
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-700 font-black flex items-center justify-center shrink-0">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/10 text-emerald-700 font-black flex items-center justify-center shrink-0">
                               {c.name.slice(0, 2)}
                             </div>
                           )}
-                          <div className="min-w-0 flex-1 space-y-1">
+                          <div className="min-w-0 flex-1 space-y-0.5">
                             <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">{c.name}</h3>
                             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 block truncate">
                               {c.title}
+                              {c.academicRank ? ` · ${c.academicRank}` : ''}
                             </span>
-                            {c.academicRank && (
-                              <span className="text-[11px] text-slate-500 block truncate">{c.academicRank}</span>
-                            )}
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2 pt-0.5 tabular-nums">
+                              <span className="inline-flex items-center gap-1">
+                                <Award className="w-3 h-3 text-amber-500" />
+                                <span>{toPersianNumbers(c.experienceYears)} سال سابقه</span>
+                              </span>
+                              {c.availability && (
+                                <>
+                                  <span>·</span>
+                                  <span className="truncate">{c.availability}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 sm:line-clamp-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                           {c.bio || c.specialty}
                         </p>
-
-                        <div className="text-[11px] text-slate-500 flex items-center justify-between pt-1 tabular-nums">
-                          <span className="flex items-center gap-1">
-                            <Award className="w-3.5 h-3.5 text-amber-500" />
-                            <span>{toPersianNumbers(c.experienceYears)} سال سابقه</span>
-                          </span>
-                          <span>{c.availability}</span>
-                        </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setSelectedPsychologistModal(c)}
-                        className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full py-2.5 min-h-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Info className="w-3.5 h-3.5 text-amber-400" />
-                        <span>مشاهده رزومه و سوابق روان‌شناس</span>
+                        <span>مشاهده رزومه و نوبت‌گیری</span>
                       </button>
                     </div>
                   ))}
@@ -562,9 +604,9 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
 
           {/* Tab 5: Counseling History & Session Dossiers */}
           {activeTab === 'my_history' && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {myGeneralRequests.length === 0 ? (
-                <div className="bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="bg-white/90 sm:bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-3xl p-8 sm:p-12 text-center border border-slate-200 dark:border-slate-800 space-y-4">
                   <Calendar className="w-10 h-10 text-slate-300 mx-auto" />
                   <div className="space-y-1">
                     <h3 className="text-sm font-black text-slate-800 dark:text-white">
@@ -577,24 +619,24 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                   <button
                     type="button"
                     onClick={() => startWizard()}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black cursor-pointer"
+                    className="px-5 py-3 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black cursor-pointer"
                   >
                     {generalConfig.ctaButtonLabel || 'رزرو وقت مشاوره'}
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {myGeneralRequests.map(req => (
                     <div
                       key={req.id}
-                      className="bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-3xl p-5 border border-white/60 dark:border-slate-800 space-y-4 shadow-sm"
+                      className="bg-white/95 sm:bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-[22px] sm:rounded-3xl p-4 sm:p-5 border border-stone-200/80 sm:border-white/60 dark:border-slate-800 space-y-3 sm:space-y-4 shadow-2xs sm:shadow-sm"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div>
-                          <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5 sm:pb-3">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
                             {req.selectedFieldTitle || req.categoryTitle}
                           </h3>
-                          <span className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
+                          <span className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                             {req.meetingMode === 'حضوری' ? (
                               <Building className="w-3.5 h-3.5 text-amber-600" />
                             ) : req.meetingMode === 'تلفنی' ? (
@@ -605,7 +647,17 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                             <span>{req.meetingMode}</span>
                           </span>
                         </div>
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 self-start">
+                        <span
+                          className={`text-[11px] font-black shrink-0 ${
+                            req.status === 'scheduled'
+                              ? 'text-blue-700 dark:text-blue-300'
+                              : req.status === 'attended' || req.status === 'completed'
+                              ? 'text-emerald-700 dark:text-emerald-300'
+                              : req.status === 'cancelled'
+                              ? 'text-rose-700 dark:text-rose-300'
+                              : 'text-amber-700 dark:text-amber-300'
+                          }`}
+                        >
                           {req.status === 'scheduled'
                             ? 'هماهنگ‌شده'
                             : req.status === 'attended' || req.status === 'completed'
@@ -616,25 +668,25 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-                          <span className="text-slate-400 block text-[11px]">روان‌شناس معین:</span>
-                          <span className="font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">
-                            {req.preferredConsultantName || 'انتخاب توسط واحد پذیرش مرکز'}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 text-xs">
+                        <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/40">
+                          <span className="text-slate-400 block text-[10px] sm:text-[11px]">روان‌شناس معین:</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 mt-0.5 block truncate">
+                            {req.preferredConsultantName || 'انتخاب توسط پذیرش'}
                           </span>
                         </div>
 
-                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-                          <span className="text-slate-400 block text-[11px]">زمان برگزاری:</span>
-                          <span className="font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 block tabular-nums">
+                        <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/40">
+                          <span className="text-slate-400 block text-[10px] sm:text-[11px]">زمان برگزاری:</span>
+                          <span className="font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 block tabular-nums truncate">
                             {req.scheduledDate
-                              ? `${toPersianNumbers(req.scheduledDate)} ${req.scheduledTime ? `— ساعت ${toPersianNumbers(req.scheduledTime)}` : ''}`
+                              ? `${toPersianNumbers(req.scheduledDate)} ${req.scheduledTime ? `— ${toPersianNumbers(req.scheduledTime)}` : ''}`
                               : 'در انتظار زمان‌بندی'}
                           </span>
                         </div>
 
-                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-                          <span className="text-slate-400 block text-[11px]">محل یا لینک جلسه:</span>
+                        <div className="col-span-2 md:col-span-1 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/40">
+                          <span className="text-slate-400 block text-[10px] sm:text-[11px]">محل یا لینک جلسه:</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300 mt-0.5 block break-all">
                             {req.venueDetails || 'پس از تایید اطلاع‌رسانی می‌شود'}
                           </span>
@@ -642,15 +694,15 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                       </div>
 
                       {(req.formResponses?.counselingLocation || req.formResponses?.counselingTimePreference) && (
-                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
                           {req.formResponses?.counselingLocation && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900 font-bold">
+                            <span className="inline-flex items-center gap-1 font-bold text-emerald-800 dark:text-emerald-300">
                               <MapPin className="w-3.5 h-3.5" />
-                              <span>مکان درخواستی: {String(req.formResponses.counselingLocation)}</span>
+                              <span>مکان: {String(req.formResponses.counselingLocation)}</span>
                             </span>
                           )}
                           {req.formResponses?.counselingTimePreference && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900 font-bold">
+                            <span className="inline-flex items-center gap-1 font-bold text-amber-800 dark:text-amber-300">
                               <Clock className="w-3.5 h-3.5" />
                               <span>زمان ترجیحی: {String(req.formResponses.counselingTimePreference)}</span>
                             </span>
@@ -659,13 +711,13 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                       )}
 
                       {req.description && (
-                        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
                           {req.description}
                         </div>
                       )}
 
                       {req.counselorNotes && (
-                        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-950 dark:text-amber-200 flex items-start gap-2">
+                        <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-950 dark:text-amber-200 flex items-start gap-2">
                           <MessageSquare className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                           <div>
                             <span className="font-black">یادداشت روان‌شناس: </span>
@@ -693,12 +745,12 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
       {/* Description Modal */}
       <AnimatePresence>
         {descriptionModalOpen && (
-          <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
+          <div className="fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -708,7 +760,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setDescriptionModalOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
+                  className="p-2 min-h-[40px] min-w-[40px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -720,7 +772,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setDescriptionModalOpen(false)}
-                  className="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-3 sm:py-2.5 min-h-[44px] rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer"
                 >
                   متوجه شدم
                 </button>
@@ -733,25 +785,25 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
       {/* Psychologist Resume Modal */}
       <AnimatePresence>
         {selectedPsychologistModal && (
-          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4" dir="rtl">
+          <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl max-h-[88vh] overflow-y-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   {selectedPsychologistModal.avatarUrl && (
                     <img
                       src={selectedPsychologistModal.avatarUrl}
                       alt={selectedPsychologistModal.name}
-                      className="w-12 h-12 rounded-2xl object-cover border border-slate-200"
+                      className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shrink-0"
                     />
                   )}
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">{selectedPsychologistModal.name}</h3>
-                    <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">{selectedPsychologistModal.name}</h3>
+                    <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">
                       {selectedPsychologistModal.title}
                     </p>
                   </div>
@@ -759,7 +811,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedPsychologistModal(null)}
-                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
+                  className="p-2 min-h-[40px] min-w-[40px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -785,11 +837,11 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setSelectedPsychologistModal(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold cursor-pointer"
                 >
                   بستن
                 </button>
@@ -799,7 +851,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                     setSelectedPsychologistModal(null);
                     startWizard();
                   }}
-                  className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black cursor-pointer"
                 >
                   {generalConfig.ctaButtonLabel || 'رزرو وقت مشاوره'}
                 </button>
