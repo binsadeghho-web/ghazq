@@ -30,7 +30,7 @@ const STAFF_ROLES = new Set([
 
 export const INITIAL_GENERAL_SHOWCASE_CONFIG: CounselingGeneralShowcaseConfig = {
   sectionBadge: 'آرامش روانی، سلامت خانواده و توانمندسازی',
-  sectionTitle: 'ویترین خدمات مشاوره عمومی و کلینیک روان‌شناختی',
+  sectionTitle: 'ویترین خدمات روانشناختی و مشاوره مرکز',
   sectionSubtitle: 'کارگاه‌های آموزشی، اطلاعیه‌های دوره‌های روان‌شناسی و معرفی مشاورین مرکز',
   displayMode: 'carousel',
   carouselAutoplay: true,
@@ -222,7 +222,7 @@ export const INITIAL_SPECIALIZED_COUNSELING_CONFIG: SpecializedCounselingPortalC
 };
 
 export const INITIAL_GENERAL_COUNSELING_CONFIG: GeneralCounselingPortalConfig = {
-  sectionTitle: 'مشاوره عمومی و روان‌شناسان مرکز',
+  sectionTitle: 'خدمات روانشناختی و مشاوره مرکز',
   sectionSubtitle: 'خدمات تخصصی روان‌شناسی، خانواده، تاب‌آوری شغلی و سنجش‌های روان‌شناختی با حفظ محرمانگی کامل',
   headerBadgeLabel: 'بخش مستقل خدمات روان‌شناسی و سلامت روان مرکز',
   tabRequestLabel: 'رزرو وقت و زمینه‌های مشاوره',
@@ -230,7 +230,7 @@ export const INITIAL_GENERAL_COUNSELING_CONFIG: GeneralCounselingPortalConfig = 
   tabTariffsLabel: 'نرخ‌نامه',
   tabTestsLabel: 'تست‌ها',
   tabHistoryLabel: 'سوابق مشاوره',
-  heroBadgeLabel: 'بخش روان‌شناسان و مشاوره عمومی مرکز',
+  heroBadgeLabel: 'بخش روان‌شناسان و خدمات روانشناختی و مشاوره مرکز',
   landingIntroTitle: 'آشنایی با مرکز مشاوره و خدمات روان‌شناختی',
   landingIntroBody: 'این بخش منحصراً توسط روان‌شناسان مجرب مرکز برای حمایت از سلامت روان، آرامش خانواده، پیشگیری از فرسودگی شغلی و تحلیل آزمون‌های استاندارد روان‌شناختی راه‌اندازی شده است. تمامی اطلاعات و گفتگوها کاملاً محرمانه می‌مانند.',
   heroHistoryButtonLabel: 'سوابق درخواست‌های من',
@@ -240,7 +240,7 @@ export const INITIAL_GENERAL_COUNSELING_CONFIG: GeneralCounselingPortalConfig = 
   ctaButtonLabel: 'رزرو وقت مشاوره',
   calloutSecondaryLinkLabel: 'مشاهده توضیحات پیش از شروع',
   fieldsShowcaseBadgeLabel: 'حوزه‌های خدمات روان‌شناختی',
-  fieldsSectionTitle: 'زمینه‌های مشاوره عمومی و روان‌شناختی',
+  fieldsSectionTitle: 'زمینه‌های خدمات روانشناختی و مشاوره',
   fieldsSectionSubtitle: 'محورهای تخصصی خدمات روان‌شناختی و خانواده در مرکز',
   fieldsShowcaseHelperText: 'روی هر زمینه کلیک کنید تا فرم ثبت درخواست با همان محور باز شود',
   fieldsCardCtaLabel: 'انتخاب و رزرو وقت',
@@ -750,11 +750,11 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
         Number(generalConfig.version || 1)
       );
       setGeneralConfig(saved);
-      showFeedback('تنظیمات و ساختار فرم مشاوره عمومی با موفقیت ذخیره شد.', 'success');
+      showFeedback('تنظیمات و ساختار فرم خدمات روانشناختی و مشاوره با موفقیت ذخیره شد.', 'success');
       return saved;
     } catch (err: any) {
       if (err.status === 409) await refreshCounseling();
-      showFeedback(`خطا در ذخیره تنظیمات مشاوره عمومی: ${err.message}`, 'error');
+      showFeedback(`خطا در ذخیره تنظیمات خدمات روانشناختی و مشاوره: ${err.message}`, 'error');
       return null;
     }
   }, [generalConfig, refreshCounseling, showFeedback]);
@@ -767,11 +767,11 @@ export const CounselingProvider: React.FC<{ children: React.ReactNode; currentUs
         Number(generalShowcase.version || 1)
       );
       setGeneralShowcase(saved);
-      showFeedback('تنظیمات ویترین ۳ بخشی خدمات مشاوره عمومی ذخیره شد.', 'success');
+      showFeedback('تنظیمات ویترین ۳ بخشی خدمات روانشناختی و مشاوره ذخیره شد.', 'success');
       return saved;
     } catch (err: any) {
       if (err.status === 409) await refreshCounseling();
-      showFeedback(`خطا در ذخیره ویترین مشاوره عمومی: ${err.message}`, 'error');
+      showFeedback(`خطا در ذخیره ویترین خدمات روانشناختی و مشاوره: ${err.message}`, 'error');
       return null;
     }
   }, [generalShowcase, refreshCounseling, showFeedback]);

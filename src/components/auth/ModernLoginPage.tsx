@@ -1238,24 +1238,452 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
     </div>
   );
 
+  const mobileLoginView = (
+    <div
+      className="md:hidden min-h-screen w-full bg-[#F6F5F0] text-[#071E17] flex flex-col justify-between overflow-y-auto overscroll-y-contain"
+      dir="rtl"
+    >
+      {/* Top Obsidian-Emerald Architectural Brand Header */}
+      <div className="relative bg-gradient-to-br from-[#071E17] via-[#0E3226] to-[#113D30] text-white px-5 pt-7 pb-11 overflow-hidden shrink-0">
+        {/* Persian Lattice & Champagne Gold Top Hairline */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-65" />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 -left-16 w-48 h-48 rounded-full bg-[#D4AF37]/15 blur-2xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-16 -right-12 w-52 h-52 rounded-full bg-emerald-400/15 blur-2xl"
+        />
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="بستن"
+            className="relative z-20 mb-3 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 border border-white/15 text-[#F3D078] active:scale-95 transition-transform cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+
+        <div className="relative z-10 flex items-center gap-3.5">
+          {/* Compact Theme 2 Scales Emblem */}
+          <div className="w-13 h-13 rounded-2xl bg-[#071E17] border border-[#F3D078]/45 flex items-center justify-center shadow-lg shadow-black/30 shrink-0">
+            <svg viewBox="0 0 48 48" fill="none" className="w-8 h-8" aria-hidden="true">
+              <path
+                d="M9 39V22C9 14.5 16 8.5 24 6C32 8.5 39 14.5 39 22V39"
+                stroke="#F3D078"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+              />
+              <path d="M24 13V36M17 36H31" stroke="#D4AF37" strokeWidth="1.9" strokeLinecap="round" />
+              <path d="M14 20H34" stroke="#FFF1C2" strokeWidth="1.8" strokeLinecap="round" />
+              <path
+                d="M14 20L11 27C11 28.8 12.6 30 14.5 30C16.4 30 18 28.8 18 27L15 20"
+                stroke="#F3D078"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M34 20L31 27C31 28.8 32.6 30 34.5 30C36.4 30 38 28.8 38 27L35 20"
+                stroke="#F3D078"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="24" cy="12" r="2" fill="#FFF3C8" />
+            </svg>
+          </div>
+
+          <div className="min-w-0 space-y-1">
+            <p className="text-[11px] font-bold text-[#F3D078] tracking-wide">
+              قوه قضائیه جمهوری اسلامی ایران
+            </p>
+            <h1 className="text-[18px] font-black leading-snug text-white">
+              مرکز مدیریت و دانش‌آموختگان فقه و قضا
+            </h1>
+          </div>
+        </div>
+
+        <p className="relative z-10 mt-3 text-[11px] leading-relaxed text-emerald-100/85">
+          درگاه امن کارتابل اداری، پژوهش، مشاوره‌های تخصصی و خدمات دانش‌آموختگان
+        </p>
+      </div>
+
+      {/* Overlapping Warm Ivory Pearl Form Surface */}
+      <div className="relative z-20 -mt-5 px-4 pb-6 flex-1 flex flex-col justify-between">
+        <div className="bg-[#FCFCF9] rounded-[28px] border border-[#E5DEC9] shadow-[0_18px_45px_-18px_rgba(7,30,23,0.18)] p-5 space-y-5">
+          {/* Theme 2 Mode Switcher */}
+          {!mustChangePasswordMode && (
+            <div className="grid grid-cols-2 p-1 rounded-2xl bg-[#EFEAD9] border border-[#DED5BC]">
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerRegisterMode(false);
+                  setErrorMsg('');
+                }}
+                className={`py-2.5 px-2.5 min-h-[44px] rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  !customerRegisterMode
+                    ? 'bg-gradient-to-l from-[#071E17] to-[#113D30] text-[#F3D078] shadow-sm'
+                    : 'text-[#314A40]'
+                }`}
+              >
+                <KeyRound className="w-3.5 h-3.5 shrink-0" />
+                <span>ورود اعضا و مدیران</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerRegisterMode(true);
+                  setErrorMsg('');
+                }}
+                className={`py-2.5 px-2.5 min-h-[44px] rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  customerRegisterMode
+                    ? 'bg-gradient-to-l from-[#D4AF37] to-[#E8C15A] text-[#071E17] shadow-sm'
+                    : 'text-[#314A40]'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5 shrink-0" />
+                <span>ثبت‌نام مشتریان</span>
+              </button>
+            </div>
+          )}
+
+          {/* Form Heading */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[11px] font-black text-[#9A741B]">
+              <span className="h-[2px] w-4 rounded-full bg-[#D4AF37]" />
+              <span>
+                {mustChangePasswordMode
+                  ? 'اقدام امنیتی الزامی'
+                  : customerRegisterMode
+                  ? 'عضویت سریع متقاضیان دوره‌ها و کتب'
+                  : 'احراز هویت طرح میزان'}
+              </span>
+            </div>
+            <h2 className="text-lg font-black text-[#071E17]">
+              {mustChangePasswordMode
+                ? 'تغییر اجباری رمز عبور اولیه'
+                : customerRegisterMode
+                ? 'ایجاد حساب کاربری مشتری'
+                : 'ورود به حساب کاربری'}
+            </h2>
+            <p className="text-xs text-[#4C6258] leading-relaxed">
+              {mustChangePasswordMode
+                ? `کاربر گرامی${tempUserData?.fullName ? ` ${tempUserData.fullName}` : ''}، رمز عبور جدید خود را ثبت نمائید.`
+                : customerRegisterMode
+                ? 'ویژه متقاضیان غیر دانش‌آموخته جهت دسترسی به دوره‌ها و آثار'
+                : 'کد ملی یا شناسه کاربری و رمز عبور خود را وارد نمائید.'}
+            </p>
+          </div>
+
+          {errorMsg && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-bold flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {changePasswordSuccess && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-bold flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
+              <span>رمز عبور به‌روزرسانی شد. در حال انتقال به سامانه...</span>
+            </div>
+          )}
+
+          {activeFormKey === 'member-login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  کد ملی / شناسه کاربری
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
+                    placeholder="کد ملی یا نام کاربری"
+                    dir="ltr"
+                    className="w-full min-h-[48px] px-4 pr-11 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 transition-all"
+                  />
+                  <UserIcon className="w-5 h-5 text-[#647D72] absolute right-3.5 top-3.5" />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-extrabold text-[#0E3226]">
+                    رمز عبور
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowHelpModal(true)}
+                    className="text-[11px] font-bold text-[#9A741B] cursor-pointer"
+                  >
+                    فراموشی رمز عبور؟
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    dir="ltr"
+                    className="w-full min-h-[48px] px-4 pr-11 pl-12 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 transition-all"
+                  />
+                  <Lock className="w-5 h-5 text-[#647D72] absolute right-3.5 top-3.5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور'}
+                    className="absolute left-1.5 top-1 w-10 h-10 flex items-center justify-center text-[#647D72] cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-0.5">
+                <input
+                  type="checkbox"
+                  id="mobileRememberSession"
+                  defaultChecked
+                  className="w-4 h-4 rounded border-[#C8BEA4] accent-[#0E3226] cursor-pointer"
+                />
+                <label
+                  htmlFor="mobileRememberSession"
+                  className="text-xs text-[#4C6258] select-none cursor-pointer font-medium"
+                >
+                  به‌خاطر سپردن نشست امن در این دستگاه
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full min-h-[50px] py-3.5 px-5 rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0E3226] to-[#113D30] text-[#F3D078] font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#071E17]/25 border border-[#D4AF37]/40 active:scale-[0.985] transition-transform disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#F3D078]/30 border-t-[#F3D078] rounded-full animate-spin" />
+                    <span>در حال بررسی اعتبار...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ورود امن به سامانه</span>
+                    <ArrowLeft className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {activeFormKey === 'customer-register' && (
+            <form onSubmit={handleCustomerRegisterSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  نام و نام خانوادگی
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custFullName}
+                  onChange={e => setCustFullName(e.target.value)}
+                  placeholder="مثال: محمد محمدی"
+                  className="w-full min-h-[46px] px-4 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  کد ملی (شناسه کاربری ورود)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custNationalId}
+                  onChange={e => setCustNationalId(e.target.value)}
+                  placeholder="۱۰ رقم کد ملی"
+                  dir="ltr"
+                  className="w-full min-h-[46px] px-4 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  شماره تلفن همراه
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custPhone}
+                  onChange={e => {
+                    setCustPhone(e.target.value);
+                    if (!custPassword) setCustPassword(e.target.value);
+                  }}
+                  placeholder="09120000000"
+                  dir="ltr"
+                  className="w-full min-h-[46px] px-4 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  رمز عبور دلخواه
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={custPassword}
+                  onChange={e => setCustPassword(e.target.value)}
+                  placeholder="حداقل ۴ کاراکتر"
+                  dir="ltr"
+                  className="w-full min-h-[46px] px-4 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full min-h-[50px] py-3.5 px-5 rounded-2xl bg-gradient-to-l from-[#D4AF37] via-[#E5BF52] to-[#D4AF37] text-[#071E17] font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/25 active:scale-[0.985] transition-transform disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <span>در حال ایجاد حساب مشتری...</span>
+                ) : (
+                  <>
+                    <span>تکمیل ثبت‌نام و ورود</span>
+                    <ArrowLeft className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {activeFormKey === 'change-password' && (
+            <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  رمز عبور جدید
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="حداقل ۴ کاراکتر"
+                    dir="ltr"
+                    className="w-full min-h-[48px] px-4 pr-11 pl-12 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20"
+                  />
+                  <Lock className="w-5 h-5 text-[#647D72] absolute right-3.5 top-3.5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute left-1.5 top-1 w-10 h-10 flex items-center justify-center text-[#647D72] cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-[#0E3226] mb-1.5">
+                  تکرار رمز عبور جدید
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="تکرار رمز عبور جدید"
+                    dir="ltr"
+                    className="w-full min-h-[48px] px-4 pr-11 text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20"
+                  />
+                  <Lock className="w-5 h-5 text-[#647D72] absolute right-3.5 top-3.5" />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || changePasswordSuccess}
+                className="w-full min-h-[50px] py-3.5 px-5 rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0E3226] to-[#113D30] text-[#F3D078] font-black text-sm flex items-center justify-center gap-2 shadow-lg border border-[#D4AF37]/40 active:scale-[0.985] transition-transform disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#F3D078]/30 border-t-[#F3D078] rounded-full animate-spin" />
+                    <span>در حال ثبت رمز جدید...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ثبت رمز عبور جدید و ورود</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* Support Footer */}
+          <div className="pt-3.5 border-t border-[#EAE2CF] flex items-center justify-between text-[11px] text-[#4C6258]">
+            <span className="font-bold flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-[#0E3226]" />
+              <span>احراز هویت رمزنگاری‌شده</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="flex items-center gap-1 font-black text-[#0E3226] cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-[#9A741B]" />
+              <span>راهنمای ورود</span>
+            </button>
+          </div>
+        </div>
+
+        <p className="text-center text-[10px] font-bold text-[#6F7F77] mt-4">
+          دبیرخانه مرکزی مرکز مدیریت و دانش‌آموختگان فقه و قضا
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <>
       {isFullPage ? (
-        <div
-          className="relative min-h-screen bg-[#040A19] flex items-center justify-center p-4 sm:p-6 lg:p-10 overflow-hidden"
-          dir="rtl"
-        >
-          {ambientBackdrop}
-          {containerContent}
-        </div>
+        <>
+          {mobileLoginView}
+          <div
+            className="hidden md:flex relative min-h-screen bg-[#040A19] items-center justify-center p-4 sm:p-6 lg:p-10 overflow-hidden"
+            dir="rtl"
+          >
+            {ambientBackdrop}
+            {containerContent}
+          </div>
+        </>
       ) : (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#040A19]/90 backdrop-blur-2xl overflow-y-auto"
-          dir="rtl"
-        >
-          {ambientBackdrop}
-          {containerContent}
-        </div>
+        <>
+          <div className="md:hidden fixed inset-0 z-50 bg-[#F6F5F0] overflow-y-auto overscroll-y-contain">
+            {mobileLoginView}
+          </div>
+          <div
+            className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-[#040A19]/90 backdrop-blur-2xl overflow-y-auto"
+            dir="rtl"
+          >
+            {ambientBackdrop}
+            {containerContent}
+          </div>
+        </>
       )}
 
       {/* HELP / FORGOT PASSWORD MODAL */}
@@ -1265,43 +1693,43 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#030714]/80 backdrop-blur-md"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm"
             dir="rtl"
             onClick={() => setShowHelpModal(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 8 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-md bg-gradient-to-b from-[#0D1E45] to-[#07122B] border border-[#D8A84E]/40 rounded-3xl p-6 text-[#F7F4EC] space-y-4 shadow-[0_28px_70px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden"
+              className="w-full max-w-md bg-gradient-to-b from-[#071E17] to-[#0E3226] md:from-[#0D1E45] md:to-[#07122B] border border-[#D4AF37]/45 rounded-3xl p-6 text-[#F7F4EC] space-y-4 shadow-[0_28px_70px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden"
             >
-              <CornerFiligree className="pointer-events-none absolute top-2 right-2 w-8 h-8 -scale-x-100 opacity-60" />
-              <CornerFiligree className="pointer-events-none absolute bottom-2 left-2 w-8 h-8 -scale-y-100 opacity-60" />
+              <CornerFiligree className="hidden md:block pointer-events-none absolute top-2 right-2 w-8 h-8 -scale-x-100 opacity-60" />
+              <CornerFiligree className="hidden md:block pointer-events-none absolute bottom-2 left-2 w-8 h-8 -scale-y-100 opacity-60" />
 
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
                 aria-label="بستن"
-                className="absolute top-4 left-4 p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-[#B7C7E6] hover:text-white transition-colors cursor-pointer"
+                className="absolute top-4 left-4 p-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-emerald-100 md:text-[#B7C7E6] hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center gap-2.5 text-[#F3D082]">
+              <div className="flex items-center gap-2.5 text-[#F3D078]">
                 <HelpCircle className="w-5 h-5" />
                 <h4 className="font-black text-base">راهنمای بازیابی حساب و پشتیبانی</h4>
               </div>
 
-              <p className="text-xs text-[#C6D3EB] leading-relaxed">
+              <p className="text-xs text-emerald-100/90 md:text-[#C6D3EB] leading-relaxed">
                 جهت حفظ امنیت اطلاعات قضات و دانش‌آموختگان، بازیابی رمز عبور منحصراً از طریق تأیید هویت در دبیرخانه مرکز امکان‌پذیر است.
               </p>
 
               <div className="space-y-2.5 pt-1 text-xs">
-                <div className="p-3.5 rounded-2xl bg-[#112655]/80 border border-[#D8A84E]/25 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[#DCE5F7]">
-                    <PhoneCall className="w-4 h-4 text-[#F3D082]" />
+                <div className="p-3.5 rounded-2xl bg-white/10 md:bg-[#112655]/80 border border-[#D4AF37]/25 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-50 md:text-[#DCE5F7]">
+                    <PhoneCall className="w-4 h-4 text-[#F3D078]" />
                     <span>تلفن پشتیبانی دبیرخانه:</span>
                   </div>
                   <span
@@ -1312,12 +1740,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#112655]/80 border border-[#D8A84E]/25 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[#DCE5F7]">
-                    <Mail className="w-4 h-4 text-[#93C5FD]" />
+                <div className="p-3.5 rounded-2xl bg-white/10 md:bg-[#112655]/80 border border-[#D4AF37]/25 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-50 md:text-[#DCE5F7]">
+                    <Mail className="w-4 h-4 text-[#F3D078] md:text-[#93C5FD]" />
                     <span>پست الکترونیک رسمی:</span>
                   </div>
-                  <span className="font-mono text-[#BFDBFE] font-bold text-[11px]">
+                  <span className="font-mono text-[#F3D078] md:text-[#BFDBFE] font-bold text-[11px]">
                     support@feqh-qaza.ir
                   </span>
                 </div>
@@ -1326,7 +1754,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="w-full py-3 bg-gradient-to-l from-[#D8A84E] to-[#F0CB79] hover:from-[#E4B85B] hover:to-[#F7DF9E] text-[#091533] font-black rounded-2xl text-xs transition-all mt-2 cursor-pointer shadow-lg shadow-[#D8A84E]/20"
+                className="w-full py-3 bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] md:text-[#091533] font-black rounded-2xl text-xs transition-all mt-2 cursor-pointer shadow-lg shadow-[#D4AF37]/20"
               >
                 متوجه شدم
               </button>

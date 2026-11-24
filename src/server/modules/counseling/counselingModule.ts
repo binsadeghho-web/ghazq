@@ -386,7 +386,7 @@ export class CounselingService {
       user_phone: rows[0].user_phone || rows[0].account_phone || undefined,
     });
     if (authCtx.role === 'psychologist_counselor' && item.counselingType === 'specialized_career') {
-      throw AppError.forbidden('نقش روانشناس و مشاور مرکز صرفاً مجاز به دسترسی پرونده‌های مشاوره عمومی و روان‌شناختی است.');
+      throw AppError.forbidden('نقش روانشناس و مشاور مرکز صرفاً مجاز به دسترسی پرونده‌های خدمات روانشناختی و مشاوره است.');
     }
     if (authCtx.role === 'alumni' || authCtx.role === 'customer') {
       AuthorizationPolicy.assertOwnership(authCtx, item.applicantId, 'درخواست مشاوره');
@@ -585,7 +585,7 @@ export class CounselingService {
     const categoryTitle =
       (dto.categoryTitle && String(dto.categoryTitle).trim()) ||
       cleanSelectedFieldTitle ||
-      (cType === 'specialized_career' ? 'مشاوره تخصصی شغلی و تحصیلی' : 'مشاوره عمومی و روان‌شناختی');
+      (cType === 'specialized_career' ? 'مشاوره تخصصی شغلی و تحصیلی' : 'خدمات روانشناختی و مشاوره');
     const meetingMode = dto.meetingMode || 'حضوری';
     const descriptionText = (dto.description || '').trim() || categoryTitle || 'ثبت درخواست مشاوره';
 

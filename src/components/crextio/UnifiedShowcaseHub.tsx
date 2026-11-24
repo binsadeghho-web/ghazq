@@ -213,13 +213,13 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
         kicker: 'هدایت شغلی و سلامت روان',
         title:
           crextioConfig.counselingPromoTitle ||
-          'درگاه جامع خدمات مشاوره تخصصی و عمومی',
+          'درگاه جامع خدمات مشاوره تخصصی و خدمات روانشناختی',
         description:
           crextioConfig.counselingPromoSubtitle ||
           'رزرو نوبت محرمانه با قضات عالی‌رتبه در مسیر ترفیع و اختبار و مشاوران خانواده و تاب‌آوری.',
         highlights: [
           'مشاوره تخصصی مسیر قضایی، اختبار و ترفیع پایه',
-          'مشاوره عمومی خانواده و مدیریت استرس شغلی',
+          'خدمات روانشناختی و مشاوره خانواده و مدیریت استرس شغلی',
           'محرمانگی کامل و برگزاری حضوری یا آنلاین',
         ],
         targetNav: 'SpecializedCounseling',
@@ -230,12 +230,12 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
       },
       {
         key: 'counseling_general_showcase',
-        shortLabel: 'مشاوره عمومی',
+        shortLabel: 'روانشناختی و مشاوره',
         kicker:
           crextioConfig.counselingGeneralShowcaseBadge || 'سلامت روان و خانواده',
         title:
           crextioConfig.counselingGeneralShowcaseTitle ||
-          'خدمات مشاوره عمومی، خانواده و روان‌شناختی',
+          'خدمات روانشناختی و مشاوره و خانواده',
         description:
           crextioConfig.counselingGeneralShowcaseSubtitle ||
           'دسترسی محرمانه به مشاوران خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت فشارهای روانی شغلی.',
@@ -247,7 +247,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
         targetNav: 'CounselingGeneral',
         ctaLabel:
           crextioConfig.counselingGeneralShowcaseBtnText ||
-          'ورود به مشاوره عمومی',
+          'ورود به خدمات روانشناختی و مشاوره',
         icon: HeartHandshake,
         toneClass: 'text-rose-700 dark:text-rose-400',
         statLabel: `${toPersianNumbers(

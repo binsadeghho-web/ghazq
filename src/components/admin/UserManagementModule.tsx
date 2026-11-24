@@ -52,7 +52,7 @@ export const SYSTEM_SECTIONS: { id: AppSectionId; title: string; subtitle: strin
   { id: 'cartable', title: 'کارتابل اداری و مکاتبات', subtitle: 'ارسال و پیگیری درخواست‌های شغلی، اداری و آموزشی', icon: FileText },
   { id: 'courses', title: 'دوره‌ها و کارگاه‌های آموزشی', subtitle: 'ثبت‌نام، سرفصل‌ها و آرشیو جلسات مجازی', icon: GraduationCap },
   { id: 'products', title: 'انتشارات، کتب و محصولات علمی', subtitle: 'خرید کتب فقهی، درس‌گفتارها و چندرسانه‌ای', icon: FileText },
-  { id: 'counseling', title: 'کلینیک و نوبت‌دهی مشاوره عمومی', subtitle: 'رزرو وقت مشاوره فردی و خانوادگی', icon: Users },
+  { id: 'counseling', title: 'کلینیک و نوبت‌دهی خدمات روانشناختی و مشاوره', subtitle: 'رزرو وقت مشاوره فردی و خانوادگی', icon: Users },
   { id: 'specialized_counseling', title: 'مشاوره تخصصی شغلی و تحصیلی', subtitle: 'هدایت قضایی و تحصیلی با اساتید عالی', icon: Scale },
   { id: 'research', title: 'شبکه رساله‌ها و هدایت پژوهش', subtitle: 'طرح موضوعات، پیگیری استاد راهنما و مراحل داوری', icon: Scale },
   { id: 'rulings', title: 'تالار نقد و اشتراک آراء قضایی', subtitle: 'مشاهده دادنامه‌های منتخب، ثبت رأی و نقدهای حقوقی', icon: Scale },

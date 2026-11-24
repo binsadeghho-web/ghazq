@@ -337,7 +337,7 @@ export const CounselingGeneralShowcaseEditorModal: React.FC<CounselingGeneralSho
           <div>
             <h3 className="text-sm sm:text-base font-black flex items-center gap-2">
               <Sliders className="w-4 h-4 text-amber-400" />
-              <span>مدیریت ویترین ۳ بخشی خدمات مشاوره عمومی و روان‌شناختی</span>
+              <span>مدیریت ویترین ۳ بخشی خدمات روانشناختی و مشاوره</span>
             </h3>
             <p className="text-[11px] text-slate-300 mt-1">
               فعال/غیرفعال‌سازی مستقل هر کارت، مدیریت کارگاه‌ها و فایل‌های آرشیو، پوستر اطلاعیه‌ها و مشاورین معرفی‌شده

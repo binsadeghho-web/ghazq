@@ -171,8 +171,8 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
       {/* Dynamic Global Mouse Halo and Dust Trail for Theme 2 */}
       <GlobalMouseHalo theme="crextio" />
 
-      {/* Warm Ambient Glows (Subtle and Light) */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* Warm Ambient Glows (Desktop only to keep Android touch scroll 60fps) */}
+      <div className="hidden lg:block fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute top-0 right-1/4 w-[600px] h-[600px] rounded-full bg-emerald-500/5 blur-[140px]" />
         <div className="absolute bottom-0 left-1/3 w-[600px] h-[600px] rounded-full bg-amber-500/5 blur-[140px]" />
         <div className="absolute top-1/2 left-10 w-[400px] h-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
@@ -268,7 +268,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           className={`${
             activeNav === 'Dashboard'
               ? 'bg-transparent lg:bg-white/95 lg:backdrop-blur-2xl h-12 lg:h-auto px-0.5 lg:p-4 lg:px-6 lg:border lg:border-stone-200/90 lg:shadow-sm'
-              : 'bg-white/92 lg:bg-white/95 backdrop-blur-2xl rounded-[22px] lg:rounded-[32px] h-14 lg:h-auto px-3 lg:p-4 lg:px-6 border border-stone-200/85 lg:border-stone-200/90 shadow-[0_8px_24px_-12px_rgba(7,30,23,0.12)] lg:shadow-sm'
+              : 'bg-white/96 lg:bg-white/95 backdrop-blur-md lg:backdrop-blur-2xl rounded-[22px] lg:rounded-[32px] h-14 lg:h-auto px-3 lg:p-4 lg:px-6 border border-stone-200/85 lg:border-stone-200/90 shadow-[0_8px_24px_-12px_rgba(7,30,23,0.12)] lg:shadow-sm'
           } lg:rounded-[32px] flex items-center justify-between gap-2 sm:gap-4 relative z-30`}
         >
           {/* Subtle gold hairline glow along top edge on mobile sub-views */}
@@ -591,11 +591,11 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                           <div className="flex items-center gap-2">
                             <HeartHandshake className="w-4 h-4 text-emerald-700" />
                             <div>
-                              <p className="group-hover:text-emerald-900">مشاوره عمومی</p>
+                              <p className="group-hover:text-emerald-900">خدمات روانشناختی و مشاوره</p>
                               <p className="text-[10px] text-stone-500 font-normal">خانواده، شخصیت و ازدواج</p>
                             </div>
                           </div>
-                          <span className="text-[10px] bg-stone-100 group-hover:bg-emerald-100 text-stone-600 group-hover:text-emerald-800 px-2 py-0.5 rounded-full">عمومی</span>
+                          <span className="text-[10px] bg-stone-100 group-hover:bg-emerald-100 text-stone-600 group-hover:text-emerald-800 px-2 py-0.5 rounded-full">روانشناختی</span>
                         </button>
 
                         <button
@@ -708,7 +708,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
       {/* Floating Luxury Frosted Mobile Bottom Dock for Theme 2 (Crextio) */}
       <nav
         aria-label="ناوبری پایین موبایل"
-        className="lg:hidden fixed bottom-2.5 inset-x-3 z-40 rounded-[26px] bg-white/92 backdrop-blur-2xl border border-stone-200/90 px-2 py-1.5 flex items-center justify-around gap-1 shadow-[0_16px_40px_-14px_rgba(7,30,23,0.28),inset_0_1px_0_rgba(255,255,255,0.9)] safe-area-bottom"
+        className="lg:hidden fixed bottom-2.5 inset-x-3 z-40 rounded-[26px] bg-white/96 backdrop-blur-md border border-stone-200/90 px-2 py-1.5 flex items-center justify-around gap-1 shadow-[0_14px_32px_-14px_rgba(7,30,23,0.24)] safe-area-bottom"
       >
         <span
           aria-hidden="true"

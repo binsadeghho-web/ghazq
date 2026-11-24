@@ -416,7 +416,7 @@ const UNIFIED_CANDIDATES = [
   { key: 'research_promo', title: 'باشگاه راهبری پژوهش و رساله‌ها' },
   { key: 'course_showcase', title: 'دوره‌ها و کارگاه‌های علمی' },
   { key: 'counseling_promo', title: 'خدمات مشاوره نخبگان (تخصصی و عمومی)' },
-  { key: 'counseling_general_showcase', title: 'خدمات مشاوره عمومی، خانواده و روان‌شناختی' },
+  { key: 'counseling_general_showcase', title: 'خدمات روانشناختی و مشاوره' },
   { key: 'welfare_showcase', title: 'تسهیلات رفاهی، وام و اقامتگاه‌ها' },
   { key: 'multimedia_showcase', title: 'درس‌گفتارها و آرشیو چندرسانه‌ای' },
   { key: 'books_showcase', title: 'کتب، موسوعه‌ها و منشورات تخصصی' },

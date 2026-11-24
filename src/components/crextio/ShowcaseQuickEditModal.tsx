@@ -84,10 +84,10 @@ const MINIMAL_DEFAULTS_MAP: Record<
   },
   counseling_general_showcase: {
     kicker: 'سلامت روان، خانواده و تاب‌آوری',
-    title: 'خدمات مشاوره عمومی و خانواده',
+    title: 'خدمات روانشناختی و مشاوره و خانواده',
     description:
       'دریافت نوبت محرمانه مشاوره خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت استرس شغلی.',
-    ctaLabel: 'مشاوره عمومی و خانواده',
+    ctaLabel: 'خدمات روانشناختی و مشاوره',
   },
   welfare_showcase: {
     kicker: 'خدمات رفاهی و تسهیلات اعضا',
@@ -279,17 +279,17 @@ const CLASSIC_FIELDS_MAP: Record<string, TextFieldSpec[]> = {
   counseling_general_showcase: [
     {
       configKey: 'counselingGeneralShowcaseBadge',
-      label: 'نشان بالای ویترین مشاوره عمومی',
+      label: 'نشان بالای ویترین خدمات روانشناختی و مشاوره',
       defaultValue: 'آرامش روانی، سلامت خانواده و تاب‌آوری',
     },
     {
       configKey: 'counselingGeneralShowcaseTitle',
-      label: 'عنوان ویترین مشاوره عمومی',
-      defaultValue: 'ویترین خدمات مشاوره عمومی، خانواده و روان‌شناختی',
+      label: 'عنوان ویترین خدمات روانشناختی و مشاوره',
+      defaultValue: 'ویترین خدمات روانشناختی و مشاوره و خانواده',
     },
     {
       configKey: 'counselingGeneralShowcaseSubtitle',
-      label: 'زیرعنوان ویترین مشاوره عمومی',
+      label: 'زیرعنوان ویترین خدمات روانشناختی و مشاوره',
       defaultValue:
         'دسترسی محرمانه به مشاوران خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت فشارهای روانی شغلی',
     },
@@ -298,12 +298,12 @@ const CLASSIC_FIELDS_MAP: Record<string, TextFieldSpec[]> = {
       label: 'متن توضیحات کامل باکس',
       multiline: true,
       defaultValue:
-        'کلینیک تخصصی مشاوره عمومی و خانواده مرکز فقه و قضا با حضور مجرب‌ترین روان‌شناسان و مشاوران، خدماتی کاملاً محرمانه برای تحکیم بنیان خانواده و تاب‌آوری شغلی اعضا ارائه می‌دهد.',
+        'کلینیک تخصصی خدمات روانشناختی و مشاوره مرکز فقه و قضا با حضور مجرب‌ترین روان‌شناسان و مشاوران، خدماتی کاملاً محرمانه برای تحکیم بنیان خانواده و تاب‌آوری شغلی اعضا ارائه می‌دهد.',
     },
     {
       configKey: 'counselingGeneralShowcaseBtnText',
       label: 'متن دکمه اقدام',
-      defaultValue: 'ورود به خدمات مشاوره عمومی و نوبت‌دهی',
+      defaultValue: 'ورود به خدمات روانشناختی و مشاوره و نوبت‌دهی',
     },
   ],
   welfare_showcase: [

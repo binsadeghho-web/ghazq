@@ -134,7 +134,7 @@ export const MizanLayout: React.FC = () => {
       groupName: 'مشاوره و رویه قضایی',
       items: [
         { id: 'counseling_specialized', label: 'مشاوره تخصصی شغلی و تحصیلی', icon: Compass, color: '#006042' },
-        { id: 'counseling', label: 'خدمات مشاوره عمومی', icon: HeartHandshake, color: '#BF2C43' },
+        { id: 'counseling', label: 'خدمات روانشناختی و مشاوره', icon: HeartHandshake, color: '#BF2C43' },
         { id: 'rulings', label: 'تالار نقد آراء و دادنامه‌ها', icon: Scale, color: '#9A6418' }
       ]
     },

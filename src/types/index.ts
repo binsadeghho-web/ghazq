@@ -242,7 +242,7 @@ export interface CrextioDashboardConfig {
     coverImage?: string;
   };
 
-  // ویترین مستقل خدمات مشاوره عمومی و خانواده
+  // ویترین مستقل خدمات روانشناختی و مشاوره و خانواده
   showCounselingGeneralShowcase?: boolean;
   counselingGeneralShowcaseTitle?: string;
   counselingGeneralShowcaseSubtitle?: string;
@@ -452,6 +452,58 @@ export interface CrextioDashboardConfig {
   unifiedShowcaseStyle?: 'cinematic' | 'tabbed_grid';
   unifiedShowcaseAutoplay?: boolean;
   unifiedShowcaseAutoplaySeconds?: number;
+
+  // تنظیمات اختصاصی نسخه موبایل داشبورد (ذخیره دائم در system_settings)
+  mobileConfig?: CrextioMobileConfig;
+}
+
+export type MobileSectionId =
+  | 'hero'
+  | 'quick_dock'
+  | 'status_ledger'
+  | 'honors_showcase'
+  | 'services_showcase'
+  | 'services_list';
+
+export type MobileServiceShowcaseId =
+  | 'counseling'
+  | 'counseling_specialized'
+  | 'courses'
+  | 'rulings'
+  | 'research'
+  | 'welfare'
+  | 'products';
+
+export type MobileServiceListTabId =
+  | 'courses'
+  | 'counseling'
+  | 'specialized_counseling'
+  | 'rulings'
+  | 'research'
+  | 'welfare'
+  | 'products'
+  | 'cartable'
+  | 'synergy';
+
+export interface CrextioMobileConfig {
+  showHeroBanner?: boolean;
+  showWelcomeQuickButtons?: boolean;
+  showHeroStats?: boolean;
+  showHeroPortrait?: boolean;
+  showQuickDock?: boolean;
+  showStatusLedger?: boolean;
+  showHonorsShowcase?: boolean;
+  separateHonorsShowcase?: boolean;
+  honorsShowcaseTitle?: string;
+  showServicesShowcase?: boolean;
+  servicesShowcaseTitle?: string;
+  showcaseOrder?: MobileServiceShowcaseId[];
+  hiddenShowcases?: Record<string, boolean>;
+  showServicesList?: boolean;
+  servicesListTitle?: string;
+  servicesListOrder?: MobileServiceListTabId[];
+  hiddenServicesListItems?: Record<string, boolean>;
+  mobileSectionOrder?: MobileSectionId[];
 }
 
 export interface CustomNavItemConfig {

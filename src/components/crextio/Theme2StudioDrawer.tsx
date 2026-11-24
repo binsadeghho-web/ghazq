@@ -15,6 +15,7 @@ import {
 } from '../admin/theme_customizer_subcomponents/CustomizerHonorsUnifiedTab';
 import { ShowcaseImagesStudioPanel } from '../admin/theme_customizer_subcomponents/ShowcaseImagesStudioPanel';
 import { CustomizerNavigationTab } from '../admin/theme_customizer_subcomponents/CustomizerNavigationTab';
+import { MobileStudioPanel } from './MobileStudioPanel';
 import { formatWelcomeBannerTitle } from '../../utils/welcomeBanner';
 import { useApp } from '../../context/AppContext';
 import {
@@ -40,6 +41,8 @@ import {
   Trash2,
   Palette,
   Menu,
+  Smartphone,
+  Monitor,
 } from 'lucide-react';
 
 export type Theme2StudioTab =
@@ -52,6 +55,7 @@ export type Theme2StudioTab =
 interface Theme2StudioDrawerProps {
   isOpen: boolean;
   initialTab?: Theme2StudioTab;
+  defaultDeviceMode?: 'mobile' | 'desktop';
   onClose: () => void;
   onOpenAdvancedModal?: () => void;
   crextioConfig: CrextioDashboardConfig;
@@ -69,7 +73,7 @@ const SECTION_LABELS: Record<string, string> = {
   research_promo: 'ویترین راهبری پژوهش و رساله‌ها',
   course_showcase: 'ویترین دوره‌ها و کارگاه‌های علمی',
   counseling_promo: 'ویترین خدمات مشاوره تخصصی و نخبگان',
-  counseling_general_showcase: 'ویترین خدمات مشاوره عمومی و خانواده',
+  counseling_general_showcase: 'ویترین خدمات روانشناختی و مشاوره',
   welfare_showcase: 'ویترین رفاهیات و تسهیلات',
   multimedia_showcase: 'ویترین درس‌گفتارها و چندرسانه‌ای',
   bento_grid: 'شبکه جامع خدمات (Bento)',
@@ -124,16 +128,16 @@ const MINIMAL_BOX_DEFAULTS: Array<{
     label: 'باکس ساده مشاوره تخصصی و نخبگان',
     kicker: 'هدایت شغلی، علمی و سلامت روان',
     title: 'خدمات مشاوره نخبگان',
-    description: 'دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و مشاوره عمومی خانواده با اساتید برجسته.',
+    description: 'دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و خدمات روانشناختی و مشاوره با اساتید برجسته.',
     ctaLabel: 'مشاوره شغلی قضا',
   },
   {
     key: 'counseling_general_showcase',
-    label: 'باکس ساده مشاوره عمومی و خانواده',
+    label: 'باکس ساده خدمات روانشناختی و مشاوره',
     kicker: 'سلامت روان، خانواده و تاب‌آوری',
-    title: 'خدمات مشاوره عمومی و خانواده',
+    title: 'خدمات روانشناختی و مشاوره',
     description: 'دریافت نوبت محرمانه مشاوره خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت استرس شغلی.',
-    ctaLabel: 'مشاوره عمومی و خانواده',
+    ctaLabel: 'خدمات روانشناختی و مشاوره',
   },
   {
     key: 'welfare_showcase',
@@ -167,7 +171,7 @@ const NAV_TARGET_OPTIONS = [
   { value: 'Research', label: 'راهبری پژوهش و مقاله (خدمات پژوهشی)' },
   { value: 'Courses', label: 'دوره‌های علمی' },
   { value: 'Rulings', label: 'تالار آراء قضایی' },
-  { value: 'CounselingGeneral', label: 'مشاوره عمومی' },
+  { value: 'CounselingGeneral', label: 'خدمات روانشناختی و مشاوره' },
   { value: 'SpecializedCounseling', label: 'مشاوره شغلی قضا' },
   { value: 'Welfare', label: 'خدمات رفاهی و وام' },
   { value: 'Products', label: 'کتاب و محصولات چند رسانه‌ای' },
@@ -177,6 +181,7 @@ const NAV_TARGET_OPTIONS = [
 export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
   isOpen,
   initialTab = 'hero_quick',
+  defaultDeviceMode = 'desktop',
   onClose,
   onOpenAdvancedModal,
   crextioConfig,
@@ -184,14 +189,18 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
 }) => {
   const { currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<Theme2StudioTab>(initialTab);
+  const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>(defaultDeviceMode);
   const [savedToast, setSavedToast] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const targetKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) setActiveTab(initialTab);
-  }, [isOpen, initialTab]);
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setDeviceMode(defaultDeviceMode);
+    }
+  }, [isOpen, initialTab, defaultDeviceMode]);
 
   if (!isOpen) return null;
 
@@ -358,39 +367,80 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="px-6 pt-3 bg-stone-50 border-b border-stone-200 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
-            {[
-              { id: 'hero_quick', label: 'بنر خوش‌آمد، برند و دسترسی سریع', icon: Palette },
-              { id: 'navigation', label: 'ناوبری عمودی، افقی و منو خدمات', icon: Menu },
-              { id: 'all_banners', label: 'ویرایش ۱۰۰٪ متون و بنرها', icon: Type },
-              { id: 'layout_boxes', label: 'چیدمان، جابه‌جایی ویجت‌ها و تقویم', icon: LayoutGrid },
-              { id: 'honors_unified', label: 'افتخارات و ویترین جامع', icon: Award },
-            ].map(tab => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id as Theme2StudioTab)}
-                  className={`pb-3 px-3 text-xs font-bold border-b-2 whitespace-nowrap flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    active
-                      ? 'border-emerald-800 text-emerald-950 font-black'
-                      : 'border-transparent text-stone-500 hover:text-stone-900'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+          {/* Device Target Switcher (Auto-selects Mobile on mobile viewport, Desktop on laptop) */}
+          <div className="px-4 sm:px-6 py-2.5 bg-stone-900 border-b border-stone-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div className="inline-flex p-1 rounded-xl bg-stone-800 border border-stone-700">
+              <button
+                type="button"
+                onClick={() => setDeviceMode('mobile')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                  deviceMode === 'mobile'
+                    ? 'bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] shadow-xs'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>نسخه موبایل</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeviceMode('desktop')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                  deviceMode === 'desktop'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>نسخه لپ‌تاپ و دسکتاپ</span>
+              </button>
+            </div>
+            <span className="text-[11px] font-bold text-stone-400">
+              {deviceMode === 'mobile'
+                ? 'ویرایش اختصاصی صفحه اول موبایل'
+                : 'ویرایش چیدمان و متون نسخه لپ‌تاپ'}
+            </span>
           </div>
 
+          {/* Desktop Tabs */}
+          {deviceMode === 'desktop' && (
+            <div className="px-6 pt-3 bg-stone-50 border-b border-stone-200 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
+              {[
+                { id: 'hero_quick', label: 'بنر خوش‌آمد، برند و دسترسی سریع', icon: Palette },
+                { id: 'navigation', label: 'ناوبری عمودی، افقی و منو خدمات', icon: Menu },
+                { id: 'all_banners', label: 'ویرایش ۱۰۰٪ متون و بنرها', icon: Type },
+                { id: 'layout_boxes', label: 'چیدمان، جابه‌جایی ویجت‌ها و تقویم', icon: LayoutGrid },
+                { id: 'honors_unified', label: 'افتخارات و ویترین جامع', icon: Award },
+              ].map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as Theme2StudioTab)}
+                    className={`pb-3 px-3 text-xs font-bold border-b-2 whitespace-nowrap flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      active
+                        ? 'border-emerald-800 text-emerald-950 font-black'
+                        : 'border-transparent text-stone-500 hover:text-stone-900'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            {deviceMode === 'mobile' && (
+              <MobileStudioPanel crextioConfig={crextioConfig} commit={commit} />
+            )}
+
             {/* TAB 1: HERO, QUICK ACCESS / STATS MODE & BRAND */}
-            {activeTab === 'hero_quick' && (
+            {deviceMode === 'desktop' && activeTab === 'hero_quick' && (
               <div className="space-y-6">
                 {/* Canvas Theme & Hero Scale */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -810,7 +860,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
             )}
 
             {/* TAB: NAVIGATION ORDER & LABELS CUSTOMIZER */}
-            {activeTab === 'navigation' && (
+            {deviceMode === 'desktop' && activeTab === 'navigation' && (
               <CustomizerNavigationTab
                 crextioConfig={crextioConfig}
                 updateCrextioConfig={updateCrextioConfig}
@@ -819,7 +869,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
             )}
 
             {/* TAB 2: ALL BANNERS, WIDGETS, BENTO & SHOWCASE TEXTS */}
-            {activeTab === 'all_banners' && (
+            {deviceMode === 'desktop' && activeTab === 'all_banners' && (
               <div className="space-y-6">
                 {/* Status Widget, Calendar & Bento Headers */}
                 <div className="p-4 rounded-2xl border border-stone-200 space-y-3">
@@ -1037,7 +1087,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">عنوان ویترین مشاوره عمومی</label>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">عنوان ویترین خدمات روانشناختی و مشاوره</label>
                       <input
                         type="text"
                         value={crextioConfig.counselingGeneralShowcaseTitle ?? ''}
@@ -1046,7 +1096,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-stone-600 mb-1">دکمه ویترین مشاوره عمومی</label>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">دکمه ویترین خدمات روانشناختی و مشاوره</label>
                       <input
                         type="text"
                         value={crextioConfig.counselingGeneralShowcaseBtnText ?? ''}
@@ -1171,7 +1221,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
             )}
 
             {/* TAB 3: LAYOUT, MOVABLE WIDGETS/CALENDAR, BOX DENSITY & IMAGES */}
-            {activeTab === 'layout_boxes' && (
+            {deviceMode === 'desktop' && activeTab === 'layout_boxes' && (
               <div className="space-y-6">
                 <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -1406,7 +1456,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
             )}
 
             {/* TAB 4: HONORS & UNIFIED SHOWCASE */}
-            {activeTab === 'honors_unified' && (
+            {deviceMode === 'desktop' && activeTab === 'honors_unified' && (
               <div className="space-y-6">
                 <HonorsManagerEditor
                   crextioConfig={crextioConfig}

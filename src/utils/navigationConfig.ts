@@ -5,7 +5,7 @@ export const DEFAULT_VERTICAL_NAV_ITEMS: CustomNavItemConfig[] = [
   { id: 'cartable', label: 'خدمات اداری و آموزشی', subtext: 'کارتابل درخواست‌های شغلی و استعلام‌ها', visible: true },
   { id: 'courses', label: 'دوره‌های تخصصی', subtext: 'آموزش‌های کاربردی فقه و قضا', visible: true },
   { id: 'products', label: 'کتاب و محصولات چند رسانه‌ای', subtext: 'کتب مرجع، نشست‌های علمی، درس‌گفتارها و فایل‌های دانلودی', visible: true },
-  { id: 'counseling', label: 'مشاوره عمومی و روان‌شناختی', subtext: 'سلامت شغلی، تحکیم خانواده و سبک زندگی', visible: true },
+  { id: 'counseling', label: 'خدمات روانشناختی و مشاوره', subtext: 'سلامت شغلی، تحکیم خانواده و سبک زندگی', visible: true },
   { id: 'specialized_counseling', label: 'مشاوره تخصصی شغلی قضا', subtext: 'هدایت شغلی-تحصیلی با قضات پیشکسوت دیوان عالی', visible: true },
   { id: 'research', label: 'راهبری پژوهش و مقاله (خدمات پژوهشی)', subtext: 'راهبری پایان‌نامه، مقاله، مشورت موردی و اسکان مطالعاتی', visible: true },
   { id: 'rulings', label: 'تالار رأی قضایی', subtext: 'آراء برگزیده محاکم و مباحثات فقهی', visible: true },
@@ -53,7 +53,7 @@ export const DEFAULT_SERVICES_MENU_ITEMS: CustomNavItemConfig[] = [
   },
   {
     id: 'CounselingGeneral',
-    label: 'خدمات مشاوره عمومی و فردی',
+    label: 'خدمات روانشناختی و مشاوره',
     subtext: 'روان‌شناختی، خانواده، زوج‌درمانی، تاب‌آوری شغلی و مدیریت اضطراب',
     badge: 'سلامت روان',
     visible: true,

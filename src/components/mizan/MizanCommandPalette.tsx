@@ -80,7 +80,7 @@ export const MizanCommandPalette: React.FC<MizanCommandPaletteProps> = ({
     },
     {
       id: 'nav-counseling-general',
-      title: 'خدمات مشاوره عمومی و فردی',
+      title: 'خدمات روانشناختی و مشاوره',
       subtitle: 'روان‌شناختی، خانواده، زوج‌درمانی و مدیریت اضطراب',
       category: 'خدمات مشاوره',
       icon: HeartHandshake,

@@ -705,14 +705,14 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
         <div className="space-y-1 min-w-0">
           {!isMicro && (
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
-              <span>{generalShowcase.sectionBadge || 'بخش مشاوره عمومی و خدمات روان‌شناختی'}</span>
+              <span>{generalShowcase.sectionBadge || 'بخش خدمات روانشناختی و مشاوره'}</span>
               <span aria-hidden="true" className="text-stone-300 dark:text-slate-600">·</span>
               <span className="text-stone-500 dark:text-slate-400">محرمانگی کامل پرونده</span>
             </div>
           )}
 
           <h3 className={`${isMicro ? 'text-sm sm:text-base' : isCompact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'} font-black text-stone-900 dark:text-white tracking-tight truncate`}>
-            {generalShowcase.sectionTitle || 'ویترین خدمات مشاوره عمومی و کلینیک روان‌شناختی'}
+            {generalShowcase.sectionTitle || 'ویترین خدمات روانشناختی و مشاوره و کلینیک سلامت روان'}
           </h3>
 
           {!isCompact && generalShowcase.sectionSubtitle && (
@@ -851,7 +851,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                 {!coverImgFailed ? (
                   <img
                     src={coverImageUrl}
-                    alt={generalShowcase.sectionTitle || 'ویترین مشاوره عمومی'}
+                    alt={generalShowcase.sectionTitle || 'ویترین خدمات روانشناختی و مشاوره'}
                     referrerPolicy="no-referrer"
                     onError={() => setCoverImgFailed(true)}
                     className="w-full h-full object-cover lg:absolute lg:inset-0"

@@ -241,7 +241,7 @@ export const DEFAULT_ROLE_POLICIES: Record<UserRole, RoleAccessPolicy> = {
   psychologist_counselor: {
     roleId: 'psychologist_counselor',
     roleTitle: 'روانشناس و مشاور مرکز',
-    description: 'مسئولیت انحصاری مدیریت بخش مشاوره عمومی و روان‌شناختی، تست‌های روان‌شناختی، کارگاه‌ها و اطلاع‌رسانی کلینیک؛ بدون دسترسی به سایر بخش‌ها و با دسترسی محدود صرفاً به نام و شماره تماس مراجعان.',
+    description: 'مسئولیت انحصاری مدیریت بخش خدمات روانشناختی و مشاوره، تست‌های روان‌شناختی، کارگاه‌ها و اطلاع‌رسانی کلینیک؛ بدون دسترسی به سایر بخش‌ها و با دسترسی محدود صرفاً به نام و شماره تماس مراجعان.',
     badgeColor: 'bg-teal-100 text-teal-900 border-teal-300',
     isReadOnlyRole: false,
     sectionPermissions: {
@@ -422,7 +422,7 @@ export const NINE_ORGANIZATIONAL_ROLES: {
     title: 'روانشناس و مشاور مرکز',
     shortTitle: 'روانشناس و مشاور',
     badgeColor: 'bg-teal-100 text-teal-900 border-teal-300',
-    description: 'مسئول اختصاصی بخش مشاوره عمومی و روان‌شناختی (بدون دسترسی به سایر بخش‌ها، صرفاً مشاهده نام و موبایل مراجعان)',
+    description: 'مسئول اختصاصی بخش خدمات روانشناختی و مشاوره (بدون دسترسی به سایر بخش‌ها، صرفاً مشاهده نام و موبایل مراجعان)',
   },
   {
     id: 'alumni',

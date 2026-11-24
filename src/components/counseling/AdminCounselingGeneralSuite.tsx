@@ -236,7 +236,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
       preferredConsultantName: consObj?.name || undefined,
       selectedFieldId: matchedField?.id || (scheduleForm.selectedFieldTitle ? editingRequest.selectedFieldId : undefined),
       selectedFieldTitle: scheduleForm.selectedFieldTitle || undefined,
-      categoryTitle: scheduleForm.selectedFieldTitle || 'مشاوره عمومی و روان‌شناختی',
+      categoryTitle: scheduleForm.selectedFieldTitle || 'خدمات روانشناختی و مشاوره',
     });
     setEditingRequest(null);
   };
@@ -366,7 +366,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-white/10 text-xs">
             <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
-              <span className="text-slate-300 font-bold block">کل درخواست‌های مشاوره عمومی</span>
+              <span className="text-slate-300 font-bold block">کل درخواست‌های خدمات روانشناختی و مشاوره</span>
               <span className="text-2xl font-black text-white mt-1 block tabular-nums">{toPersianNumbers(totalRequests)}</span>
             </div>
             <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10">
@@ -621,7 +621,7 @@ export const AdminCounselingGeneralSuite: React.FC<AdminCounselingGeneralSuitePr
 
           {filteredRequests.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-              هیچ درخواست مشاوره عمومی‌ای با این مشخصات یافت نشد.
+              هیچ درخواست خدمات روانشناختی و مشاوره‌ای با این مشخصات یافت نشد.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -86,7 +86,7 @@ const SECTION_LABELS: Record<string, string> = {
   research_promo: 'ویترین راهبری پژوهش',
   course_showcase: 'ویترین دوره‌های علمی',
   counseling_promo: 'ویترین خدمات مشاوره تخصصی و نخبگان',
-  counseling_general_showcase: 'ویترین خدمات مشاوره عمومی و خانواده',
+  counseling_general_showcase: 'ویترین خدمات روانشناختی و مشاوره',
   welfare_showcase: 'ویترین رفاهیات و تسهیلات',
   multimedia_showcase: 'ویترین درس‌گفتارها',
   bento_grid: 'شبکه جامع خدمات (Bento)',
@@ -174,11 +174,23 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
   const [quickServiceSuccess, setQuickServiceSuccess] = useState<string | null>(null);
   const [quickEditSectionKey, setQuickEditSectionKey] = useState<string | null>(null);
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
 
   // Live Drag & Drop and Resize Edit Mode
   const [isLayoutEditMode, setIsLayoutEditMode] = useState(false);
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const syncViewport = () => setIsMobileViewport(mq.matches);
+    syncViewport();
+    mq.addEventListener('change', syncViewport);
+    return () => mq.removeEventListener('change', syncViewport);
+  }, []);
 
   useEffect(() => {
     if (isAlumniPreview) {
@@ -885,74 +897,74 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
             <MinimalShowcaseCard
               kicker={ov?.kicker || 'هدایت شغلی، علمی و سلامت روان'}
               title={ov?.title || crextioConfig.counselingPromoTitle || 'خدمات مشاوره نخبگان'}
-              description={
-                ov?.description ||
-                'دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و مشاوره عمومی خانواده با اساتید برجسته.'
-              }
-              icon={<HeartHandshake className="w-5 h-5" />}
-              accentTone="indigo"
-              imageUrl={resolvedBoxImg}
-              showImage={shouldShowBoxImg}
-              scale={scale}
-              stats={[
-                { label: 'مشاور و استاد راهنما', value: toPersianNumbers(consultants.length) },
-              ]}
-              actions={[
-                { label: 'مشاوره عمومی', onClick: () => onNavigateTab?.('CounselingGeneral') },
-                {
-                  label: ov?.ctaLabel || 'مشاوره شغلی قضا',
-                  onClick: () => onNavigateTab?.('SpecializedCounseling'),
-                  primary: true,
-                },
-              ]}
-            />
-          );
-        }
-        return (
-          <div className={scale === 'compact' ? 'origin-top scale-[0.98]' : ''}>
-            <CounselingPromoShowcase
-              onNavigateToGeneral={() => onNavigateTab?.('CounselingGeneral')}
-              onNavigateToSpecialized={() => onNavigateTab?.('SpecializedCounseling')}
-            />
-          </div>
-        );
-
-      case 'counseling_general_showcase':
-        if (crextioConfig.showCounselingGeneralShowcase === false) return null;
-        if (density === 'minimal') {
-          const ov = crextioConfig.minimalBoxOverrides?.counseling_general_showcase;
-          const generalCount = consultants.filter(c => c.counselingType !== 'specialized_career').length;
+                description={
+                  ov?.description ||
+                  'دریافت نوبت محرمانه مشاوره تخصصی قضایی-تحصیلی و خدمات روانشناختی و مشاوره با اساتید برجسته.'
+                }
+                icon={<HeartHandshake className="w-5 h-5" />}
+                accentTone="indigo"
+                imageUrl={resolvedBoxImg}
+                showImage={shouldShowBoxImg}
+                scale={scale}
+                stats={[
+                  { label: 'مشاور و استاد راهنما', value: toPersianNumbers(consultants.length) },
+                ]}
+                actions={[
+                  { label: 'خدمات روانشناختی و مشاوره', onClick: () => onNavigateTab?.('CounselingGeneral') },
+                  {
+                    label: ov?.ctaLabel || 'مشاوره شغلی قضا',
+                    onClick: () => onNavigateTab?.('SpecializedCounseling'),
+                    primary: true,
+                  },
+                ]}
+              />
+            );
+          }
           return (
-            <MinimalShowcaseCard
-              kicker={
-                ov?.kicker ||
-                crextioConfig.counselingGeneralShowcaseBadge ||
-                'سلامت روان، خانواده و تاب‌آوری'
-              }
-              title={
-                ov?.title ||
-                crextioConfig.counselingGeneralShowcaseTitle ||
-                'خدمات مشاوره عمومی و خانواده'
-              }
-              description={
-                ov?.description ||
-                crextioConfig.counselingGeneralShowcaseSubtitle ||
-                'دریافت نوبت محرمانه مشاوره خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت استرس شغلی.'
-              }
-              icon={<HeartHandshake className="w-5 h-5" />}
-              accentTone="emerald"
-              imageUrl={resolvedBoxImg}
-              showImage={shouldShowBoxImg}
-              scale={scale}
-              stats={[
-                { label: 'مشاور خانواده و روان', value: toPersianNumbers(generalCount) },
-              ]}
-              actions={[
-                {
-                  label:
-                    ov?.ctaLabel ||
-                    crextioConfig.counselingGeneralShowcaseBtnText ||
-                    'درخواست مشاوره عمومی',
+            <div className={scale === 'compact' ? 'origin-top scale-[0.98]' : ''}>
+              <CounselingPromoShowcase
+                onNavigateToGeneral={() => onNavigateTab?.('CounselingGeneral')}
+                onNavigateToSpecialized={() => onNavigateTab?.('SpecializedCounseling')}
+              />
+            </div>
+          );
+
+        case 'counseling_general_showcase':
+          if (crextioConfig.showCounselingGeneralShowcase === false) return null;
+          if (density === 'minimal') {
+            const ov = crextioConfig.minimalBoxOverrides?.counseling_general_showcase;
+            const generalCount = consultants.filter(c => c.counselingType !== 'specialized_career').length;
+            return (
+              <MinimalShowcaseCard
+                kicker={
+                  ov?.kicker ||
+                  crextioConfig.counselingGeneralShowcaseBadge ||
+                  'سلامت روان، خانواده و تاب‌آوری'
+                }
+                title={
+                  ov?.title ||
+                  crextioConfig.counselingGeneralShowcaseTitle ||
+                  'خدمات روانشناختی و مشاوره'
+                }
+                description={
+                  ov?.description ||
+                  crextioConfig.counselingGeneralShowcaseSubtitle ||
+                  'دریافت نوبت محرمانه مشاوره خانواده، زوج‌درمانی، پیش از ازدواج و مدیریت استرس شغلی.'
+                }
+                icon={<HeartHandshake className="w-5 h-5" />}
+                accentTone="emerald"
+                imageUrl={resolvedBoxImg}
+                showImage={shouldShowBoxImg}
+                scale={scale}
+                stats={[
+                  { label: 'مشاور خانواده و روان', value: toPersianNumbers(generalCount) },
+                ]}
+                actions={[
+                  {
+                    label:
+                      ov?.ctaLabel ||
+                      crextioConfig.counselingGeneralShowcaseBtnText ||
+                      'درخواست خدمات روانشناختی و مشاوره',
                   onClick: () => onNavigateTab?.('CounselingGeneral'),
                   primary: true,
                 },
@@ -1481,6 +1493,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
       <Theme2StudioDrawer
         isOpen={isStudioOpen && isAdmin}
         initialTab={studioInitialTab}
+        defaultDeviceMode={isMobileViewport ? 'mobile' : 'desktop'}
         onClose={() => setIsStudioOpen(false)}
         onOpenAdvancedModal={() => setIsCustomizerOpen(true)}
         crextioConfig={crextioConfig}

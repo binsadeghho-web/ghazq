@@ -300,7 +300,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                   تنظیمات و محتوای ۱۰۰٪ ویترین خدمات مشاوره نخبگان
                 </h4>
                 <p className="text-[11px] text-rose-800/80 mt-0.5">
-                  ویرایش کامل تیتر، زیرعنوان، کارت مشاوره تخصصی شغلی و کارت مشاوره عمومی
+                  ویرایش کامل تیتر، زیرعنوان، کارت مشاوره تخصصی شغلی و کارت خدمات روانشناختی و مشاوره
                 </p>
               </div>
             </div>
@@ -442,7 +442,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
             <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
               <h5 className="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
                 <HeartHandshake className="w-4 h-4 text-emerald-700" />
-                <span>تنظیمات کارت مشاوره عمومی و سلامت روان</span>
+                <span>تنظیمات کارت خدمات روانشناختی و مشاوره</span>
               </h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -467,7 +467,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                       updateCrextioConfig({ counselingPromoGeneralBtnText: e.target.value });
                       triggerSuccess();
                     }}
-                    placeholder="درخواست نوبت مشاوره عمومی"
+                    placeholder="درخواست نوبت خدمات روانشناختی و مشاوره"
                     className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs font-bold"
                   />
                 </div>
@@ -481,7 +481,7 @@ export const CustomizerShowcaseTabs: React.FC<CustomizerShowcaseTabsProps> = ({
                     updateCrextioConfig({ counselingPromoGeneralTitle: e.target.value });
                     triggerSuccess();
                   }}
-                  placeholder="خدمات مشاوره عمومی، خانواده و روان‌شناختی"
+                  placeholder="خدمات روانشناختی و مشاوره"
                   className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs font-black"
                 />
               </div>

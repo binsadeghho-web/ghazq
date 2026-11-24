@@ -33,7 +33,7 @@ function sanitizeMediaOrExternalUrl(raw?: string): string | undefined {
 
 export const DEFAULT_GENERAL_SHOWCASE_CONFIG: CounselingGeneralShowcaseConfig = {
   sectionBadge: 'آرامش روانی، سلامت خانواده و توانمندسازی',
-  sectionTitle: 'ویترین خدمات مشاوره عمومی، خانواده و روان‌شناختی',
+  sectionTitle: 'ویترین خدمات روانشناختی و مشاوره مرکز',
   sectionSubtitle: 'کارگاه‌های آموزشی، اطلاعیه‌های دوره‌های روان‌شناسی و معرفی مشاورین مرکز',
   displayMode: 'carousel',
   carouselAutoplay: true,
@@ -261,7 +261,7 @@ export const DEFAULT_SPECIALIZED_PORTAL_CONFIG: SpecializedCounselingPortalConfi
 };
 
 export const DEFAULT_GENERAL_PORTAL_CONFIG: GeneralCounselingPortalConfig = {
-  sectionTitle: 'مشاوره عمومی و روان‌شناسان مرکز',
+  sectionTitle: 'خدمات روانشناختی و مشاوره مرکز',
   sectionSubtitle: 'خدمات تخصصی روان‌شناسی، خانواده، تاب‌آوری شغلی و سنجش‌های روان‌شناختی با حفظ محرمانگی کامل',
   headerBadgeLabel: 'بخش مستقل خدمات روان‌شناسی و سلامت روان مرکز',
   tabRequestLabel: 'رزرو وقت و زمینه‌های مشاوره',
@@ -269,7 +269,7 @@ export const DEFAULT_GENERAL_PORTAL_CONFIG: GeneralCounselingPortalConfig = {
   tabTariffsLabel: 'نرخ‌نامه',
   tabTestsLabel: 'تست‌ها',
   tabHistoryLabel: 'سوابق مشاوره',
-  heroBadgeLabel: 'بخش روان‌شناسان و مشاوره عمومی مرکز',
+  heroBadgeLabel: 'بخش روان‌شناسان و خدمات روانشناختی و مشاوره مرکز',
   landingIntroTitle: 'آشنایی با مرکز مشاوره و خدمات روان‌شناختی',
   landingIntroBody: 'این بخش منحصراً توسط روان‌شناسان مجرب مرکز برای حمایت از سلامت روان، آرامش خانواده، پیشگیری از فرسودگی شغلی و تحلیل آزمون‌های استاندارد روان‌شناختی راه‌اندازی شده است. تمامی اطلاعات و گفتگوها کاملاً محرمانه می‌مانند.',
   heroHistoryButtonLabel: 'سوابق درخواست‌های من',
@@ -279,7 +279,7 @@ export const DEFAULT_GENERAL_PORTAL_CONFIG: GeneralCounselingPortalConfig = {
   ctaButtonLabel: 'رزرو وقت مشاوره',
   calloutSecondaryLinkLabel: 'مشاهده توضیحات پیش از شروع',
   fieldsShowcaseBadgeLabel: 'حوزه‌های خدمات روان‌شناختی',
-  fieldsSectionTitle: 'زمینه‌های مشاوره عمومی و روان‌شناختی',
+  fieldsSectionTitle: 'زمینه‌های خدمات روانشناختی و مشاوره',
   fieldsSectionSubtitle: 'محورهای تخصصی خدمات روان‌شناختی و خانواده در مرکز',
   fieldsShowcaseHelperText: 'روی هر زمینه کلیک کنید تا فرم ثبت درخواست با همان محور باز شود',
   fieldsCardCtaLabel: 'انتخاب و رزرو وقت',
@@ -417,7 +417,7 @@ export function registerCounselingConfigRoutes(router: Router): void {
       }
       const type = req.params.type === 'specialized_career' ? 'specialized_career' : 'general';
       if (u.role === 'psychologist_counselor' && type === 'specialized_career') {
-        throw AppError.forbidden('نقش روانشناس و مشاور مرکز صرفاً مجاز به مدیریت بخش مشاوره عمومی و روان‌شناختی است.');
+        throw AppError.forbidden('نقش روانشناس و مشاور مرکز صرفاً مجاز به مدیریت بخش خدمات روانشناختی و مشاوره است.');
       }
       AuthorizationPolicy.requireRole(
         { userId: u.id, role: u.role, fullName: u.fullName },
@@ -955,7 +955,7 @@ export function registerCounselingConfigRoutes(router: Router): void {
 
       if (existing && expectedVersion !== undefined && Number(existing.version) !== Number(expectedVersion)) {
         throw AppError.conflict(
-          'تنظیمات ویترین مشاوره عمومی هم‌زمان توسط مدیر دیگری تغییر یافته است.',
+          'تنظیمات ویترین خدمات روانشناختی و مشاوره هم‌زمان توسط مدیر دیگری تغییر یافته است.',
           'CONCURRENT_MODIFICATION_CONFLICT'
         );
       }

@@ -1,9 +1,105 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { CrextioDashboardConfig, MizanDashboardConfig, DesignThemeType } from '../types';
+import {
+  CrextioDashboardConfig,
+  CrextioMobileConfig,
+  MizanDashboardConfig,
+  DesignThemeType,
+  MobileSectionId,
+  MobileServiceShowcaseId,
+  MobileServiceListTabId,
+} from '../types';
 import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../data/mockData';
 import { api } from '../services/apiClient';
 
 const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
+
+export const CANONICAL_MOBILE_SECTION_ORDER: MobileSectionId[] = [
+  'hero',
+  'quick_dock',
+  'status_ledger',
+  'honors_showcase',
+  'services_showcase',
+  'services_list',
+];
+
+export const CANONICAL_MOBILE_SHOWCASE_ORDER: MobileServiceShowcaseId[] = [
+  'counseling',
+  'counseling_specialized',
+  'courses',
+  'rulings',
+  'research',
+  'welfare',
+  'products',
+];
+
+export const CANONICAL_MOBILE_SERVICES_LIST_ORDER: MobileServiceListTabId[] = [
+  'courses',
+  'counseling',
+  'specialized_counseling',
+  'rulings',
+  'research',
+  'welfare',
+  'products',
+  'cartable',
+  'synergy',
+];
+
+export function reconcileMobileOrder<T extends string>(saved: T[] | undefined, canonical: readonly T[]): T[] {
+  if (!Array.isArray(saved) || saved.length === 0) {
+    return [...canonical];
+  }
+  const canonicalSet = new Set<string>(canonical as readonly string[]);
+  const filtered = saved.filter((item): item is T => canonicalSet.has(item));
+  const merged = [...filtered];
+  canonical.forEach(item => {
+    if (!merged.includes(item)) {
+      merged.push(item);
+    }
+  });
+  return merged;
+}
+
+export function resolveMobileConfig(
+  incoming?: Partial<CrextioMobileConfig>,
+  prev?: Partial<CrextioMobileConfig>
+): Required<CrextioMobileConfig> {
+  const base = (DEFAULT_CREXTIO_CONFIG.mobileConfig || {}) as Required<CrextioMobileConfig>;
+  const merged: CrextioMobileConfig = {
+    ...base,
+    ...(prev || {}),
+    ...(incoming || {}),
+    hiddenShowcases: {
+      ...(base.hiddenShowcases || {}),
+      ...(prev?.hiddenShowcases || {}),
+      ...(incoming?.hiddenShowcases || {}),
+    },
+    hiddenServicesListItems: {
+      ...(base.hiddenServicesListItems || {}),
+      ...(prev?.hiddenServicesListItems || {}),
+      ...(incoming?.hiddenServicesListItems || {}),
+    },
+  };
+  return {
+    showHeroBanner: merged.showHeroBanner !== false,
+    showWelcomeQuickButtons: merged.showWelcomeQuickButtons === true,
+    showHeroStats: merged.showHeroStats === true,
+    showHeroPortrait: merged.showHeroPortrait !== false,
+    showQuickDock: merged.showQuickDock === true,
+    showStatusLedger: merged.showStatusLedger !== false,
+    showHonorsShowcase: merged.showHonorsShowcase !== false,
+    separateHonorsShowcase: merged.separateHonorsShowcase !== false,
+    honorsShowcaseTitle: merged.honorsShowcaseTitle || 'ویترین انتصاب و افتخارات',
+    showServicesShowcase: merged.showServicesShowcase !== false,
+    servicesShowcaseTitle: merged.servicesShowcaseTitle || 'ویترین خدمات',
+    showcaseOrder: reconcileMobileOrder(merged.showcaseOrder, CANONICAL_MOBILE_SHOWCASE_ORDER),
+    hiddenShowcases: merged.hiddenShowcases || {},
+    showServicesList: merged.showServicesList !== false,
+    servicesListTitle: merged.servicesListTitle || 'فهرست خدمات',
+    servicesListOrder: reconcileMobileOrder(merged.servicesListOrder, CANONICAL_MOBILE_SERVICES_LIST_ORDER),
+    hiddenServicesListItems: merged.hiddenServicesListItems || {},
+    mobileSectionOrder: reconcileMobileOrder(merged.mobileSectionOrder, CANONICAL_MOBILE_SECTION_ORDER),
+  };
+}
 
 export const CANONICAL_DASHBOARD_SECTION_ORDER = [
   'dashboard_banners',
@@ -141,6 +237,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ...(prev.navigationConfig || {}),
           ...(incoming.navigationConfig || {}),
         },
+        mobileConfig: resolveMobileConfig(incoming.mobileConfig, prev.mobileConfig),
         dashboardSectionOrder: reconciledOrder,
         showResearchPromoShowcase:
           incoming.showResearchPromoShowcase !== undefined
@@ -226,6 +323,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updates.navigationConfig !== undefined
           ? { ...(prev.navigationConfig || {}), ...updates.navigationConfig }
           : prev.navigationConfig,
+      mobileConfig: resolveMobileConfig(updates.mobileConfig, prev.mobileConfig),
       dashboardSectionOrder: reconcileDashboardSectionOrder(updates.dashboardSectionOrder ?? prev.dashboardSectionOrder),
     };
     crextioStateRef.current = next;

@@ -10,6 +10,9 @@ export const GlobalMouseHalo: React.FC<GlobalMouseHaloProps> = ({ theme = 'porta
   const trailCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !window.matchMedia('(pointer: fine) and (hover: hover)').matches) {
+      return;
+    }
     let mouseX = -1000;
     let mouseY = -1000;
     let currentX = -1000;
@@ -139,7 +142,7 @@ export const GlobalMouseHalo: React.FC<GlobalMouseHaloProps> = ({ theme = 'porta
   const isCrextio = theme === 'crextio';
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-20 overflow-hidden" aria-hidden="true">
+    <div className="hidden lg:block fixed inset-0 pointer-events-none z-20 overflow-hidden" aria-hidden="true">
       {/* Canvas for Theme 2 micro-particle dust */}
       {isCrextio && (
         <canvas

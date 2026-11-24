@@ -56,7 +56,7 @@ export const SHOWCASE_IMAGE_LABELS: Array<{ key: string; title: string; desc: st
   { key: 'research_promo', title: 'تصویر ویترین راهبری پژوهش', desc: 'تصویر پس‌زمینه باشگاه راهبری پژوهش و رساله‌ها' },
   { key: 'course_showcase', title: 'تصویر ویترین دوره‌های علمی', desc: 'پوستر ویترین دوره‌ها و کارگاه‌های فقه القضا' },
   { key: 'counseling_promo', title: 'تصویر ویترین مشاوره نخبگان (تخصصی)', desc: 'پوستر خدمات مشاوره تخصصی شغلی و نخبگان' },
-  { key: 'counseling_general_showcase', title: 'تصویر ویترین خدمات مشاوره عمومی', desc: 'پوستر خدمات مشاوره عمومی، خانواده و روان‌شناختی' },
+  { key: 'counseling_general_showcase', title: 'تصویر ویترین خدمات روانشناختی و مشاوره', desc: 'پوستر خدمات روانشناختی، مشاوره و تحکیم خانواده' },
   { key: 'welfare_showcase', title: 'تصویر ویترین رفاهیات و تسهیلات', desc: 'تصویر خدمات رفاهی، وام و اقامتگاه‌ها' },
   { key: 'multimedia_showcase', title: 'تصویر ویترین درس‌گفتارها و چندرسانه‌ای', desc: 'پوستر آرشیو صوت و تصویر جلسات' },
   { key: 'books_showcase', title: 'تصویر ویترین کتاب و محصولات چند رسانه‌ای', desc: 'تصویر موسوعه‌ها، چندرسانه‌ای و صوت تخصصی' },

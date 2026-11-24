@@ -143,7 +143,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
         <div className="bg-amber-100/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100 rounded-2xl p-3 px-4 sm:px-5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
           <span className="text-xs font-bold flex items-center gap-2">
             <Info className="w-4 h-4 text-amber-700 shrink-0" />
-            در حال مشاهده پیش‌نمایش دانش‌آموخته در بخش مشاوره عمومی و کارگاه‌های آموزشی هستید.
+            در حال مشاهده پیش‌نمایش دانش‌آموخته در بخش خدمات روانشناختی و مشاوره و کارگاه‌های آموزشی هستید.
           </span>
           <div className="flex items-center gap-2">
             {canManageCounseling && !isObserver && (
@@ -501,7 +501,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
           {activeTab === 'request' && (
             <CounselingLandingHero
               variant="general"
-              badgeLabel={generalConfig.heroBadgeLabel ?? 'بخش روان‌شناسان و مشاوره عمومی مرکز'}
+              badgeLabel={generalConfig.heroBadgeLabel ?? 'بخش روان‌شناسان و خدمات روانشناختی و مشاوره مرکز'}
               introTitle={generalConfig.landingIntroTitle}
               introBody={generalConfig.landingIntroBody}
               historyButtonLabel={generalConfig.heroHistoryButtonLabel}
@@ -512,7 +512,7 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
               calloutSecondaryLinkLabel={generalConfig.calloutSecondaryLinkLabel}
               descriptionButtonLabel={generalConfig.descriptionButtonLabel || 'توضیحات'}
               fieldsShowcaseBadgeLabel={generalConfig.fieldsShowcaseBadgeLabel}
-              fieldsSectionTitle={generalConfig.fieldsSectionTitle || 'زمینه‌های مشاوره عمومی و روان‌شناختی'}
+              fieldsSectionTitle={generalConfig.fieldsSectionTitle || 'زمینه‌های خدمات روانشناختی و مشاوره'}
               fieldsSectionSubtitle={generalConfig.fieldsSectionSubtitle}
               fieldsShowcaseHelperText={generalConfig.fieldsShowcaseHelperText}
               fieldsCardCtaLabel={generalConfig.fieldsCardCtaLabel}

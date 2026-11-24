@@ -83,7 +83,7 @@ export const MizanBentoGrid: React.FC<MizanBentoGridProps> = ({ onNavigate }) =>
     },
     {
       id: 'counseling',
-      title: 'خدمات مشاوره عمومی و سلامت',
+      title: 'خدمات روانشناختی و مشاوره',
       subtext: 'کوچینگ سلامت روان، خانواده، زوج‌درمانی و تاب‌آوری در برابر تنش دادرسی',
       icon: HeartHandshake,
       accentColor: '#5F6BB1',

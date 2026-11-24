@@ -221,7 +221,7 @@ export const ConsultantManagementModule: React.FC = () => {
             <h2 className="text-xl font-black">پنل اختصاصی مدیریت مشاوران و تعیین حق‌المشاوره</h2>
           </div>
           <p className="text-xs text-slate-300 dark:text-stone-300 leading-relaxed max-w-3xl">
-            مدیریت کامل اساتید و مشاوران، تنظیم نرخ جلسات، و **جداسازی ساختاری مشاوران تخصصی تحصیلی-شغلی قضا** از مشاوران مشاوره عمومی.
+            مدیریت کامل اساتید و مشاوران، تنظیم نرخ جلسات، و جداسازی ساختاری مشاوران تخصصی تحصیلی-شغلی قضا از مشاوران خدمات روانشناختی و مشاوره.
           </p>
         </div>
 
@@ -378,7 +378,7 @@ export const ConsultantManagementModule: React.FC = () => {
                     }`}
                   >
                     {isSpecialized ? <Scale className="w-3.5 h-3.5" /> : <HeartHandshake className="w-3.5 h-3.5" />}
-                    <span>{isSpecialized ? 'مشاوره تخصصی شغلی قضا' : 'مشاوره عمومی'}</span>
+                    <span>{isSpecialized ? 'مشاوره تخصصی شغلی قضا' : 'خدمات روانشناختی و مشاوره'}</span>
                   </span>
 
                   <button
@@ -519,7 +519,7 @@ export const ConsultantManagementModule: React.FC = () => {
                     }`}
                   >
                     <HeartHandshake className="w-4 h-4" />
-                    <span>خدمات مشاوره عمومی و سلامت</span>
+                    <span>خدمات روانشناختی و مشاوره</span>
                   </button>
                 </div>
               </div>

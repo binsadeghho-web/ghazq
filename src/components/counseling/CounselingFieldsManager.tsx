@@ -147,7 +147,7 @@ export const CounselingFieldsManager: React.FC<CounselingFieldsManagerProps> = (
           <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
             <Compass className="w-4 h-4 text-emerald-600" />
             <span>
-              مدیریت «زمینه‌های مشاوره» ({counselingType === 'specialized_career' ? 'مشاوره تخصصی' : 'مشاوره عمومی و روان‌شناختی'})
+              مدیریت «زمینه‌های مشاوره» ({counselingType === 'specialized_career' ? 'مشاوره تخصصی' : 'خدمات روانشناختی و مشاوره'})
             </span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

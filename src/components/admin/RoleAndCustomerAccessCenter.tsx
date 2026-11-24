@@ -45,7 +45,7 @@ const ALL_CONFIGURABLE_SECTIONS: { id: AppSectionId; title: string; icon: any }[
   { id: 'cartable', title: 'کارتابل خدمات اداری', icon: FileText },
   { id: 'courses', title: 'دوره‌ها و کارگاه‌های آموزشی', icon: GraduationCap },
   { id: 'products', title: 'کتب و محصولات انتشارات', icon: BookOpen },
-  { id: 'counseling', title: 'مشاوره عمومی و خانواده', icon: Users },
+  { id: 'counseling', title: 'خدمات روانشناختی و مشاوره', icon: Users },
   { id: 'specialized_counseling', title: 'مشاوره تخصصی شغلی و تحصیلی', icon: Scale },
   { id: 'research', title: 'راهبری پژوهش و مقاله (خدمات پژوهشی)', icon: Scale },
   { id: 'rulings', title: 'تالار نقد و مباحثه آراء قضایی', icon: Scale },

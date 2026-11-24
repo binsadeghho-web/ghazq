@@ -53,8 +53,17 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
   };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isMdUp, setIsMdUp] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
   const menuRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const checkWidth = () => setIsMdUp(window.innerWidth >= 768);
+    window.addEventListener('resize', checkWidth, { passive: true });
+    return () => window.removeEventListener('resize', checkWidth);
+  }, []);
 
   const {
     currentUser,
@@ -134,7 +143,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     {
       id: 'CounselingGeneral',
       sectionId: 'counseling',
-      title: 'خدمات مشاوره عمومی و فردی',
+      title: 'خدمات روانشناختی و مشاوره',
       subtext: 'روان‌شناختی، خانواده، زوج‌درمانی، تاب‌آوری شغلی و مدیریت اضطراب',
       badge: 'سلامت روان',
       tag: `${toPersianNumbers(consultants.length)} مشاور مجرب`,
@@ -297,6 +306,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
       className="relative flex items-center justify-center z-50"
     >
       {/* دکمه مرکزی در دسکتاپ/تبلت */}
+      {(!hideTriggerOnMobile || isMdUp) && (
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.04, y: -2 }}
@@ -382,6 +392,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
           />
         </div>
       </motion.button>
+      )}
 
       {/* پنجره مگامنو (در موبایل به صورت Bottom Sheet تمام‌لمسی و در دسکتاپ به صورت مگامنو متمرکز) */}
       <AnimatePresence>

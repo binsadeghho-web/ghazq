@@ -283,7 +283,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
               }`}
             >
               <HeartHandshake className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">عمومی و خانواده</span>
+              <span className="truncate">روانشناختی و مشاوره</span>
             </button>
             <button
               onClick={() => {
@@ -442,7 +442,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                   onClick={onNavigateToGeneral}
                   className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>رزرو مشاوره عمومی و فردی</span>
+                  <span>رزرو خدمات روانشناختی و مشاوره</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -612,7 +612,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
               <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3 text-xs">
                 <h5 className="font-black text-xs text-rose-950 flex items-center gap-1.5">
                   <HeartHandshake className="w-4 h-4 text-rose-700" />
-                  <span>ویرایش محتوای «مشاوره عمومی و خانواده»:</span>
+                  <span>ویرایش محتوای «خدمات روانشناختی و مشاوره»:</span>
                 </h5>
 
                 <div>
