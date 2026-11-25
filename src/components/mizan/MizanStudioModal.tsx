@@ -24,6 +24,7 @@ export const MizanStudioModal: React.FC<MizanStudioModalProps> = ({ isOpen, onCl
   const { mizanConfig, updateMizanConfig, resetMizanConfig } = useApp();
   const [activeTab, setActiveTab] = useState<'hero' | 'impact' | 'visibility'>('hero');
   const [savedNotice, setSavedNotice] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   if (!isOpen) return null;
 
@@ -364,17 +365,39 @@ export const MizanStudioModal: React.FC<MizanStudioModalProps> = ({ isOpen, onCl
 
         {/* فوتر مودال */}
         <div className="p-4 px-6 bg-[#FAFDFB] border-t border-[#E5EFEA] flex items-center justify-between shrink-0">
-          <button
-            onClick={() => {
-              if (window.confirm('آیا مایل به بازنشانی کلیه تنظیمات تم میزان به حالت پیش‌فرض هستید؟')) {
-                resetMizanConfig();
-              }
-            }}
-            className="flex items-center gap-1.5 text-xs text-[#9E3E28] hover:text-[#7A2A17] font-semibold px-3 py-2 rounded-xl hover:bg-[#FDF2F0] transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>بازنشانی به پیش‌فرض</span>
-          </button>
+          {confirmReset ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-[#9E3E28]">بازنشانی کامل؟</span>
+              <button
+                type="button"
+                onClick={() => setConfirmReset(false)}
+                className="px-2.5 py-1.5 rounded-lg bg-stone-200 text-stone-700 text-[11px] font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetMizanConfig();
+                  setConfirmReset(false);
+                  setSavedNotice(true);
+                  setTimeout(() => setSavedNotice(false), 1800);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#9E3E28] text-white text-[11px] font-bold cursor-pointer"
+              >
+                بله، بازنشانی
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmReset(true)}
+              className="flex items-center gap-1.5 text-xs text-[#9E3E28] hover:text-[#7A2A17] font-semibold px-3 py-2 rounded-xl hover:bg-[#FDF2F0] transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>بازنشانی به پیش‌فرض</span>
+            </button>
+          )}
 
           <div className="flex items-center gap-3">
             {savedNotice && (

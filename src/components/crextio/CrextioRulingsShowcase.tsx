@@ -280,26 +280,27 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative rounded-2xl sm:rounded-[32px] overflow-hidden border border-[#E5E0D0] bg-[#FCFBF8] shadow-md">
-        <div className="relative z-10 px-4 py-3.5 sm:px-6 sm:py-5 border-b border-[#ECE7DA] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-gradient-to-r from-amber-50/60 via-white/80 to-emerald-50/40 backdrop-blur-md">
+      <div className="relative rounded-2xl sm:rounded-[30px] overflow-hidden border border-[#DFD8C4] bg-[#FCFCF9] shadow-[0_14px_38px_-24px_rgba(7,30,23,0.12)]">
+        <div className="relative z-10 px-4 py-3.5 sm:px-7 sm:py-5 border-b border-[#ECE6D6] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-[#FAF8F2]">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center shadow-xs">
-                <Scale className="w-4 h-4 stroke-[2.3]" />
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="w-8 h-8 rounded-xl bg-[#071E17] text-[#F3D078] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
+                <Scale className="w-4 h-4 stroke-[2.2]" />
               </span>
-              <span className="text-xs font-black text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-300/80">
+              <span className="font-black text-[#8A6314]">
                 {crextioConfig.rulingsShowcaseBadge || 'تالار مناظره و نقد آراء منتخب'}
               </span>
-              <span className="text-[11px] text-stone-500 font-bold hidden sm:inline-flex items-center gap-1 tabular-nums">
-                <Flame className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-[#525E58] font-bold hidden sm:inline-flex items-center gap-1 tabular-nums">
+                <span aria-hidden="true" className="text-[#D4CBB3]">·</span>
+                <Flame className="w-3.5 h-3.5 text-[#9A7116]" />
                 {toPersianNumbers(showcaseRulings.length)} دادنامه منتخب در ویترین
               </span>
             </div>
-            <h3 className={`${titleFontSize} font-black text-stone-900 tracking-tight`}>
+            <h3 className={`${titleFontSize} font-black text-[#071E17] tracking-tight`}>
               {crextioConfig.rulingsShowcaseTitle ||
                 'تالار نقد، ارزیابی و مباحثه آراء و دادنامه‌های قضایی'}
             </h3>
-            <p className={`${bodyFontSize} text-stone-600 font-medium`}>
+            <p className={`${bodyFontSize} text-[#525E58] font-medium`}>
               {crextioConfig.rulingsShowcaseSubtitle ||
                 'میدان تحلیل رویه‌های قضایی، آراء وحدت رویه و نقدهای حقوقی مستند دانش‌آموختگان نخبه'}
             </p>
@@ -310,9 +311,9 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl sm:rounded-2xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#FBF4E1] hover:bg-[#F6E8C3] text-[#6E5212] border border-[#E5C97B] text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
               >
-                <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                <Edit3 className="w-3.5 h-3.5 text-[#9A7116]" />
                 <span>ویرایش و تنظیم ویترین آراء</span>
               </button>
             )}
@@ -320,7 +321,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
             <button
               type="button"
               onClick={onNavigateToRulings}
-              className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer"
+              className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#D4AF37]/30 text-xs font-black shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
             >
               <span>{crextioConfig.rulingsPrimaryBtnText || 'ورود به تالار جامع آراء'}</span>
               <ArrowUpRight className="w-4 h-4" />
@@ -329,29 +330,29 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
         </div>
 
         {showcaseRulings.length === 0 ? (
-          <div className="p-10 text-center text-xs text-stone-500">
+          <div className="p-10 text-center text-xs text-[#525E58]">
             در حال حاضر رأی منتشرشده‌ای در ویترین قرار نگرفته است.
           </div>
         ) : isSummaryCarousel && currentCarouselRuling ? (
           /* -------------------- MODE 1: SUMMARY CAROUSEL -------------------- */
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 items-stretch bg-white/95">
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 items-stretch bg-[#FCFCF9]">
             {coverImage && (
-              <div className="lg:col-span-4 relative min-h-[175px] sm:min-h-[210px] overflow-hidden bg-stone-900">
+              <div className="lg:col-span-4 relative min-h-[175px] sm:min-h-[210px] overflow-hidden bg-[#071E17]">
                 <img
                   src={coverImage}
                   alt={currentCarouselRuling.title}
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/90 via-[#071E17]/40 to-transparent" />
                 <div className="absolute bottom-3.5 sm:bottom-4 right-4 left-4 text-white space-y-1">
-                  <span className="text-[11px] font-bold text-amber-300 block">
+                  <span className="text-[11px] font-bold text-[#F3D078] block tabular-nums">
                     {currentCarouselRuling.caseTypeTitle} · {currentCarouselRuling.rulingDate}
                   </span>
                   <div className="text-xs font-black line-clamp-1">
                     {currentCarouselRuling.courtBranch}
                   </div>
-                  <div className="text-[11px] text-stone-300">
+                  <div className="text-[11px] text-emerald-100/80">
                     انشاء: {currentCarouselRuling.judgeName}
                   </div>
                 </div>
@@ -372,7 +373,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                   transition={{ duration: 0.28 }}
                   className="space-y-3"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-stone-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-[#525E58]">
                     <span className="tabular-nums">
                       گزیده رأی {toPersianNumbers(safeCarouselIdx + 1)} از{' '}
                       {toPersianNumbers(showcaseRulings.length)} · هر{' '}
@@ -381,12 +382,12 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                     {renderPublicBadges(currentCarouselRuling)}
                   </div>
 
-                  <h4 className="text-base sm:text-xl font-black text-stone-900 leading-snug">
+                  <h4 className="text-base sm:text-xl font-black text-[#071E17] leading-snug">
                     {currentCarouselRuling.title}
                   </h4>
 
                   {contentMode !== 'title_only' && currentCarouselRuling.summary && (
-                    <p className="text-xs sm:text-sm text-stone-700 leading-relaxed bg-amber-50/60 border border-amber-200/80 p-3.5 rounded-2xl">
+                    <p className="text-xs sm:text-sm text-[#2B3B34] leading-relaxed bg-[#FAF8F2] border border-[#E2DAC3] p-3.5 rounded-2xl">
                       {currentCarouselRuling.summary}
                     </p>
                   )}
@@ -398,9 +399,9 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                         {currentCarouselRuling.legalPrinciples.slice(0, 3).map((pr, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-700"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2B3B34]"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#0C4A38] shrink-0" />
                             <span>{pr}</span>
                           </span>
                         ))}
@@ -409,12 +410,12 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                 </motion.div>
               </AnimatePresence>
 
-              <div className="pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="pt-3 border-t border-[#ECE6D6] flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setFullModalRuling(currentCarouselRuling)}
-                    className="px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] text-xs font-black flex items-center gap-1.5 cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>مشاهده کامل و نقد</span>
@@ -427,7 +428,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsPaused(p => !p)}
-                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-100 cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-[#DFD8C4] flex items-center justify-center text-[#4C5852] hover:bg-[#F4F0E4] cursor-pointer"
                       title={isPaused ? 'ادامه پخش خودکار' : 'توقف'}
                     >
                       {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -437,14 +438,14 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                       onClick={() =>
                         setCarouselIdx(p => (p - 1 + showcaseRulings.length) % showcaseRulings.length)
                       }
-                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-[#DFD8C4] flex items-center justify-center text-[#071E17] hover:bg-[#F4F0E4] cursor-pointer"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => setCarouselIdx(p => (p + 1) % showcaseRulings.length)}
-                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border border-[#DFD8C4] flex items-center justify-center text-[#071E17] hover:bg-[#F4F0E4] cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                     </button>
@@ -455,41 +456,41 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           </div>
         ) : isCompact ? (
           /* -------------------- MODE 2: COMPACT GRID -------------------- */
-          <div className="relative z-10 p-3.5 sm:p-6 bg-white/95">
+          <div className="relative z-10 p-3.5 sm:p-6 bg-[#FCFCF9]">
             <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
               {showcaseRulings.map(ruling => (
                 <div
                   key={ruling.id}
-                  className="min-w-[78vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink p-4 rounded-2xl bg-[#FBF9F4] hover:bg-amber-50/50 border border-stone-200/90 hover:border-amber-300 transition-all flex flex-col justify-between space-y-3 group shadow-2xs"
+                  className="min-w-[78vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink p-4 rounded-2xl bg-[#FAF8F2] hover:bg-white border border-[#E2DAC3] hover:border-[#071E17]/35 transition-all flex flex-col justify-between space-y-3 group hover:shadow-[0_12px_28px_-16px_rgba(7,30,23,0.18)]"
                 >
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] text-stone-500">
-                      <span className="font-bold text-amber-900">{ruling.courtBranch || ruling.caseTypeTitle}</span>
-                      <span className="font-mono tabular-nums">{ruling.rulingDate}</span>
+                    <div className="flex items-center justify-between text-[11px] text-[#525E58]">
+                      <span className="font-bold text-[#8A6314]">{ruling.courtBranch || ruling.caseTypeTitle}</span>
+                      <span className="tabular-nums">{ruling.rulingDate}</span>
                     </div>
 
                     {renderPublicBadges(ruling)}
 
-                    <h4 className="font-black text-xs sm:text-sm text-stone-900 group-hover:text-amber-900 transition-colors line-clamp-2 leading-snug">
+                    <h4 className="font-black text-xs sm:text-sm text-[#071E17] group-hover:text-[#0C4A38] transition-colors line-clamp-2 leading-snug">
                       {ruling.title}
                     </h4>
 
                     {contentMode !== 'title_only' && (
-                      <p className="text-[11px] text-stone-600 font-medium line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-[#525E58] font-medium line-clamp-2 leading-relaxed">
                         {ruling.summary}
                       </p>
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between gap-2 text-xs">
+                  <div className="pt-2 border-t border-[#ECE6D6] flex items-center justify-between gap-2 text-xs">
                     {renderReactions(ruling, true)}
 
                     <button
                       type="button"
                       onClick={() => setFullModalRuling(ruling)}
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 border border-stone-200 text-[11px] font-bold text-stone-700 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#071E17] hover:text-[#F3D078] border border-[#DFD8C4] text-[11px] font-bold text-[#071E17] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                     >
-                      <Eye className="w-3 h-3 text-stone-500" />
+                      <Eye className="w-3 h-3" />
                       <span>مشاهده</span>
                     </button>
                   </div>
@@ -501,12 +502,12 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
           /* -------------------- MODE 3: EXPANDED SPLIT STAGE -------------------- */
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-0">
             {/* Left List */}
-            <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-l border-[#ECE7DA] p-3.5 sm:p-5 space-y-2.5 sm:space-y-3 bg-[#FAF8F2]/60">
+            <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-l border-[#ECE6D6] p-3.5 sm:p-5 space-y-2.5 sm:space-y-3 bg-[#FAF8F2]">
               <div className="flex items-center justify-between pb-1">
-                <span className="text-xs font-black text-stone-700">
+                <span className="text-xs font-black text-[#071E17]">
                   {crextioConfig.rulingsShowcaseSectionTitle || 'دادنامه‌های داغ و برگزیده'}
                 </span>
-                <span className="text-[10px] text-stone-500 font-semibold">برای مطالعه کلیک کنید</span>
+                <span className="text-[10px] text-[#525E58] font-semibold">برای مطالعه کلیک کنید</span>
               </div>
 
               <div className="space-y-2.5 max-h-[240px] lg:max-h-[460px] overflow-y-auto pr-1">
@@ -518,24 +519,24 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                       onClick={() => setSelectedRuling(ruling)}
                       className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
                         isSelected
-                          ? 'bg-white border-amber-500 shadow-md ring-2 ring-amber-400/30'
-                          : 'bg-white/80 hover:bg-white border-stone-200/90 hover:border-amber-300 shadow-2xs'
+                          ? 'bg-white border-[#071E17]/60 shadow-sm ring-1 ring-[#D4AF37]/40'
+                          : 'bg-white/75 hover:bg-white border-[#E2DAC3] hover:border-[#071E17]/30'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2 text-[10px] text-stone-500">
-                        <span className="font-bold text-stone-700">{ruling.caseTypeTitle}</span>
-                        <span className="font-mono tabular-nums">{ruling.rulingDate}</span>
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-[#525E58]">
+                        <span className="font-bold text-[#8A6314]">{ruling.caseTypeTitle}</span>
+                        <span className="tabular-nums">{ruling.rulingDate}</span>
                       </div>
 
                       {renderPublicBadges(ruling)}
 
-                      <h4 className="text-xs sm:text-[13px] font-black text-stone-900 line-clamp-2 leading-snug">
+                      <h4 className="text-xs sm:text-[13px] font-black text-[#071E17] line-clamp-2 leading-snug">
                         {ruling.title}
                       </h4>
 
-                      <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
+                      <div className="pt-2 border-t border-[#ECE6D6] flex items-center justify-between text-[11px] text-[#525E58]">
                         <span className="truncate max-w-[150px]">{ruling.courtBranch}</span>
-                        <div className="flex items-center gap-2 font-mono tabular-nums">
+                        <div className="flex items-center gap-2 tabular-nums">
                           {showLikes && <span>{toPersianNumbers(ruling.likesCount || 0)} پسند</span>}
                           {showDislikes && <span>{toPersianNumbers(ruling.dislikesCount || 0)} مخالف</span>}
                           {showComments && (
@@ -551,32 +552,32 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
 
             {/* Right Active Reader Stage */}
             {currentActive && (
-              <div className="lg:col-span-7 p-4 sm:p-6 flex flex-col justify-between space-y-4 bg-white/90">
+              <div className="lg:col-span-7 p-4 sm:p-6 flex flex-col justify-between space-y-4 bg-[#FCFCF9]">
                 <div className="space-y-3.5 sm:space-y-4">
                   <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-stone-600">
-                      <span>مرجع: <strong>{currentActive.courtBranch || '—'}</strong></span>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#525E58]">
+                      <span>مرجع: <strong className="text-[#071E17]">{currentActive.courtBranch || '—'}</strong></span>
                       <span aria-hidden="true">·</span>
-                      <span>دادرس: <strong>{currentActive.judgeName || '—'}</strong></span>
+                      <span>دادرس: <strong className="text-[#071E17]">{currentActive.judgeName || '—'}</strong></span>
                       <span aria-hidden="true">·</span>
                       <span>ثبت: {currentActive.submittedByName}</span>
                     </div>
 
                     {renderPublicBadges(currentActive)}
 
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
+                    <h3 className="text-base sm:text-lg font-black text-[#071E17] leading-snug">
                       {currentActive.title}
                     </h3>
                   </div>
 
                   {contentMode === 'title_only' ? (
-                    <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-600">
+                    <div className="p-4 rounded-2xl bg-[#FAF8F2] border border-[#E2DAC3] text-xs text-[#525E58]">
                       حالت نمایش خلاصه روی «عنوان آراء» تنظیم شده است؛ برای مطالعه متن دادنامه روی دکمه «مشاهده پرونده کامل» کلیک کنید.
                     </div>
                   ) : contentMode === 'title_summary' ? (
-                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 text-stone-800 leading-relaxed text-xs space-y-2">
-                      <span className="font-bold text-amber-900 block">چکیده استنباط قضایی:</span>
-                      <p className="font-medium text-stone-700 leading-loose">
+                    <div className="p-4 rounded-2xl bg-[#FAF8F2] border border-[#E2DAC3] text-[#071E17] leading-relaxed text-xs space-y-2">
+                      <span className="font-bold text-[#8A6314] block">چکیده استنباط قضایی:</span>
+                      <p className="font-medium text-[#2B3B34] leading-loose">
                         {currentActive.summary || currentActive.fullRulingText}
                       </p>
                     </div>
@@ -584,22 +585,22 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                     <>
                       {/* Configurable Tabs (Reform 16) */}
                       {visibleTabs.length > 1 && (
-                        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl border border-stone-200/80 overflow-x-auto scrollbar-none">
+                        <div className="flex items-center gap-1 p-1 bg-[#F4F0E4] rounded-xl border border-[#DFD8C4] overflow-x-auto scrollbar-none">
                           {visibleTabs.map(tKey => (
                             <button
                               key={tKey}
                               type="button"
                               onClick={() => setActiveTab(tKey)}
-                              className={`flex-1 min-h-[36px] py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
+                              className={`flex-1 min-h-[36px] py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                                 activeTab === tKey
-                                  ? 'bg-white text-stone-900 shadow-2xs'
-                                  : 'text-stone-600 hover:text-stone-900'
+                                  ? 'bg-[#071E17] text-[#F3D078] shadow-xs font-black'
+                                  : 'text-[#4C5852] hover:text-[#071E17]'
                               }`}
                             >
                               <span className="truncate">{tabLabels[tKey]}</span>
                               {tKey === 'discussions' && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black tabular-nums">
-                                  {toPersianNumbers(currentActive.discussions?.length || 0)}
+                                <span className={`text-[10px] font-black tabular-nums ${activeTab === tKey ? 'text-[#F3D078]/85' : 'text-[#8A6314]'}`}>
+                                  ({toPersianNumbers(currentActive.discussions?.length || 0)})
                                 </span>
                               )}
                             </button>

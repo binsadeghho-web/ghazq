@@ -1315,6 +1315,7 @@ export interface CounselingRequest {
   paymentStatus?: 'pending_review' | 'confirmed' | 'waived' | 'free';
   reviewedBy?: string;
   reviewedAt?: string;
+  attachments?: Array<{ url: string; name: string; size?: number }>;
   version?: number;
   createdAt: string;
   updatedAt?: string;
@@ -1759,6 +1760,7 @@ export interface ResearchMentorship {
   reviewedAt?: string;
   milestones: { title: string; isDone: boolean; date: string }[];
   messages?: ResearchMessage[];
+  attachments?: Array<{ url: string; name: string; size?: number }>;
   applicantProfile?: ResearchApplicantProfile;
   version?: number;
   createdAt: string;

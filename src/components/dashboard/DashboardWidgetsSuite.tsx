@@ -368,18 +368,18 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
   const renderAdminBar = () => {
     if (!isRealAdmin) return null;
     return (
-      <div className="bg-white/95 border border-stone-200/90 rounded-2xl p-3 sm:p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
-            <Settings2 className="w-4 h-4" />
+      <div className="bg-[#FCFCF9] border border-[#DFD8C4] rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-[0_6px_18px_-14px_rgba(7,30,23,0.1)]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-8 h-8 rounded-xl bg-[#F4F0E4] text-[#071E17] border border-[#DFD8C4] flex items-center justify-center shrink-0">
+            <Settings2 className="w-4 h-4 text-[#0C4A38]" />
           </span>
           <div className="min-w-0">
-            <h4 className="text-xs font-extrabold text-stone-900 truncate">
+            <h4 className="text-xs font-black text-[#071E17] truncate">
               {effectiveAlumniPreview
                 ? 'حالت پیش‌نمایش نمای دانش‌آموخته (فعال)'
-                : 'ابزارهای مدیریت داشبورد، تقویم و بنرها'}
+                : 'ابزارهای مدیریت ویجت وضعیت، تقویم و بنرهای داشبورد'}
             </h4>
-            <p className="hidden sm:block text-[11px] text-stone-500">
+            <p className="hidden xl:block text-[11px] text-[#525E58] truncate">
               {effectiveAlumniPreview
                 ? 'در این حالت، تمام دکمه‌های ویرایش ادمین مخفی بوده و داشبورد دقیقاً از دید دانش‌آموخته نمایش داده می‌شود.'
                 : 'کنترل روشن/خاموش بودن ویجت وضعیت و تقویم، ویرایش بنرهای اطلاع‌رسانی و پیش‌نمایش زنده دانش‌آموخته'}
@@ -387,20 +387,20 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handleTogglePreview}
-            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-extrabold transition-colors cursor-pointer border whitespace-nowrap ${
               effectiveAlumniPreview
-                ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-sm'
-                : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border-stone-300'
+                ? 'bg-[#F3D078] text-[#071E17] border-[#D9B152] shadow-xs'
+                : 'bg-[#F5F2E8] hover:bg-[#EBE5D4] text-[#071E17] border-[#DFD8C4]'
             }`}
           >
             {effectiveAlumniPreview ? (
               <EyeOff className="w-3.5 h-3.5 shrink-0" />
             ) : (
-              <Eye className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <Eye className="w-3.5 h-3.5 text-[#0C4A38] shrink-0" />
             )}
             <span>
               {effectiveAlumniPreview ? 'خروج از پیش‌نمایش دانش‌آموخته' : 'پیش‌نمایش نمای دانش‌آموخته'}
@@ -411,9 +411,9 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => setIsManagerOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 min-h-[40px] rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 min-h-[36px] rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35 text-xs font-black transition-colors cursor-pointer whitespace-nowrap"
             >
-              <Megaphone className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <Megaphone className="w-3.5 h-3.5 shrink-0" />
               <span>مدیریت بنرها، تقویم و ویجت‌ها</span>
             </button>
           )}
@@ -429,10 +429,10 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
         {activeBanners.map(b => {
           const styleMap: Record<string, string> = {
             celebration:
-              'bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white border-emerald-600/40',
-            urgent: 'bg-gradient-to-r from-rose-900 via-red-900 to-amber-950 text-white border-rose-500/40',
-            warning: 'bg-amber-50 text-amber-950 border-amber-300',
-            info: 'bg-stone-900 text-white border-stone-700',
+              'bg-gradient-to-l from-[#071E17] via-[#0B2D22] to-[#113C2E] text-[#FCFCF9] border-[#F3D078]/35',
+            urgent: 'bg-gradient-to-l from-rose-950 via-red-950 to-[#2A0E12] text-white border-rose-500/40',
+            warning: 'bg-[#FAF5E6] text-[#5B420D] border-[#E7CE8A]',
+            info: 'bg-[#0E1E1A] text-white border-white/15',
           };
           const boxStyle = styleMap[b.bannerType] || styleMap.info;
 
@@ -441,26 +441,30 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
               key={b.id}
               className={`rounded-2xl ${
                 compactHeight ? 'p-3 sm:px-4' : 'p-4 sm:px-6'
-              } border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${boxStyle}`}
+              } border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${boxStyle}`}
             >
               <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs font-bold opacity-90">
-                  <Bell className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="flex items-center gap-2 text-xs font-black">
+                  <Bell className={`w-4 h-4 shrink-0 ${b.bannerType === 'warning' ? 'text-[#B88928]' : 'text-[#F3D078]'}`} />
                   <span>{b.title}</span>
                   {b.expiresAt && (
                     <>
-                      <span aria-hidden="true">·</span>
-                      <span className="opacity-75">اعتبار تا {toPersianNumbers(b.expiresAt)}</span>
+                      <span aria-hidden="true" className="opacity-45">·</span>
+                      <span className="opacity-80 font-semibold">اعتبار تا {toPersianNumbers(b.expiresAt)}</span>
                     </>
                   )}
                 </div>
-                <p className="text-xs opacity-90 leading-relaxed">{b.message}</p>
+                <p className="text-xs opacity-85 leading-relaxed">{b.message}</p>
               </div>
 
               {b.actionLabel && b.actionTab && onNavigateTab && (
                 <button
                   onClick={() => onNavigateTab(b.actionTab)}
-                  className="px-4 py-2 min-h-[40px] w-full sm:w-auto justify-center rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer border border-white/20"
+                  className={`px-4 py-2 min-h-[38px] w-full sm:w-auto justify-center rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer whitespace-nowrap border ${
+                    b.bannerType === 'warning'
+                      ? 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border-[#071E17]'
+                      : 'bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] border-[#F3D078]'
+                  }`}
                 >
                   <span>{b.actionLabel}</span>
                   <ArrowUpLeft className="w-3.5 h-3.5" />
@@ -477,16 +481,16 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
     if (!widgetConfig.showStatusSummaryWidget) return null;
     return (
       <div
-        className={`${fullSpanClass || ''} h-full bg-white/95 rounded-2xl sm:rounded-[28px] ${
-          compactHeight ? 'p-3.5 sm:p-4' : 'p-3.5 sm:p-6'
-        } border border-[#E3E0D3] shadow-xs flex flex-col justify-between`}
+        className={`${fullSpanClass || ''} h-full bg-[#FCFCF9] rounded-2xl sm:rounded-[26px] ${
+          compactHeight ? 'p-4' : 'p-4 sm:p-6'
+        } border border-[#DFD8C4] shadow-[0_8px_24px_-18px_rgba(7,30,23,0.12)] flex flex-col justify-between`}
       >
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-200/70 gap-2">
+        <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-[#ECE6D6] gap-2">
           <div className="min-w-0">
-            <h3 className="text-xs sm:text-base font-extrabold text-stone-900 truncate">
-              {crextioConfig.statusWidgetTitle || 'ویجت خلاصه وضعیت پرونده‌ها و خدمات من'}
+            <h3 className="text-sm sm:text-base font-black text-[#071E17] truncate">
+              {crextioConfig.statusWidgetTitle || 'خلاصه وضعیت پرونده‌ها و خدمات من'}
             </h3>
-            <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
+            <p className="text-[11px] sm:text-xs text-[#525E58] mt-0.5 line-clamp-1">
               {crextioConfig.statusWidgetSubtitle || 'نمای یکپارچه و بلادرنگ فعالیت‌های جاری شما در سامانه'}
             </p>
           </div>
@@ -494,60 +498,73 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => handleToggleWidget('showStatusSummaryWidget')}
-              className="text-[10px] sm:text-[11px] font-bold text-stone-500 hover:text-rose-700 px-2.5 py-1.5 min-h-[34px] rounded-lg bg-stone-100 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+              className="text-[11px] font-bold text-[#525E58] hover:text-rose-700 px-2.5 py-1.5 min-h-[34px] rounded-xl bg-[#F4F0E4] hover:bg-rose-50 border border-[#DFD8C4] transition-colors cursor-pointer shrink-0 whitespace-nowrap"
             >
               خاموش کردن ویجت
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        {/* Unboxed Hairline-Divided 4-Column Metric Ledger */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x sm:divide-x-reverse divide-[#E5DEC9] rounded-2xl bg-[#FAF8F2] border border-[#E5DEC9] overflow-hidden">
           <button
             type="button"
             onClick={() => onNavigateTab?.('People')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
+            className={`text-right ${compactHeight ? 'p-3' : 'p-3.5 sm:p-4'} hover:bg-[#F2F7F4] transition-colors cursor-pointer group`}
           >
-            <Inbox className="w-5 h-5 text-emerald-700 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
+            <div className="flex items-center justify-between mb-2">
+              <Inbox className="w-4.5 h-4.5 text-[#0C4A38] group-hover:scale-105 transition-transform" />
+              <ArrowUpLeft className="w-3.5 h-3.5 text-[#0C4A38] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className={`${compactHeight ? 'text-xl' : 'text-2xl'} font-black text-[#071E17] tabular-nums`}>
               {toPersianNumbers(myCartableActive)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">درخواست کارتابل در جریان</p>
+            <p className="text-[11px] font-bold text-[#525E58] mt-0.5 line-clamp-1">درخواست کارتابل جاری</p>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateTab?.('Courses')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
+            className={`text-right ${compactHeight ? 'p-3' : 'p-3.5 sm:p-4'} hover:bg-[#FAF5E6] transition-colors cursor-pointer group`}
           >
-            <BookOpen className="w-5 h-5 text-amber-600 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
+            <div className="flex items-center justify-between mb-2">
+              <BookOpen className="w-4.5 h-4.5 text-[#B88928] group-hover:scale-105 transition-transform" />
+              <ArrowUpLeft className="w-3.5 h-3.5 text-[#B88928] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className={`${compactHeight ? 'text-xl' : 'text-2xl'} font-black text-[#071E17] tabular-nums`}>
               {toPersianNumbers(myEnrolledCourses)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">دوره‌های ثبت‌نام‌شده</p>
+            <p className="text-[11px] font-bold text-[#525E58] mt-0.5 line-clamp-1">دوره‌های ثبت‌نام‌شده</p>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateTab?.('Counseling')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
+            className={`text-right ${compactHeight ? 'p-3' : 'p-3.5 sm:p-4'} hover:bg-[#F2F7F4] transition-colors cursor-pointer group`}
           >
-            <HeartHandshake className="w-5 h-5 text-teal-700 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
+            <div className="flex items-center justify-between mb-2">
+              <HeartHandshake className="w-4.5 h-4.5 text-[#0C4A38] group-hover:scale-105 transition-transform" />
+              <ArrowUpLeft className="w-3.5 h-3.5 text-[#0C4A38] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className={`${compactHeight ? 'text-xl' : 'text-2xl'} font-black text-[#071E17] tabular-nums`}>
               {toPersianNumbers(myCounselingActive)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">نوبت مشاوره فعال</p>
+            <p className="text-[11px] font-bold text-[#525E58] mt-0.5 line-clamp-1">نوبت مشاوره فعال</p>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateTab?.('Welfare')}
-            className={`text-right ${compactHeight ? 'p-2.5' : 'p-3 sm:p-4'} rounded-2xl bg-[#F8F7F2] hover:bg-emerald-50/70 border border-stone-200/80 transition-all cursor-pointer group active:scale-[0.98]`}
+            className={`text-right ${compactHeight ? 'p-3' : 'p-3.5 sm:p-4'} hover:bg-[#FAF5E6] transition-colors cursor-pointer group`}
           >
-            <Gift className="w-5 h-5 text-indigo-700 mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className={`${compactHeight ? 'text-lg' : 'text-xl sm:text-2xl'} font-black text-stone-900 tabular-nums`}>
+            <div className="flex items-center justify-between mb-2">
+              <Gift className="w-4.5 h-4.5 text-[#8A6314] group-hover:scale-105 transition-transform" />
+              <ArrowUpLeft className="w-3.5 h-3.5 text-[#8A6314] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className={`${compactHeight ? 'text-xl' : 'text-2xl'} font-black text-[#071E17] tabular-nums`}>
               {toPersianNumbers(myWelfareActive)}
             </p>
-            <p className="text-[11px] font-bold text-stone-600 mt-0.5 line-clamp-1">پرونده تسهیلات رفاهی</p>
+            <p className="text-[11px] font-bold text-[#525E58] mt-0.5 line-clamp-1">پرونده تسهیلات رفاهی</p>
           </button>
         </div>
       </div>
@@ -558,18 +575,20 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
     if (!widgetConfig.showEventsCalendarWidget) return null;
     return (
       <div
-        className={`${fullSpanClass || ''} h-full bg-white/95 rounded-2xl sm:rounded-[28px] ${
-          compactHeight ? 'p-3.5 sm:p-4' : 'p-3.5 sm:p-6'
-        } border border-[#E3E0D3] shadow-xs flex flex-col justify-between`}
+        className={`${fullSpanClass || ''} h-full bg-[#FCFCF9] rounded-2xl sm:rounded-[26px] ${
+          compactHeight ? 'p-4' : 'p-4 sm:p-6'
+        } border border-[#DFD8C4] shadow-[0_8px_24px_-18px_rgba(7,30,23,0.12)] flex flex-col justify-between`}
       >
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-200/70 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Calendar className="w-5 h-5 text-emerald-800 shrink-0" />
+        <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-[#ECE6D6] gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-[#071E17] text-[#F3D078] flex items-center justify-center shrink-0">
+              <Calendar className="w-4.5 h-4.5" />
+            </div>
             <div className="min-w-0">
-              <h3 className="text-xs sm:text-base font-extrabold text-stone-900 truncate">
+              <h3 className="text-sm sm:text-base font-black text-[#071E17] truncate">
                 {crextioConfig.eventsCalendarTitle || 'تقویم رویدادها و مهلت‌های مرکز'}
               </h3>
-              <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">
+              <p className="text-[11px] sm:text-xs text-[#525E58] line-clamp-1">
                 {crextioConfig.eventsCalendarSubtitle || 'نشست‌های علمی، کارگاه‌ها و فراخوان‌های پیش‌رو'}
               </p>
             </div>
@@ -578,32 +597,32 @@ export const DashboardWidgetsSuite: React.FC<DashboardWidgetsSuiteProps> = ({
             <button
               type="button"
               onClick={() => handleToggleWidget('showEventsCalendarWidget')}
-              className="text-[10px] sm:text-[11px] font-bold text-stone-500 hover:text-rose-700 px-2.5 py-1.5 min-h-[34px] rounded-lg bg-stone-100 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+              className="text-[11px] font-bold text-[#525E58] hover:text-rose-700 px-2.5 py-1.5 min-h-[34px] rounded-xl bg-[#F4F0E4] hover:bg-rose-50 border border-[#DFD8C4] transition-colors cursor-pointer shrink-0 whitespace-nowrap"
             >
               خاموش کردن تقویم
             </button>
           )}
         </div>
 
-        <div className={`space-y-2.5 ${compactHeight ? 'max-h-[150px]' : 'max-h-[210px]'} overflow-y-auto pr-1`}>
+        <div className={`space-y-2 ${compactHeight ? 'max-h-[150px]' : 'max-h-[210px]'} overflow-y-auto pr-1`}>
           {events.length === 0 ? (
-            <p className="text-xs text-stone-500 py-6 text-center">رویدادی در تقویم ثبت نشده است.</p>
+            <p className="text-xs text-[#525E58] py-6 text-center">رویدادی در تقویم ثبت نشده است.</p>
           ) : (
             events.map(ev => (
               <div
                 key={ev.id}
-                className="p-3 rounded-2xl bg-[#F8F7F2] border border-stone-200/80 flex items-start justify-between gap-3"
+                className="p-3 rounded-xl bg-[#FAF8F2] border border-[#E5DEC9] flex items-start justify-between gap-3"
               >
-                <div className="space-y-1">
-                  <p className="text-xs font-extrabold text-stone-900">{ev.title}</p>
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
+                <div className="space-y-1 min-w-0">
+                  <p className="text-xs font-extrabold text-[#071E17] truncate">{ev.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#525E58]">
                     <span>{ev.categoryTitle}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-bold text-emerald-800">{toPersianNumbers(ev.eventDate)}</span>
+                    <span aria-hidden="true" className="text-stone-300">·</span>
+                    <span className="font-bold text-[#0C4A38] tabular-nums">{toPersianNumbers(ev.eventDate)}</span>
                     {ev.eventTime && (
                       <>
-                        <span aria-hidden="true">·</span>
-                        <span>{toPersianNumbers(ev.eventTime)}</span>
+                        <span aria-hidden="true" className="text-stone-300">·</span>
+                        <span className="tabular-nums">{toPersianNumbers(ev.eventTime)}</span>
                       </>
                     )}
                   </div>

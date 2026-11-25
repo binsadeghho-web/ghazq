@@ -53,6 +53,8 @@ function resolveUploadCategory(rawCategoryInput: string): UploadCategory {
     'course_certificate',
     'course_file',
     'counseling_media',
+    'welfare_receipt',
+    'welfare_media',
     'misc',
   ];
 
@@ -64,6 +66,8 @@ function resolveUploadCategory(rawCategoryInput: string): UploadCategory {
   if (rawCategory === 'course_certificates') return 'course_certificate';
   if (rawCategory === 'course_files') return 'course_file';
   if (rawCategory === 'counseling_medias') return 'counseling_media';
+  if (rawCategory === 'welfare_receipts') return 'welfare_receipt';
+  if (rawCategory === 'welfare_medias') return 'welfare_media';
   if (validCategories.includes(rawCategory as UploadCategory)) return rawCategory as UploadCategory;
   return 'misc';
 }
@@ -114,7 +118,8 @@ export function createMasterRouter(): Router {
           category === 'product_media' ||
           category === 'course_receipt' ||
           category === 'course_certificate' ||
-          category === 'course_file';
+          category === 'course_file' ||
+          category === 'welfare_receipt';
 
         if (isPrivateCat && !user) {
           return res.status(401).json({
@@ -225,7 +230,8 @@ export function createMasterRouter(): Router {
         category === 'product_media' ||
         category === 'course_receipt' ||
         category === 'course_certificate' ||
-        category === 'course_file';
+        category === 'course_file' ||
+        category === 'welfare_receipt';
 
       if (isPrivateCat && !user) {
         return res.status(401).json({
@@ -358,6 +364,8 @@ export function createMasterRouter(): Router {
         course_certificates: 'course_certificate',
         course_file: 'course_file',
         course_files: 'course_file',
+        welfare_receipt: 'welfare_receipt',
+        welfare_receipts: 'welfare_receipt',
       };
 
       const storageKey = catMap[category];
@@ -608,6 +616,84 @@ export function createMasterRouter(): Router {
           return res.status(403).json({
             error: 'عدم دسترسی: دریافت فایل‌های این دوره منوط به ثبت‌نام قطعی و عضویت فعال در کلاس است.',
           });
+        }
+      }
+
+      // Strict BOLA / Ownership guard for research attachments
+      if (storageKey === 'research' && !isFullOrgStaff) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [rows]: any = await p.query(
+          `SELECT id, applicant_id
+           FROM research_mentorships
+           WHERE deleted_at IS NULL AND CAST(attachments AS CHAR) LIKE ?
+           LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const ownsResearchFile = Array.isArray(rows) && rows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.applicant_id) ? fromIdBuffer(r.applicant_id) : String(r.applicant_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsResearchFile) {
+          return res.status(403).json({ error: 'عدم دسترسی: این فایل پژوهشی متعلق به پرونده‌های شما نیست.' });
+        }
+      }
+
+      // Strict BOLA / Ownership guard for private consultation attachments
+      if (storageKey === 'consultation' && !isFullOrgStaff && !isPsychologist) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [rows]: any = await p.query(
+          `SELECT id, applicant_id
+           FROM counseling_requests
+           WHERE deleted_at IS NULL AND CAST(attachments AS CHAR) LIKE ?
+           LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const ownsConsultFile = Array.isArray(rows) && rows.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.applicant_id) ? fromIdBuffer(r.applicant_id) : String(r.applicant_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsConsultFile) {
+          return res.status(403).json({ error: 'عدم دسترسی: این فایل مشاوره متعلق به پرونده‌های شما نیست.' });
+        }
+      }
+
+      // Strict BOLA / Ownership guard for welfare receipts (qarzolhasaneh, emergency loan, installments)
+      if (storageKey === 'welfare_receipt' && !isFullOrgStaff) {
+        if (!isDatabaseConnected()) {
+          return res.status(503).json({ error: 'پایگاه داده در دسترس نیست.' });
+        }
+        const p = getPool();
+        const fileUrlSuffix = `%/${catConfig.folderName}/${safeFilename}%`;
+        const userIdBuf = toIdBuffer(user.id);
+        const [payRows]: any = await p.query(
+          `SELECT user_id FROM welfare_fund_payments WHERE receipt_url LIKE ? LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const [reqRows]: any = await p.query(
+          `SELECT applicant_id AS user_id FROM welfare_requests WHERE CAST(metadata AS CHAR) LIKE ? LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const [instRows]: any = await p.query(
+          `SELECT applicant_id AS user_id FROM welfare_installment_requests WHERE CAST(attachments AS CHAR) LIKE ? LIMIT 5`,
+          [fileUrlSuffix]
+        );
+        const combined = [...(payRows || []), ...(reqRows || []), ...(instRows || [])];
+        const ownsWelfareFile = combined.some((r: any) => {
+          const ownerStr = Buffer.isBuffer(r.user_id) ? fromIdBuffer(r.user_id) : String(r.user_id);
+          return ownerStr === user.id || Buffer.compare(toIdBuffer(ownerStr), userIdBuf) === 0;
+        });
+        if (!ownsWelfareFile) {
+          return res.status(403).json({ error: 'عدم دسترسی: این فیش یا مدرک رفاهی متعلق به درخواست‌های شما نیست.' });
         }
       }
 

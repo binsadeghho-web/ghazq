@@ -675,7 +675,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`relative w-full rounded-2xl sm:rounded-[28px] bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-stone-200/75 dark:border-slate-800 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.14)] overflow-hidden text-stone-900 dark:text-slate-100 ${
+      className={`relative w-full rounded-2xl sm:rounded-[30px] bg-[#FCFCF9] dark:bg-slate-900/85 border border-[#DFD8C4] dark:border-slate-800 shadow-[0_14px_38px_-24px_rgba(7,30,23,0.12)] overflow-hidden text-[#071E17] dark:text-slate-100 ${
         isMicro
           ? 'p-3 sm:p-4 space-y-3'
           : isCompact
@@ -688,35 +688,35 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
     >
       {/* Subtle Top Scheduled Timing Progress Indicator */}
       {displayMode === 'carousel' && enabledPillars.length > 1 && autoplay && !isPaused && (
-        <div className="absolute top-0 inset-x-0 h-[3px] bg-stone-200/40 dark:bg-slate-800/60 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 inset-x-0 h-[3px] bg-[#ECE6D6] dark:bg-slate-800/60 overflow-hidden pointer-events-none">
           <motion.div
             key={`${activePillar}-${safePillarIdx}-${intervalSeconds}`}
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: intervalSeconds, ease: 'linear' }}
             style={{ transformOrigin: '100% 50%' }}
-            className="h-full w-full bg-gradient-to-l from-emerald-600 via-teal-500 to-amber-500"
+            className="h-full w-full bg-gradient-to-l from-[#071E17] via-[#0C4A38] to-[#D4AF37]"
           />
         </div>
       )}
 
       {/* Clean Editorial Header (Zero Pill Clutter) */}
-      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 ${isMicro ? 'pb-2' : 'pb-3.5'} border-b border-stone-200/70 dark:border-slate-800/80`}>
+      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 ${isMicro ? 'pb-2' : 'pb-3.5'} border-b border-[#ECE6D6] dark:border-slate-800/80`}>
         <div className="space-y-1 min-w-0">
           {!isMicro && (
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#0C4A38] dark:text-emerald-300">
               <span>{generalShowcase.sectionBadge || 'بخش خدمات روانشناختی و مشاوره'}</span>
-              <span aria-hidden="true" className="text-stone-300 dark:text-slate-600">·</span>
-              <span className="text-stone-500 dark:text-slate-400">محرمانگی کامل پرونده</span>
+              <span aria-hidden="true" className="text-[#D4CBB3] dark:text-slate-600">·</span>
+              <span className="text-[#525E58] dark:text-slate-400">محرمانگی کامل پرونده</span>
             </div>
           )}
 
-          <h3 className={`${isMicro ? 'text-sm sm:text-base' : isCompact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'} font-black text-stone-900 dark:text-white tracking-tight truncate`}>
+          <h3 className={`${isMicro ? 'text-sm sm:text-base' : isCompact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'} font-black text-[#071E17] dark:text-white tracking-tight truncate`}>
             {generalShowcase.sectionTitle || 'ویترین خدمات روانشناختی و مشاوره و کلینیک سلامت روان'}
           </h3>
 
           {!isCompact && generalShowcase.sectionSubtitle && (
-            <p className="text-xs text-stone-500 dark:text-slate-400 max-w-3xl leading-relaxed">
+            <p className="text-xs text-[#525E58] dark:text-slate-400 max-w-3xl leading-relaxed">
               {generalShowcase.sectionSubtitle}
             </p>
           )}
@@ -729,7 +729,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               <button
                 type="button"
                 onClick={handleQuickToggleScale}
-                className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[#F4F0E4] hover:bg-[#EAE3D0] dark:bg-slate-800 dark:hover:bg-slate-700 text-[#071E17] dark:text-slate-200 border border-[#DFD8C4] text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                 title={isCompact ? 'بزرگ‌تر کردن اندازه ویترین' : 'کوچک‌تر کردن اندازه ویترین'}
               >
                 {isCompact ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
@@ -739,9 +739,9 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
               <button
                 type="button"
                 onClick={() => setEditorOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-950 dark:text-amber-200 text-xs font-black transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#FBF4E1] hover:bg-[#F6E8C3] dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-[#6E5212] dark:text-amber-200 border border-[#E5C97B] text-xs font-black transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
-                <Edit3 className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <Edit3 className="w-3.5 h-3.5 text-[#9A7116] dark:text-amber-400" />
                 <span>تنظیمات ویترین</span>
               </button>
             </>
@@ -750,7 +750,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
           <button
             type="button"
             onClick={onNavigateToGeneral}
-            className={`flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 ${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} rounded-xl bg-stone-900 hover:bg-black dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0`}
+            className={`flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 ${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} rounded-xl bg-[#071E17] hover:bg-[#0D3227] dark:bg-emerald-700 dark:hover:bg-emerald-600 text-[#F3D078] border border-[#D4AF37]/30 font-black transition-colors cursor-pointer whitespace-nowrap shrink-0`}
           >
             <span>میز خدمات مشاوره</span>
             <ArrowLeft className="w-3.5 h-3.5" />

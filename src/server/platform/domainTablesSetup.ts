@@ -30,14 +30,27 @@ async function runDomainTablesSetup(): Promise<void> {
         `SELECT
            (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (
              'welfare_fund_memberships', 'welfare_fund_payments', 'welfare_installment_partners', 'welfare_installment_requests',
-             'counseling_workshop_registrations', 'dashboard_banners', 'dashboard_events', 'alumni_privacy_settings', 'research_messages'
+             'counseling_workshop_registrations', 'dashboard_banners', 'dashboard_events', 'alumni_privacy_settings', 'research_messages',
+             'ops_error_logs', 'ops_security_alerts', 'ops_blocked_ips', 'audit_logs'
            )) AS tbl_cnt,
            (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'consumables' AND column_name = 'allowed_delivery_methods') AS col1,
            (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'consumable_orders' AND column_name = 'delivery_method') AS col2,
-           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'welfare_requests' AND column_name = 'metadata') AS col3`
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'welfare_requests' AND column_name = 'metadata') AS col3,
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'research_mentorships' AND column_name = 'attachments') AS col4,
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'counseling_requests' AND column_name = 'attachments') AS col5,
+           (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'welfare_installment_requests' AND column_name = 'attachments') AS col6`
       );
       const row = schemaCheck?.[0];
-      if (row && Number(row.tbl_cnt) >= 9 && Number(row.col1) >= 1 && Number(row.col2) >= 1 && Number(row.col3) >= 1) {
+      if (
+        row &&
+        Number(row.tbl_cnt) >= 13 &&
+        Number(row.col1) >= 1 &&
+        Number(row.col2) >= 1 &&
+        Number(row.col3) >= 1 &&
+        Number(row.col4) >= 1 &&
+        Number(row.col5) >= 1 &&
+        Number(row.col6) >= 1
+      ) {
         const [pCnt]: any = await p.query(`SELECT COUNT(*) AS cnt FROM welfare_installment_partners`);
         if (pCnt && Number(pCnt[0]?.cnt || 0) > 0) {
           domainTablesInitialized = true;
@@ -1283,6 +1296,72 @@ async function runDomainTablesSetup(): Promise<void> {
         );
       }
     }
+
+    // 13. Attachments support for Research, Counseling, and Welfare Installments
+    try { await p.query(`ALTER TABLE research_mentorships ADD COLUMN attachments JSON NULL;`); } catch {}
+    try { await p.query(`ALTER TABLE counseling_requests ADD COLUMN attachments JSON NULL;`); } catch {}
+    try { await p.query(`ALTER TABLE welfare_installment_requests ADD COLUMN attachments JSON NULL;`); } catch {}
+
+    // 14. Persistent Audit Logs & OPS Tables (replacing RAM-only storage)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        timestamp DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        event_type VARCHAR(64) NOT NULL,
+        actor_id VARCHAR(64) NOT NULL,
+        actor_name VARCHAR(255) NOT NULL,
+        actor_role VARCHAR(32) NOT NULL,
+        ip VARCHAR(64) NOT NULL DEFAULT '127.0.0.1',
+        details TEXT NOT NULL,
+        severity ENUM('info', 'warning', 'critical') NOT NULL DEFAULT 'info',
+        prev_hash CHAR(64) NOT NULL,
+        entry_hash CHAR(64) NOT NULL,
+        sequence_num BIGINT AUTO_INCREMENT UNIQUE NOT NULL,
+        INDEX idx_actor_time (actor_id, timestamp),
+        INDEX idx_event_time (event_type, timestamp)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS ops_error_logs (
+        id VARCHAR(64) NOT NULL PRIMARY KEY,
+        level ENUM('error', 'critical', 'warning') NOT NULL DEFAULT 'error',
+        source VARCHAR(128) NOT NULL,
+        message TEXT NOT NULL,
+        stack TEXT NULL,
+        is_resolved TINYINT(1) NOT NULL DEFAULT 0,
+        created_at_label VARCHAR(128) NOT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_ops_err_resolved (is_resolved, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS ops_security_alerts (
+        id VARCHAR(64) NOT NULL PRIMARY KEY,
+        type VARCHAR(64) NOT NULL,
+        severity ENUM('low', 'medium', 'high', 'critical') NOT NULL DEFAULT 'medium',
+        user_id VARCHAR(64) NULL,
+        user_name VARCHAR(255) NOT NULL,
+        status ENUM('unreviewed', 'reviewed', 'dismissed') NOT NULL DEFAULT 'unreviewed',
+        details JSON NULL,
+        is_special_monitoring TINYINT(1) NOT NULL DEFAULT 0,
+        created_at_label VARCHAR(128) NOT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        INDEX idx_ops_alerts_status (status, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS ops_blocked_ips (
+        ip VARCHAR(64) NOT NULL PRIMARY KEY,
+        reason TEXT NOT NULL,
+        blocked_by VARCHAR(255) NOT NULL,
+        blocked_until VARCHAR(128) NOT NULL,
+        created_at_label VARCHAR(128) NOT NULL,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
 
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');

@@ -77,52 +77,47 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
   return (
     <div className="space-y-4">
       {/* هدر بخش همراه با نشان رسمی میزان و دکمه مدیریت چیدمان کارت‌ها */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/95 border border-stone-200/90 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-stone-950 flex items-center justify-center shadow-xs shrink-0 border border-amber-300">
-            <Scale className="w-5 h-5 stroke-[2.3]" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FCFCF9] border border-[#DFD8C4] p-4 sm:px-6 rounded-2xl sm:rounded-[26px] shadow-[0_8px_24px_-18px_rgba(7,30,23,0.12)]">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[#071E17] text-[#F3D078] flex items-center justify-center shrink-0 border border-[#F3D078]/35">
+            <Scale className="w-5 h-5 stroke-[2.2]" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-stone-900">
-                {crextioConfig.bentoSectionTitle || 'ویترین جامع خدمات سامانه (طرح میزان)'}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm sm:text-base font-black text-[#071E17]">
+                {crextioConfig.bentoSectionTitle || 'فهرست و درگاه‌های خدمات سامانه (طرح میزان)'}
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span aria-hidden="true" className="text-stone-300 text-xs">·</span>
+              <span className="text-xs font-extrabold text-[#0C4A38] tabular-nums">
                 {toPersianNumbers(sortedCards.length)} درگاه فعال
               </span>
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">
-              {crextioConfig.bentoSectionSubtitle || 'دسترسی آنی به کارتابل، آموزش، مشاوره شغلی، تالار آراء و رفاهیات با هاور تعاملی'}
+            <p className="text-xs text-[#525E58] mt-0.5 truncate">
+              {crextioConfig.bentoSectionSubtitle || 'دسترسی مستقیم به کارتابل، دوره‌های آموزشی، مشاوره، تالار آراء، پژوهش و رفاهیات'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
           {/* دکمه اختصاصی ادمین برای مدیریت جایگاه، اندازه و متن کارت‌ها */}
           {isAdmin && (
             <button
               onClick={() => setIsCustomizerOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35 text-xs font-black transition-colors active:scale-95 cursor-pointer whitespace-nowrap"
               title="تغییر مکان، اندازه و ویرایش متن کارت‌های خدمات توسط ادمین"
             >
-              <Sliders className="w-4 h-4 text-amber-600" />
-              <span>چیدمان و اندازه کارت‌ها (مدیریت)</span>
+              <Sliders className="w-3.5 h-3.5" />
+              <span>چیدمان و اندازه کارت‌ها</span>
             </button>
           )}
-
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-emerald-800 font-semibold px-2 py-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>{crextioConfig.bentoHoverHintText || 'هاور روی هر کارت = مشاهده زیرخدمات'}</span>
-          </div>
         </div>
       </div>
 
       {/* شبکه بنتو گرید با چیدمان و اندازه‌های شخصی‌سازی‌شده */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {sortedCards.map(card => {
           const Icon = ICON_MAP[card.id] || Sparkles;
           const sizeClass = SIZE_CLASS_MAP[card.size] || 'col-span-1 row-span-1';
-          const accentColor = card.accentColor || '#10B981';
 
           // اگر کارت کارتابل بود آمار پویای پرونده‌های فعال را نمایش دهد
           const badgeText = card.id === 'People' && pendingCartable > 0
@@ -135,68 +130,46 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
               onMouseEnter={() => setHoveredTile(card.id)}
               onMouseLeave={() => setHoveredTile(null)}
               onClick={() => onNavigateTab(card.id)}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              whileTap={{ scale: 0.98 }}
-              className={`relative group cursor-pointer rounded-2xl sm:rounded-3xl bg-white/95 border border-stone-200/90 p-3 sm:p-5 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden ${sizeClass} hover:border-emerald-300 hover:bg-emerald-50/20`}
+              whileHover={{ y: -3, transition: { duration: 0.2 } }}
+              whileTap={{ scale: 0.985 }}
+              className={`relative group cursor-pointer rounded-2xl sm:rounded-[24px] bg-[#FCFCF9] border border-[#E2DAC3] hover:border-[#071E17]/40 p-4 sm:p-5 shadow-[0_6px_18px_-14px_rgba(7,30,23,0.12)] hover:shadow-[0_14px_30px_-18px_rgba(7,30,23,0.2)] transition-all duration-200 flex flex-col justify-between overflow-hidden ${sizeClass} hover:bg-white`}
             >
-              {/* هاله نور تعاملی پشت کارت */}
-              <div
-                className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{
-                  background: `radial-gradient(350px circle at 50% 25%, ${accentColor}18, transparent 70%)`
-                }}
+              {/* Subtle top champagne-gold hairline revealed on hover */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
               />
 
-              {/* خط باریک برندینگ رنگی بالای کارت */}
-              <div
-                className="absolute top-0 right-0 left-0 h-1 transition-all group-hover:h-1.5"
-                style={{ backgroundColor: accentColor }}
-              />
-
-              <div className="relative z-10 space-y-2 sm:space-y-3">
-                {/* ردیف آیکون و برچسب وضعیت */}
-                <div className="flex items-center justify-between gap-1.5">
-                  <div
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xs transition-transform group-hover:scale-105 shrink-0"
-                    style={{
-                      backgroundColor: `${accentColor}15`,
-                      color: accentColor,
-                      border: `1px solid ${accentColor}30`
-                    }}
-                  >
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="relative z-10 space-y-3">
+                {/* ردیف آیکون و متادیتای بدون pill */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#F4F0E4] group-hover:bg-[#071E17] text-[#071E17] group-hover:text-[#F3D078] border border-[#DFD8C4] group-hover:border-[#071E17] flex items-center justify-center transition-colors duration-200 shrink-0">
+                    <Icon className="w-5 h-5" />
                   </div>
 
-                  <span
-                    className="hidden sm:inline-block text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur-md truncate max-w-[140px]"
-                    style={{
-                      backgroundColor: `${accentColor}10`,
-                      color: accentColor,
-                      borderColor: `${accentColor}30`
-                    }}
-                  >
+                  <span className="hidden sm:inline-block text-[11px] font-extrabold text-[#6E5A28] truncate max-w-[140px]">
                     {badgeText}
                   </span>
                 </div>
 
-                {/* عنوان و توضیحات ویرایش‌شده */}
+                {/* عنوان و توضیحات */}
                 <div>
-                  <h3 className="text-[13px] sm:text-base font-black text-stone-900 group-hover:text-emerald-900 transition-colors leading-snug line-clamp-1 sm:line-clamp-none">
+                  <h3 className="text-[13px] sm:text-[15px] font-black text-[#071E17] leading-snug line-clamp-1 sm:line-clamp-none">
                     {card.title}
                   </h3>
-                  <p className="text-[11px] sm:text-xs text-stone-500 mt-1 line-clamp-1 sm:line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-[#525E58] mt-1 line-clamp-1 sm:line-clamp-2 leading-relaxed">
                     {card.subtext}
                   </p>
                 </div>
 
-                {/* فهرست زیرخدمات ویرایش‌شده (با لینک مستقیم ۵ بخش برای کارت رفاهیات) */}
+                {/* فهرست زیرخدمات (با لینک مستقیم ۵ بخش برای کارت رفاهیات) */}
                 {card.id === 'Welfare' ? (
-                  <div className="pt-2 border-t border-stone-200/70 space-y-1">
-                    <div className="text-[10px] font-black text-stone-500 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                  <div className="pt-2.5 border-t border-[#ECE6D6] space-y-1.5">
+                    <div className="text-[10px] font-black text-[#6E5A28] flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-[#0C4A38]" />
                       <span>بخش‌های ۵گانه رفاهیات:</span>
                     </div>
-                    <div className="grid grid-cols-1 gap-1 text-[11px] text-stone-700">
+                    <div className="grid grid-cols-1 gap-1 text-[11px]">
                       {(
                         [
                           'emergency_loan',
@@ -221,16 +194,13 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
                                   onNavigateTab('Welfare');
                                 }
                               }}
-                              className="w-full text-right flex items-center justify-between gap-1.5 py-1 px-1.5 rounded-lg hover:bg-emerald-50 text-stone-800 hover:text-emerald-900 font-bold transition-colors cursor-pointer"
+                              className="w-full text-right flex items-center justify-between gap-1.5 py-1 px-2 rounded-lg hover:bg-[#F2F7F4] text-[#071E17] font-bold transition-colors cursor-pointer"
                             >
                               <span className="flex items-center gap-1.5 min-w-0">
-                                <span
-                                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                                  style={{ backgroundColor: accentColor }}
-                                />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#0C4A38] shrink-0" />
                                 <span className="truncate">{title}</span>
                               </span>
-                              <ArrowLeft className="w-3 h-3 shrink-0 opacity-60" />
+                              <ArrowLeft className="w-3 h-3 text-[#0C4A38] shrink-0 opacity-70" />
                             </button>
                           );
                         })}
@@ -239,21 +209,18 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
                 ) : (
                   card.subServices &&
                   card.subServices.length > 0 && (
-                    <div className="hidden md:block pt-2 border-t border-stone-200/70 space-y-1.5">
-                      <div className="text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                    <div className="hidden md:block pt-2.5 border-t border-[#ECE6D6] space-y-1.5">
+                      <div className="text-[10px] font-black text-[#6E5A28] flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-[#0C4A38]" />
                         <span>زیرخدمات و امکانات:</span>
                       </div>
-                      <div className="grid grid-cols-1 gap-1 text-[11px] text-stone-700">
+                      <div className="grid grid-cols-1 gap-1 text-[11px] text-[#3E4B45]">
                         {card.subServices.map((sub, sIdx) => (
                           <div
                             key={sIdx}
-                            className="flex items-center gap-1.5 py-0.5 group-hover:text-stone-900 transition-colors"
+                            className="flex items-center gap-1.5 py-0.5 group-hover:text-[#071E17] transition-colors"
                           >
-                            <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: accentColor }}
-                            />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#B88928] shrink-0" />
                             <span className="truncate">{sub}</span>
                           </div>
                         ))}
@@ -264,18 +231,10 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
               </div>
 
               {/* فوتر اقدام کارت */}
-              <div className="relative z-10 pt-2.5 sm:pt-4 mt-2 sm:mt-3 border-t border-stone-200/70 flex items-center justify-between text-[11px] sm:text-xs font-bold">
-                <span
-                  className="flex items-center gap-1 group-hover:underline"
-                  style={{ color: accentColor }}
-                >
-                  <span>{crextioConfig.bentoCardCtaText || 'ورود به سامانه'}</span>
+              <div className="relative z-10 pt-3 mt-3.5 border-t border-[#ECE6D6] flex items-center justify-between text-[11px] sm:text-xs font-extrabold">
+                <span className="flex items-center gap-1.5 text-[#071E17] group-hover:text-[#0C4A38]">
+                  <span>{crextioConfig.bentoCardCtaText || 'ورود به بخش'}</span>
                   <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
-                </span>
-
-                <span className="hidden sm:flex text-[10px] font-mono text-stone-400 items-center gap-1">
-                  <span>{crextioConfig.bentoCardSchemeText || 'طرح میزان'}</span>
-                  <Sparkles className="w-3 h-3 text-amber-500" />
                 </span>
               </div>
             </motion.div>

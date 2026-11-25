@@ -248,7 +248,18 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
       targetInstitution,
       field,
       stageTitle,
+      attachments: rawAttachments,
     } = req.body || {};
+
+    const cleanAttachments = Array.isArray(rawAttachments)
+      ? rawAttachments
+          .filter((a: any) => a && typeof a.url === 'string' && a.url.trim())
+          .map((a: any) => ({
+            url: String(a.url).trim(),
+            name: String(a.name || 'فایل پیوست').trim().slice(0, 180),
+            ...(typeof a.size === 'number' ? { size: a.size } : {}),
+          }))
+      : [];
 
     const researchCategory: 'thesis' | 'article' | 'session_proposal' =
       rawCat === 'session_proposal'
@@ -321,8 +332,8 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
         id, applicant_id, applicant_name, research_category, service_scope,
         selected_partial_topics, delivery_mode, thesis_title, field,
         brief_summary, target_institution, supervisor_professor,
-        accommodation_requested, accommodation_city, status, description, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 1)`,
+        accommodation_requested, accommodation_city, attachments, status, description, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 1)`,
       [
         idBuf,
         uBuf,
@@ -340,6 +351,7 @@ researchRouter.post('/', idempotencyMiddleware, async (req: Request, res: Respon
           : 'در انتظار تعیین توسط شورای پژوهشی',
         accommodationRequested ? 1 : 0,
         accommodationCity,
+        JSON.stringify(cleanAttachments),
         defaultStageDesc,
       ]
     );
@@ -464,6 +476,16 @@ researchRouter.put('/:id', async (req: Request, res: Response, next) => {
         ? normalizeResearchStatus(body.status)
         : existing.status;
 
+    const nextAttachments = Array.isArray(body.attachments)
+      ? body.attachments
+          .filter((a: any) => a && typeof a.url === 'string' && a.url.trim())
+          .map((a: any) => ({
+            url: String(a.url).trim(),
+            name: String(a.name || 'فایل پیوست').trim().slice(0, 180),
+            ...(typeof a.size === 'number' ? { size: a.size } : {}),
+          }))
+      : existing.attachments || [];
+
     const idBuf = toIdBuffer(existing.id);
     const p = getPool();
     const [updateRes]: any = await p.query(
@@ -471,7 +493,7 @@ researchRouter.put('/:id', async (req: Request, res: Response, next) => {
        SET research_category = ?, service_scope = ?, selected_partial_topics = ?,
            delivery_mode = ?, thesis_title = ?, field = ?, brief_summary = ?,
            target_institution = ?, accommodation_requested = ?, accommodation_city = ?,
-           supervisor_professor = ?, description = ?, status = ?,
+           attachments = ?, supervisor_professor = ?, description = ?, status = ?,
            version = version + 1, updated_at = CURRENT_TIMESTAMP(3)
        WHERE (id = ? OR id = ?) AND version = ? AND deleted_at IS NULL`,
       [
@@ -485,6 +507,7 @@ researchRouter.put('/:id', async (req: Request, res: Response, next) => {
         nextTargetInst,
         nextAcc ? 1 : 0,
         nextCity,
+        JSON.stringify(nextAttachments),
         nextSupervisor,
         nextStageTitle,
         nextStatus,

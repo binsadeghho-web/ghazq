@@ -148,9 +148,9 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
   return (
     <div className="w-full space-y-4">
       {/* Master Promo Showcase Card */}
-      <div className="relative rounded-2xl sm:rounded-[32px] overflow-hidden border border-[#D5E3D8] bg-gradient-to-br from-[#0F261E] via-[#143228] to-[#0A1D16] text-white shadow-xl">
+      <div className="relative rounded-2xl sm:rounded-[30px] overflow-hidden border border-[#F3D078]/30 bg-gradient-to-br from-[#071E17] via-[#0B2D22] to-[#113C2E] text-white shadow-[0_22px_50px_-24px_rgba(7,30,23,0.45)]">
         {/* Background Atmosphere Image with Scrim (Configurable Background) */}
-        <div className="absolute inset-0 pointer-events-none z-0 opacity-30">
+        <div className="absolute inset-0 pointer-events-none z-0 opacity-28">
           <img
             src={
               crextioConfig.researchPromoBgImage ||
@@ -160,27 +160,28 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1D16] via-[#0A1D16]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/82 to-transparent" />
         </div>
 
         {/* Ambient Glows */}
-        <div className="absolute -top-24 -left-24 w-80 h-80 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-80 h-80 bg-emerald-400/12 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-[#F3D078]/12 rounded-full blur-3xl pointer-events-none" />
 
         {/* Content Structure */}
         <div className="relative z-10 p-4 sm:p-8 space-y-4 sm:space-y-6">
           {/* Top Banner & Badges */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-2 max-w-2xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center justify-center">
-                  <Compass className="w-4 h-4 stroke-[2.3]" />
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="w-8 h-8 rounded-xl bg-[#F3D078]/15 text-[#F3D078] border border-[#F3D078]/35 flex items-center justify-center shrink-0">
+                  <Compass className="w-4 h-4 stroke-[2.2]" />
                 </span>
-                <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-500/25 text-amber-200 border border-amber-400/40">
+                <span className="font-black text-[#F3D078]">
                   {crextioConfig.researchPromoBadge || 'حمایت مادی و معنوی ویژه نخبگان'}
                 </span>
-                <span className="text-[11px] font-bold text-emerald-300 bg-emerald-900/60 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
-                  <Coins className="w-3.5 h-3.5 text-amber-300" />
+                <span aria-hidden="true" className="text-white/30">·</span>
+                <span className="text-[11px] font-bold text-emerald-100/90 inline-flex items-center gap-1.5">
+                  <Coins className="w-3.5 h-3.5 text-[#F3D078]" />
                   {crextioConfig.researchPromoGrantAmount || 'تا ۵۰ میلیون تومان گرنت پژوهشی + اسکان مشهد و قم'}
                 </span>
               </div>
@@ -197,15 +198,15 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0 w-full md:w-auto">
               <button
                 onClick={handlePrimaryBtnClick}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg transition-all active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] font-black text-xs shadow-lg transition-all active:scale-95 cursor-pointer whitespace-nowrap"
               >
-                <Sparkles className="w-4 h-4 text-stone-950" />
+                <Sparkles className="w-4 h-4 text-[#071E17]" />
                 <span>{crextioConfig.researchPromoPrimaryBtnText || 'ثبت فوری پروپوزال و دریافت اسکان'}</span>
               </button>
 
               <button
                 onClick={handleSecondaryBtnClick}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs backdrop-blur-md transition-all cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl bg-white/10 hover:bg-white/18 text-white border border-white/18 font-bold text-xs backdrop-blur-md transition-all cursor-pointer whitespace-nowrap"
               >
                 <span>{crextioConfig.researchPromoSecondaryBtnText || 'میز کار راهبری پژوهش'}</span>
                 <ArrowUpRight className="w-4 h-4" />
@@ -223,28 +224,28 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
                 <div
                   key={pillar.id}
                   onClick={() => handleCardClick(pillar.clickAction, pillar.actionUrl)}
-                  className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink p-3.5 sm:p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all backdrop-blur-sm space-y-2 group ${
+                  className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink p-3.5 sm:p-4 rounded-2xl bg-black/22 hover:bg-black/32 border border-white/12 hover:border-[#F3D078]/45 transition-all backdrop-blur-sm space-y-2 group ${
                     isClickable ? 'cursor-pointer hover:shadow-lg active:scale-98' : ''
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-400/30 group-hover:scale-110 transition-transform">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-[#F3D078]/15 text-[#F3D078] flex items-center justify-center border border-[#F3D078]/30 group-hover:scale-105 transition-transform shrink-0">
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                    <span className="text-[10px] font-bold text-[#F3D078] truncate">
                       {pillar.tag}
                     </span>
                   </div>
 
-                  <h4 className="text-xs sm:text-[13px] font-extrabold text-white group-hover:text-amber-200 transition-colors">
+                  <h4 className="text-xs sm:text-[13px] font-extrabold text-white group-hover:text-[#F3D078] transition-colors">
                     {pillar.title}
                   </h4>
-                  <p className="text-[11px] text-emerald-100/70 leading-relaxed font-medium">
+                  <p className="text-[11px] text-emerald-100/72 leading-relaxed font-medium">
                     {pillar.desc}
                   </p>
 
                   {isClickable && (
-                    <div className="pt-1 flex items-center gap-1 text-[10px] font-bold text-amber-300/80 group-hover:text-amber-300">
+                    <div className="pt-1 flex items-center gap-1 text-[10px] font-bold text-[#F3D078]/85 group-hover:text-[#F3D078]">
                       <span>اقدام سریع</span>
                       <ChevronLeft className="w-3 h-3" />
                     </div>

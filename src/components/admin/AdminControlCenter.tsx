@@ -56,6 +56,7 @@ export const AdminControlCenter: React.FC = () => {
   const [diagMessage, setDiagMessage] = useState<string | null>(null);
   const [isVerifyingChain, setIsVerifyingChain] = useState(false);
   const [isThemeCustomizerOpen, setIsThemeCustomizerOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const lockedUsers = users.filter(u => u.isLocked);
   const pendingRulings = rulings.filter(r => r.status === 'pending_review');
@@ -95,9 +96,8 @@ export const AdminControlCenter: React.FC = () => {
   };
 
   const handleResetDefaults = async () => {
-    if (confirm('هشدار: آیا اطمینان دارید که مایل به بازنشانی پایگاه داده به مقادیر پیش‌فرض هستید؟')) {
-      await resetAllDataToDefault();
-    }
+    setConfirmReset(false);
+    await resetAllDataToDefault();
   };
 
   return (
@@ -345,13 +345,34 @@ export const AdminControlCenter: React.FC = () => {
               <p className="leading-relaxed text-[11px] text-rose-900 dark:text-rose-300">
                 در صورت نیاز به پاکسازی رکوردهای تستی و بازگشت به تنظیمات اولیه، می‌توانید داده‌ها را بازنشانی فرمایید.
               </p>
-              <button
-                onClick={handleResetDefaults}
-                className="mt-2 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-transform active:scale-[0.98]"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>بازنشانی به حالت پیش‌فرض کارخانه</span>
-              </button>
+              {confirmReset ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold text-rose-800 dark:text-rose-200">آیا از بازنشانی پایگاه داده مطمئن هستید؟</span>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmReset(false)}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold cursor-pointer"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetDefaults}
+                    className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                  >
+                    بله، بازنشانی شود
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(true)}
+                  className="mt-2 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-transform active:scale-[0.98] cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>بازنشانی به حالت پیش‌فرض کارخانه</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

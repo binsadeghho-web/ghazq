@@ -53,7 +53,7 @@ export const CrextioHeroStatsCustomizerModal: React.FC<CrextioHeroStatsCustomize
 
   const handleDeleteStat = (id: string) => {
     if (stats.length <= 1) {
-      alert('حداقل یک آیتم آماری باید وجود داشته باشد.');
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'حداقل یک آیتم آماری باید وجود داشته باشد.', type: 'info' } }));
       return;
     }
     setStats(prev => prev.filter(s => s.id !== id));

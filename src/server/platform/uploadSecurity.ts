@@ -152,7 +152,10 @@ export function validateSecureUploadBuffer(
     category === 'verdict' ||
     category === 'product_receipt' ||
     category === 'course_receipt' ||
-    category === 'course_certificate';
+    category === 'course_certificate' ||
+    category === 'welfare_receipt' ||
+    category === 'research' ||
+    category === 'consultation';
   const isProductMedia = category === 'product_media';
   const isCourseFile = category === 'course_file';
   const isCounselingMedia = category === 'counseling_media';

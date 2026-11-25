@@ -17,6 +17,9 @@ import {
   MapPin,
   Clock,
   Building2,
+  Upload,
+  Paperclip,
+  Trash2,
 } from 'lucide-react';
 import {
   User,
@@ -26,6 +29,7 @@ import {
   DynamicWizardStep,
   GeneralCounselingTariffItem,
 } from '../../types';
+import { api } from '../../services/apiClient';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 
 interface CounselingDynamicWizardModalProps {
@@ -138,6 +142,8 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
   const [preferredConsultantId, setPreferredConsultantId] = useState<string>('');
   const [userPhone, setUserPhone] = useState<string>(currentUser?.phone || '');
   const [responses, setResponses] = useState<Record<string, any>>({});
+  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; size?: number }>>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -176,6 +182,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
       setUserPhone(currentUser?.phone || '');
       setPreferredConsultantId('');
       setResponses(initDefaults);
+      setAttachments([]);
 
       if (preselectedField) {
         setSelectedFieldId(preselectedField.id);
@@ -371,6 +378,7 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
         meetingMode: normalizedMode,
         description: summaryLines.join('\n') || 'درخواست ثبت‌شده از طریق سامانه مشاوره مرکز',
         formResponses: cleanResponses,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
 
       setIsSubmitted(true);
@@ -651,6 +659,84 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
           />
         </div>
       )}
+
+      {(() => {
+        const handleUpload = async (file: File | undefined) => {
+          if (!file) return;
+          if (file.size > 8 * 1024 * 1024) {
+            setErrorMsg('حجم هر فایل پیوست نباید بیشتر از ۸ مگابایت باشد.');
+            return;
+          }
+          setUploadingFile(true);
+          setErrorMsg('');
+          try {
+            const up = await api.uploadFile(file, 'consultation');
+            if (up?.url) {
+              setAttachments(prev => [
+                ...prev,
+                { url: up.url, name: up.originalName || file.name, size: up.sizeBytes || file.size },
+              ]);
+            }
+          } catch (err: any) {
+            setErrorMsg(err?.message || 'خطا در آپلود فایل پیوست.');
+          } finally {
+            setUploadingFile(false);
+          }
+        };
+        return (
+          <div className="p-3.5 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>پیوست مدارک، سوابق یا نتیجه آزمون (اختیاری)</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  PDF، Word یا تصویر (حداکثر ۸ مگابایت) — ذخیره کاملاً محرمانه در پرونده
+                </p>
+              </div>
+              <label className="px-3.5 py-2 min-h-[38px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black inline-flex items-center gap-1.5 cursor-pointer shrink-0">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{uploadingFile ? 'در حال آپلود...' : 'انتخاب فایل'}</span>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp"
+                  disabled={uploadingFile}
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    handleUpload(f);
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {attachments.map((att, idx) => (
+                  <div
+                    key={`${att.url}-${idx}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                  >
+                    <span className="truncate font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">{att.name}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer shrink-0"
+                      title="حذف پیوست"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {showRatesButtonInEnd && (
         <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1066,6 +1152,77 @@ export const CounselingDynamicWizardModal: React.FC<CounselingDynamicWizardModal
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>پیوست مدارک، سوابق یا فایل تکمیلی (اختیاری)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      PDF، Word یا تصویر (حداکثر ۸ مگابایت)
+                    </p>
+                  </div>
+                  <label className="px-3.5 py-2 min-h-[38px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black inline-flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{uploadingFile ? 'در حال آپلود...' : 'انتخاب فایل'}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp"
+                      disabled={uploadingFile}
+                      onChange={async e => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!f) return;
+                        if (f.size > 8 * 1024 * 1024) {
+                          setErrorMsg('حجم هر فایل پیوست نباید بیشتر از ۸ مگابایت باشد.');
+                          return;
+                        }
+                        setUploadingFile(true);
+                        setErrorMsg('');
+                        try {
+                          const up = await api.uploadFile(f, 'consultation');
+                          if (up?.url) {
+                            setAttachments(prev => [
+                              ...prev,
+                              { url: up.url, name: up.originalName || f.name, size: up.sizeBytes || f.size },
+                            ]);
+                          }
+                        } catch (err: any) {
+                          setErrorMsg(err?.message || 'خطا در آپلود فایل پیوست.');
+                        } finally {
+                          setUploadingFile(false);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {attachments.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {attachments.map((att, idx) => (
+                      <div
+                        key={`${att.url}-${idx}`}
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                      >
+                        <span className="truncate font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                          <Paperclip className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate">{att.name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer shrink-0"
+                          title="حذف پیوست"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {showRatesButtonInEnd && (

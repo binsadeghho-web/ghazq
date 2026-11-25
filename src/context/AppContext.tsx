@@ -295,6 +295,7 @@ export interface AppContextType {
     months: number;
     description?: string;
     phone?: string;
+    attachments?: Array<{ url: string; name: string; size?: number }>;
   }) => Promise<WelfareInstallmentRequest>;
   reviewInstallmentRequest: (
     id: string,

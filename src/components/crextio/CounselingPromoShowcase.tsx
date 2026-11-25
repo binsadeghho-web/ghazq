@@ -191,7 +191,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
         }
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingId(null);
     }
@@ -230,30 +230,34 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
     <div
       onMouseEnter={handleUserInteraction}
       onClick={handleUserInteraction}
-      className="w-full relative overflow-hidden rounded-2xl sm:rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5"
+      className="w-full relative overflow-hidden rounded-2xl sm:rounded-[30px] bg-[#FCFCF9] border border-[#DFD8C4] shadow-[0_14px_38px_-24px_rgba(7,30,23,0.12)] p-3.5 sm:p-7 text-[#071E17] space-y-4 sm:space-y-5"
     >
       {/* Header and Toggle */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#ECE6D6] pb-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+          <div className="flex items-center gap-2 flex-wrap text-[11px] font-bold">
+            <span className="text-[#8A6314] inline-flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-[#9A7116]" />
               <span>ویترین نمایشگاهی مشاوره و هدایت نخبگان</span>
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold flex items-center gap-1">
-              <Lock className="w-3 h-3 text-emerald-700" /> محرمانگی ۱۰۰٪
+            <span aria-hidden="true" className="text-[#D4CBB3]">·</span>
+            <span className="text-[#0C4A38] inline-flex items-center gap-1">
+              <Lock className="w-3 h-3" /> محرمانگی ۱۰۰٪
             </span>
             {isPaused && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-900 text-[10px] font-bold flex items-center gap-1">
-                <Pause className="w-3 h-3 text-amber-700" /> چرخش خودکار موقتاً متوقف شد
-              </span>
+              <>
+                <span aria-hidden="true" className="text-[#D4CBB3]">·</span>
+                <span className="text-[#6E5212] inline-flex items-center gap-1">
+                  <Pause className="w-3 h-3" /> متوقف
+                </span>
+              </>
             )}
           </div>
 
-          <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
+          <h3 className="text-lg sm:text-xl font-black text-[#071E17] tracking-tight">
             {promoTitle}
           </h3>
-          <p className="text-xs text-stone-500 max-w-2xl leading-relaxed">
+          <p className="text-xs text-[#525E58] max-w-2xl leading-relaxed">
             {promoSubtitle}
           </p>
         </div>
@@ -263,23 +267,23 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="flex items-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-[#FBF4E1] hover:bg-[#F6E8C3] text-[#6E5212] border border-[#E5C97B] text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
             >
-              <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+              <Edit3 className="w-3.5 h-3.5 text-[#9A7116]" />
               <span>ویرایش ۱۰۰٪ محتوای مشاوره</span>
             </button>
           )}
 
-          <div className="grid grid-cols-2 sm:flex items-center w-full sm:w-auto bg-stone-100 p-1 rounded-2xl border border-stone-200">
+          <div className="grid grid-cols-2 sm:flex items-center w-full sm:w-auto bg-[#F4F0E4] p-1 rounded-2xl border border-[#DFD8C4]">
             <button
               onClick={() => {
                 setActiveTab('general');
                 handleUserInteraction();
               }}
-              className={`min-h-[40px] sm:min-h-0 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+              className={`min-h-[40px] sm:min-h-0 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center whitespace-nowrap ${
                 activeTab === 'general'
-                  ? 'bg-rose-700 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  ? 'bg-[#071E17] text-[#F3D078] shadow-xs font-black'
+                  : 'text-[#4C5852] hover:text-[#071E17]'
               }`}
             >
               <HeartHandshake className="w-3.5 h-3.5 shrink-0" />
@@ -290,10 +294,10 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                 setActiveTab('specialized');
                 handleUserInteraction();
               }}
-              className={`min-h-[40px] sm:min-h-0 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+              className={`min-h-[40px] sm:min-h-0 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center whitespace-nowrap ${
                 activeTab === 'specialized'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
+                  ? 'bg-[#071E17] text-[#F3D078] shadow-xs font-black'
+                  : 'text-[#4C5852] hover:text-[#071E17]'
               }`}
             >
               <Compass className="w-3.5 h-3.5 shrink-0" />
@@ -315,44 +319,44 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10"
           >
             {/* Feature Card 1 (Specialized) */}
-            <div className="lg:col-span-2 rounded-2xl bg-[#FFFDF7] p-5 border border-amber-200/90 flex flex-col justify-between space-y-4">
+            <div className="lg:col-span-2 rounded-2xl bg-[#FAF8F2] p-5 border border-[#E2DAC3] flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black border border-amber-300 flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5 text-amber-700" />
+                <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                  <span className="text-[#8A6314] font-black inline-flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-[#9A7116]" />
                     <span>{shownSpecBadge}</span>
                   </span>
-                  <span className="text-[11px] text-amber-800 font-bold">
+                  <span className="text-[11px] text-[#0C4A38] font-bold">
                     نوبت‌دهی آنلاین با اساتید طراز اول
                   </span>
                 </div>
 
-                <h4 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
+                <h4 className="text-base sm:text-lg font-black text-[#071E17] leading-snug">
                   {shownSpecHeading}
                 </h4>
 
-                <p className="text-xs text-stone-600 leading-relaxed">
+                <p className="text-xs text-[#525E58] leading-relaxed">
                   {shownSpecDesc}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   {shownSpecBullets.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-stone-700 font-medium">
-                      <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div key={idx} className="flex items-center gap-2 text-xs text-[#2B3B34] font-medium">
+                      <CheckCircle2 className="w-4 h-4 text-[#9A7116] shrink-0" />
                       <span>{item}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-amber-100 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-stone-500 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-700" />
+              <div className="pt-3 border-t border-[#ECE6D6] flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-[#525E58] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#8A6314]" />
                   <span>مدت هر نشست: ۴۵ دقیقه · حضوری یا تصویری امن</span>
                 </div>
                 <button
                   onClick={onNavigateToSpecialized}
-                  className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#D4AF37]/30 font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <span>رزرو مشاوره تخصصی شغلی و تحصیلی</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -361,24 +365,24 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             </div>
 
             {/* Counselors Preview */}
-            <div className="rounded-2xl bg-white p-4 border border-stone-200 flex flex-col justify-between space-y-3">
+            <div className="rounded-2xl bg-[#FAF8F2] p-4 border border-[#E2DAC3] flex flex-col justify-between space-y-3">
               <div className="space-y-2.5">
-                <span className="text-xs font-black text-stone-800 block">
+                <span className="text-xs font-black text-[#071E17] block">
                   مشاوران برگزیده هدایت شغلی:
                 </span>
                 <div className="space-y-2">
                   {displaySpecialized.slice(0, 2).map(c => (
-                    <div key={c.id} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2.5">
+                    <div key={c.id} className="p-2.5 rounded-xl bg-white border border-[#E2DAC3] flex items-center gap-2.5">
                       <img
                         src={c.avatarUrl || fallbackAvatarUrl}
                         alt={c.name}
                         referrerPolicy="no-referrer"
-                        className="w-11 h-11 rounded-xl object-cover object-top border border-amber-300 shrink-0"
+                        className="w-11 h-11 rounded-xl object-cover object-top border border-[#D4AF37]/40 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-xs text-stone-900 truncate">{c.name}</div>
-                        <div className="text-[11px] text-amber-800 font-medium truncate">{c.title}</div>
-                        <div className="text-[10px] text-stone-500 mt-0.5">{c.experienceYears} سال سابقه قضایی</div>
+                        <div className="font-bold text-xs text-[#071E17] truncate">{c.name}</div>
+                        <div className="text-[11px] text-[#8A6314] font-medium truncate">{c.title}</div>
+                        <div className="text-[10px] text-[#525E58] mt-0.5 tabular-nums">{c.experienceYears} سال سابقه قضایی</div>
                       </div>
                     </div>
                   ))}
@@ -387,7 +391,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
 
               <button
                 onClick={onNavigateToSpecialized}
-                className="w-full py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 text-xs font-bold transition-all text-center cursor-pointer border border-stone-200"
+                className="w-full py-2 rounded-xl bg-white hover:bg-[#F4F0E4] text-[#071E17] text-xs font-bold transition-all text-center cursor-pointer border border-[#DFD8C4]"
               >
                 مشاهده کارنامه مشاوران شغلی
               </button>
@@ -403,44 +407,44 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             className="grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10"
           >
             {/* Feature Card 2 (General) */}
-            <div className="lg:col-span-2 rounded-2xl bg-[#FFF9FA] p-5 border border-rose-200/90 flex flex-col justify-between space-y-4">
+            <div className="lg:col-span-2 rounded-2xl bg-[#FAF8F2] p-5 border border-[#E2DAC3] flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-900 text-xs font-black border border-rose-300 flex items-center gap-1.5">
-                    <HeartHandshake className="w-3.5 h-3.5 text-rose-700" />
+                <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                  <span className="text-[#0C4A38] font-black inline-flex items-center gap-1.5">
+                    <HeartHandshake className="w-4 h-4 text-rose-700" />
                     <span>{shownGenBadge}</span>
                   </span>
-                  <span className="text-[11px] text-rose-800 font-bold">
+                  <span className="text-[11px] text-[#8A6314] font-bold">
                     یارانه ویژه ۷۰ درصدی کانون نخبگان
                   </span>
                 </div>
 
-                <h4 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
+                <h4 className="text-base sm:text-lg font-black text-[#071E17] leading-snug">
                   {shownGenHeading}
                 </h4>
 
-                <p className="text-xs text-stone-600 leading-relaxed">
+                <p className="text-xs text-[#525E58] leading-relaxed">
                   {shownGenDesc}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   {shownGenBullets.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-stone-700 font-medium">
-                      <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
+                    <div key={idx} className="flex items-center gap-2 text-xs text-[#2B3B34] font-medium">
+                      <CheckCircle2 className="w-4 h-4 text-[#0C4A38] shrink-0" />
                       <span>{item}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-rose-100 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-stone-500 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-rose-700" />
+              <div className="pt-3 border-t border-[#ECE6D6] flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-[#525E58] flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#0C4A38]" />
                   <span>پرونده الکترونیک محرمانه بدون دسترسی شخص ثالث</span>
                 </div>
                 <button
                   onClick={onNavigateToGeneral}
-                  className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#D4AF37]/30 font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <span>رزرو خدمات روانشناختی و مشاوره</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -449,24 +453,24 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
             </div>
 
             {/* Counselors Preview */}
-            <div className="rounded-2xl bg-white p-4 border border-stone-200 flex flex-col justify-between space-y-3">
+            <div className="rounded-2xl bg-[#FAF8F2] p-4 border border-[#E2DAC3] flex flex-col justify-between space-y-3">
               <div className="space-y-2.5">
-                <span className="text-xs font-black text-stone-800 block">
+                <span className="text-xs font-black text-[#071E17] block">
                   مشاوران و درمانگران برگزیده:
                 </span>
                 <div className="space-y-2">
                   {displayGeneral.slice(0, 2).map(c => (
-                    <div key={c.id} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2.5">
+                    <div key={c.id} className="p-2.5 rounded-xl bg-white border border-[#E2DAC3] flex items-center gap-2.5">
                       <img
                         src={c.avatarUrl || fallbackAvatarUrl}
                         alt={c.name}
                         referrerPolicy="no-referrer"
-                        className="w-11 h-11 rounded-xl object-cover object-top border border-rose-300 shrink-0"
+                        className="w-11 h-11 rounded-xl object-cover object-top border border-[#D4AF37]/40 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-xs text-stone-900 truncate">{c.name}</div>
-                        <div className="text-[11px] text-rose-800 font-medium truncate">{c.title}</div>
-                        <div className="text-[10px] text-stone-500 mt-0.5">{c.specialty}</div>
+                        <div className="font-bold text-xs text-[#071E17] truncate">{c.name}</div>
+                        <div className="text-[11px] text-[#0C4A38] font-medium truncate">{c.title}</div>
+                        <div className="text-[10px] text-[#525E58] mt-0.5">{c.specialty}</div>
                       </div>
                     </div>
                   ))}
@@ -475,7 +479,7 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
 
               <button
                 onClick={onNavigateToGeneral}
-                className="w-full py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 text-xs font-bold transition-all text-center cursor-pointer border border-stone-200"
+                className="w-full py-2 rounded-xl bg-white hover:bg-[#F4F0E4] text-[#071E17] text-xs font-bold transition-all text-center cursor-pointer border border-[#DFD8C4]"
               >
                 مشاهده اسامی همه مشاوران خانواده
               </button>

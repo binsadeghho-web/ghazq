@@ -8,8 +8,11 @@ import {
   Clock,
   FileText,
   AlertCircle,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { formatIsoToJalali } from '../../utils/jalaliDate';
 
@@ -173,6 +176,32 @@ export const AdminEmergencyLoanPanel: React.FC = () => {
                 <p className="text-xs text-stone-700 bg-white p-3 rounded-xl border border-stone-200/70 leading-relaxed">
                   علت درخواست: {req.description}
                 </p>
+
+                {Array.isArray(req.metadata?.attachments) && req.metadata.attachments.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="font-bold text-stone-500 inline-flex items-center gap-1">
+                      <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>مدارک پیوست متقاضی:</span>
+                    </span>
+                    {req.metadata.attachments.map((att: any, idx: number) => (
+                      <button
+                        key={`${att.url}-${idx}`}
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await api.downloadPrivateFile(att.url, att.name);
+                          } catch (err: any) {
+                            setFeedback({ type: 'error', text: err?.message || 'خطا در دانلود مدرک پیوست.' });
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 text-[#071E17] border border-stone-200 font-bold cursor-pointer"
+                      >
+                        <Download className="w-3 h-3 text-emerald-700" />
+                        <span>{att.name || `مدرک ${idx + 1}`}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <input

@@ -9,9 +9,10 @@ import {
   Clock,
   Save,
   AlertCircle,
-  ExternalLink,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { formatIsoToJalali } from '../../utils/jalaliDate';
 
@@ -248,14 +249,19 @@ export const AdminQarzolhasanehFundPanel: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {pay.receiptUrl && (
-                        <a
-                          href={pay.receiptUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-bold text-teal-800 inline-flex items-center gap-1 underline"
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.downloadPrivateFile(pay.receiptUrl!, `receipt-${pay.trackingCode || pay.id}`);
+                            } catch (err: any) {
+                              setFeedback({ type: 'error', text: err?.message || 'خطا در دریافت تصویر فیش.' });
+                            }
+                          }}
+                          className="text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" /> مشاهده رسید
-                        </a>
+                          <Download className="w-3.5 h-3.5" /> دریافت رسید
+                        </button>
                       )}
                       <span className="px-2.5 py-1 rounded-lg text-[11px] font-black border bg-white">
                         {pay.status === 'verified'

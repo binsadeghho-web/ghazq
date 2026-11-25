@@ -91,8 +91,8 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({
   const [accommodationCity, setAccommodationCity] = useState<'قم' | 'تهران' | 'مشهد'>('قم');
   const [needsAccommodation, setNeedsAccommodation] = useState(false);
 
-  // Common Crextio Glass Card style - Warm Ivory Cream & Emerald with 10% more hover magnification
-  const cardStyle = "bg-[#FCFCF9]/90 hover:bg-white backdrop-blur-xl rounded-[32px] p-6 shadow-2xs border border-[#E3E0D3] transition-all duration-300 hover:-translate-y-2 hover:scale-[1.08] hover:z-20 hover:shadow-xl";
+  // Common Crextio Executive Card style - Warm Ivory Cream & Sand hairline
+  const cardStyle = "bg-[#FCFCF9] hover:bg-white rounded-[24px] p-6 shadow-xs border border-[#DFD8C4] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0C4A38]/35 hover:shadow-md";
 
   /* ========================================================================
      1. PEOPLE / CARTABLE (کارتابل اداری و استعلامات)
@@ -219,52 +219,52 @@ export const CrextioSubViews: React.FC<CrextioSubViewsProps> = ({
 
     return (
       <div className="space-y-6">
-        <div className="bg-[#FCFCF9]/90 p-6 rounded-[32px] border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-[#FCFCF9] p-6 rounded-[28px] border border-[#DFD8C4] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold inline-block mb-1">
+            <p className="text-[11px] font-extrabold text-[#0C4A38] tracking-tight mb-1">
               امنیت و پایش
-            </span>
-            <h2 className="text-2xl font-extrabold text-stone-900">مرکز فرماندهی و امنیت سامانه</h2>
-            <p className="text-xs text-stone-500 mt-0.5">پایش معیارهای طلایی، رویدادهای زنده SSE و صحت زنجیره SHA-256</p>
+            </p>
+            <h2 className="text-2xl font-black text-[#121D19]">مرکز فرماندهی و امنیت سامانه</h2>
+            <p className="text-xs text-[#525E58] mt-1">پایش معیارهای طلایی، رویدادهای زنده SSE و صحت زنجیره SHA-256</p>
           </div>
 
           <button
             onClick={handleRunDiagnostic}
-            className="px-5 py-2.5 rounded-full bg-stone-900 hover:bg-black text-white text-xs font-bold shadow-2xs flex items-center gap-2 self-start sm:self-auto transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-[#071E17] hover:bg-[#0D3529] text-[#F3D078] border border-[#D4AF37]/30 text-xs font-black shadow-xs flex items-center gap-2 self-start sm:self-auto transition-colors cursor-pointer"
           >
-            <Activity className="w-4 h-4 text-emerald-400" />
+            <Activity className="w-4 h-4 text-[#F3D078]" />
             پایش و راستی‌آزمایی
           </button>
         </div>
 
         {diagMessage && (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center justify-between font-bold">
+          <div className="p-4 rounded-2xl bg-[#FAF8F2] border border-[#0C4A38]/25 text-[#071E17] text-xs flex items-center justify-between font-bold">
             <span>{diagMessage}</span>
-            <button onClick={() => setDiagMessage(null)} className="underline text-xs">بستن</button>
+            <button onClick={() => setDiagMessage(null)} className="underline text-xs text-[#0C4A38] cursor-pointer">بستن</button>
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className={cardStyle}>
-            <p className="text-xs text-stone-500 font-bold">دفترچه وقایع غیرقابل‌دستکاری</p>
-            <p className="text-3xl font-extrabold text-stone-900 mt-2 font-mono">
+            <p className="text-xs text-[#525E58] font-bold">دفترچه وقایع غیرقابل‌دستکاری</p>
+            <p className="text-3xl font-black text-[#121D19] mt-2 tabular-nums">
               {toPersianNumbers(auditLogs.length)} رکورد
             </p>
-            <p className="text-xs text-stone-500 mt-2 font-medium">زنجیره هش غیرقابل‌دستکاری SHA-256</p>
+            <p className="text-xs text-[#525E58] mt-2 font-medium">زنجیره هش غیرقابل‌دستکاری SHA-256</p>
           </div>
 
           <div className={cardStyle}>
-            <p className="text-xs text-stone-500 font-bold">وضعیت همگام‌سازی برخط (SSE)</p>
-            <p className="text-2xl font-extrabold text-emerald-800 mt-2">
-              {isRealtimeConnected ? '✓ برخط و فعال' : 'در حال اتصالات'}
+            <p className="text-xs text-[#525E58] font-bold">وضعیت همگام‌سازی برخط (SSE)</p>
+            <p className="text-2xl font-black text-[#0C4A38] mt-2">
+              {isRealtimeConnected ? '✓ برخط و فعال' : 'در حال اتصال'}
             </p>
-            <p className="text-xs text-stone-500 mt-2 font-medium">برقراری ارتباط دوطرفه بدون تأخیر</p>
+            <p className="text-xs text-[#525E58] mt-2 font-medium">برقراری ارتباط دوطرفه بدون تأخیر</p>
           </div>
 
           <div className={cardStyle}>
-            <p className="text-xs text-stone-500 font-bold">تفکیک سطوح دسترسی (RBAC)</p>
-            <p className="text-2xl font-extrabold text-stone-900 mt-2">کنترل ایمن BOLA/IDOR</p>
-            <p className="text-xs text-stone-500 mt-2 font-medium">پایبندی کامل به معماری لایه داده v3.0</p>
+            <p className="text-xs text-[#525E58] font-bold">تفکیک سطوح دسترسی (RBAC)</p>
+            <p className="text-2xl font-black text-[#121D19] mt-2">کنترل ایمن BOLA/IDOR</p>
+            <p className="text-xs text-[#525E58] mt-2 font-medium">پایبندی کامل به معماری لایه داده v3.0</p>
           </div>
         </div>
       </div>

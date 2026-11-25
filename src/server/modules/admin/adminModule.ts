@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { db, generateUUIDv7 } from '../../platform/database';
+import { generateUUIDv7 } from '../../platform/uuidv7';
 import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
@@ -11,9 +11,10 @@ import { getCurrentUser } from '../../platform/sessionAuth';
 import { User, UserRole, SystemSecurityConfig } from '../../../types';
 import { adminSettingsRepo } from './adminSettingsRepository';
 import { userRepository } from '../user/userRepository';
-import { getPool, isDatabaseConnected } from '../../platform/mysqlDatabase';
-import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG } from '../../../data/mockData';
+import { getPool, isDatabaseConnected, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
+import { DEFAULT_CREXTIO_CONFIG, DEFAULT_MIZAN_CONFIG, INITIAL_SECURITY_CONFIG } from '../../../data/mockData';
 import { normalizeDigits } from '../../platform/persianNormalizer';
+import { setCachedRateLimitMaxAttempts } from '../../platform/rateLimiter';
 
 function assertCanManageTargetUser(
   actor: AuthContext,
@@ -347,29 +348,58 @@ export class AdminService {
 
   async getAuditLogs(authCtx: AuthContext) {
     AuthorizationPolicy.requireRole(authCtx, ['admin']);
-    return auditChain.getEntries();
+    return auditChain.getEntriesAsync();
   }
 
   async verifyAuditChain(authCtx: AuthContext) {
     AuthorizationPolicy.requireRole(authCtx, ['admin']);
-    return auditChain.verifyIntegrity();
+    return auditChain.verifyIntegrityAsync();
   }
 
   async getSecurityConfig(): Promise<SystemSecurityConfig> {
-    return db.securityConfig;
+    ensureDatabaseConnection();
+    const record = await adminSettingsRepo.getRecord<SystemSecurityConfig>('security_config');
+    if (record?.value) {
+      const merged: SystemSecurityConfig = {
+        ...INITIAL_SECURITY_CONFIG,
+        ...record.value,
+        version: record.version || 1,
+      };
+      setCachedRateLimitMaxAttempts(merged.rateLimitMaxAttempts);
+      return merged;
+    }
+    const seeded: SystemSecurityConfig = { ...INITIAL_SECURITY_CONFIG, version: 1 };
+    await adminSettingsRepo.saveSetting('security_config', seeded, 'System Security & Rate Limit Config', 'System');
+    setCachedRateLimitMaxAttempts(seeded.rateLimitMaxAttempts);
+    return seeded;
   }
 
   async updateSecurityConfig(authCtx: AuthContext, updates: Partial<SystemSecurityConfig>): Promise<SystemSecurityConfig> {
     AuthorizationPolicy.requireRole(authCtx, ['admin']);
+    ensureDatabaseConnection();
 
-    db.securityConfig = {
-      ...db.securityConfig,
+    const current = await this.getSecurityConfig();
+    const baseVersion = updates.version !== undefined && !isNaN(Number(updates.version))
+      ? Number(updates.version)
+      : Number(current.version || 1);
+
+    const nextConfig: SystemSecurityConfig = {
+      ...current,
       ...updates,
-      version: ((db.securityConfig.version || 1) + 1),
+      version: baseVersion + 1,
     };
 
+    const res = await adminSettingsRepo.updateOptimistic(
+      'security_config',
+      nextConfig,
+      baseVersion,
+      authCtx.fullName
+    );
+    nextConfig.version = res.newVersion;
+    setCachedRateLimitMaxAttempts(nextConfig.rateLimitMaxAttempts);
+
     outbox.enqueue('admin.security_config_updated', {
-      version: (db.securityConfig as any).version || 1,
+      version: nextConfig.version,
       actorId: authCtx.userId,
     });
 
@@ -379,11 +409,92 @@ export class AdminService {
       actorName: authCtx.fullName,
       actorRole: authCtx.role,
       ip: '127.0.0.1',
-      details: `تنظیمات امنیتی و نرخ درخواست‌ها به‌روزرسانی شد. نسخه جدید: ${(db.securityConfig as any).version || 1}`,
+      details: `تنظیمات امنیتی و نرخ درخواست‌ها در پایگاه داده به‌روزرسانی شد. نسخه جدید: ${nextConfig.version}`,
       severity: 'critical',
     });
 
-    return db.securityConfig;
+    return nextConfig;
+  }
+
+  async getSecurityPinStatus(authCtx: AuthContext): Promise<{ isCustomPinSet: boolean; isPinRequired: boolean }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor', 'super_admin']);
+    ensureDatabaseConnection();
+    const rec = await adminSettingsRepo.getRecord<{ pinHash?: string; isPinRequired?: boolean }>('admin_security_pin');
+    return {
+      isCustomPinSet: Boolean(rec?.value?.pinHash),
+      isPinRequired: rec?.value?.isPinRequired !== false,
+    };
+  }
+
+  async verifySecurityPin(authCtx: AuthContext, pin: string): Promise<{ success: boolean; message: string }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'supervisor', 'super_admin']);
+    ensureDatabaseConnection();
+    const cleanPin = normalizeDigits(String(pin || '')).trim();
+    if (!cleanPin) {
+      return { success: false, message: 'پین کد امنیتی وارد نشده است.' };
+    }
+    const rec = await adminSettingsRepo.getRecord<{ pinHash?: string }>('admin_security_pin');
+    if (rec?.value?.pinHash) {
+      const matched = await bcrypt.compare(cleanPin, rec.value.pinHash);
+      if (matched) {
+        return { success: true, message: 'احراز هویت پین با موفقیت تایید شد.' };
+      }
+      return { success: false, message: 'پین کد امنیتی وارد شده نادرست است.' };
+    }
+    if (cleanPin === '123456') {
+      return { success: true, message: 'احراز هویت پین با موفقیت تایید شد.' };
+    }
+    return { success: false, message: 'پین کد امنیتی وارد شده نادرست است.' };
+  }
+
+  async updateSecurityPin(
+    authCtx: AuthContext,
+    newPin?: string,
+    isPinRequired?: boolean
+  ): Promise<{ success: boolean; isCustomPinSet: boolean; isPinRequired: boolean; message: string }> {
+    AuthorizationPolicy.requireRole(authCtx, ['admin', 'super_admin']);
+    ensureDatabaseConnection();
+    const rec = await adminSettingsRepo.getRecord<{ pinHash?: string; isPinRequired?: boolean }>('admin_security_pin');
+    let pinHash = rec?.value?.pinHash;
+
+    if (newPin !== undefined) {
+      const cleanPin = normalizeDigits(String(newPin || '')).trim();
+      if (cleanPin.length < 4) {
+        throw AppError.badRequest('پین کد امنیتی باید حداقل ۴ رقم باشد.');
+      }
+      pinHash = await bcrypt.hash(cleanPin, 10);
+    }
+
+    const nextPayload = {
+      pinHash,
+      isPinRequired: isPinRequired !== undefined ? Boolean(isPinRequired) : (rec?.value?.isPinRequired !== false),
+    };
+
+    await adminSettingsRepo.saveSetting(
+      'admin_security_pin',
+      nextPayload,
+      'Hashed Admin Security PIN & Requirement Toggle',
+      authCtx.fullName
+    );
+
+    auditChain.appendEntry({
+      eventType: 'SYSTEM_CONFIG_UPDATED',
+      actorId: authCtx.userId,
+      actorName: authCtx.fullName,
+      actorRole: authCtx.role,
+      ip: '127.0.0.1',
+      details: newPin
+        ? 'پین کد امنیتی پنل مدیریت به‌روزرسانی و با رمزنگاری یک‌طرفه در پایگاه داده ذخیره شد.'
+        : `الزام پین کد امنیتی پنل مدیریت ${nextPayload.isPinRequired ? 'فعال' : 'غیرفعال'} شد.`,
+      severity: 'warning',
+    });
+
+    return {
+      success: true,
+      isCustomPinSet: Boolean(pinHash),
+      isPinRequired: nextPayload.isPinRequired,
+      message: 'تنظیمات پین امنیتی در پایگاه داده ذخیره گردید.',
+    };
   }
 
   async getDashboardConfig(): Promise<{
@@ -602,7 +713,8 @@ export function createAdminRouter(): Router {
 
   router.get('/security-config', async (_req, res, next) => {
     try {
-      res.json(db.securityConfig);
+      const cfg = await service.getSecurityConfig();
+      res.json(cfg);
     } catch (err) {
       next(err);
     }
@@ -614,6 +726,39 @@ export function createAdminRouter(): Router {
       const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
       const updated = await service.updateSecurityConfig(authCtx, req.body);
       res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/security-pin', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const status = await service.getSecurityPinStatus(authCtx);
+      res.json(status);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/security-pin/verify', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const result = await service.verifySecurityPin(authCtx, req.body?.pin);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/security-pin/update', async (req: Request, res: Response, next) => {
+    try {
+      const u = getCurrentUser(req);
+      const authCtx: AuthContext = { userId: u.id, role: u.role, fullName: u.fullName };
+      const result = await service.updateSecurityPin(authCtx, req.body?.newPin, req.body?.isPinRequired);
+      res.json(result);
     } catch (err) {
       next(err);
     }

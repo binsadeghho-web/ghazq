@@ -134,33 +134,33 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
     : null;
 
   return (
-    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[28px] bg-[#FCFCFA] border border-stone-200/90 shadow-xs p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5">
+    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[30px] bg-[#FCFCF9] border border-[#DFD8C4] shadow-[0_14px_38px_-24px_rgba(7,30,23,0.12)] p-3.5 sm:p-7 text-[#071E17] space-y-4 sm:space-y-5">
       {isAdmin && !productsStoreConfig.isStoreEnabled && (
-        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
+        <div className="p-3 rounded-xl bg-[#FBF4E1] border border-[#E5C97B] text-[#6E5212] text-xs font-bold">
           بخش «کتاب و محصولات چند رسانه‌ای» برای کاربران غیرفعال است؛ این ویترین صرفاً در نمای مدیر نمایش داده می‌شود.
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#ECE6D6] pb-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#071E17] text-[#F3D078] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
             <BookMarked className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base sm:text-lg font-black text-stone-900">{title}</h3>
-            <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>
+            <h3 className="text-base sm:text-lg font-black text-[#071E17]">{title}</h3>
+            <p className="text-xs text-[#525E58] mt-0.5">{subtitle}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           {/* Dynamic Category Switcher */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold overflow-x-auto scrollbar-none w-full sm:w-auto">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F4F0E4] border border-[#DFD8C4] text-[11px] font-bold overflow-x-auto scrollbar-none w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setActiveCatFilter('all')}
               className={`min-h-[34px] px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
-                activeCatFilter === 'all' ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
+                activeCatFilter === 'all' ? 'bg-[#071E17] text-[#F3D078] shadow-xs font-black' : 'text-[#4C5852] hover:text-[#071E17]'
               }`}
             >
               همه
@@ -171,7 +171,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                 type="button"
                 onClick={() => setActiveCatFilter(cat.id)}
                 className={`min-h-[34px] px-2.5 py-1 rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
-                  activeCatFilter === cat.id ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-600'
+                  activeCatFilter === cat.id ? 'bg-[#071E17] text-[#F3D078] shadow-xs font-black' : 'text-[#4C5852] hover:text-[#071E17]'
                 }`}
               >
                 {cat.shortLabel || cat.label}
@@ -183,9 +183,9 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
             <button
               type="button"
               onClick={() => setIsSettingsModalOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl bg-[#FBF4E1] hover:bg-[#F6E8C3] text-[#6E5212] border border-[#E5C97B] text-xs font-bold cursor-pointer whitespace-nowrap"
             >
-              <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+              <Edit3 className="w-3.5 h-3.5 text-[#9A7116]" />
               <span>عنوان ویترین</span>
             </button>
           )}
@@ -193,7 +193,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
           <button
             type="button"
             onClick={onNavigateToProducts}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#D4AF37]/30 text-xs font-black shadow-xs cursor-pointer whitespace-nowrap"
           >
             <span>{ctaLabel}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -203,7 +203,7 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
 
       {/* Product Showcase Grid */}
       {displayedProducts.length === 0 ? (
-        <div className="p-8 text-center text-xs text-stone-500 rounded-2xl bg-stone-50 border border-stone-200">
+        <div className="p-8 text-center text-xs text-[#525E58] rounded-2xl bg-[#FAF8F2] border border-[#E2DAC3]">
           هیچ محصول فعالی در این دسته‌بندی برای نمایش در ویترین وجود ندارد.
         </div>
       ) : (
@@ -222,23 +222,23 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                 key={prod.id}
                 whileHover={{ y: -3 }}
                 onClick={() => setIntroProduct(prod)}
-                className={`min-w-[70vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3 sm:p-3.5 rounded-2xl bg-white border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${
-                  !isShown ? 'border-dashed border-stone-300 opacity-70' : 'border-stone-200/90 hover:border-purple-300'
+                className={`min-w-[70vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3 sm:p-3.5 rounded-2xl bg-[#FAF8F2] hover:bg-white border transition-all cursor-pointer flex flex-col justify-between space-y-3 hover:shadow-[0_12px_28px_-16px_rgba(7,30,23,0.18)] ${
+                  !isShown ? 'border-dashed border-stone-300 opacity-70' : 'border-[#E2DAC3] hover:border-[#071E17]/35'
                 }`}
               >
                 <div className="space-y-2.5">
-                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
+                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-100 border border-[#E2DAC3]">
                     <img
                       src={coverUrl}
                       alt={prod.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-stone-900/85 text-white text-[10px] font-black">
+                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#071E17]/88 text-[#F3D078] text-[10px] font-black">
                       {getProductCategoryLabel(prod.format, prod.formatTitle, productsStoreConfig)}
                     </span>
                     {sessionsCount > 0 && (
-                      <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-indigo-900/85 text-white text-[10px] font-bold flex items-center gap-1 tabular-nums">
-                        <Headphones className="w-3 h-3" />
+                      <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-[#071E17]/88 text-white text-[10px] font-bold flex items-center gap-1 tabular-nums">
+                        <Headphones className="w-3 h-3 text-[#F3D078]" />
                         {toPersianNumbers(sessionsCount)}
                       </span>
                     )}
@@ -250,18 +250,18 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                   </div>
 
                   <div>
-                    <h4 className="font-black text-xs sm:text-sm text-stone-900 group-hover:text-purple-900 transition-colors line-clamp-1">
+                    <h4 className="font-black text-xs sm:text-sm text-[#071E17] group-hover:text-[#0C4A38] transition-colors line-clamp-1">
                       {prod.title}
                     </h4>
-                    <p className="text-[11px] text-stone-500 mt-1 line-clamp-1 font-medium">
+                    <p className="text-[11px] text-[#525E58] mt-1 line-clamp-1 font-medium">
                       {formatPresentersText(prod)}
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                <div className="pt-2.5 border-t border-[#ECE6D6] flex items-center justify-between gap-2">
                   <div>
-                    <span className="text-xs sm:text-sm font-black text-amber-700 tabular-nums">
+                    <span className="text-xs sm:text-sm font-black text-[#8A6314] tabular-nums">
                       {formatTomans(displayPrice)}
                     </span>
                   </div>
@@ -290,13 +290,13 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                             setBuilderOpen(true);
                           }}
                           title="ویرایش محصول"
-                          className="p-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-amber-50 text-amber-700 cursor-pointer"
+                          className="p-1.5 rounded-lg border border-stone-200 bg-white hover:bg-[#FBF4E1] text-[#8A6314] cursor-pointer"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       </>
                     )}
-                    <span className="text-xs text-purple-800 font-extrabold flex items-center gap-0.5 group-hover:underline">
+                    <span className="text-xs text-[#071E17] font-extrabold flex items-center gap-0.5 group-hover:underline">
                       <span>مشاهده</span>
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </span>

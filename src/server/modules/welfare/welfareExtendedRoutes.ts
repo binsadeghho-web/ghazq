@@ -116,6 +116,15 @@ function mapInstallmentPartnerRow(row: any): WelfareInstallmentPartner {
 }
 
 function mapInstallmentRequestRow(row: any): WelfareInstallmentRequest {
+  let attachments: Array<{ url: string; name: string; size?: number }> = [];
+  if (row.attachments) {
+    try {
+      const parsed = typeof row.attachments === 'string' ? JSON.parse(row.attachments) : row.attachments;
+      if (Array.isArray(parsed)) {
+        attachments = parsed.filter((a: any) => a && typeof a.url === 'string' && a.url.trim());
+      }
+    } catch {}
+  }
   return {
     id: fromIdBuffer(row.id),
     partnerId: fromIdBuffer(row.partner_id),
@@ -130,6 +139,7 @@ function mapInstallmentRequestRow(row: any): WelfareInstallmentRequest {
     adminNote: row.admin_note || undefined,
     reviewedBy: row.reviewed_by || undefined,
     reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
+    attachments,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
@@ -853,7 +863,7 @@ export function registerWelfareExtendedRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const currentUser = getCurrentUser(req);
-      const { partnerId, requestedAmount, months, description, phone } = req.body || {};
+      const { partnerId, requestedAmount, months, description, phone, attachments: rawAttachments } = req.body || {};
 
       if (!partnerId) throw AppError.badRequest('انتخاب فروشگاه طرف قرارداد الزامی است.');
       const pRows = await selectWithTimeout<any>(
@@ -874,12 +884,22 @@ export function registerWelfareExtendedRoutes(router: Router): void {
         );
       }
 
+      const cleanAttachments = Array.isArray(rawAttachments)
+        ? rawAttachments
+            .filter((a: any) => a && typeof a.url === 'string' && a.url.trim())
+            .map((a: any) => ({
+              url: String(a.url).trim(),
+              name: String(a.name || 'مدرک پیوست').trim().slice(0, 180),
+              ...(typeof a.size === 'number' ? { size: a.size } : {}),
+            }))
+        : [];
+
       const id = generateUUIDv7();
       const p = getPool();
       await p.query(
         `INSERT INTO welfare_installment_requests (
-          id, partner_id, partner_name, applicant_id, applicant_name, applicant_phone, requested_amount, months, description, status, version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)`,
+          id, partner_id, partner_name, applicant_id, applicant_name, applicant_phone, requested_amount, months, description, attachments, status, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)`,
         [
           toIdBuffer(id),
           toIdBuffer(partner.id),
@@ -890,6 +910,7 @@ export function registerWelfareExtendedRoutes(router: Router): void {
           amount,
           Math.max(1, Math.min(partner.durationMonths || 36, Number(months || partner.durationMonths || 12))),
           description ? String(description).trim() : '',
+          JSON.stringify(cleanAttachments),
         ]
       );
 

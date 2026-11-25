@@ -18,7 +18,11 @@ import {
 } from '../data/mockData';
 import { api } from '../services/apiClient';
 
-const STORAGE_KEY_PREFIX = 'feqh_portal_v3_';
+function notifySecurityToast(message: string, type: 'success' | 'error' | 'info' = 'info', title?: string) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('app:toast', { detail: { title, message, type } }));
+  }
+}
 
 export interface SecurityAndOpsContextType {
   serverSyncStatus: 'synced' | 'syncing' | 'offline';
@@ -129,15 +133,47 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     errors: { client4xx: 2, server5xx: 0 },
   });
 
-  const [securityPin, setSecurityPin] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(`${STORAGE_KEY_PREFIX}security_pin`) || '123456';
-    }
-    return '123456';
-  });
+  const [securityPin] = useState<string>('******');
   const [isPinEnabled, setIsPinEnabled] = useState<boolean>(true);
   const [isPinUnlocked, setIsPinUnlocked] = useState<boolean>(true);
   const [simulatedPendingOtp, setSimulatedPendingOtp] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const isAdminOrSupervisor = ['admin', 'super_admin', 'supervisor'].includes(currentUser.role);
+    if (!isAdminOrSupervisor) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const [secCfg, pinStatus, logs, errs, alerts, ips, maint] = await Promise.allSettled([
+          api.getSecurityConfig(),
+          api.getSecurityPinStatus(),
+          currentUser.role === 'admin' ? api.getAuditLogs() : Promise.resolve(null),
+          api.getOpsErrorLogs(),
+          api.getOpsSecurityAlerts(),
+          api.getOpsBlockedIps(),
+          api.getOpsMaintenance(),
+        ]);
+        if (cancelled) return;
+        if (secCfg.status === 'fulfilled' && secCfg.value) setSecurityConfig(secCfg.value);
+        if (pinStatus.status === 'fulfilled' && pinStatus.value) {
+          const reqPin = Boolean(pinStatus.value.isPinRequired);
+          setIsPinEnabled(reqPin);
+          if (!reqPin) setIsPinUnlocked(true);
+        }
+        if (logs.status === 'fulfilled' && Array.isArray(logs.value)) setAuditLogs(logs.value);
+        if (errs.status === 'fulfilled' && Array.isArray(errs.value)) setErrorLogs(errs.value);
+        if (alerts.status === 'fulfilled' && Array.isArray(alerts.value)) setSecurityAlerts(alerts.value);
+        if (ips.status === 'fulfilled' && Array.isArray(ips.value)) setBlockedIps(ips.value);
+        if (maint.status === 'fulfilled' && maint.value) setOpsMaintenance(maint.value);
+      } catch {}
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   const addAuditLog = useCallback((log: Omit<AuditLog, 'id' | 'timestamp'>) => {
     const newEntry: AuditLog = {
@@ -152,8 +188,9 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     try {
       const updated = await api.updateSecurityConfig(updates);
       setSecurityConfig(updated);
+      notifySecurityToast('تنظیمات امنیتی سیستم با موفقیت در پایگاه داده ذخیره شد.', 'success');
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      notifySecurityToast(err?.message || 'خطا در به‌روزرسانی تنظیمات امنیتی', 'error', 'خطای امنیتی');
     }
   }, []);
 
@@ -215,40 +252,55 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     if (!newPin || newPin.length < 4) {
       return { success: false, message: 'پین کد امنیتی باید حداقل ۴ رقم باشد.' };
     }
-    setSecurityPin(newPin);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}security_pin`, newPin);
+    try {
+      const res = await api.updateSecurityPin({ newPin });
+      setIsPinUnlocked(true);
+      setIsPinEnabled(res.isPinRequired);
+      setSimulatedPendingOtp(null);
+      return { success: true, message: res.message || 'پین کد امنیتی ادمین با موفقیت در پایگاه داده ذخیره شد.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'خطا در ثبت پین کد امنیتی در سرور.' };
     }
-    setIsPinUnlocked(true);
-    setSimulatedPendingOtp(null);
-    return { success: true, message: 'پین کد امنیتی ادمین با موفقیت اعتبارسنجی و ثبت گردید.' };
   }, [simulatedPendingOtp]);
 
   const verifyPin = useCallback(async (pin: string): Promise<{ success: boolean; message: string }> => {
-    if (pin === securityPin || pin === '123456') {
-      setIsPinUnlocked(true);
-      return { success: true, message: 'احراز هویت پین با موفقیت تایید شد.' };
+    try {
+      const res = await api.verifySecurityPin(pin);
+      if (res.success) {
+        setIsPinUnlocked(true);
+      }
+      return res;
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'خطا در اعتبارسنجی پین کد امنیتی.' };
     }
-    return { success: false, message: 'پین کد امنیتی وارد شده نادرست است.' };
-  }, [securityPin]);
+  }, []);
 
-  const togglePinRequirement = useCallback((enabled: boolean) => {
+  const togglePinRequirement = useCallback(async (enabled: boolean) => {
     setIsPinEnabled(enabled);
     if (!enabled) setIsPinUnlocked(true);
+    try {
+      await api.updateSecurityPin({ isPinRequired: enabled });
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در به‌روزرسانی وضعیت پین امنیتی', 'error');
+    }
   }, []);
 
   const resolveErrorLog = useCallback(async (id: string) => {
     setErrorLogs(prev => prev.map(e => e.id === id ? { ...e, isResolved: true } : e));
     try {
       await api.resolveOpsErrorLog(id);
-    } catch {}
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در ثبت وضعیت خطا', 'error');
+    }
   }, []);
 
   const clearResolvedErrorLogs = useCallback(async () => {
     setErrorLogs(prev => prev.filter(e => !e.isResolved));
     try {
       await api.clearResolvedOpsErrorLogs();
-    } catch {}
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در پاکسازی خطاهای برطرف‌شده', 'error');
+    }
   }, []);
 
   const reviewSecurityAlert = useCallback((id: string, status: 'reviewed' | 'dismissed') => {
@@ -269,10 +321,10 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     try {
       const res = await api.sendOpsEmergencySms(adminPhone, message);
       return res;
-    } catch {
+    } catch (err: any) {
       return {
-        success: true,
-        message: `پیامک هشدار اضطراری با موفقیت به شماره ${adminPhone} ارسال گردید.`,
+        success: false,
+        message: err?.message || 'خطا در ارسال پیامک هشدار اضطراری.',
       };
     }
   }, []);
@@ -288,14 +340,18 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     setBlockedIps(prev => [newBlock, ...prev.filter(b => b.ip !== ip)]);
     try {
       await api.blockIpAddress(ip, reason, blockedUntil);
-    } catch {}
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در مسدودسازی IP در پایگاه داده', 'error');
+    }
   }, [currentUser]);
 
   const unblockIpAddress = useCallback(async (ip: string) => {
     setBlockedIps(prev => prev.filter(b => b.ip !== ip));
     try {
       await api.unblockIpAddress(ip);
-    } catch {}
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در رفع مسدودیت IP', 'error');
+    }
   }, []);
 
   const toggleGlobalMaintenance = useCallback(async (enabled: boolean, message?: string, estimatedReturnTime?: string) => {
@@ -307,7 +363,9 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     }));
     try {
       await api.setOpsGlobalMaintenance(enabled, message, estimatedReturnTime);
-    } catch {}
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در ذخیره وضعیت تعمیرات سراسری', 'error');
+    }
   }, []);
 
   const toggleModuleMaintenance = useCallback(async (moduleKey: string, enabled: boolean) => {
@@ -320,17 +378,19 @@ export const SecurityAndOpsProvider: React.FC<SecurityAndOpsProviderProps> = ({
     }));
     try {
       await api.setOpsModuleMaintenance(moduleKey, enabled);
-    } catch {}
+    } catch (err: any) {
+      notifySecurityToast(err?.message || 'خطا در ذخیره وضعیت تعمیرات ماژول', 'error');
+    }
   }, []);
 
   const runBackgroundJob = useCallback(async (jobName: string) => {
     try {
       const res = await api.runOpsBackgroundJob(jobName);
       return res;
-    } catch {
+    } catch (err: any) {
       return {
-        success: true,
-        message: `پردازش پس‌زمینه «${jobName}» با موفقیت اجرا گردید.`,
+        success: false,
+        message: err?.message || `خطا در اجرای پردازش «${jobName}».`,
       };
     }
   }, []);

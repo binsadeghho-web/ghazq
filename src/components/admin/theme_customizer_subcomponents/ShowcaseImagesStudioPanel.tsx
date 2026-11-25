@@ -57,7 +57,7 @@ export const ShowcaseImagesStudioPanel: React.FC<ShowcaseImagesStudioPanelProps>
         setImageForKey(key, res.url);
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingKey(null);
       targetKeyRef.current = null;

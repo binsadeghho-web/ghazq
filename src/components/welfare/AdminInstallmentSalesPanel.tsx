@@ -11,6 +11,8 @@ import {
   Save,
   AlertCircle,
   Upload,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { WelfareInstallmentPartner } from '../../types';
@@ -88,7 +90,7 @@ export const AdminInstallmentSalesPanel: React.FC = () => {
     if (!file) return;
     setUploadingLogo(true);
     try {
-      const up = await api.uploadFile(file, 'misc');
+      const up = await api.uploadFile(file, 'welfare_media');
       if (up?.url) setForm((prev) => ({ ...prev, logoUrl: up.url }));
     } catch (err: any) {
       setFeedback({ type: 'error', text: err?.message || 'خطا در آپلود لوگو.' });
@@ -228,6 +230,32 @@ export const AdminInstallmentSalesPanel: React.FC = () => {
                     <p className="text-xs text-stone-600 bg-white p-2.5 rounded-xl border border-stone-200/60">
                       {req.description}
                     </p>
+                  )}
+
+                  {Array.isArray(req.attachments) && req.attachments.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="font-bold text-stone-500 inline-flex items-center gap-1">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>مدارک پیوست:</span>
+                      </span>
+                      {req.attachments.map((att, idx) => (
+                        <button
+                          key={`${att.url}-${idx}`}
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.downloadPrivateFile(att.url, att.name);
+                            } catch (err: any) {
+                              setFeedback({ type: 'error', text: err?.message || 'خطا در دریافت فایل پیوست.' });
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 text-[#071E17] border border-stone-200 font-bold cursor-pointer"
+                        >
+                          <Download className="w-3 h-3 text-emerald-700" />
+                          <span>{att.name || `مدرک ${idx + 1}`}</span>
+                        </button>
+                      ))}
+                    </div>
                   )}
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

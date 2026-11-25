@@ -110,34 +110,35 @@ export const FinanceSection: React.FC = () => {
   }, [courseEnrollments, productOrders, consumableOrders, consultants, welfareRequests, cartableRequests]);
 
   return (
-    <div className="space-y-6">
-      {/* Top Main Section Header */}
-      <div className="glass-card rounded-[32px] p-6 sm:p-8 border border-stone-200/90 dark:border-[#2A423B] bg-white/95 dark:bg-[#182622]/95 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-        <div>
+    <div className="space-y-5 sm:space-y-6" dir="rtl">
+      {/* Top Main Section Header — Theme 2 Obsidian Emerald */}
+      <div className="relative rounded-[28px] overflow-hidden p-5 sm:p-7 border border-[#F3D078]/25 bg-gradient-to-br from-[#071E17] via-[#0B2A20] to-[#113D30] text-white shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+        <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 border border-[#F3D078]/35 text-[#F3D078] flex items-center justify-center shrink-0">
               <Wallet className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black text-stone-900 dark:text-white tracking-tight">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight">
                   امور مالی، حسابداری و مدیریت درآمدها
                 </h1>
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-[#F3D078]/15 text-[#F3D078] border border-[#F3D078]/30">
                   مرکز پایش کلان
                 </span>
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-medium mt-0.5">
-                مدیریت یکپارچه تمامی تراکنش‌های مالی، شهریه دوره‌ها، فروشگاه کتب، تسویه‌حساب مشاوران، و اعتبارات صندوق رفاه
+              <p className="text-xs text-emerald-100/80 font-medium mt-1">
+                مدیریت یکپارچه تمامی تراکنش‌های مالی، شهریه دوره‌ها، فروشگاه کتب، تسویه‌حساب مشاوران و اعتبارات صندوق رفاه
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        <div className="relative z-10 flex items-center gap-2 flex-wrap shrink-0">
           <button
+            type="button"
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-stone-950 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-l from-[#D4AF37] to-[#F3D078] hover:brightness-105 text-[#071E17] text-xs font-black transition-all shadow-md active:scale-95 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>چاپ گزارش جامع مالی</span>
@@ -145,82 +146,79 @@ export const FinanceSection: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards Row (Section 9 Golden Signals / Financial Performance) */}
+      {/* KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Income */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#182622] border border-stone-200/90 dark:border-[#2A423B] shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+        <div className="p-5 rounded-3xl bg-[#FCFCF9] border border-[#E2DAC3] shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs text-stone-600">
             <span className="font-bold">درآمد کل محقق‌شده سامانه</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <div className="p-2 rounded-xl bg-emerald-900/10 text-[#071E17]">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-stone-900 dark:text-white tabular-nums">
+          <div className="text-xl sm:text-2xl font-black text-[#071E17] tabular-nums">
             {formatToman(financialTotals.totalCommercialIncome)}
           </div>
-          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+          <div className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
             <ArrowUpRight className="w-3.5 h-3.5" />
             <span>دوره‌ها، انتشارات و سبد تعاونی</span>
           </div>
         </div>
 
-        {/* Welfare Loans Pool */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#182622] border border-stone-200/90 dark:border-[#2A423B] shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+        <div className="p-5 rounded-3xl bg-[#FCFCF9] border border-[#E2DAC3] shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs text-stone-600">
             <span className="font-bold">حجم تسهیلات و وام‌های فعال</span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+            <div className="p-2 rounded-xl bg-[#FAF8F2] border border-[#E2DAC3] text-[#8E651C]">
               <Coins className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-stone-900 dark:text-white tabular-nums">
+          <div className="text-xl sm:text-2xl font-black text-[#071E17] tabular-nums">
             {formatToman(financialTotals.disbursedLoansVolume)}
           </div>
-          <div className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">
+          <div className="text-[11px] text-teal-800 font-semibold">
             وام‌های قرض‌الحسنه و اعتبارات رفاهی
           </div>
         </div>
 
-        {/* Pending Settlements Queue */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#182622] border border-stone-200/90 dark:border-[#2A423B] shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+        <div className="p-5 rounded-3xl bg-[#FCFCF9] border border-[#E2DAC3] shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs text-stone-600">
             <span className="font-bold">فیش‌ها و اقلام در صف تایید</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Clock className="w-4 h-4 animate-pulse" />
+            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-800">
+              <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
+          <div className="text-xl sm:text-2xl font-black text-amber-700 tabular-nums">
             {toPersianNumbers(financialTotals.pendingReviewCount)} مورد
           </div>
-          <div className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
+          <div className="text-[11px] text-amber-800 font-semibold">
             نیازمند بررسی و تایید مسئول حسابداری
           </div>
         </div>
 
-        {/* Total Financial Activity Count */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-[#182622] border border-stone-200/90 dark:border-[#2A423B] shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+        <div className="p-5 rounded-3xl bg-[#FCFCF9] border border-[#E2DAC3] shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs text-stone-600">
             <span className="font-bold">کل ثبت‌نام‌ها و درخواست‌ها</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <div className="p-2 rounded-xl bg-stone-200/70 text-[#071E17]">
               <Receipt className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-stone-900 dark:text-white tabular-nums">
+          <div className="text-xl sm:text-2xl font-black text-[#071E17] tabular-nums">
             {toPersianNumbers(financialTotals.totalTransactionsCount)} تراکنش
           </div>
-          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">
+          <div className="text-[11px] text-stone-600 font-semibold">
             تراکنش‌های ثبت‌شده در پایگاه داده
           </div>
         </div>
       </div>
 
       {/* Top Segmented Sub-Tab Switcher Bar */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-white dark:bg-[#182622] rounded-2xl border border-stone-200/90 dark:border-[#2A423B] shadow-xs overflow-x-auto text-xs">
+      <div className="flex items-center gap-1.5 p-1.5 bg-[#FCFCF9] rounded-2xl border border-[#E2DAC3] shadow-xs overflow-x-auto scrollbar-none text-xs">
         <button
+          type="button"
           onClick={() => setActiveFinanceTab('analytics')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeFinanceTab === 'analytics'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-white/5'
+              ? 'bg-[#071E17] text-[#F3D078] shadow-sm'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF8F2]'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -228,11 +226,12 @@ export const FinanceSection: React.FC = () => {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveFinanceTab('ledger')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeFinanceTab === 'ledger'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-white/5'
+              ? 'bg-[#071E17] text-[#F3D078] shadow-sm'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF8F2]'
           }`}
         >
           <FileSpreadsheet className="w-4 h-4" />
@@ -240,11 +239,12 @@ export const FinanceSection: React.FC = () => {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveFinanceTab('consultants')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeFinanceTab === 'consultants'
-              ? 'bg-amber-500 text-stone-950 font-black shadow-md'
-              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-white/5'
+              ? 'bg-[#071E17] text-[#F3D078] shadow-sm'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF8F2]'
           }`}
         >
           <Scale className="w-4 h-4" />
@@ -252,11 +252,12 @@ export const FinanceSection: React.FC = () => {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveFinanceTab('welfare')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
             activeFinanceTab === 'welfare'
-              ? 'bg-emerald-700 text-white shadow-md'
-              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-white/5'
+              ? 'bg-[#071E17] text-[#F3D078] shadow-sm'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF8F2]'
           }`}
         >
           <Gift className="w-4 h-4" />
@@ -282,46 +283,46 @@ export const FinanceSection: React.FC = () => {
       )}
 
       {activeFinanceTab === 'welfare' && (
-        <div className="bg-white dark:bg-[#182622] rounded-[32px] p-6 sm:p-8 border border-stone-200/90 dark:border-[#2A423B] space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-stone-200/80 dark:border-[#2A423B]">
+        <div className="bg-[#FCFCF9] rounded-[28px] p-5 sm:p-7 border border-[#E2DAC3] space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[#E2DAC3]">
             <div>
-              <h3 className="text-base font-extrabold text-stone-900 dark:text-white flex items-center gap-2">
-                <Gift className="w-5 h-5 text-teal-600" />
+              <h3 className="text-base font-extrabold text-[#071E17] flex items-center gap-2">
+                <Gift className="w-5 h-5 text-[#A87923]" />
                 <span>گزارش مانده اعتبارات، وام‌های فعال و اقساط صندوق رفاه</span>
               </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+              <p className="text-xs text-stone-600 mt-1">
                 جدول پایش پرداخت‌ها، اقساط سررسیدشده و مانده تسهیلات پرداختی به اعضا
               </p>
             </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-300">
-              صندوق قرض‌الحسنه مرکز دانش‌آموختگان
+            <span className="text-xs font-bold px-3 py-1 rounded-xl bg-[#FAF8F2] border border-[#E2DAC3] text-[#8E651C]">
+              صندوق قرض‌الحسنه مجتمع فقه و حقوق
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 space-y-1">
+            <div className="p-4 rounded-2xl bg-white border border-[#E2DAC3] space-y-1">
               <span className="text-xs text-stone-500 block">حجم کل اعتبارات تخصیصی:</span>
-              <span className="text-xl font-black text-stone-900 dark:text-white tabular-nums">
+              <span className="text-xl font-black text-[#071E17] tabular-nums">
                 {formatToman(5000000000)}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 space-y-1">
+            <div className="p-4 rounded-2xl bg-white border border-[#E2DAC3] space-y-1">
               <span className="text-xs text-stone-500 block">پرداختی‌های جاری (وام‌های فعال):</span>
-              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <span className="text-xl font-black text-emerald-800 tabular-nums">
                 {formatToman(financialTotals.disbursedLoansVolume)}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 space-y-1">
+            <div className="p-4 rounded-2xl bg-white border border-[#E2DAC3] space-y-1">
               <span className="text-xs text-stone-500 block">مانده قابل واگذاری:</span>
-              <span className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
+              <span className="text-xl font-black text-[#8E651C] tabular-nums">
                 {formatToman(5000000000 - financialTotals.disbursedLoansVolume)}
               </span>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border border-[#E2DAC3] bg-white">
             <table className="w-full text-right text-xs">
-              <thead className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold">
+              <thead className="bg-[#FAF8F2] text-stone-700 font-bold border-b border-[#E2DAC3]">
                 <tr>
                   <th className="p-3.5">کد درخواست</th>
                   <th className="p-3.5">نام وام‌گیرنده</th>
@@ -331,31 +332,31 @@ export const FinanceSection: React.FC = () => {
                   <th className="p-3.5">وضعیت پرداختی</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
+              <tbody className="divide-y divide-[#E2DAC3]/60">
                 {welfareRequests.map(req => (
-                  <tr key={req.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-bold text-stone-800 dark:text-stone-200">
+                  <tr key={req.id} className="hover:bg-[#FAF8F2]/60 transition-colors">
+                    <td className="p-3.5 font-mono font-bold text-[#071E17]">
                       WLF-{req.id.slice(0, 8)}
                     </td>
-                    <td className="p-3.5 font-bold text-stone-900 dark:text-white">
+                    <td className="p-3.5 font-bold text-stone-900">
                       {req.applicantName}
                     </td>
                     <td className="p-3.5">
-                      <span className="px-2.5 py-1 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#FAF8F2] border border-[#E2DAC3] text-stone-800 font-bold">
                         {req.title}
                       </span>
                     </td>
-                    <td className="p-3.5 font-black tabular-nums">
+                    <td className="p-3.5 font-black text-[#071E17] tabular-nums">
                       {formatToman(req.type === 'loan' ? 100000000 : 15000000)}
                     </td>
-                    <td className="p-3.5 font-bold tabular-nums">
+                    <td className="p-3.5 font-bold tabular-nums text-stone-700">
                       {toPersianNumbers('۲۴ قسط')}
                     </td>
                     <td className="p-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
                         req.status === 'disbursed' || req.status === 'approved'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          ? 'bg-emerald-100 text-emerald-900'
+                          : 'bg-amber-100 text-amber-900'
                       }`}>
                         {req.status === 'disbursed' ? 'پرداخت شده' : req.status === 'approved' ? 'تاییدشده' : 'در حال بررسی'}
                       </span>

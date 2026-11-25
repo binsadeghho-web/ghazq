@@ -238,7 +238,7 @@ export const Theme2StudioDrawer: React.FC<Theme2StudioDrawerProps> = ({
         });
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingKey(null);
       targetKeyRef.current = null;

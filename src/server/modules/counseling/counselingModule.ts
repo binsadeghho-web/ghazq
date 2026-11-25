@@ -78,6 +78,12 @@ function mapCounselingRequestRow(row: any): CounselingRequest & { version: numbe
     paymentStatus: row.payment_status || 'free',
     reviewedBy: row.reviewed_by || undefined,
     reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
+    attachments: (() => {
+      const parsed = parseJsonSafe<any[]>(row.attachments, []);
+      return Array.isArray(parsed)
+        ? parsed.filter(a => a && typeof a.url === 'string' && a.url.trim())
+        : [];
+    })(),
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
@@ -106,6 +112,7 @@ async function ensureCounselingRequestsSchema(): Promise<void> {
     `ADD COLUMN payment_status VARCHAR(32) NULL DEFAULT 'free'`,
     `ADD COLUMN reviewed_by VARCHAR(128) NULL`,
     `ADD COLUMN reviewed_at DATETIME(3) NULL`,
+    `ADD COLUMN attachments JSON NULL`,
     `ADD COLUMN deleted_at DATETIME(3) NULL DEFAULT NULL`,
     `ADD COLUMN version INT NOT NULL DEFAULT 1`,
     `ADD COLUMN updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)`,
@@ -560,6 +567,7 @@ export class CounselingService {
       preferredConsultantName?: string;
       fee?: number;
       subsidyNotice?: string;
+      attachments?: Array<{ url: string; name: string; size?: number }>;
     }
   ): Promise<CounselingRequest & { version: number }> {
     if (authCtx.role === 'general_observer') {
@@ -588,14 +596,23 @@ export class CounselingService {
       (cType === 'specialized_career' ? 'مشاوره تخصصی شغلی و تحصیلی' : 'خدمات روانشناختی و مشاوره');
     const meetingMode = dto.meetingMode || 'حضوری';
     const descriptionText = (dto.description || '').trim() || categoryTitle || 'ثبت درخواست مشاوره';
+    const cleanAttachments = Array.isArray(dto.attachments)
+      ? dto.attachments
+          .filter(a => a && typeof a.url === 'string' && a.url.trim())
+          .map(a => ({
+            url: String(a.url).trim(),
+            name: String(a.name || 'فایل پیوست').trim().slice(0, 180),
+            ...(typeof a.size === 'number' ? { size: a.size } : {}),
+          }))
+      : [];
 
     await p.query(
       `INSERT INTO counseling_requests (
         id, applicant_id, applicant_name, user_phone, user_national_id, user_role_title,
         category, category_title, counseling_type, selected_field_id, selected_field_title, form_responses,
         preferred_consultant_id, preferred_consultant_name, description, status, meeting_mode,
-        fee, subsidy_notice, payment_status, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'free', 1)`,
+        fee, subsidy_notice, payment_status, attachments, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'free', ?, 1)`,
       [
         idBuf,
         applicantBuf,
@@ -615,6 +632,7 @@ export class CounselingService {
         meetingMode,
         Number(dto.fee || 0),
         dto.subsidyNotice || null,
+        JSON.stringify(cleanAttachments),
       ]
     );
 

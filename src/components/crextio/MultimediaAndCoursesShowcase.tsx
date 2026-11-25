@@ -127,7 +127,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
         }
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingId(null);
     }
@@ -162,21 +162,21 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
   };
 
   return (
-    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5">
+    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[30px] bg-[#FCFCF9] border border-[#DFD8C4] shadow-[0_14px_38px_-24px_rgba(7,30,23,0.12)] p-3.5 sm:p-7 text-[#071E17] space-y-4 sm:space-y-5">
       {/* Header */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#ECE6D6] pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-700 border border-cyan-200 flex items-center justify-center shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-[#071E17] text-[#F3D078] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
             <Video className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base sm:text-lg font-black text-stone-900">{title}</h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 border border-cyan-200 text-[10px] font-extrabold">
-                چندرسانه‌ای
+              <h3 className="text-base sm:text-lg font-black text-[#071E17]">{title}</h3>
+              <span className="text-[11px] font-bold text-[#8A6314]">
+                · چندرسانه‌ای
               </span>
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>
+            <p className="text-xs text-[#525E58] mt-0.5">{subtitle}</p>
           </div>
         </div>
 
@@ -184,16 +184,16 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-[#FBF4E1] hover:bg-[#F6E8C3] text-[#6E5212] border border-[#E5C97B] text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
             >
-              <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+              <Edit3 className="w-3.5 h-3.5 text-[#9A7116]" />
               <span>ویرایش ویترین چندرسانه‌ای</span>
             </button>
           )}
 
           <button
             onClick={onNavigateToCourses}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#D4AF37]/30 text-xs font-black transition-all shadow-xs cursor-pointer whitespace-nowrap"
           >
             <span>مشاهده همه دوره‌ها و صوت/ویدیوها</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -208,42 +208,42 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
             key={item.id}
             whileHover={{ y: -3 }}
             onClick={onNavigateToCourses}
-            className="min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200/90 hover:border-cyan-300 transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md"
+            className="min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3.5 sm:p-4 rounded-2xl bg-[#FAF8F2] hover:bg-white border border-[#E2DAC3] hover:border-[#071E17]/35 transition-all cursor-pointer flex flex-col justify-between space-y-3 hover:shadow-[0_12px_28px_-16px_rgba(7,30,23,0.18)]"
           >
             <div className="space-y-3">
-              <div className="relative h-36 rounded-xl overflow-hidden bg-stone-900 border border-stone-200">
+              <div className="relative h-36 rounded-xl overflow-hidden bg-[#071E17] border border-[#E2DAC3]">
                 <img
                   src={item.cover || showcaseBannerUrl || DEFAULT_SHOWCASE_IMAGES.multimedia_showcase}
                   alt={item.title}
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full bg-white/30 backdrop-blur-md text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-md border border-white/40">
-                    <PlayCircle className="w-6 h-6 fill-white/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/75 via-transparent to-transparent flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-[#071E17]/75 backdrop-blur-md text-[#F3D078] flex items-center justify-center group-hover:scale-110 transition-transform shadow-md border border-[#F3D078]/45">
+                    <PlayCircle className="w-6 h-6" />
                   </div>
                 </div>
-                <span className="absolute top-2 right-2 px-2.5 py-0.5 rounded-md bg-cyan-900/90 text-white text-[10px] font-black">
+                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#071E17]/88 text-[#F3D078] text-[10px] font-black">
                   {item.tag}
                 </span>
               </div>
 
               <div>
-                <h4 className="font-bold text-sm text-stone-900 group-hover:text-cyan-900 transition-colors line-clamp-1">
+                <h4 className="font-black text-sm text-[#071E17] group-hover:text-[#0C4A38] transition-colors line-clamp-1">
                   {item.title}
                 </h4>
-                <p className="text-xs text-stone-500 mt-1 line-clamp-1 font-medium">
+                <p className="text-xs text-[#525E58] mt-1 line-clamp-1 font-medium">
                   استاد: {item.instructor}
                 </p>
-                <span className="text-[11px] text-cyan-800 font-bold block mt-1">
+                <span className="text-[11px] text-[#8A6314] font-bold block mt-1">
                   {item.sessions}
                 </span>
               </div>
             </div>
 
-            <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-cyan-800">
+            <div className="pt-2.5 border-t border-[#ECE6D6] flex items-center justify-between text-xs font-extrabold text-[#071E17] group-hover:text-[#0C4A38]">
               <span>مشاهده و پخش آنلاین</span>
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
             </div>
           </motion.div>
         ))}

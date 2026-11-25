@@ -54,7 +54,7 @@ export const CustomizerHeroStatsTab: React.FC<CustomizerHeroStatsTabProps> = ({
         triggerSuccess();
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingPortrait(false);
       if (portraitInputRef.current) portraitInputRef.current.value = '';

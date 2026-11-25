@@ -508,26 +508,26 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
     <section
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`rounded-2xl sm:rounded-3xl border overflow-hidden transition-colors ${
+      className={`rounded-2xl sm:rounded-[26px] border overflow-hidden transition-colors ${
         darkSurface
-          ? 'bg-[#111F1A] border-[#243B32] text-stone-100'
-          : 'bg-white border-stone-200/90 text-stone-900 shadow-sm'
+          ? 'bg-[#0B231B] border-[#243B32] text-stone-100'
+          : 'bg-[#FCFCF9] border-[#DFD8C4] text-[#071E17] shadow-[0_8px_24px_-18px_rgba(7,30,23,0.14)]'
       }`}
       dir="rtl"
     >
       {/* Unified Header + Interactive Tab Selector */}
       <div
-        className={`${isMicro ? 'px-3.5 py-2.5 space-y-2' : isCompactScale ? 'px-3.5 sm:px-4 py-3 space-y-2.5' : 'px-3.5 sm:px-5 py-3.5 sm:py-4 space-y-3'} border-b ${
-          darkSurface ? 'border-white/10 bg-[#14251F]' : 'border-stone-100 bg-stone-50/60'
+        className={`${isMicro ? 'px-4 py-3 space-y-2' : isCompactScale ? 'px-4 sm:px-5 py-3.5 space-y-2.5' : 'px-4 sm:px-6 py-4 space-y-3.5'} border-b ${
+          darkSurface ? 'border-white/10 bg-[#0E2920]' : 'border-[#ECE6D6] bg-[#F7F4EC]/80'
         }`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className={`${isMicro ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 rounded-xl'} flex items-center justify-center shrink-0 ${
+              className={`${isMicro ? 'w-8 h-8 rounded-lg' : 'w-9 h-9 rounded-xl'} flex items-center justify-center shrink-0 border ${
                 darkSurface
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-emerald-900 text-amber-300'
+                  ? 'bg-[#F3D078]/15 text-[#F3D078] border-[#F3D078]/35'
+                  : 'bg-[#071E17] text-[#F3D078] border-[#F3D078]/35'
               }`}
             >
               <Sparkles className={isMicro ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
@@ -535,7 +535,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
             <div className="min-w-0">
               <h2
                 className={`${isMicro ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-black truncate ${
-                  darkSurface ? 'text-white' : 'text-stone-900'
+                  darkSurface ? 'text-white' : 'text-[#071E17]'
                 }`}
               >
                 {crextioConfig.unifiedShowcaseTitle || 'نمایشگاه جامع خدمات، پژوهش، آموزش و محصولات'}
@@ -543,7 +543,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
               {span === 'full' && !isMicro && (
                 <p
                   className={`text-[11px] truncate ${
-                    darkSurface ? 'text-stone-400' : 'text-stone-500'
+                    darkSurface ? 'text-stone-400' : 'text-[#525E58]'
                   }`}
                 >
                   {crextioConfig.unifiedShowcaseSubtitle ||
@@ -562,7 +562,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-300 hover:bg-white/10'
-                    : 'border-stone-200 text-stone-600 hover:bg-stone-100'
+                    : 'border-[#DFD8C4] bg-[#FCFCF9] text-[#071E17] hover:bg-[#EFEADB]'
                 }`}
               >
                 {paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -573,10 +573,10 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
               <button
                 type="button"
                 onClick={onOpenEditor}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 cursor-pointer transition-colors ${
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-black border flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap ${
                   darkSurface
-                    ? 'bg-white/10 hover:bg-white/15 border-white/15 text-emerald-300'
-                    : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-800'
+                    ? 'bg-white/10 hover:bg-white/15 border-white/15 text-[#F3D078]'
+                    : 'bg-[#071E17] hover:bg-[#0D3227] border-[#F3D078]/35 text-[#F3D078]'
                 }`}
               >
                 <Sliders className="w-3 h-3" />
@@ -596,14 +596,14 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 key={item.key}
                 type="button"
                 onClick={() => setSelectedKey(item.key)}
-                className={`relative px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                className={`relative px-3 py-2 sm:py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer ${
                   isActive
                     ? darkSurface
-                      ? 'text-stone-950'
-                      : 'text-white'
+                      ? 'text-[#071E17]'
+                      : 'text-[#F3D078]'
                     : darkSurface
                     ? 'text-stone-300 hover:bg-white/10'
-                    : 'text-stone-600 hover:bg-stone-200/70'
+                    : 'text-[#4C5852] hover:bg-[#EBE5D4]'
                 }`}
               >
                 {isActive && (
@@ -611,7 +611,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                     layoutId="unifiedShowcaseActiveTab"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     className={`absolute inset-0 rounded-xl ${
-                      darkSurface ? 'bg-amber-400' : 'bg-emerald-900'
+                      darkSurface ? 'bg-[#F3D078]' : 'bg-[#071E17]'
                     }`}
                   />
                 )}
@@ -878,10 +878,10 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigateTab?.(currentItem.targetNav)}
-                  className={`${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} w-full sm:w-auto justify-center rounded-xl font-black flex items-center gap-2 transition-all cursor-pointer active:scale-95 ${
+                  className={`${isMicro ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 sm:py-2 text-xs'} w-full sm:w-auto justify-center rounded-xl font-black flex items-center gap-2 transition-all cursor-pointer active:scale-95 whitespace-nowrap ${
                     darkSurface
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
-                      : 'bg-emerald-900 hover:bg-emerald-950 text-white'
+                      ? 'bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17]'
+                      : 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35'
                   }`}
                 >
                   <span>{currentItem.ctaLabel}</span>

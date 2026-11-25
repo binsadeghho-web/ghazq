@@ -150,25 +150,25 @@ async function bootstrap() {
     });
   });
 
-  // Block direct public URL access to private consultation, research, and cartable directories
-  app.use('/uploads/consultations', (_req: Request, res: Response) => {
-    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی مشاوره غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایند.' });
-  });
-  app.use('/uploads/research', (_req: Request, res: Response) => {
-    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی پژوهش غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایند.' });
-  });
-  app.use('/uploads/cartable_alumni', (_req: Request, res: Response) => {
-    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های پیوست دانش‌آموختگان غیرمجاز است.' });
-  });
-  app.use('/uploads/cartable_officials', (_req: Request, res: Response) => {
-    res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های پیوست مسئولین غیرمجاز است.' });
-  });
-  app.use('/uploads/verdicts', (_req: Request, res: Response) => {
-    res.status(403).json({ error: 'دسترسی مستقیم به پیوست‌های دادنامه‌ها غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایید.' });
-  });
-  app.use('/uploads/product_receipts', (_req: Request, res: Response) => {
-    res.status(403).json({ error: 'دسترسی مستقیم به تصویر فیش‌های خرید غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایید.' });
-  });
+  // Block direct public URL access to all private directories
+  const privateStaticFolders = [
+    'consultations',
+    'research',
+    'cartable_alumni',
+    'cartable_officials',
+    'verdicts',
+    'product_receipts',
+    'product_media',
+    'course_receipts',
+    'course_certificates',
+    'course_files',
+    'welfare_receipts',
+  ];
+  for (const folder of privateStaticFolders) {
+    app.use(`/uploads/${folder}`, (_req: Request, res: Response) => {
+      res.status(403).json({ error: 'دسترسی مستقیم به فایل‌های خصوصی غیرمجاز است. لطفاً از طریق سامانه اقدام فرمایید.' });
+    });
+  }
 
   // Public Persistent Uploads Static File Serving (avatars, products, courses, verdicts, misc)
   app.use('/uploads', express.static(storageConfig.uploadsDir, {

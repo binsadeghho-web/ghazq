@@ -15,8 +15,11 @@ import {
   Award,
   MessageSquare,
   ArrowLeft,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { Consultant, CounselingFieldItem } from '../../types';
 import { AdminSpecializedCounselingSuite } from './AdminSpecializedCounselingSuite';
 import { CounselingLandingHero } from './CounselingLandingHero';
@@ -366,6 +369,36 @@ export const SpecializedCareerCounselingSection: React.FC = () => {
                   {req.description && (
                     <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                       {req.description}
+                    </div>
+                  )}
+
+                  {Array.isArray(req.attachments) && req.attachments.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="font-bold text-slate-500 inline-flex items-center gap-1">
+                        <Paperclip className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>مدارک پیوست:</span>
+                      </span>
+                      {req.attachments.map((att, idx) => (
+                        <button
+                          key={`${att.url}-${idx}`}
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.downloadPrivateFile(att.url, att.name);
+                            } catch (err: any) {
+                              window.dispatchEvent(
+                                new CustomEvent('app:toast', {
+                                  detail: { message: err?.message || 'خطا در دریافت فایل پیوست.', type: 'error' },
+                                })
+                              );
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>{att.name || `پیوست ${idx + 1}`}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
 

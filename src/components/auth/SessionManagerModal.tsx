@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Laptop, Smartphone, Shield, LogOut, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Laptop, Smartphone, Shield, LogOut, X, AlertTriangle } from 'lucide-react';
 
 interface SessionManagerModalProps {
   isOpen: boolean;
@@ -9,14 +9,14 @@ interface SessionManagerModalProps {
 
 export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({ isOpen, onClose }) => {
   const { currentUser, revokeSession, globalLogout } = useApp();
+  const [confirmGlobalLogout, setConfirmGlobalLogout] = useState(false);
 
   if (!isOpen || !currentUser) return null;
 
-  const handleGlobalLogout = () => {
-    if (confirm('آیا مطمئن هستید؟ تمامی نشست‌های فعال شما در تمام کامپیوترها و گوشی‌ها منقضی شده و نسخه توکن شما ارتقا خواهد یافت.')) {
-      globalLogout(currentUser.id);
-      onClose();
-    }
+  const handleConfirmGlobalLogout = () => {
+    globalLogout(currentUser.id);
+    setConfirmGlobalLogout(false);
+    onClose();
   };
 
   return (
@@ -133,14 +133,34 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({ isOpen
           >
             بستن
           </button>
-          <button
-            type="button"
-            onClick={handleGlobalLogout}
-            className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 shadow-sm cursor-pointer order-1 sm:order-2"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>خروج از تمام دستگاه‌ها (Global Logout)</span>
-          </button>
+          {confirmGlobalLogout ? (
+            <div className="w-full sm:w-auto flex flex-wrap items-center justify-end gap-2 order-1 sm:order-2">
+              <span className="text-[11px] font-bold text-red-700">نشست‌های تمام دستگاه‌ها منقضی شود؟</span>
+              <button
+                type="button"
+                onClick={() => setConfirmGlobalLogout(false)}
+                className="px-3 py-2 min-h-[40px] rounded-xl bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmGlobalLogout}
+                className="px-4 py-2 min-h-[40px] rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer"
+              >
+                بله، خروج سراسری
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmGlobalLogout(true)}
+              className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 shadow-sm cursor-pointer order-1 sm:order-2"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>خروج از تمام دستگاه‌ها (Global Logout)</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

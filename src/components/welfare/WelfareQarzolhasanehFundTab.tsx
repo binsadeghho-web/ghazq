@@ -12,6 +12,7 @@ import {
   AlertCircle,
   X,
   Upload,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/apiClient';
@@ -133,7 +134,7 @@ export const WelfareQarzolhasanehFundTab: React.FC = () => {
     if (!file) return;
     setIsUploadingReceipt(true);
     try {
-      const uploaded = await api.uploadFile(file, 'misc');
+      const uploaded = await api.uploadFile(file, 'welfare_receipt');
       if (uploaded?.url) setReceiptUrl(uploaded.url);
     } catch (err: any) {
       setFeedback({ type: 'error', text: err?.message || 'خطا در بارگذاری تصویر فیش واریزی.' });
@@ -559,7 +560,23 @@ export const WelfareQarzolhasanehFundTab: React.FC = () => {
                         )}
                       </div>
 
-                      <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {pay.receiptUrl && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await api.downloadPrivateFile(pay.receiptUrl!, `receipt-${pay.trackingCode || pay.id}`);
+                              } catch (err: any) {
+                                setFeedback({ type: 'error', text: err?.message || 'خطا در دانلود فیش واریزی.' });
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-emerald-50 text-teal-900 border border-stone-200 text-[11px] font-bold cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>دانلود فیش</span>
+                          </button>
+                        )}
                         {pay.status === 'verified' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-black">
                             <CheckCircle2 className="w-3.5 h-3.5" /> تایید شده

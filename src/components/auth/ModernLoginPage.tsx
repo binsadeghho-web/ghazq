@@ -117,11 +117,11 @@ const JudicialEmblem: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion })
       className="absolute inset-0 rounded-2xl border border-[#E6BF6E]/35"
       style={{
         background:
-          'conic-gradient(from 0deg, rgba(243,208,130,0.45), rgba(216,168,78,0.05) 35%, rgba(96,165,250,0.28) 65%, rgba(243,208,130,0.45))',
+          'conic-gradient(from 0deg, rgba(243,208,130,0.45), rgba(216,168,78,0.05) 35%, rgba(16,185,129,0.28) 65%, rgba(243,208,130,0.45))',
         padding: '1.5px',
       }}
     >
-      <div className="w-full h-full rounded-[14px] bg-[#081533]" />
+      <div className="w-full h-full rounded-[14px] bg-[#071E17]" />
     </motion.div>
 
     <svg
@@ -486,9 +486,9 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
       className="relative w-full max-w-[1120px] z-10"
       dir="rtl"
     >
-      {/* OUTER ILLUMINATED ARCHITECTURAL FRAME (Animated Orbiting Gold-Sapphire Border) */}
-      <div className="relative p-[2px] rounded-[34px] overflow-hidden shadow-[0_32px_90px_-18px_rgba(2,7,20,0.85),0_0_50px_-15px_rgba(216,168,78,0.28)]">
-        {/* Orbiting golden-sapphire light beam around the frame perimeter */}
+      {/* OUTER ILLUMINATED ARCHITECTURAL FRAME (Animated Orbiting Gold-Emerald Border) */}
+      <div className="relative p-[2px] rounded-[34px] overflow-hidden shadow-[0_32px_90px_-18px_rgba(3,15,11,0.88),0_0_50px_-15px_rgba(216,168,78,0.25)]">
+        {/* Orbiting golden-emerald light beam around the frame perimeter */}
         <motion.div
           aria-hidden="true"
           animate={prefersReducedMotion ? undefined : { rotate: 360 }}
@@ -496,12 +496,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
           className="absolute -inset-[45%] pointer-events-none"
           style={{
             background:
-              'conic-gradient(from 0deg, rgba(246,216,140,0.92) 0deg, rgba(216,168,78,0.25) 55deg, rgba(37,99,235,0.25) 130deg, rgba(216,168,78,0.12) 180deg, rgba(255,236,184,0.85) 215deg, rgba(216,168,78,0.2) 280deg, rgba(59,130,246,0.25) 325deg, rgba(246,216,140,0.92) 360deg)',
+              'conic-gradient(from 0deg, rgba(243,208,120,0.92) 0deg, rgba(216,168,78,0.25) 55deg, rgba(16,185,129,0.25) 130deg, rgba(216,168,78,0.12) 180deg, rgba(255,236,184,0.85) 215deg, rgba(216,168,78,0.2) 280deg, rgba(20,184,166,0.25) 325deg, rgba(243,208,120,0.92) 360deg)',
           }}
         />
 
-        {/* Secondary recessed royal lapis mat frame */}
-        <div className="relative rounded-[32px] bg-[#07122B] p-1.5 sm:p-2">
+        {/* Secondary recessed obsidian-emerald mat frame */}
+        <div className="relative rounded-[32px] bg-[#061812] p-1.5 sm:p-2">
           {/* Ornate Top & Bottom Center Diamond Finials */}
           <div
             aria-hidden="true"
@@ -526,10 +526,10 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
           <CornerFiligree className="pointer-events-none absolute bottom-2.5 right-2.5 w-11 h-11 z-30 -scale-x-100 -scale-y-100 opacity-90" />
           <CornerFiligree className="pointer-events-none absolute bottom-2.5 left-2.5 w-11 h-11 z-30 -scale-y-100 opacity-90" />
 
-          {/* INNER CARD BODY (Two-Column Royal Lapis Showcase + Warm Ivory Pearl Form) */}
-          <div className="relative rounded-[26px] border border-[#D8A84E]/25 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px] bg-[#081533]">
-            {/* RIGHT COLUMN: ROYAL LAPIS SHOWCASE & LUMINOUS TITLE (7 cols) */}
-            <div className="lg:col-span-7 p-7 sm:p-10 lg:p-12 bg-gradient-to-br from-[#0D214D] via-[#091738] to-[#050E24] flex flex-col justify-between relative overflow-hidden text-right">
+          {/* INNER CARD BODY (Two-Column Obsidian-Emerald Showcase + Warm Ivory Pearl Form) */}
+          <div className="relative rounded-[26px] border border-[#D8A84E]/28 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[620px] bg-[#071E17]">
+            {/* RIGHT COLUMN: OBSIDIAN-EMERALD SHOWCASE & LUMINOUS TITLE (7 cols) */}
+            <div className="lg:col-span-7 p-7 sm:p-10 lg:p-12 bg-gradient-to-br from-[#0E3327] via-[#09241B] to-[#051610] flex flex-col justify-between relative overflow-hidden text-right">
               {/* Architectural Geometric Mandalas (Dual Counter-Rotating) */}
               <motion.div
                 aria-hidden="true"
@@ -549,7 +549,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                 <ShamsehMandala className="w-full h-full" strokeOpacity={0.16} />
               </motion.div>
 
-              {/* Soft Volumetric Lapis & Champagne Glows */}
+              {/* Soft Volumetric Emerald & Champagne Glows */}
               <motion.div
                 aria-hidden="true"
                 animate={
@@ -568,7 +568,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                     : { opacity: [0.28, 0.45, 0.28], scale: [1.04, 0.96, 1.04] }
                 }
                 transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-                className="pointer-events-none absolute -bottom-24 left-10 w-96 h-96 rounded-full bg-[#2B64D8]/20 blur-[110px]"
+                className="pointer-events-none absolute -bottom-24 left-10 w-96 h-96 rounded-full bg-emerald-500/18 blur-[110px]"
               />
 
               {/* Subtle Architectural Mihrab Arch Hairline Framing Top-Right */}
@@ -609,7 +609,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                       </motion.p>
                       <div className="flex items-center gap-2">
                         <span className="h-[1px] w-10 bg-gradient-to-l from-[#E6BF6E] to-transparent" />
-                        <span className="text-[11px] text-[#B7C7E6] font-medium">
+                        <span className="text-[11px] text-emerald-100/80 font-medium">
                           سامانه یکپارچه نخبگان قضایی
                         </span>
                       </div>
@@ -683,10 +683,10 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                   transition={{ duration: 0.65, delay: 0.55 }}
                   className="space-y-2 pt-1"
                 >
-                  <h2 className="text-sm sm:text-base font-extrabold text-[#E8EEF9]">
+                  <h2 className="text-sm sm:text-base font-extrabold text-[#F3F6F4]">
                     درگاه جامع خدمات علمی، پژوهشی، مشاوره‌ای و اداری دانش‌آموختگان
                   </h2>
-                  <p className="text-xs sm:text-[13px] text-[#A8B9D9] leading-7 max-w-xl">
+                  <p className="text-xs sm:text-[13px] text-emerald-100/75 leading-7 max-w-xl">
                     دسترسی امن به کارتابل خدمات اداری، سامانه راهبری پژوهش و مقاله، مشاوره‌های تخصصی قضاوت و روان‌شناختی، تالار نقد آراء و شبکه نخبگان قضایی کشور.
                   </p>
                 </motion.div>
@@ -705,17 +705,17 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.55, delay: item.delay, ease: [0.22, 1, 0.36, 1] }}
                     whileHover={prefersReducedMotion ? undefined : { y: -3 }}
-                    className="group relative p-4 rounded-2xl bg-[#0D1E46]/70 border border-[#D8A84E]/22 hover:border-[#F0CB79]/50 transition-colors backdrop-blur-sm"
+                    className="group relative p-4 rounded-2xl bg-[#071E17]/75 border border-[#D8A84E]/22 hover:border-[#F0CB79]/50 transition-colors backdrop-blur-sm"
                   >
                     <div className="absolute top-0 right-4 left-4 h-[1px] bg-gradient-to-l from-transparent via-[#F0CB79]/55 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div
-                      className="text-xl font-black text-[#F5D384] tracking-tight"
+                      className="text-xl font-black text-[#F3D078] tracking-tight"
                       style={{ fontVariantNumeric: 'tabular-nums' }}
                     >
                       {item.value}
                     </div>
-                    <div className="text-xs font-extrabold text-[#F3F6FC] mt-1">{item.label}</div>
-                    <div className="text-[11px] text-[#9EB0D1] mt-1">{item.sub}</div>
+                    <div className="text-xs font-extrabold text-[#F3F6F4] mt-1">{item.label}</div>
+                    <div className="text-[11px] text-emerald-100/65 mt-1">{item.sub}</div>
                   </motion.div>
                 ))}
               </div>
@@ -725,20 +725,20 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                 initial={prefersReducedMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 1.05 }}
-                className="relative z-10 pt-4 border-t border-[#D8A84E]/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#A8B9D9]"
+                className="relative z-10 pt-4 border-t border-[#D8A84E]/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-emerald-100/75"
               >
                 <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-[#E6BF6E] shrink-0" />
+                  <Shield className="w-4 h-4 text-[#F3D078] shrink-0" />
                   <span>ارتباط امن و احراز هویت رمزنگاری‌شده در پایگاه داده مرکزی</span>
                 </div>
-                <span className="text-[#D8A84E]/80 font-semibold">
+                <span className="text-[#F3D078]/85 font-semibold">
                   دبیرخانه مرکزی مرکز دانش‌آموختگان
                 </span>
               </motion.div>
             </div>
 
             {/* LEFT COLUMN: WARM ALABASTER IVORY PEARL AUTHENTICATION PANEL (5 cols) */}
-            <div className="lg:col-span-5 p-7 sm:p-9 lg:p-10 bg-gradient-to-b from-[#FCF9F2] via-[#FAF6EC] to-[#F3ECDC] text-[#0B1A3B] flex flex-col justify-between relative">
+            <div className="lg:col-span-5 p-7 sm:p-9 lg:p-10 bg-gradient-to-b from-[#FCFCF9] via-[#FAF6EC] to-[#F3ECDC] text-[#071E17] flex flex-col justify-between relative">
               {/* Subtle vertical golden separator sheen on desktop */}
               <div
                 aria-hidden="true"
@@ -749,7 +749,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="absolute top-5 left-5 p-2 rounded-xl bg-[#0B1A3B]/5 hover:bg-[#0B1A3B]/10 text-[#334466] hover:text-[#0B1A3B] transition-colors border border-[#0B1A3B]/10 cursor-pointer"
+                  className="absolute top-5 left-5 p-2 rounded-xl bg-[#071E17]/5 hover:bg-[#071E17]/10 text-[#3B5248] hover:text-[#071E17] transition-colors border border-[#071E17]/10 cursor-pointer"
                   aria-label="بستن"
                 >
                   <X className="w-4 h-4" />
@@ -759,7 +759,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
               <div className="space-y-6 my-auto">
                 {/* Animated Sliding-Indicator Mode Switcher */}
                 {!mustChangePasswordMode && (
-                  <div className="relative grid grid-cols-2 p-1 rounded-2xl bg-[#EAE2CF]/85 border border-[#D4C39D]/70 shadow-inner">
+                  <div className="relative grid grid-cols-2 p-1 rounded-2xl bg-[#EFEAD9] border border-[#DED5BC] shadow-inner">
                     <button
                       type="button"
                       onClick={() => {
@@ -767,14 +767,14 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         setErrorMsg('');
                       }}
                       className={`relative z-10 py-2.5 px-3 rounded-xl text-xs font-extrabold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
-                        !customerRegisterMode ? 'text-[#FCF9F2]' : 'text-[#314368] hover:text-[#0B1A3B]'
+                        !customerRegisterMode ? 'text-[#F3D078]' : 'text-[#3B5248] hover:text-[#071E17]'
                       }`}
                     >
                       {!customerRegisterMode && (
                         <motion.span
                           layoutId="loginAuthTabHighlight"
                           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                          className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-l from-[#0C1E47] to-[#17336E] shadow-md shadow-[#0C1E47]/25"
+                          className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-l from-[#071E17] to-[#113D30] shadow-md shadow-[#071E17]/25"
                         />
                       )}
                       <KeyRound className="w-3.5 h-3.5" />
@@ -788,14 +788,14 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         setErrorMsg('');
                       }}
                       className={`relative z-10 py-2.5 px-3 rounded-xl text-xs font-extrabold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
-                        customerRegisterMode ? 'text-[#0B1A3B]' : 'text-[#314368] hover:text-[#0B1A3B]'
+                        customerRegisterMode ? 'text-[#071E17]' : 'text-[#3B5248] hover:text-[#071E17]'
                       }`}
                     >
                       {customerRegisterMode && (
                         <motion.span
                           layoutId="loginAuthTabHighlight"
                           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                          className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-l from-[#E8BE67] to-[#D49D3A] shadow-md shadow-[#C89335]/25"
+                          className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-l from-[#D4AF37] to-[#E8C15A] shadow-md shadow-[#C89335]/25"
                         />
                       )}
                       <UserPlus className="w-3.5 h-3.5" />
@@ -807,7 +807,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                 {/* Form Heading */}
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-[#9A6B19] text-xs font-extrabold">
-                    <span className="h-[2px] w-4 rounded-full bg-[#C89335]" />
+                    <span className="h-[2px] w-4 rounded-full bg-[#D4AF37]" />
                     <span>
                       {mustChangePasswordMode
                         ? 'اقدام امنیتی الزامی'
@@ -816,14 +816,14 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         : 'احراز هویت سازمانی'}
                     </span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-[#0A1838]">
+                  <h3 className="text-xl sm:text-2xl font-black text-[#071E17]">
                     {mustChangePasswordMode
                       ? 'تغییر اجباری رمز عبور اولیه'
                       : customerRegisterMode
                       ? 'ایجاد حساب کاربری مشتری'
                       : 'ورود به حساب کاربری'}
                   </h3>
-                  <p className="text-xs text-[#495A7A] leading-relaxed">
+                  <p className="text-xs text-[#4C6258] leading-relaxed">
                     {mustChangePasswordMode
                       ? `کاربر گرامی${tempUserData?.fullName ? ` ${tempUserData.fullName}` : ''}، جهت حفظ امنیت حساب، رمز عبور جدید خود را ثبت نمائید.`
                       : customerRegisterMode
@@ -873,7 +873,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                       className="space-y-3.5"
                     >
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-1.5">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-1.5">
                           نام و نام خانوادگی
                         </label>
                         <input
@@ -882,12 +882,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                           value={custFullName}
                           onChange={e => setCustFullName(e.target.value)}
                           placeholder="مثال: محمد محمدی"
-                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 transition-all shadow-xs"
+                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 transition-all shadow-xs"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-1.5">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-1.5">
                           کد ملی (شناسه کاربری ورود)
                         </label>
                         <input
@@ -897,12 +897,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                           onChange={e => setCustNationalId(e.target.value)}
                           placeholder="۱۰ رقم کد ملی"
                           dir="ltr"
-                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] font-mono focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 transition-all shadow-xs"
+                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 transition-all shadow-xs"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-1.5">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-1.5">
                           شماره تلفن همراه
                         </label>
                         <input
@@ -915,12 +915,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                           }}
                           placeholder="09120000000"
                           dir="ltr"
-                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] font-mono focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 transition-all shadow-xs"
+                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 transition-all shadow-xs"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-1.5">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-1.5">
                           رمز عبور دلخواه
                         </label>
                         <input
@@ -930,7 +930,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                           onChange={e => setCustPassword(e.target.value)}
                           placeholder="حداقل ۴ کاراکتر"
                           dir="ltr"
-                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] font-mono focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 transition-all shadow-xs"
+                          className="w-full px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] font-mono focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 transition-all shadow-xs"
                         />
                       </div>
 
@@ -939,7 +939,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
                         type="submit"
                         disabled={loading}
-                        className="group relative overflow-hidden w-full py-3.5 px-6 bg-gradient-to-l from-[#C89335] via-[#DFB054] to-[#C89335] text-[#0B1A3B] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-shadow shadow-lg shadow-[#C89335]/30 hover:shadow-xl hover:shadow-[#C89335]/40 disabled:opacity-50 mt-2 cursor-pointer"
+                        className="group relative overflow-hidden w-full py-3.5 px-6 bg-gradient-to-l from-[#D4AF37] via-[#E5BF52] to-[#D4AF37] text-[#071E17] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-shadow shadow-lg shadow-[#D4AF37]/25 hover:shadow-xl hover:shadow-[#D4AF37]/35 disabled:opacity-50 mt-2 cursor-pointer"
                       >
                         <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/35 to-transparent" />
                         {loading ? (
@@ -965,7 +965,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                       className="space-y-4"
                     >
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-2">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-2">
                           کد ملی / شناسه کاربری
                         </label>
                         <div className="relative group">
@@ -975,16 +975,16 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                             value={identifier}
                             onChange={e => setIdentifier(e.target.value)}
                             placeholder="کد ملی یا نام کاربری سازمانی"
-                            className="w-full px-4 py-3.5 pr-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 font-mono transition-all shadow-xs"
+                            className="w-full px-4 py-3.5 pr-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 font-mono transition-all shadow-xs"
                             dir="ltr"
                           />
-                          <UserIcon className="w-5 h-5 text-[#7C8BA6] group-focus-within:text-[#16326E] transition-colors absolute right-3.5 top-3.5" />
+                          <UserIcon className="w-5 h-5 text-[#647D72] group-focus-within:text-[#0E3226] transition-colors absolute right-3.5 top-3.5" />
                         </div>
                       </div>
 
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="block text-xs font-bold text-[#1A2D54]">
+                          <label className="block text-xs font-bold text-[#0E3226]">
                             رمز عبور
                           </label>
                           <button
@@ -1002,15 +1002,15 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full px-4 py-3.5 pr-11 pl-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 font-mono transition-all shadow-xs"
+                            className="w-full px-4 py-3.5 pr-11 pl-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 font-mono transition-all shadow-xs"
                             dir="ltr"
                           />
-                          <Lock className="w-5 h-5 text-[#7C8BA6] group-focus-within:text-[#16326E] transition-colors absolute right-3.5 top-3.5" />
+                          <Lock className="w-5 h-5 text-[#647D72] group-focus-within:text-[#0E3226] transition-colors absolute right-3.5 top-3.5" />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             aria-label={showPassword ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور'}
-                            className="absolute left-3.5 top-3.5 text-[#7C8BA6] hover:text-[#0B1A3B] transition-colors cursor-pointer"
+                            className="absolute left-3.5 top-3.5 text-[#647D72] hover:text-[#071E17] transition-colors cursor-pointer"
                           >
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
@@ -1022,11 +1022,11 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                           type="checkbox"
                           id="rememberSession"
                           defaultChecked
-                          className="w-4 h-4 rounded border-[#C8BBA0] accent-[#142D66] cursor-pointer"
+                          className="w-4 h-4 rounded border-[#C8BEA4] accent-[#0E3226] cursor-pointer"
                         />
                         <label
                           htmlFor="rememberSession"
-                          className="text-xs text-[#4A5B7C] select-none cursor-pointer font-medium"
+                          className="text-xs text-[#4C6258] select-none cursor-pointer font-medium"
                         >
                           به‌خاطر سپردن نشست کاری امن روی این مرورگر
                         </label>
@@ -1037,7 +1037,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
                         type="submit"
                         disabled={loading}
-                        className="group relative overflow-hidden w-full py-4 px-6 bg-gradient-to-l from-[#0B1B42] via-[#15316E] to-[#0E2456] text-[#FCF9F2] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-shadow shadow-xl shadow-[#0B1B42]/25 hover:shadow-2xl hover:shadow-[#0B1B42]/35 border border-[#D8A84E]/40 disabled:opacity-50 mt-3 cursor-pointer"
+                        className="group relative overflow-hidden w-full py-4 px-6 bg-gradient-to-l from-[#071E17] via-[#0E3226] to-[#113D30] text-[#F3D078] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-shadow shadow-xl shadow-[#071E17]/25 hover:shadow-2xl hover:shadow-[#071E17]/35 border border-[#D8A84E]/45 disabled:opacity-50 mt-3 cursor-pointer"
                       >
                         <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-[#F6D88C]/25 to-transparent" />
                         {loading ? (
@@ -1048,7 +1048,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         ) : (
                           <>
                             <span>ورود امن به سامانه</span>
-                            <ArrowLeft className="w-4 h-4 text-[#F3D082]" />
+                            <ArrowLeft className="w-4 h-4 text-[#F3D078]" />
                           </>
                         )}
                       </motion.button>
@@ -1066,7 +1066,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                       className="space-y-4"
                     >
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-2">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-2">
                           رمز عبور جدید
                         </label>
                         <div className="relative group">
@@ -1076,14 +1076,14 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                             value={newPassword}
                             onChange={e => setNewPassword(e.target.value)}
                             placeholder="حداقل ۴ کاراکتر"
-                            className="w-full px-4 py-3.5 pr-11 pl-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 font-mono transition-all shadow-xs"
+                            className="w-full px-4 py-3.5 pr-11 pl-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 font-mono transition-all shadow-xs"
                             dir="ltr"
                           />
-                          <Lock className="w-5 h-5 text-[#7C8BA6] group-focus-within:text-[#16326E] transition-colors absolute right-3.5 top-3.5" />
+                          <Lock className="w-5 h-5 text-[#647D72] group-focus-within:text-[#0E3226] transition-colors absolute right-3.5 top-3.5" />
                           <button
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute left-3.5 top-3.5 text-[#7C8BA6] hover:text-[#0B1A3B] transition-colors cursor-pointer"
+                            className="absolute left-3.5 top-3.5 text-[#647D72] hover:text-[#071E17] transition-colors cursor-pointer"
                           >
                             {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
@@ -1091,7 +1091,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#1A2D54] mb-2">
+                        <label className="block text-xs font-bold text-[#0E3226] mb-2">
                           تکرار رمز عبور جدید
                         </label>
                         <div className="relative group">
@@ -1101,10 +1101,10 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                             value={confirmPassword}
                             onChange={e => setConfirmPassword(e.target.value)}
                             placeholder="تکرار رمز عبور جدید"
-                            className="w-full px-4 py-3.5 pr-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D7CCB5] text-[#0B1A3B] placeholder-[#8A95AA] focus:outline-none focus:border-[#16326E] focus:ring-4 focus:ring-[#D8A84E]/20 font-mono transition-all shadow-xs"
+                            className="w-full px-4 py-3.5 pr-11 text-xs sm:text-sm rounded-2xl bg-white border border-[#D9D0B8] text-[#071E17] placeholder-[#8C9991] focus:outline-none focus:border-[#0E3226] focus:ring-4 focus:ring-[#D4AF37]/20 font-mono transition-all shadow-xs"
                             dir="ltr"
                           />
-                          <Lock className="w-5 h-5 text-[#7C8BA6] group-focus-within:text-[#16326E] transition-colors absolute right-3.5 top-3.5" />
+                          <Lock className="w-5 h-5 text-[#647D72] group-focus-within:text-[#0E3226] transition-colors absolute right-3.5 top-3.5" />
                         </div>
                       </div>
 
@@ -1113,7 +1113,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
                         type="submit"
                         disabled={loading || changePasswordSuccess}
-                        className="group relative overflow-hidden w-full py-4 px-6 bg-gradient-to-l from-[#0B1B42] via-[#15316E] to-[#0E2456] text-[#FCF9F2] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-shadow shadow-xl shadow-[#0B1B42]/25 border border-[#D8A84E]/50 disabled:opacity-50 mt-3 cursor-pointer"
+                        className="group relative overflow-hidden w-full py-4 px-6 bg-gradient-to-l from-[#071E17] via-[#0E3226] to-[#113D30] text-[#F3D078] font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-shadow shadow-xl shadow-[#071E17]/25 border border-[#D8A84E]/50 disabled:opacity-50 mt-3 cursor-pointer"
                       >
                         {loading ? (
                           <>
@@ -1123,7 +1123,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                         ) : (
                           <>
                             <span>ثبت رمز عبور جدید و ورود</span>
-                            <CheckCircle2 className="w-4 h-4 text-[#F3D082]" />
+                            <CheckCircle2 className="w-4 h-4 text-[#F3D078]" />
                           </>
                         )}
                       </motion.button>
@@ -1133,12 +1133,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
               </div>
 
               {/* Form Pane Footer */}
-              <div className="pt-5 mt-6 border-t border-[#DED3BC] text-[11px] text-[#5B6B8A] flex items-center justify-between">
+              <div className="pt-5 mt-6 border-t border-[#DED3BC] text-[11px] text-[#4C6258] flex items-center justify-between">
                 <span className="font-semibold">پشتیبانی احراز هویت اعضا</span>
                 <button
                   type="button"
                   onClick={() => setShowHelpModal(true)}
-                  className="flex items-center gap-1.5 text-[#14306B] hover:text-[#9A6B19] font-bold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-[#0E3226] hover:text-[#9A6B19] font-bold transition-colors cursor-pointer"
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
                   <span>راهنمای ورود و بازیابی</span>
@@ -1151,15 +1151,15 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
     </motion.div>
   );
 
-  // Full-bleed Midnight Lapis Ambient Backdrop (shared across fullPage and modal modes)
+  // Full-bleed Obsidian-Emerald Ambient Backdrop (shared across fullPage and modal modes)
   const ambientBackdrop = (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-      {/* Radial Royal Lapis Depth */}
+      {/* Radial Obsidian-Emerald Depth */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 85% 70% at 75% 15%, rgba(27, 63, 142, 0.42) 0%, rgba(7, 17, 42, 0.92) 55%, #040A19 100%)',
+            'radial-gradient(ellipse 85% 70% at 75% 15%, rgba(16, 78, 56, 0.45) 0%, rgba(7, 30, 23, 0.94) 55%, #03110C 100%)',
         }}
       />
 
@@ -1190,7 +1190,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
         <ShamsehMandala className="w-full h-full" strokeOpacity={0.18} />
       </motion.div>
 
-      {/* Breathing Golden & Cobalt Volumetric Halos */}
+      {/* Breathing Golden & Emerald Volumetric Halos */}
       <motion.div
         animate={
           prefersReducedMotion
@@ -1207,7 +1207,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
             : { x: [0, -28, 0], y: [0, 26, 0], opacity: [0.24, 0.4, 0.24] }
         }
         transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute bottom-[8%] left-[12%] w-[520px] h-[520px] rounded-full bg-[#2459C7]/22 blur-[140px]"
+        className="absolute bottom-[8%] left-[12%] w-[520px] h-[520px] rounded-full bg-emerald-600/20 blur-[140px]"
       />
 
       {/* Floating Luminous Golden Dust Motes */}
@@ -1664,7 +1664,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
         <>
           {mobileLoginView}
           <div
-            className="hidden md:flex relative min-h-screen bg-[#040A19] items-center justify-center p-4 sm:p-6 lg:p-10 overflow-hidden"
+            className="hidden md:flex relative min-h-screen bg-[#03110C] items-center justify-center p-4 sm:p-6 lg:p-10 overflow-hidden"
             dir="rtl"
           >
             {ambientBackdrop}
@@ -1677,7 +1677,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
             {mobileLoginView}
           </div>
           <div
-            className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-[#040A19]/90 backdrop-blur-2xl overflow-y-auto"
+            className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-[#03110C]/92 backdrop-blur-2xl overflow-y-auto"
             dir="rtl"
           >
             {ambientBackdrop}
@@ -1703,7 +1703,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.2 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-md bg-gradient-to-b from-[#071E17] to-[#0E3226] md:from-[#0D1E45] md:to-[#07122B] border border-[#D4AF37]/45 rounded-3xl p-6 text-[#F7F4EC] space-y-4 shadow-[0_28px_70px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden"
+              className="w-full max-w-md bg-gradient-to-b from-[#071E17] to-[#0E3226] border border-[#D4AF37]/45 rounded-3xl p-6 text-[#F7F4EC] space-y-4 shadow-[0_28px_70px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden"
             >
               <CornerFiligree className="hidden md:block pointer-events-none absolute top-2 right-2 w-8 h-8 -scale-x-100 opacity-60" />
               <CornerFiligree className="hidden md:block pointer-events-none absolute bottom-2 left-2 w-8 h-8 -scale-y-100 opacity-60" />
@@ -1712,7 +1712,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                 type="button"
                 onClick={() => setShowHelpModal(false)}
                 aria-label="بستن"
-                className="absolute top-4 left-4 p-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-emerald-100 md:text-[#B7C7E6] hover:text-white transition-colors cursor-pointer"
+                className="absolute top-4 left-4 p-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-emerald-100 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1722,13 +1722,13 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                 <h4 className="font-black text-base">راهنمای بازیابی حساب و پشتیبانی</h4>
               </div>
 
-              <p className="text-xs text-emerald-100/90 md:text-[#C6D3EB] leading-relaxed">
+              <p className="text-xs text-emerald-100/90 leading-relaxed">
                 جهت حفظ امنیت اطلاعات قضات و دانش‌آموختگان، بازیابی رمز عبور منحصراً از طریق تأیید هویت در دبیرخانه مرکز امکان‌پذیر است.
               </p>
 
               <div className="space-y-2.5 pt-1 text-xs">
-                <div className="p-3.5 rounded-2xl bg-white/10 md:bg-[#112655]/80 border border-[#D4AF37]/25 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-emerald-50 md:text-[#DCE5F7]">
+                <div className="p-3.5 rounded-2xl bg-white/10 border border-[#D4AF37]/25 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-50">
                     <PhoneCall className="w-4 h-4 text-[#F3D078]" />
                     <span>تلفن پشتیبانی دبیرخانه:</span>
                   </div>
@@ -1740,12 +1740,12 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-white/10 md:bg-[#112655]/80 border border-[#D4AF37]/25 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-emerald-50 md:text-[#DCE5F7]">
-                    <Mail className="w-4 h-4 text-[#F3D078] md:text-[#93C5FD]" />
+                <div className="p-3.5 rounded-2xl bg-white/10 border border-[#D4AF37]/25 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-50">
+                    <Mail className="w-4 h-4 text-[#F3D078]" />
                     <span>پست الکترونیک رسمی:</span>
                   </div>
-                  <span className="font-mono text-[#F3D078] md:text-[#BFDBFE] font-bold text-[11px]">
+                  <span className="font-mono text-[#F3D078] font-bold text-[11px]">
                     support@feqh-qaza.ir
                   </span>
                 </div>
@@ -1754,7 +1754,7 @@ export const ModernLoginPage: React.FC<ModernLoginPageProps> = ({
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="w-full py-3 bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] md:text-[#091533] font-black rounded-2xl text-xs transition-all mt-2 cursor-pointer shadow-lg shadow-[#D4AF37]/20"
+                className="w-full py-3 bg-gradient-to-l from-[#D4AF37] to-[#F3D078] text-[#071E17] font-black rounded-2xl text-xs transition-all mt-2 cursor-pointer shadow-lg shadow-[#D4AF37]/20"
               >
                 متوجه شدم
               </button>

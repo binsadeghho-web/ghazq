@@ -90,7 +90,7 @@ export const HonorsManagerEditor: React.FC<EditorBaseProps> = ({
         handleUpdateField(targetId, { imageUrl: res.url });
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingId(null);
       activeUploadTargetRef.current = null;
@@ -438,7 +438,7 @@ export const UnifiedShowcaseManagerEditor: React.FC<EditorBaseProps> = ({
   const toggleItem = (key: string) => {
     const exists = included.includes(key);
     if (exists && included.length <= 1) {
-      alert('حداقل یک ویترین باید در نمایشگاه جامع انتخاب شده باشد.');
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'حداقل یک ویترین باید در نمایشگاه جامع انتخاب شده باشد.', type: 'info' } }));
       return;
     }
     const next = exists ? included.filter(k => k !== key) : [...included, key];

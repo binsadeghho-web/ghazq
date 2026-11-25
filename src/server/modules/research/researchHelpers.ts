@@ -307,6 +307,11 @@ export function mapResearchMentorshipRow(
         },
       ];
 
+  const rawAttachments = parseJsonSafe<Array<{ url: string; name: string; size?: number }>>(row.attachments, []);
+  const attachments = Array.isArray(rawAttachments)
+    ? rawAttachments.filter(a => a && typeof a.url === 'string' && a.url.trim())
+    : [];
+
   const mapped: ResearchMentorship & { version: number } = {
     id: fromIdBuffer(row.id),
     applicantId: fromIdBuffer(row.applicant_id),
@@ -331,6 +336,7 @@ export function mapResearchMentorshipRow(
     reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
     milestones,
     messages,
+    attachments,
     version: Number(row.version || 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,

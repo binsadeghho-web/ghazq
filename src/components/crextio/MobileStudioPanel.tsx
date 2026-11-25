@@ -252,7 +252,7 @@ export const MobileStudioPanel: React.FC<MobileStudioPanelProps> = ({
         cb(res.url);
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err?.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err?.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingTarget(null);
       uploadCallbackRef.current = null;

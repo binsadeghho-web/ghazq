@@ -109,9 +109,9 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
       {isAdmin && (
         <button
           onClick={() => setIsEditModalOpen(true)}
-          className="mb-2.5 sm:mb-0 sm:absolute sm:top-4 sm:left-4 z-30 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white text-stone-800 border border-stone-300 text-xs font-bold shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+          className="mb-2.5 sm:mb-0 sm:absolute sm:top-4 sm:left-4 z-30 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FCFCF9]/95 hover:bg-white text-[#6E5212] border border-[#E5C97B] text-xs font-bold shadow-sm backdrop-blur-md transition-all active:scale-95 cursor-pointer"
         >
-          <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+          <Edit3 className="w-3.5 h-3.5 text-[#9A7116]" />
           <span>ویرایش ویترین دوره‌ها</span>
         </button>
       )}
@@ -121,16 +121,16 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-emerald-700" />
-                <h3 className="font-extrabold text-base text-stone-900">
+                <Sparkles className="w-5 h-5 text-[#9A7116]" />
+                <h3 className="font-extrabold text-base text-[#071E17]">
                   {crextioConfig.courseShowcaseTitle || 'ویترین شبکه‌ای دوره‌های تخصصی فقه و قضا'}
                 </h3>
               </div>
               {crextioConfig.courseShowcaseSubtitle && (
-                <p className="text-xs text-stone-500 mt-0.5">{crextioConfig.courseShowcaseSubtitle}</p>
+                <p className="text-xs text-[#525E58] mt-0.5">{crextioConfig.courseShowcaseSubtitle}</p>
               )}
             </div>
-            <span className="text-xs font-bold text-stone-500 bg-stone-100 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold text-[#525E58] tabular-nums">
               {toPersianNumbers(displayCourses.length)} دوره فعال
             </span>
           </div>
@@ -141,7 +141,7 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                 <motion.div
                   key={c.id}
                   whileHover={{ y: -4 }}
-                  className="min-w-[78vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-gradient-to-br from-[#122A22] to-[#0A1713] text-white rounded-2xl sm:rounded-[28px] border border-emerald-600/30 shadow-md flex flex-col justify-between overflow-hidden"
+                  className="min-w-[78vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-gradient-to-br from-[#071E17] via-[#0B2D22] to-[#113C2E] text-white rounded-2xl sm:rounded-[28px] border border-[#F3D078]/25 shadow-lg flex flex-col justify-between overflow-hidden"
                 >
                   {cardCover && (
                     <div className="relative h-28 w-full overflow-hidden">
@@ -151,34 +151,34 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0A1713] via-black/30 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-black/35 to-transparent" />
                     </div>
                   )}
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/30">
+                        <span className="text-[#F3D078] font-bold">
                           {c.level}
                         </span>
-                        <span className="text-stone-300 font-medium">
+                        <span className="text-emerald-100/75 font-medium tabular-nums">
                           {toPersianNumbers(c.hours)} ساعت
                         </span>
                       </div>
                       <h4 className="font-extrabold text-sm text-white line-clamp-1">{c.title}</h4>
-                      <p className="text-xs text-emerald-200/80 font-medium">{c.instructor}</p>
-                      <p className="text-xs text-stone-300/80 line-clamp-2 leading-relaxed">{c.description}</p>
+                      <p className="text-xs text-[#F3D078]/85 font-medium">{c.instructor}</p>
+                      <p className="text-xs text-emerald-100/75 line-clamp-2 leading-relaxed">{c.description}</p>
                     </div>
-                    <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-white/12 flex items-center justify-between text-xs">
                       {showPrice ? (
-                        <span className="font-bold text-emerald-300">
+                        <span className="font-bold text-[#F3D078] tabular-nums">
                           {c.price > 0 ? `${toPersianNumbers(c.price.toLocaleString('fa-IR'))} تومان` : 'رایگان اعضا'}
                         </span>
                       ) : (
-                        <span className="font-bold text-emerald-300">ویژه اعضای کانون</span>
+                        <span className="font-bold text-[#F3D078]">ویژه اعضای کانون</span>
                       )}
                       <button
                         onClick={() => onSelectCourse?.(c)}
-                        className="px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] font-black transition-all cursor-pointer whitespace-nowrap"
                       >
                         {isAdmin ? 'مدیریت دوره' : crextioConfig.courseShowcaseCtaText || 'مشاهده و ثبت‌نام'}
                       </button>
@@ -190,19 +190,20 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
           </div>
         </div>
       ) : activeMode === 'compact' ? (
-        <div className="w-full bg-[#FCFCF9]/95 p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-[#E3E0D3] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="w-full bg-[#FCFCF9] p-3.5 sm:p-4 rounded-2xl sm:rounded-[26px] border border-[#DFD8C4] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-emerald-200" />
+            <div className="w-10 h-10 rounded-xl bg-[#071E17] text-[#F3D078] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-bold">
+                <span className="text-[11px] font-bold text-[#8A6314]">
                   {crextioConfig.courseShowcaseBadge || 'ویترین فشرده دوره‌ها'}
                 </span>
-                <span className="text-xs font-bold text-stone-900">{currentCourse.title}</span>
+                <span aria-hidden="true" className="text-[#D4CBB3]">·</span>
+                <span className="text-xs font-black text-[#071E17]">{currentCourse.title}</span>
               </div>
-              <p className="text-[11px] text-stone-500 mt-0.5">
+              <p className="text-[11px] text-[#525E58] mt-0.5 tabular-nums">
                 مدرس: {currentCourse.instructor} · مدت: {toPersianNumbers(currentCourse.hours)} ساعت · سطح: {currentCourse.level}
               </p>
             </div>
@@ -210,13 +211,13 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
 
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
             {showPrice && (
-              <span className="text-xs font-bold text-emerald-800 sm:ml-2">
+              <span className="text-xs font-bold text-[#0C4A38] sm:ml-2 tabular-nums">
                 {currentCourse.price > 0 ? `${toPersianNumbers(currentCourse.price.toLocaleString('fa-IR'))} تومان` : 'رایگان'}
               </span>
             )}
             <button
               onClick={() => onSelectCourse?.(currentCourse)}
-              className="px-3.5 py-2 sm:py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="px-3.5 py-2 sm:py-1.5 bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap"
             >
               {isAdmin ? 'مدیریت دوره' : crextioConfig.courseShowcaseCtaText || 'ورود به دوره'}
             </button>
@@ -224,7 +225,7 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
         </div>
       ) : (
         /* Carousel View (Mode 1: Featured Courses Slider with configurable timer + cover image) */
-        <div className="relative w-full min-h-[240px] sm:min-h-[280px] overflow-hidden rounded-2xl sm:rounded-[36px] shadow-xl group bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 border border-emerald-500/20 text-white p-4 sm:p-8 flex flex-col justify-between">
+        <div className="relative w-full min-h-[240px] sm:min-h-[280px] overflow-hidden rounded-2xl sm:rounded-[30px] shadow-[0_22px_50px_-24px_rgba(7,30,23,0.45)] group bg-gradient-to-br from-[#071E17] via-[#0B2D22] to-[#113C2E] border border-[#F3D078]/30 text-white p-4 sm:p-8 flex flex-col justify-between">
           {(currentCourse.coverImage || showcaseCoverImg) && (
             <div className="absolute inset-0 pointer-events-none opacity-25">
               <img
@@ -233,11 +234,11 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/75 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/78 to-transparent" />
             </div>
           )}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[#F3D078]/8 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
 
           <AnimatePresence mode="wait">
             <motion.div
@@ -248,19 +249,21 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
               transition={{ duration: 0.4, ease: "easeInOut" }}
               className="relative z-10 space-y-4"
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 backdrop-blur-md">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-[#F3D078] font-black inline-flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#F3D078]" />
                   {crextioConfig.courseShowcaseBadge || 'ویترین ویژه دوره‌های علمی'}
                 </span>
-                <span className="px-3 py-1 rounded-full bg-white/10 text-white/90 text-xs font-medium">
+                <span aria-hidden="true" className="text-white/30">·</span>
+                <span className="text-emerald-100/85 font-medium">
                   سطح: {currentCourse.level}
                 </span>
-                <span className="px-3 py-1 rounded-full bg-emerald-600/40 text-emerald-200 text-xs font-bold">
+                <span aria-hidden="true" className="text-white/30">·</span>
+                <span className="text-[#F3D078]/90 font-bold tabular-nums">
                   {toPersianNumbers(currentCourse.hours)} ساعت آموزش
                 </span>
-                <span className="text-[11px] text-emerald-200/80 font-medium">
-                  هر {toPersianNumbers(intervalSeconds)} ثانیه
+                <span className="text-[11px] text-emerald-100/65 font-medium tabular-nums">
+                  (هر {toPersianNumbers(intervalSeconds)} ثانیه)
                 </span>
               </div>
 
@@ -268,39 +271,39 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                 <h2 className="text-lg sm:text-3xl font-extrabold text-white leading-tight">
                   {currentCourse.title}
                 </h2>
-                <p className="text-emerald-100/80 text-xs sm:text-sm font-medium flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-emerald-400" />
+                <p className="text-emerald-100/85 text-xs sm:text-sm font-medium flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-[#F3D078]" />
                   مدرس: {currentCourse.instructor}
                 </p>
               </div>
 
-              <p className="text-white/70 text-xs sm:text-sm line-clamp-2 max-w-2xl leading-relaxed">
+              <p className="text-emerald-100/75 text-xs sm:text-sm line-clamp-2 max-w-2xl leading-relaxed">
                 {currentCourse.description}
               </p>
             </motion.div>
           </AnimatePresence>
 
           {/* Footer Controls & CTA */}
-          <div className="relative z-10 pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-white/10 mt-4">
+          <div className="relative z-10 pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-white/12 mt-4">
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto justify-between sm:justify-start">
               {showPrice ? (
-                <span className="text-sm sm:text-base font-bold text-emerald-400">
+                <span className="text-sm sm:text-base font-bold text-[#F3D078] tabular-nums">
                   {currentCourse.price > 0 ? `${toPersianNumbers(currentCourse.price.toLocaleString('fa-IR'))} تومان` : 'رایگان (ویژه اعضا)'}
                 </span>
               ) : (
-                <span className="text-xs sm:text-sm font-bold text-emerald-300">
+                <span className="text-xs sm:text-sm font-bold text-[#F3D078]">
                   دوره تخصصی کانون دانش‌آموختگان
                 </span>
               )}
               {currentCourse.isEnrolled && (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1">
+                <span className="text-emerald-300 text-xs font-bold inline-flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   ثبت‌نام شده
                 </span>
               )}
               <button
                 onClick={() => onSelectCourse?.(currentCourse)}
-                className="px-4 py-2 sm:py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs shadow-md transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] font-black text-xs shadow-md transition-all cursor-pointer whitespace-nowrap"
               >
                 {isAdmin ? 'پنل مدیریت دوره' : 'مشاهده و ثبت‌نام'}
               </button>
@@ -313,7 +316,7 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                     key={i}
                     onClick={() => setIndex(i)}
                     className={`h-2 rounded-full transition-all cursor-pointer ${
-                      i === index % displayCourses.length ? 'w-6 bg-emerald-400' : 'w-2 bg-white/30 hover:bg-white/50'
+                      i === index % displayCourses.length ? 'w-6 bg-[#F3D078]' : 'w-2 bg-white/30 hover:bg-white/50'
                     }`}
                     title={`دوره ${toPersianNumbers(i + 1)}`}
                   />
@@ -324,21 +327,21 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPaused(p => !p)}
-                  className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-xl bg-white/10 text-[#F3D078] flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer"
                   title={isPaused ? 'ادامه پخش' : 'توقف'}
                 >
                   {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={() => setIndex((prev) => (prev - 1 + displayCourses.length) % displayCourses.length)}
-                  className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
+                  className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
                   aria-label="قبلی"
                 >
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setIndex((prev) => (prev + 1) % displayCourses.length)}
-                  className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
+                  className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
                   aria-label="بعدی"
                 >
                   <ArrowLeft className="w-4 h-4" />

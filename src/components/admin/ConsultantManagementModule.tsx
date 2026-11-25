@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { Consultant } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
@@ -31,6 +32,8 @@ export const ConsultantManagementModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingConsultant, setEditingConsultant] = useState<Consultant | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Bulk Tariff preset state for rapid fee configuration
   const [showTariffPresetModal, setShowTariffPresetModal] = useState(false);
@@ -118,10 +121,14 @@ export const ConsultantManagementModule: React.FC = () => {
     setIsAddEditModalOpen(true);
   };
 
+  const notifyToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    window.dispatchEvent(new CustomEvent('app:toast', { detail: { message, type } }));
+  };
+
   const handleSaveConsultant = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name?.trim()) {
-      alert('لطفاً نام و نام خانوادگی مشاور را وارد نمایید.');
+      notifyToast('لطفاً نام و نام خانوادگی مشاور را وارد نمایید.', 'error');
       return;
     }
 
@@ -144,20 +151,19 @@ export const ConsultantManagementModule: React.FC = () => {
 
     if (editingConsultant) {
       updateConsultant(editingConsultant.id, payload);
-      alert(`اطلاعات استاد/مشاور «${payload.name}» با موفقیت به‌روزرسانی شد.`);
+      notifyToast(`اطلاعات استاد/مشاور «${payload.name}» با موفقیت به‌روزرسانی شد.`);
     } else {
       addConsultant(payload);
-      alert(`استاد/مشاور جدید «${payload.name}» با موفقیت در فهرست ثبت گردید.`);
+      notifyToast(`استاد/مشاور جدید «${payload.name}» با موفقیت در فهرست ثبت گردید.`);
     }
 
     setIsAddEditModalOpen(false);
   };
 
-  const handleDeleteConsultant = (consultant: Consultant) => {
-    if (confirm(`آیا از حذف مشاور «${consultant.name}» اطمینان دارید؟`)) {
-      deleteConsultant(consultant.id);
-      alert(`مشاور «${consultant.name}» از سامانه حذف گردید.`);
-    }
+  const handleConfirmDeleteConsultant = (consultant: Consultant) => {
+    deleteConsultant(consultant.id);
+    setConfirmDeleteId(null);
+    notifyToast(`مشاور «${consultant.name}» از سامانه حذف گردید.`, 'info');
   };
 
   const handleApplyBulkTariffs = (e: React.FormEvent) => {
@@ -176,7 +182,7 @@ export const ConsultantManagementModule: React.FC = () => {
       }
     });
     setShowTariffPresetModal(false);
-    alert('تعرفه‌ها و نرخ‌های جدید حق‌المشاوره با موفقیت روی کلیه مشاوران اعمال گردید.');
+    notifyToast('تعرفه‌ها و نرخ‌های جدید حق‌المشاوره با موفقیت روی کلیه مشاوران اعمال گردید.');
   };
 
   const handleAddSpecialtyTag = () => {
@@ -449,20 +455,41 @@ export const ConsultantManagementModule: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => handleOpenEditModal(consultant)}
-                    className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-500 dark:hover:bg-amber-400 dark:text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Edit className="w-3.5 h-3.5" />
                     <span>ویرایش شناسه</span>
                   </button>
 
-                  <button
-                    onClick={() => handleDeleteConsultant(consultant)}
-                    className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 transition-colors"
-                    title="حذف مشاور"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {confirmDeleteId === consultant.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmDeleteConsultant(consultant)}
+                        className="px-2.5 py-2 rounded-xl bg-rose-600 text-white text-[11px] font-black cursor-pointer"
+                      >
+                        تایید حذف
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-2 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold cursor-pointer"
+                      >
+                        لغو
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(consultant.id)}
+                      className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 transition-colors cursor-pointer"
+                      title="حذف مشاور"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -612,15 +639,48 @@ export const ConsultantManagementModule: React.FC = () => {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">آدرس عکس تصویر مشاور:</label>
-                  <input
-                    type="text"
-                    value={formData.avatarUrl || ''}
-                    onChange={e => setFormData(prev => ({ ...prev, avatarUrl: e.target.value }))}
-                    placeholder="آدرس URL یا مسیر فایل تصویر"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-[11px] text-slate-900 dark:text-white"
-                  />
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">تصویر مشاور (آپلود یا آدرس):</label>
+                  <div className="flex items-center gap-2">
+                    {formData.avatarUrl && (
+                      <img
+                        src={formData.avatarUrl}
+                        alt="تصویر مشاور"
+                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      value={formData.avatarUrl || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, avatarUrl: e.target.value }))}
+                      placeholder="آدرس URL یا مسیر فایل تصویر"
+                      className="flex-1 min-w-0 px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-[11px] text-slate-900 dark:text-white"
+                    />
+                    <label className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center gap-1 cursor-pointer shrink-0">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingAvatar ? '...' : 'آپلود'}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={uploadingAvatar}
+                        onChange={async e => {
+                          const f = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!f) return;
+                          setUploadingAvatar(true);
+                          try {
+                            const up = await api.uploadFile(f, 'counseling_media');
+                            if (up?.url) setFormData(prev => ({ ...prev, avatarUrl: up.url }));
+                          } catch (err: any) {
+                            notifyToast(err?.message || 'آپلود تصویر با خطا مواجه شد.', 'error');
+                          } finally {
+                            setUploadingAvatar(false);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 

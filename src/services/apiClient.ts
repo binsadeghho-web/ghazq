@@ -1092,6 +1092,7 @@ class ApiClient {
     months: number;
     description?: string;
     phone?: string;
+    attachments?: Array<{ url: string; name: string; size?: number }>;
   }) {
     return this.request<any>('/api/welfare/installments/requests', {
       method: 'POST',
@@ -1283,6 +1284,27 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
+  }
+
+  async getSecurityPinStatus() {
+    return this.request<{ isCustomPinSet: boolean; isPinRequired: boolean }>('/api/admin/security-pin');
+  }
+
+  async verifySecurityPin(pin: string) {
+    return this.request<{ success: boolean; message: string }>('/api/admin/security-pin/verify', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    });
+  }
+
+  async updateSecurityPin(payload: { newPin?: string; isPinRequired?: boolean }) {
+    return this.request<{ success: boolean; isCustomPinSet: boolean; isPinRequired: boolean; message: string }>(
+      '/api/admin/security-pin/update',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
   }
 
   async getAuditLogs() {

@@ -307,91 +307,35 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
     >
       {/* دکمه مرکزی در دسکتاپ/تبلت */}
       {(!hideTriggerOnMobile || isMdUp) && (
-      <motion.button
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.04, y: -2 }}
-        whileTap={{ scale: 0.96 }}
-        animate={{
-          borderColor: [
-            'rgba(16, 185, 129, 0.8)',
-            'rgba(245, 158, 11, 0.9)',
-            'rgba(79, 70, 229, 0.9)',
-            'rgba(225, 29, 72, 0.9)',
-            'rgba(13, 148, 136, 0.9)',
-            'rgba(16, 185, 129, 0.8)'
-          ],
-          boxShadow: [
-            '0 0 25px rgba(16, 185, 129, 0.4), 0 6px 16px rgba(0,0,0,0.15)',
-            '0 0 30px rgba(245, 158, 11, 0.5), 0 6px 16px rgba(0,0,0,0.15)',
-            '0 0 30px rgba(79, 70, 229, 0.5), 0 6px 16px rgba(0,0,0,0.15)',
-            '0 0 30px rgba(225, 29, 72, 0.5), 0 6px 16px rgba(0,0,0,0.15)',
-            '0 0 25px rgba(16, 185, 129, 0.4), 0 6px 16px rgba(0,0,0,0.15)'
-          ]
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-        className={`${hideTriggerOnMobile ? 'hidden md:flex' : 'flex'} group relative items-center gap-3 px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl text-stone-900 font-black shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden border-2 bg-white`}
+        className={`${
+          hideTriggerOnMobile ? 'hidden md:flex' : 'flex'
+        } group relative items-center gap-3 px-4 py-2 sm:px-5 sm:py-2.5 min-h-[42px] rounded-2xl bg-[#071E17] hover:bg-[#0B2D22] text-[#FCFCF9] border border-[#F3D078]/35 hover:border-[#F3D078]/65 shadow-[0_8px_22px_-10px_rgba(7,30,23,0.45)] transition-all duration-200 cursor-pointer shrink-0 active:scale-[0.98]`}
       >
-        {/* کادر با گرادینت درخشان که به طور کامل در چرخه رنگی تغییر می‌کند */}
-        <motion.div
-          animate={{
-            background: [
-              'linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(254, 243, 199, 0.8), rgba(204, 251, 241, 0.98))',
-              'linear-gradient(135deg, rgba(254, 243, 199, 0.98), rgba(254, 226, 226, 0.8), rgba(254, 240, 138, 0.98))',
-              'linear-gradient(135deg, rgba(238, 242, 255, 0.98), rgba(224, 231, 255, 0.8), rgba(254, 226, 226, 0.98))',
-              'linear-gradient(135deg, rgba(255, 228, 230, 0.98), rgba(254, 243, 199, 0.8), rgba(236, 253, 245, 0.98))',
-              'linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(254, 243, 199, 0.8), rgba(204, 251, 241, 0.98))'
-            ]
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute inset-0 opacity-95 transition-all group-hover:opacity-100"
-        />
-        
-        {/* انیمیشن موج نور درخشان و برق سریع که هر ۴ ثانیه تکرار می‌شود */}
-        <motion.div
-          animate={{ x: ['-180%', '280%'] }}
-          transition={{ repeat: Infinity, duration: 0.8, repeatDelay: 3.2, ease: 'easeInOut' }}
-          className="absolute inset-y-0 w-32 bg-gradient-to-r from-transparent via-white/90 to-transparent skew-x-12 pointer-events-none filter blur-[1px]"
-        />
-
-        {/* محتوای دکمه با ایکون و تگ درخشان */}
-        <div className="relative z-10 flex items-center gap-3">
-          <motion.div
-            animate={{
-              rotate: [0, 10, -10, 0],
-              scale: [1, 1.12, 1]
-            }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-600 to-indigo-700 text-white flex items-center justify-center shadow-md"
-          >
-            <LayoutGrid className="w-4 h-4 stroke-[2.5]" />
-          </motion.div>
-
-          <div className="text-right">
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-stone-900 tracking-tight group-hover:text-emerald-900 transition-colors drop-shadow-xs">
-                {resolvedNav.servicesMenuTitle}
-              </span>
-              <motion.span
-                animate={{
-                  scale: [1, 1.05, 1],
-                  borderColor: ['rgba(16, 185, 129, 0.4)', 'rgba(245, 158, 11, 0.7)', 'rgba(16, 185, 129, 0.4)']
-                }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border shadow-xs"
-              >
-                <Sparkles className="w-3 h-3 text-amber-600 animate-spin" style={{ animationDuration: '6s' }} />
-                <span>{toPersianNumbers(serviceCards.length)} بخش فعال</span>
-              </motion.span>
-            </div>
-          </div>
-
-          <ChevronDown
-            className={`w-4 h-4 text-stone-700 transition-transform duration-300 mr-1 ${
-              isOpen ? 'rotate-180 text-emerald-700' : 'group-hover:translate-y-0.5'
-            }`}
-          />
+        <div className="w-7 h-7 rounded-xl bg-[#F3D078]/15 border border-[#F3D078]/35 text-[#F3D078] flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
+          <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
         </div>
-      </motion.button>
+
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <span className="text-xs sm:text-[13px] font-black text-white tracking-tight">
+            {resolvedNav.servicesMenuTitle}
+          </span>
+          <span aria-hidden="true" className="text-[#F3D078]/45 text-xs">
+            ·
+          </span>
+          <span className="text-[11px] font-bold text-[#F3D078] tabular-nums">
+            {toPersianNumbers(serviceCards.length)} بخش
+          </span>
+        </div>
+
+        <ChevronDown
+          className={`w-4 h-4 text-[#F3D078]/80 transition-transform duration-200 mr-0.5 shrink-0 ${
+            isOpen ? 'rotate-180 text-[#F3D078]' : 'group-hover:translate-y-0.5'
+          }`}
+        />
+      </button>
       )}
 
       {/* پنجره مگامنو (در موبایل به صورت Bottom Sheet تمام‌لمسی و در دسکتاپ به صورت مگامنو متمرکز) */}
@@ -444,7 +388,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
               </div>
 
               {/* نوار سربرگ متمرکز با فیلتر دسته‌ها و جستجو */}
-              <div className="p-3 sm:px-6 bg-[#F5F4ED] border-b border-stone-200 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+              <div className="p-3 sm:px-6 bg-[#F6F3EA] border-b border-[#E2DAC3] flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
                 <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 md:pb-0 scrollbar-none">
                   {categories.map(cat => {
                     const isCatActive = selectedCategory === cat.id;
@@ -454,15 +398,15 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
                         onClick={() => setSelectedCategory(cat.id)}
                         className={`relative px-3.5 py-2 sm:py-1.5 min-h-[38px] rounded-xl text-xs font-extrabold transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
                           isCatActive
-                            ? 'text-white'
-                            : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
+                            ? 'text-[#F3D078]'
+                            : 'bg-[#FCFCF9] text-[#525E58] hover:text-[#071E17] hover:bg-white border border-[#DFD8C4]'
                         }`}
                       >
                         {isCatActive && (
                           <motion.span
                             layoutId="servicesMenuCategoryPill"
                             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                            className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#071E17] to-emerald-800 shadow-xs"
+                            className="absolute inset-0 rounded-xl bg-[#071E17] shadow-xs"
                           />
                         )}
                         <span className="relative z-10">{cat.label}</span>
@@ -472,14 +416,14 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
                 </div>
 
                 {/* جستجوی سریع */}
-                <div className="flex items-center gap-2 bg-white border border-stone-300 rounded-xl px-3.5 py-2 sm:py-1.5 md:max-w-xs w-full shadow-2xs">
-                  <Search className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <div className="flex items-center gap-2 bg-[#FCFCF9] border border-[#DFD8C4] rounded-xl px-3.5 py-2 sm:py-1.5 md:max-w-xs w-full focus-within:border-[#071E17]">
+                  <Search className="w-3.5 h-3.5 text-[#525E58] shrink-0" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="جستجوی سریع خدمات..."
-                    className="bg-transparent text-xs text-stone-800 placeholder-stone-400 focus:outline-none w-full"
+                    className="bg-transparent text-xs text-[#071E17] placeholder-stone-400 focus:outline-none w-full"
                   />
                   {searchQuery && (
                     <button onClick={() => setSearchQuery('')} className="text-stone-400 hover:text-stone-700 p-1">
@@ -490,7 +434,7 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
               </div>
 
               {/* بدنه ۲ ستونی موبایل و ۴ ستونی دسکتاپ کارت‌ها */}
-              <div className="p-3 sm:p-6 overflow-y-auto flex-1 bg-[#FAF9F5]">
+              <div className="p-3 sm:p-6 overflow-y-auto flex-1 bg-[#FAF8F2]">
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
                   {filteredCards.map((card, cardIdx) => {
                     const Icon = card.icon;
@@ -506,67 +450,46 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
                           onNavigate(card.id);
                           setIsOpen(false);
                         }}
-                        whileHover={{ y: -4, scale: 1.02, transition: { duration: 0.18 } }}
-                        whileTap={{ scale: 0.96 }}
-                        className={`group cursor-pointer rounded-2xl p-3 sm:p-4 border transition-all duration-200 flex flex-col justify-between relative bg-white overflow-hidden shadow-2xs hover:shadow-lg ${
+                        whileHover={{ y: -3, transition: { duration: 0.18 } }}
+                        whileTap={{ scale: 0.97 }}
+                        className={`group cursor-pointer rounded-2xl p-3.5 sm:p-4 border transition-all duration-200 flex flex-col justify-between relative bg-[#FCFCF9] overflow-hidden ${
                           isActive
-                            ? 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-md'
-                            : 'border-stone-200/90 hover:border-emerald-400'
+                            ? 'border-[#071E17] ring-1 ring-[#071E17]/25 shadow-sm'
+                            : 'border-[#E2DAC3] hover:border-[#071E17]/40 hover:bg-white hover:shadow-[0_10px_24px_-16px_rgba(7,30,23,0.18)]'
                         }`}
                       >
-                        {/* هاله نور تعاملی در هاور */}
-                        <div
-                          className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                          style={{
-                            background: `radial-gradient(180px circle at 50% 20%, ${card.accent}15, transparent 70%)`
-                          }}
-                        />
-
-                        {/* خط نواری بالای کارت با شاین */}
-                        <div
-                          className="absolute top-0 right-0 left-0 h-1.5 rounded-t-2xl transition-all group-hover:h-2"
-                          style={{ backgroundColor: card.accent }}
-                        />
-
-                        <div className="relative z-10 space-y-2 pt-1">
-                          <div className="flex items-center justify-between gap-1">
+                        <div className="relative z-10 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
                             <div
-                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs shrink-0"
-                              style={{
-                                backgroundColor: `${card.accent}18`,
-                                color: card.accent
-                              }}
+                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 border ${
+                                isActive
+                                  ? 'bg-[#071E17] text-[#F3D078] border-[#071E17]'
+                                  : 'bg-[#F5F2E8] text-[#071E17] border-[#DFD8C4] group-hover:bg-[#071E17] group-hover:text-[#F3D078]'
+                              }`}
                             >
                               <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
 
-                            <span
-                              className="hidden sm:inline-block text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-md truncate max-w-[110px]"
-                              style={{
-                                backgroundColor: `${card.accent}10`,
-                                color: card.accent,
-                                borderColor: `${card.accent}25`
-                              }}
-                            >
+                            <span className="hidden sm:inline-block text-[10px] font-extrabold text-[#6B5A2B] truncate max-w-[120px]">
                               {card.badge}
                             </span>
                           </div>
 
                           <div>
-                            <h4 className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-emerald-900 transition-colors line-clamp-2 sm:line-clamp-1 leading-snug">
+                            <h4 className="text-xs sm:text-sm font-black text-[#071E17] transition-colors line-clamp-2 sm:line-clamp-1 leading-snug">
                               {card.title}
                             </h4>
-                            <p className="hidden sm:line-clamp-2 text-[11px] text-stone-600 mt-1 leading-relaxed font-medium">
+                            <p className="hidden sm:line-clamp-2 text-[11px] text-[#525E58] mt-1 leading-relaxed font-medium">
                               {card.subtext}
                             </p>
                           </div>
                         </div>
 
-                        <div className="relative z-10 pt-2 mt-2 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-[11px] text-stone-500 font-medium">
-                          <span className="text-emerald-700 font-bold truncate">{card.tag}</span>
-                          <span className="flex items-center gap-0.5 text-stone-700 group-hover:text-emerald-800 font-extrabold shrink-0">
+                        <div className="relative z-10 pt-2.5 mt-3 border-t border-[#ECE6D6] flex items-center justify-between text-[10px] sm:text-[11px] font-medium">
+                          <span className="text-[#0C4A38] font-bold truncate tabular-nums">{card.tag}</span>
+                          <span className="flex items-center gap-1 text-[#071E17] font-extrabold shrink-0">
                             <span>ورود</span>
-                            <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
+                            <ArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform" />
                           </span>
                         </div>
                       </motion.div>
@@ -576,14 +499,14 @@ export const CrextioServicesMegaMenu: React.FC<CrextioServicesMegaMenuProps> = (
               </div>
 
               {/* فوتر */}
-              <div className="p-3 sm:px-8 bg-[#F5F4ED] border-t border-stone-200 flex items-center justify-between text-xs sm:text-sm text-stone-600 shrink-0">
-                <span className="hidden sm:flex items-center gap-2 text-stone-700 font-medium">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
+              <div className="p-3 sm:px-8 bg-[#F6F3EA] border-t border-[#E2DAC3] flex items-center justify-between text-xs sm:text-sm text-[#525E58] shrink-0">
+                <span className="hidden sm:flex items-center gap-2 text-[#071E17] font-semibold">
+                  <Sparkles className="w-4 h-4 text-[#B88928]" />
                   <span>انتخاب هر کارت شما را مستقیم به ماژول مربوطه هدایت می‌کند.</span>
                 </span>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="w-full sm:w-auto text-stone-700 hover:text-stone-900 bg-stone-200/70 sm:bg-transparent font-bold px-4 py-2.5 sm:py-1.5 rounded-xl hover:bg-stone-200 transition-colors cursor-pointer"
+                  className="w-full sm:w-auto text-[#071E17] bg-[#E8E2D0]/70 sm:bg-transparent font-bold px-4 py-2.5 sm:py-1.5 rounded-xl hover:bg-[#E8E2D0] transition-colors cursor-pointer whitespace-nowrap"
                 >
                   بستن منوی خدمات
                 </button>

@@ -36,6 +36,7 @@ export const CrextioBentoCustomizerModal: React.FC<CrextioBentoCustomizerModalPr
   const [cards, setCards] = useState<CrextioBentoCardConfig[]>(currentCards);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   if (!isOpen) return null;
 
@@ -98,10 +99,11 @@ export const CrextioBentoCustomizerModal: React.FC<CrextioBentoCustomizerModalPr
 
   // بازنشانی به مقادیر پیش‌فرض
   const handleReset = () => {
-    if (window.confirm('آیا مایل به بازنشانی چیدمان و متن کارت‌ها به حالت اولیه هستید؟')) {
-      setCards(DEFAULT_BENTO_CARDS);
-      updateCrextioConfig({ bentoCardsConfig: DEFAULT_BENTO_CARDS });
-    }
+    setCards(DEFAULT_BENTO_CARDS);
+    updateCrextioConfig({ bentoCardsConfig: DEFAULT_BENTO_CARDS });
+    setConfirmReset(false);
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 1200);
   };
 
   return (
@@ -294,14 +296,34 @@ export const CrextioBentoCustomizerModal: React.FC<CrextioBentoCustomizerModalPr
 
         {/* فوتر دکمه‌های ذخیره و بازنشانی */}
         <div className="px-4 py-3.5 sm:p-4 sm:px-6 bg-[#0E1A16] border-t border-white/10 flex flex-wrap items-center justify-between gap-2 shrink-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-2 min-h-[40px] rounded-xl hover:bg-rose-950/40 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>بازنشانی</span>
-          </button>
+          {confirmReset ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-rose-300">بازنشانی چیدمان؟</span>
+              <button
+                type="button"
+                onClick={() => setConfirmReset(false)}
+                className="px-2.5 py-1.5 rounded-lg bg-white/10 text-stone-200 text-[11px] font-bold cursor-pointer"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold cursor-pointer"
+              >
+                بله، بازنشانی
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmReset(true)}
+              className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-2 min-h-[40px] rounded-xl hover:bg-rose-950/40 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>بازنشانی</span>
+            </button>
+          )}
 
           <div className="flex items-center gap-2 sm:gap-3 mr-auto">
             {savedNotice && (

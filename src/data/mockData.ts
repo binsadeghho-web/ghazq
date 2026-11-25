@@ -385,11 +385,12 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   },
   dashboardSectionOrder: [
     'dashboard_banners',
+    'top_vip_row',
     'status_widget',
     'events_calendar',
-    'top_vip_row',
     'honors_showcase',
     'unified_showcase',
+    'bento_grid',
     'rulings_showcase',
     'research_promo',
     'course_showcase',
@@ -397,7 +398,6 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
     'counseling_general_showcase',
     'welfare_showcase',
     'multimedia_showcase',
-    'bento_grid',
     'books_showcase'
   ],
   hiddenDashboardSections: {},

@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { db } from './database';
 import { AppError } from './errors';
 
 interface RateLimitBucket {
@@ -9,13 +8,21 @@ interface RateLimitBucket {
 
 const buckets = new Map<string, RateLimitBucket>();
 
+let cachedRateLimitMaxAttempts = 5;
+
+export function setCachedRateLimitMaxAttempts(attempts: number): void {
+  if (Number.isFinite(attempts) && attempts > 0) {
+    cachedRateLimitMaxAttempts = Math.round(attempts);
+  }
+}
+
 export function rateLimitMiddleware(options?: {
   windowMs?: number;
   maxRequests?: number;
 }) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const windowMs = options?.windowMs || 60 * 1000; // 1 minute window
-    const maxRequests = options?.maxRequests || (db.getState()?.securityConfig?.rateLimitMaxAttempts ? db.getState().securityConfig.rateLimitMaxAttempts * 10 : 60);
+    const maxRequests = options?.maxRequests || Math.max(30, cachedRateLimitMaxAttempts * 12);
 
     const actorId = (req as any).user?.id || (req.headers['x-actor-id'] as string) || req.ip || 'anonymous';
     const key = `${actorId}:${req.baseUrl + req.path}`;
@@ -48,9 +55,9 @@ export function rateLimitMiddleware(options?: {
 }
 
 export const generalRateLimiter = {
-  middleware: (prefix = 'general') => rateLimitMiddleware({ windowMs: 60 * 1000, maxRequests: 120 })
+  middleware: (_prefix = 'general') => rateLimitMiddleware({ windowMs: 60 * 1000, maxRequests: 120 })
 };
 
 export const authRateLimiter = {
-  middleware: (prefix = 'auth') => rateLimitMiddleware({ windowMs: 60 * 1000, maxRequests: 10 })
+  middleware: (_prefix = 'auth') => rateLimitMiddleware({ windowMs: 60 * 1000, maxRequests: 10 })
 };

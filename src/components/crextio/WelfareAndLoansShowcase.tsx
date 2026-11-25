@@ -217,7 +217,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
         }
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploadingId(null);
     }
@@ -254,21 +254,21 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
   };
 
   return (
-    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[32px] bg-[#FCFCFA] border border-stone-200/90 shadow-sm p-3.5 sm:p-7 text-stone-900 space-y-4 sm:space-y-5">
+    <div className="w-full relative overflow-hidden rounded-2xl sm:rounded-[30px] bg-[#FCFCF9] border border-[#DFD8C4] shadow-[0_14px_38px_-24px_rgba(7,30,23,0.12)] p-3.5 sm:p-7 text-[#071E17] space-y-4 sm:space-y-5">
       {/* Header */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#ECE6D6] pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 border border-teal-200 flex items-center justify-center shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-[#071E17] text-[#F3D078] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
             <Gift className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base sm:text-lg font-black text-stone-900">{title}</h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 border border-teal-200 text-[10px] font-extrabold">
-                رفاهیات و وام‌ها
+              <h3 className="text-base sm:text-lg font-black text-[#071E17]">{title}</h3>
+              <span className="text-[11px] font-bold text-[#8A6314]">
+                · رفاهیات و وام‌ها
               </span>
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>
+            <p className="text-xs text-[#525E58] mt-0.5">{subtitle}</p>
           </div>
         </div>
 
@@ -276,16 +276,16 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
           {isAdmin && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl bg-[#FBF4E1] hover:bg-[#F6E8C3] text-[#6E5212] border border-[#E5C97B] text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
             >
-              <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+              <Edit3 className="w-3.5 h-3.5 text-[#9A7116]" />
               <span>ویرایش ویترین و تصاویر</span>
             </button>
           )}
 
           <button
             onClick={() => onNavigateToWelfare?.()}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#D4AF37]/30 text-xs font-black transition-all shadow-xs cursor-pointer whitespace-nowrap"
           >
             <span>ورود به سامانه رفاهیات</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -303,46 +303,46 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
               key={item.id}
               whileHover={{ y: -3 }}
               onClick={() => onNavigateToWelfare?.(item.moduleKey)}
-              className={`min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md ${item.bgClass}`}
+              className="min-w-[74vw] sm:min-w-0 snap-start shrink-0 sm:shrink group p-3.5 sm:p-4 rounded-2xl bg-[#FAF8F2] hover:bg-white border border-[#E2DAC3] hover:border-[#071E17]/35 transition-all cursor-pointer flex flex-col justify-between space-y-3 hover:shadow-[0_12px_28px_-16px_rgba(7,30,23,0.18)]"
             >
               <div className="space-y-2.5">
                 {item.imageUrl && (
-                  <div className="h-24 rounded-xl overflow-hidden border border-stone-200/80">
+                  <div className="h-24 rounded-xl overflow-hidden border border-[#E2DAC3]">
                     <img
                       src={item.imageUrl}
                       alt={item.title}
                       referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
                 )}
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shadow-2xs"
-                    style={{ backgroundColor: `${item.accent}20`, color: item.accent }}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: `${item.accent}18`, color: item.accent }}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4.5 h-4.5" />
                   </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white border border-stone-200 text-stone-800">
+                  <span className="text-[10px] font-bold text-[#6E5A28] truncate">
                     {item.tag}
                   </span>
                 </div>
 
                 <div>
-                  <h4 className="font-black text-sm text-stone-900 line-clamp-1">{item.title}</h4>
-                  <span className="text-xs font-black text-emerald-800 mt-1 block">
+                  <h4 className="font-black text-sm text-[#071E17] line-clamp-1">{item.title}</h4>
+                  <span className="text-xs font-black text-[#0C4A38] mt-1 block tabular-nums">
                     {item.amount}
                   </span>
-                  <p className="text-[11px] text-stone-600 mt-1 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-[#525E58] mt-1 line-clamp-2 leading-relaxed">
                     {item.subtext}
                   </p>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-stone-200/80 flex items-center justify-between text-xs font-bold text-teal-800">
+              <div className="pt-2 border-t border-[#ECE6D6] flex items-center justify-between text-xs font-extrabold text-[#071E17] group-hover:text-[#0C4A38]">
                 <span>ثبت درخواست آنلاین</span>
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
               </div>
             </motion.div>
           );

@@ -26,6 +26,8 @@ export const WelfareAccommodationsManager: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | WelfareRequest['status']>('all');
   const [selectedStay, setSelectedStay] = useState<WelfareRequest | null>(null);
+  const [rejectingStayId, setRejectingStayId] = useState<string | null>(null);
+  const [rejectStayReason, setRejectStayReason] = useState('');
 
   // Approval Modal Form
   const [stayApprovalForm, setStayApprovalForm] = useState({
@@ -161,34 +163,73 @@ export const WelfareAccommodationsManager: React.FC = () => {
 
                 <div className="flex items-center gap-2 self-start md:self-center shrink-0">
                   {isPending && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setSelectedStay(req);
-                          setStayApprovalForm({
-                            assignedSuite: 'سوئیت شماره ۳۰۲ (ویژه اساتید و قضات)',
-                            voucherCode: `STAY-${Math.floor(100000 + Math.random() * 900000)}`,
-                            adminNote: 'معرفی‌نامه اسکان صادر شد. کلید سوئیت در محل به همراه کارت شناسایی تحویل پژوهشگر می‌گردد.'
-                          });
-                        }}
-                        className="px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>صدور معرفی‌نامه و تخصیص سوئیت</span>
-                      </button>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRejectingStayId(null);
+                            setSelectedStay(req);
+                            setStayApprovalForm({
+                              assignedSuite: 'سوئیت شماره ۳۰۲ (ویژه اساتید و قضات)',
+                              voucherCode: `STAY-${Math.floor(100000 + Math.random() * 900000)}`,
+                              adminNote: 'معرفی‌نامه اسکان صادر شد. کلید سوئیت در محل به همراه کارت شناسایی تحویل پژوهشگر می‌گردد.'
+                            });
+                          }}
+                          className="px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>صدور معرفی‌نامه و تخصیص سوئیت</span>
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          const reason = prompt('لطفاً دلیل عدم موافقت با اسکان را وارد نمایید:');
-                          if (reason) {
-                            updateWelfareStatus(req.id, 'rejected', reason);
-                          }
-                        }}
-                        className="px-3 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold cursor-pointer"
-                      >
-                        رد درخواست
-                      </button>
-                    </>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRejectingStayId(prev => (prev === req.id ? null : req.id));
+                            setRejectStayReason('');
+                          }}
+                          className="px-3 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold cursor-pointer"
+                        >
+                          رد درخواست
+                        </button>
+                      </div>
+
+                      {rejectingStayId === req.id && (
+                        <div className="w-full max-w-sm p-2.5 rounded-xl bg-rose-50 border border-rose-200 space-y-2">
+                          <input
+                            type="text"
+                            placeholder="دلیل عدم موافقت با اسکان را وارد نمایید..."
+                            value={rejectStayReason}
+                            onChange={e => setRejectStayReason(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-rose-300 text-xs text-stone-900 focus:outline-none"
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRejectingStayId(null);
+                                setRejectStayReason('');
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-stone-700 text-[11px] font-bold cursor-pointer"
+                            >
+                              انصراف
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const reason = rejectStayReason.trim() || 'عدم تکمیل ظرفیت یا مغایرت با ضوابط اسکان';
+                                updateWelfareStatus(req.id, 'rejected', reason);
+                                setRejectingStayId(null);
+                                setRejectStayReason('');
+                              }}
+                              className="px-3 py-1 rounded-lg bg-rose-700 hover:bg-rose-800 text-white text-[11px] font-bold cursor-pointer"
+                            >
+                              تأیید رد درخواست
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -199,69 +240,81 @@ export const WelfareAccommodationsManager: React.FC = () => {
 
       {/* APPROVAL MODAL */}
       {selectedStay && (
-        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-stone-200 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
-              <h3 className="font-black text-base text-stone-900">صدور معرفی‌نامه رسمی اقامتگاه</h3>
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-1 sm:p-4 overflow-hidden"
+          onClick={() => setSelectedStay(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-t-[26px] sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 max-h-[92dvh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          >
+            <div className="shrink-0 flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-200">
+              <h3 className="font-black text-sm sm:text-base text-stone-900">صدور معرفی‌نامه رسمی اقامتگاه</h3>
               <button
+                type="button"
                 onClick={() => setSelectedStay(null)}
-                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center font-bold"
+                aria-label="بستن"
+                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center font-bold cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-1">
-              <p>
-                متقاضی: <span className="font-bold text-stone-900">{selectedStay.applicantName}</span>
-              </p>
-              <p>
-                مدت درخواست: <span className="font-bold text-teal-800">{selectedStay.requestedValue}</span>
-              </p>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-4">
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 text-xs space-y-1">
+                <p>
+                  متقاضی: <span className="font-bold text-stone-900">{selectedStay.applicantName}</span>
+                </p>
+                <p>
+                  مدت درخواست: <span className="font-bold text-teal-800">{selectedStay.requestedValue}</span>
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">واحد و شماره سوئیت تخصیصی:</label>
+                  <input
+                    type="text"
+                    value={stayApprovalForm.assignedSuite}
+                    onChange={e => setStayApprovalForm(prev => ({ ...prev, assignedSuite: e.target.value }))}
+                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">کد رهگیری معرفی‌نامه رسمی:</label>
+                  <input
+                    type="text"
+                    value={stayApprovalForm.voucherCode}
+                    onChange={e => setStayApprovalForm(prev => ({ ...prev, voucherCode: e.target.value }))}
+                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">توضیحات و راهنمای تحویل کلید:</label>
+                  <textarea
+                    rows={2}
+                    value={stayApprovalForm.adminNote}
+                    onChange={e => setStayApprovalForm(prev => ({ ...prev, adminNote: e.target.value }))}
+                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 leading-relaxed"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">واحد و شماره سوئیت تخصیصی:</label>
-                <input
-                  type="text"
-                  value={stayApprovalForm.assignedSuite}
-                  onChange={e => setStayApprovalForm(prev => ({ ...prev, assignedSuite: e.target.value }))}
-                  className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">کد رهگیری معرفی‌نامه رسمی:</label>
-                <input
-                  type="text"
-                  value={stayApprovalForm.voucherCode}
-                  onChange={e => setStayApprovalForm(prev => ({ ...prev, voucherCode: e.target.value }))}
-                  className="w-full p-2.5 text-xs rounded-xl border border-stone-300 font-mono font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">توضیحات و راهنمای تحویل کلید:</label>
-                <textarea
-                  rows={2}
-                  value={stayApprovalForm.adminNote}
-                  onChange={e => setStayApprovalForm(prev => ({ ...prev, adminNote: e.target.value }))}
-                  className="w-full p-2.5 text-xs rounded-xl border border-stone-300 leading-relaxed text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-stone-200">
+            <div className="shrink-0 flex justify-end gap-2 px-4 py-3 sm:px-6 sm:py-4 border-t border-stone-200 bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <button
+                type="button"
                 onClick={() => setSelectedStay(null)}
-                className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold"
+                className="px-4 py-2.5 min-h-[42px] rounded-xl bg-stone-100 text-stone-700 text-xs font-bold cursor-pointer"
               >
                 انصراف
               </button>
               <button
+                type="button"
                 onClick={handleApprove}
-                className="px-5 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-xs cursor-pointer"
+                className="px-5 py-2.5 min-h-[42px] rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-xs cursor-pointer"
               >
                 صدور و ارسال معرفی‌نامه
               </button>

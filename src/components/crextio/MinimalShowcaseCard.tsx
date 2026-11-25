@@ -40,44 +40,44 @@ const ACCENT_MAP: Record<
   }
 > = {
   emerald: {
-    iconBox: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
-    iconBoxDark: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    kickerText: 'text-emerald-800',
-    kickerTextDark: 'text-emerald-300',
-    primaryBtn: 'bg-emerald-800 hover:bg-emerald-900 text-white',
-    spotlight: 'rgba(16, 185, 129, 0.14)',
+    iconBox: 'bg-[#F4F0E4] text-[#071E17] border-[#DFD8C4]',
+    iconBoxDark: 'bg-[#F3D078]/15 text-[#F3D078] border-[#F3D078]/30',
+    kickerText: 'text-[#0C4A38]',
+    kickerTextDark: 'text-[#F3D078]',
+    primaryBtn: 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35',
+    spotlight: 'rgba(243, 208, 120, 0.14)',
   },
   amber: {
-    iconBox: 'bg-amber-50 text-amber-800 border-amber-200/80',
-    iconBoxDark: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    kickerText: 'text-amber-800',
-    kickerTextDark: 'text-amber-300',
-    primaryBtn: 'bg-amber-600 hover:bg-amber-700 text-white',
-    spotlight: 'rgba(245, 158, 11, 0.14)',
+    iconBox: 'bg-[#FAF5E6] text-[#8A6314] border-[#E7CE8A]',
+    iconBoxDark: 'bg-[#F3D078]/15 text-[#F3D078] border-[#F3D078]/30',
+    kickerText: 'text-[#8A6314]',
+    kickerTextDark: 'text-[#F3D078]',
+    primaryBtn: 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35',
+    spotlight: 'rgba(243, 208, 120, 0.16)',
   },
   sky: {
-    iconBox: 'bg-sky-50 text-sky-800 border-sky-200/80',
+    iconBox: 'bg-[#F4F0E4] text-[#071E17] border-[#DFD8C4]',
     iconBoxDark: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-    kickerText: 'text-sky-800',
+    kickerText: 'text-[#0C4A38]',
     kickerTextDark: 'text-sky-300',
-    primaryBtn: 'bg-sky-800 hover:bg-sky-900 text-white',
-    spotlight: 'rgba(14, 165, 233, 0.14)',
+    primaryBtn: 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35',
+    spotlight: 'rgba(12, 74, 56, 0.12)',
   },
   indigo: {
-    iconBox: 'bg-indigo-50 text-indigo-800 border-indigo-200/80',
+    iconBox: 'bg-[#F4F0E4] text-[#071E17] border-[#DFD8C4]',
     iconBoxDark: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-    kickerText: 'text-indigo-800',
+    kickerText: 'text-[#0C4A38]',
     kickerTextDark: 'text-indigo-300',
-    primaryBtn: 'bg-indigo-800 hover:bg-indigo-900 text-white',
-    spotlight: 'rgba(99, 102, 241, 0.14)',
+    primaryBtn: 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35',
+    spotlight: 'rgba(12, 74, 56, 0.12)',
   },
   stone: {
-    iconBox: 'bg-stone-100 text-stone-800 border-stone-200',
+    iconBox: 'bg-[#F4F0E4] text-[#071E17] border-[#DFD8C4]',
     iconBoxDark: 'bg-stone-700/40 text-stone-200 border-stone-600/40',
-    kickerText: 'text-stone-600',
+    kickerText: 'text-[#525E58]',
     kickerTextDark: 'text-stone-300',
-    primaryBtn: 'bg-stone-900 hover:bg-black text-white',
-    spotlight: 'rgba(120, 113, 108, 0.14)',
+    primaryBtn: 'bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35',
+    spotlight: 'rgba(120, 113, 108, 0.12)',
   },
 };
 
@@ -136,10 +136,10 @@ export const MinimalShowcaseCard: React.FC<MinimalShowcaseCardProps> = ({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       whileHover={motionEnabled ? { y: -3, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } } : undefined}
-      className={`group relative h-full rounded-2xl border overflow-hidden flex flex-col justify-between transition-colors ${
+      className={`group relative h-full rounded-2xl sm:rounded-[24px] border overflow-hidden flex flex-col justify-between transition-colors ${
         darkSurface
-          ? 'bg-[#13221D] border-[#253E35] hover:border-[#34584C] text-stone-100'
-          : 'bg-white border-stone-200/90 hover:border-stone-300 text-stone-900 shadow-2xs hover:shadow-md'
+          ? 'bg-[#0B231B] border-[#253E35] hover:border-[#34584C] text-stone-100'
+          : 'bg-[#FCFCF9] border-[#E2DAC3] hover:border-[#071E17]/40 text-[#071E17] shadow-[0_6px_18px_-14px_rgba(7,30,23,0.12)] hover:shadow-[0_14px_28px_-18px_rgba(7,30,23,0.2)]'
       }`}
       dir="rtl"
     >

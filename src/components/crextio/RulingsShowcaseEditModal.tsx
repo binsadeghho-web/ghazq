@@ -124,7 +124,7 @@ export const RulingsShowcaseEditModal: React.FC<RulingsShowcaseEditModalProps> =
         });
       }
     } catch (err: any) {
-      alert(`خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: `خطا در آپلود تصویر: ${err.message || 'خطای سرور'}`, type: 'error' } }));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';

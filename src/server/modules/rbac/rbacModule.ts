@@ -1,9 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import { getPool, isDatabaseConnected } from '../../platform/mysqlDatabase';
+import { getPool, isDatabaseConnected, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
-import { db, generateUUIDv7 } from '../../platform/database';
-import { toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
+import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7';
 import { AppError } from '../../platform/errors';
 import { outbox } from '../../platform/outbox';
 import { auditChain } from '../../platform/auditChain';
@@ -285,79 +284,42 @@ export function createRbacRouter(): Router {
     try {
       const policies = await loadAndEnsureRolePolicies();
 
-      let coursesVis: any[] = [];
-      let productsVis: any[] = [];
-      let consumablesVis: any[] = [];
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const p = getPool();
 
-      if (isDatabaseConnected()) {
-        const p = getPool();
-        try {
-          const [cRows]: any = await p.query(
-            `SELECT id, title, instructor, price, visible_to_customer FROM courses WHERE is_deleted = 0 ORDER BY created_at DESC`
-          );
-          coursesVis = (cRows || []).map((r: any) => ({
-            id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
-            title: r.title,
-            instructor: r.instructor || '',
-            price: Number(r.price || 0),
-            visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
-          }));
-        } catch {}
+      const [cRows]: any = await p.query(
+        `SELECT id, title, instructor, price, visible_to_customer FROM courses WHERE is_deleted = 0 ORDER BY created_at DESC`
+      );
+      const coursesVis = (cRows || []).map((r: any) => ({
+        id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
+        title: r.title,
+        instructor: r.instructor || '',
+        price: Number(r.price || 0),
+        visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
+      }));
 
-        try {
-          const [pRows]: any = await p.query(
-            `SELECT id, title, format_title, price, visible_to_customer FROM products WHERE is_deleted = 0 ORDER BY created_at DESC`
-          );
-          productsVis = (pRows || []).map((r: any) => ({
-            id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
-            title: r.title,
-            formatTitle: r.format_title || 'کتاب / محصول',
-            price: Number(r.price || 0),
-            visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
-          }));
-        } catch {}
+      const [pRows]: any = await p.query(
+        `SELECT id, title, format_title, price, visible_to_customer FROM products WHERE is_deleted = 0 ORDER BY created_at DESC`
+      );
+      const productsVis = (pRows || []).map((r: any) => ({
+        id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
+        title: r.title,
+        formatTitle: r.format_title || 'کتاب / محصول',
+        price: Number(r.price || 0),
+        visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
+      }));
 
-        try {
-          const [wRows]: any = await p.query(
-            `SELECT id, title, category, cooperative_price, visible_to_customer FROM consumables ORDER BY created_at DESC`
-          );
-          consumablesVis = (wRows || []).map((r: any) => ({
-            id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
-            title: r.title,
-            category: r.category || 'عمومی',
-            cooperativePrice: Number(r.cooperative_price || 0),
-            visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
-          }));
-        } catch {}
-      }
-
-      if (coursesVis.length === 0) {
-        coursesVis = (db.courses || []).filter(c => !c.isDeleted).map(c => ({
-          id: c.id,
-          title: c.title,
-          instructor: c.instructor,
-          price: c.price,
-          visibleToCustomer: c.visibleToCustomer !== false,
-        }));
-      }
-      if (productsVis.length === 0) {
-        productsVis = (db.products || []).filter(p => !p.isDeleted).map(pr => ({
-          id: pr.id,
-          title: pr.title,
-          formatTitle: pr.formatTitle,
-          price: pr.price,
-          visibleToCustomer: pr.visibleToCustomer !== false,
-        }));
-      }
-      if (consumablesVis.length === 0) {
-        consumablesVis = (db.consumables || []).map(item => ({
-          id: item.id,
-          title: item.title,
-          category: item.category,
-          cooperativePrice: item.cooperativePrice,
-          visibleToCustomer: item.visibleToCustomer !== false,
-        }));
-      }
+      const [wRows]: any = await p.query(
+        `SELECT id, title, category, price AS cooperative_price, visible_to_customer FROM consumables ORDER BY created_at DESC`
+      );
+      const consumablesVis = (wRows || []).map((r: any) => ({
+        id: Buffer.isBuffer(r.id) ? fromIdBuffer(r.id) : String(r.id),
+        title: r.title,
+        category: r.category || 'عمومی',
+        cooperativePrice: Number(r.cooperative_price || 0),
+        visibleToCustomer: r.visible_to_customer !== undefined ? Boolean(r.visible_to_customer) : true,
+      }));
 
       res.json({
         success: true,
@@ -516,45 +478,32 @@ export function createRbacRouter(): Router {
 
       const visFlag = visibleToCustomer ? 1 : 0;
 
-      if (isDatabaseConnected()) {
-        const p = getPool();
-        const idBuf = toIdBuffer(itemId);
-        if (entityType === 'course') {
-          await p.query(
-            `UPDATE courses SET visible_to_customer = ?, version = version + 1 WHERE id = ?`,
-            [visFlag, idBuf]
-          );
-        } else if (entityType === 'product') {
-          await p.query(
-            `UPDATE products SET visible_to_customer = ?, version = version + 1 WHERE id = ?`,
-            [visFlag, idBuf]
-          );
-        } else if (entityType === 'consumable') {
-          await p.query(
-            `UPDATE consumables SET visible_to_customer = ? WHERE id = ?`,
-            [visFlag, idBuf]
-          );
-        }
-      }
-
-      // Update in-memory fallback db as well
+      ensureDatabaseConnection();
+      const p = getPool();
+      const idBuf = toIdBuffer(itemId);
       if (entityType === 'course') {
-        const target = db.courses.find(c => c.id === itemId);
-        if (target) target.visibleToCustomer = visibleToCustomer;
+        await p.query(
+          `UPDATE courses SET visible_to_customer = ?, version = version + 1 WHERE id = ?`,
+          [visFlag, idBuf]
+        );
         outbox.enqueue('course.updated', {
           resourceId: itemId,
           updates: { id: itemId, visibleToCustomer },
         });
       } else if (entityType === 'product') {
-        const target = db.products.find(pr => pr.id === itemId);
-        if (target) target.visibleToCustomer = visibleToCustomer;
+        await p.query(
+          `UPDATE products SET visible_to_customer = ?, version = version + 1 WHERE id = ?`,
+          [visFlag, idBuf]
+        );
         outbox.enqueue('product.updated', {
           resourceId: itemId,
           updates: { id: itemId, visibleToCustomer },
         });
       } else if (entityType === 'consumable') {
-        const target = db.consumables.find(w => w.id === itemId);
-        if (target) target.visibleToCustomer = visibleToCustomer;
+        await p.query(
+          `UPDATE consumables SET visible_to_customer = ? WHERE id = ?`,
+          [visFlag, idBuf]
+        );
         outbox.enqueue('welfare.consumable_updated', {
           resourceId: itemId,
           updates: { id: itemId, visibleToCustomer },

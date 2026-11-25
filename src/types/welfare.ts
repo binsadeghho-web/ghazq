@@ -106,6 +106,7 @@ export interface WelfareInstallmentRequest {
   adminNote?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  attachments?: Array<{ url: string; name: string; size?: number }>;
   version: number;
   createdAt: string;
 }

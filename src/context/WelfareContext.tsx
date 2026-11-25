@@ -102,6 +102,7 @@ export interface WelfareContextType {
     months: number;
     description?: string;
     phone?: string;
+    attachments?: Array<{ url: string; name: string; size?: number }>;
   }) => Promise<WelfareInstallmentRequest>;
   reviewInstallmentRequest: (
     id: string,
@@ -454,6 +455,7 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       months: number;
       description?: string;
       phone?: string;
+      attachments?: Array<{ url: string; name: string; size?: number }>;
     }) => {
       const created = await api.submitInstallmentRequest(data);
       setInstallmentRequests((prev) => [created, ...prev]);

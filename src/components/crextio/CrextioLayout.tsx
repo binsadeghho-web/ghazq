@@ -161,10 +161,10 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
   const canvasBgClass = 
     crextioConfig.canvasTheme === 'royal_emerald' 
-      ? 'bg-[#F2F7F4] border-[#D6E6DE]' 
+      ? 'bg-[#F2F7F4] border-[#CFE0D6]' 
       : crextioConfig.canvasTheme === 'pure_minimal' 
-      ? 'bg-white border-stone-200' 
-      : 'bg-[#F8F7F2] border-[#E5E3D8]';
+      ? 'bg-[#FDFDFB] border-[#E4E0D4]' 
+      : 'bg-[#FAF8F2] border-[#DFD8C4]';
 
   // Mobile Bottom Bar: pick top 4 primary destinations respecting RBAC & customizer labels + "همه خدمات" bottom sheet trigger
   const mobileBottomTargets = ['Dashboard', 'People', 'Courses', 'Counseling']
@@ -221,18 +221,21 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
               </button>
             </div>
           ) : (
-            <div className="hidden lg:flex w-full bg-white/90 backdrop-blur-xl rounded-2xl px-5 py-2.5 border border-stone-200/90 items-center justify-between gap-3 shadow-xs">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="inline-flex px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold items-center gap-1.5">
-                  <Scale className="w-3.5 h-3.5 text-amber-600" />
+            <div className="hidden lg:flex w-full bg-[#071E17] text-[#FCFCF9] rounded-2xl px-4 py-2 border border-[#F3D078]/25 items-center justify-between gap-3 shadow-[0_8px_24px_-16px_rgba(7,30,23,0.45)]">
+              <div className="flex flex-wrap items-center gap-2.5 text-xs min-w-0">
+                <Scale className="w-4 h-4 text-[#F3D078] shrink-0" />
+                <span className="font-bold text-[#FCFCF9] truncate">
                   {crextioConfig.theme2TopBarTitle || 'تم دوم: سامانه و ویترین خدمات مرکز دانش‌آموختگان (طرح میزان)'}
                 </span>
-                <span className={`px-3 py-1 rounded-full border text-xs font-extrabold ${currentRoleMeta.badgeColor}`}>
-                  نقش فعلی: {currentRoleMeta.title}
+                <span aria-hidden="true" className="text-[#F3D078]/40">
+                  ·
+                </span>
+                <span className="text-[11px] font-bold text-[#F3D078] shrink-0">
+                  نقش: {currentRoleMeta.title}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {canCustomizeLayout && (
                   <>
                     <button
@@ -240,9 +243,9 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                         setCustomizerInitialTab('navigation');
                         setIsCustomizerOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl bg-white/10 hover:bg-white/16 text-[#FCFCF9] border border-white/15 text-xs font-bold transition-colors shrink-0 whitespace-nowrap cursor-pointer"
                     >
-                      <Menu className="w-3.5 h-3.5 text-emerald-700" />
+                      <Menu className="w-3.5 h-3.5 text-[#F3D078]" />
                       <span>ترتیب و نام منو</span>
                     </button>
                     <button
@@ -250,9 +253,9 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                         setCustomizerInitialTab('modules');
                         setIsCustomizerOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition-all shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl bg-[#F3D078]/15 hover:bg-[#F3D078]/25 text-[#F3D078] border border-[#F3D078]/35 text-xs font-bold transition-colors shrink-0 whitespace-nowrap cursor-pointer"
                     >
-                      <Palette className="w-3.5 h-3.5 text-amber-600" />
+                      <Palette className="w-3.5 h-3.5" />
                       <span>شخصی‌سازی تم ۲</span>
                     </button>
                   </>
@@ -261,7 +264,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 {isStaffMember && (
                     <button
                       onClick={onToggleToPortalTheme}
-                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] text-xs font-black transition-colors active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
                     >
                       <ArrowLeftRight className="w-3.5 h-3.5" />
                       <span>تم ۱ (پرتال)</span>
@@ -272,15 +275,15 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           )
         ) : null}
 
-        {/* MAIN HEADER: ULTRA-SLIM MASTHEAD ON MOBILE DASHBOARD (< lg), APP BAR IN SUB-VIEWS, 3-ZONE MEGA-MENU ON DESKTOP */}
+        {/* MAIN HEADER: ULTRA-SLIM MASTHEAD ON MOBILE DASHBOARD (< lg), APP BAR IN SUB-VIEWS, ARCHITECTURAL BAR ON DESKTOP */}
         <header
           className={`${
             activeNav === 'Dashboard'
-              ? 'bg-transparent lg:bg-white/95 lg:backdrop-blur-2xl h-12 lg:h-auto px-0.5 lg:p-4 lg:px-6 lg:border lg:border-stone-200/90 lg:shadow-sm'
-              : 'bg-white/96 lg:bg-white/95 backdrop-blur-md lg:backdrop-blur-2xl rounded-[22px] lg:rounded-[32px] h-14 lg:h-auto px-3 lg:p-4 lg:px-6 border border-stone-200/85 lg:border-stone-200/90 shadow-[0_8px_24px_-12px_rgba(7,30,23,0.12)] lg:shadow-sm'
-          } lg:rounded-[32px] flex items-center justify-between gap-2 sm:gap-4 relative z-30`}
+              ? 'bg-transparent lg:bg-[#FCFCF9]/96 lg:backdrop-blur-2xl h-12 lg:h-auto px-0.5 lg:py-3.5 lg:px-6 lg:border lg:border-[#DFD8C4] lg:shadow-[0_10px_28px_-20px_rgba(7,30,23,0.14)]'
+              : 'bg-white/96 lg:bg-[#FCFCF9]/96 backdrop-blur-md lg:backdrop-blur-2xl rounded-[22px] lg:rounded-[26px] h-14 lg:h-auto px-3 lg:py-3.5 lg:px-6 border border-stone-200/85 lg:border-[#DFD8C4] shadow-[0_8px_24px_-12px_rgba(7,30,23,0.12)] lg:shadow-[0_10px_28px_-20px_rgba(7,30,23,0.14)]'
+          } lg:rounded-[26px] flex items-center justify-between gap-2 sm:gap-4 relative z-30`}
         >
-          {/* Subtle gold hairline glow along top edge on mobile sub-views */}
+          {/* Subtle gold hairline glow along top edge */}
           {activeNav !== 'Dashboard' && (
             <span
               aria-hidden="true"
@@ -303,14 +306,14 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
             <button
               onClick={() => setActiveNav('Dashboard')}
-              className="flex items-center gap-2.5 group text-right cursor-pointer min-w-0 shrink"
+              className="flex items-center gap-2.5 lg:gap-3 group text-right cursor-pointer min-w-0 shrink"
             >
-              <div className={`${activeNav !== 'Dashboard' ? 'hidden lg:flex' : 'flex'} w-9 h-9 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-gradient-to-br from-[#071E17] to-[#113D30] lg:from-amber-300 lg:via-amber-500 lg:to-yellow-600 items-center justify-center text-[#F3D078] lg:text-stone-950 shadow-sm lg:shadow-md border border-[#F3D078]/35 lg:border-amber-200 shrink-0`}>
-                <Scale className="w-4.5 h-4.5 lg:w-7 lg:h-7 stroke-[2.2]" />
+              <div className={`${activeNav !== 'Dashboard' ? 'hidden lg:flex' : 'flex'} w-9 h-9 lg:w-11 lg:h-11 rounded-xl lg:rounded-2xl bg-gradient-to-br from-[#071E17] to-[#113D30] items-center justify-center text-[#F3D078] shadow-sm border border-[#F3D078]/40 shrink-0`}>
+                <Scale className="w-4.5 h-4.5 lg:w-6 lg:h-6 stroke-[2.2]" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-sm lg:text-xl font-black lg:font-extrabold text-stone-900 tracking-tight truncate">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-sm lg:text-lg font-black text-[#071E17] tracking-tight truncate">
                     {activeNav !== 'Dashboard'
                       ? navItems.find(n => n.id === activeNav)?.label ||
                         crextioConfig.brandMainTitle ||
@@ -318,12 +321,12 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       : crextioConfig.brandMainTitle || 'سامانه فقه و قضا'}
                   </h1>
                   {activeNav === 'Dashboard' && (
-                    <span className="hidden sm:inline-block text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-900 border border-amber-400/40 shrink-0">
+                    <span className="hidden sm:inline-block text-[10px] font-black px-1.5 py-0.5 rounded-md bg-[#F3D078]/20 text-[#7A5912] border border-[#F3D078]/45 shrink-0">
                       {crextioConfig.brandBadgeText || 'میزان'}
                     </span>
                   )}
                 </div>
-                <p className="hidden lg:block text-[11px] text-emerald-800 font-bold truncate">
+                <p className="hidden lg:block text-[11px] text-[#4C6358] font-semibold truncate">
                   {crextioConfig.brandSubtitleText || 'پرتال و ویترین خدمات نخبگان'}
                 </p>
               </div>
@@ -342,11 +345,11 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           </div>
 
           {/* Left: Back to Dashboard (Desktop), Identity Card (Desktop), Notifications & Profile */}
-          <div className="flex items-center justify-end gap-1.5 lg:gap-2.5 shrink-0">
+          <div className="flex items-center justify-end gap-1.5 lg:gap-2 shrink-0">
             {activeNav !== 'Dashboard' && (
               <button
                 onClick={() => setActiveNav('Dashboard')}
-                className="hidden lg:flex items-center gap-1 px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 border border-emerald-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35 text-xs font-extrabold transition-all shadow-xs cursor-pointer whitespace-nowrap"
               >
                 <span>بازگشت به داشبورد</span>
               </button>
@@ -356,12 +359,12 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
             {currentUser && (
               <button
                 onClick={() => setIsIdentityCardOpen(true)}
-                className="hidden lg:flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-black transition-all shadow-2xs cursor-pointer"
+                className="hidden lg:flex items-center gap-2 px-3 py-2 min-h-[40px] rounded-xl bg-[#F5F2E8] hover:bg-[#EFEADB] text-[#071E17] border border-[#DFD8C4] text-xs font-black transition-colors cursor-pointer whitespace-nowrap"
                 title="مشاهده و تکمیل کارت اطلاعات هویتی من"
               >
-                <IdCard className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span className="hidden xl:inline">کارت اطلاعات هویتی من</span>
-                <span className="px-1.5 py-0.5 rounded-lg bg-emerald-800 text-white text-[10px] font-black tabular-nums">
+                <IdCard className="w-4 h-4 text-[#0C4A38] shrink-0" />
+                <span className="hidden xl:inline">کارت هویتی من</span>
+                <span className="text-[11px] font-black text-[#0C4A38] tabular-nums">
                   {toPersianNumbers(completionPct)}٪
                 </span>
               </button>
@@ -373,7 +376,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                     setNotificationsOpen(!notificationsOpen);
                     setUserDropdownOpen(false);
                   }}
-                  className="relative w-10 h-10 lg:w-auto lg:h-auto lg:p-2.5 rounded-xl lg:rounded-2xl bg-stone-100/90 hover:bg-stone-200 text-stone-700 border border-stone-200/80 transition-colors cursor-pointer flex items-center justify-center"
+                  className="relative w-10 h-10 lg:w-10 lg:h-10 rounded-xl bg-[#F5F2E8]/90 hover:bg-[#EAE4D4] text-[#071E17] border border-[#DFD8C4] transition-colors cursor-pointer flex items-center justify-center"
                   aria-label="اعلان‌ها"
                 >
                   <Bell className="w-4 h-4" />
@@ -387,13 +390,13 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       className="sm:hidden fixed inset-0 bg-stone-950/35 z-40"
                       onClick={() => setNotificationsOpen(false)}
                     />
-                    <div className="fixed inset-x-3 top-20 sm:top-auto sm:inset-x-auto sm:absolute sm:left-0 sm:mt-3 sm:w-96 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
-                      <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                    <div className="fixed inset-x-3 top-20 sm:top-auto sm:inset-x-auto sm:absolute sm:left-0 sm:mt-3 sm:w-96 bg-[#FCFCF9] rounded-3xl border border-[#DFD8C4] shadow-2xl p-4 text-stone-900 z-50 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#ECE6D6]">
                         <div className="flex items-center gap-2">
-                          <Bell className="w-4 h-4 text-emerald-700" />
-                          <span className="text-xs font-bold text-stone-900">اعلان‌ها و رویدادهای ۱,۰۰۰ دانش‌آموخته</span>
+                          <Bell className="w-4 h-4 text-[#071E17]" />
+                          <span className="text-xs font-black text-[#071E17]">اعلان‌ها و رویدادهای مجمع</span>
                         </div>
-                        <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                        <span className="text-[11px] font-extrabold text-[#0C4A38] shrink-0 tabular-nums">
                           {toPersianNumbers('۴')} پیام تازه
                         </span>
                       </div>
@@ -405,19 +408,19 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                           { title: 'نقد جدید در تالار آراء', desc: 'جناب استاد موسوی به رأی شماره ۹۴۳ پاسخ تحلیلی ثبت نمودند.', time: 'دیروز', unread: false },
                           { title: 'عرضه کتاب خارج فقه القضا', desc: 'جلد پنجم موسوعه القضا با تخفیف ویژه اعضا بارگذاری شد.', time: '۳ روز پیش', unread: false },
                         ].map((n, idx) => (
-                          <div key={idx} className={`p-2.5 rounded-2xl border text-xs transition-colors ${n.unread ? 'bg-emerald-50/70 border-emerald-200' : 'bg-stone-50 border-stone-200/60 text-stone-600'}`}>
-                            <div className="flex items-center justify-between font-bold text-stone-900">
+                          <div key={idx} className={`p-2.5 rounded-2xl border text-xs transition-colors ${n.unread ? 'bg-[#F2F7F4] border-[#CFE0D6]' : 'bg-[#F7F4EC] border-[#E7E0CD] text-stone-600'}`}>
+                            <div className="flex items-center justify-between font-bold text-[#071E17]">
                               <span>{n.title}</span>
-                              <span className="text-[10px] text-stone-500 font-normal">{n.time}</span>
+                              <span className="text-[10px] text-[#525E58] font-normal">{n.time}</span>
                             </div>
-                            <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">{n.desc}</p>
+                            <p className="text-[11px] text-[#525E58] mt-1 leading-relaxed">{n.desc}</p>
                           </div>
                         ))}
                       </div>
 
                       <button
                         onClick={() => setNotificationsOpen(false)}
-                        className="w-full py-2.5 sm:py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold text-center border border-stone-200 transition-colors cursor-pointer"
+                        className="w-full py-2.5 sm:py-2 rounded-xl bg-[#F2EFE4] hover:bg-[#E7E1CF] text-[#071E17] text-xs font-bold text-center border border-[#DFD8C4] transition-colors cursor-pointer"
                       >
                         بستن اعلان‌ها
                       </button>
@@ -433,22 +436,22 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                     setUserDropdownOpen(!userDropdownOpen);
                     setNotificationsOpen(false);
                   }}
-                  className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 sm:pl-3 min-h-[40px] rounded-xl sm:rounded-2xl bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 sm:pl-3 min-h-[40px] rounded-xl bg-[#F5F2E8]/90 hover:bg-[#EAE4D4] border border-[#DFD8C4] transition-colors cursor-pointer"
                 >
                   {currentUser?.profilePictureUrl ? (
-                    <img src={currentUser.profilePictureUrl} alt={currentUser?.fullName || 'کاربر'} className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-cover shrink-0 shadow-xs border border-stone-200" />
+                    <img src={currentUser.profilePictureUrl} alt={currentUser?.fullName || 'کاربر'} className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg object-cover shrink-0 border border-[#DFD8C4]" />
                   ) : (
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-[#071E17] text-[#F3D078] flex items-center justify-center font-bold text-xs sm:text-sm">
                       {currentUser?.avatarText || 'کاربر'}
                     </div>
                   )}
                   <div className="text-right text-xs hidden sm:block">
-                    <p className="font-bold text-stone-900">{currentUser?.fullName || 'کاربر سیستم'}</p>
-                    <p className="text-[10px] text-emerald-800 font-medium truncate max-w-[120px]">
+                    <p className="font-extrabold text-[#071E17]">{currentUser?.fullName || 'کاربر سیستم'}</p>
+                    <p className="text-[10px] text-[#0C4A38] font-semibold truncate max-w-[130px]">
                       {currentUser?.roleTitle || 'دانش‌آموخته'}
                     </p>
                   </div>
-                  <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-500 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#525E58] transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* User Account Dropdown (Viewport-safe on mobile) */}
@@ -458,13 +461,13 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       className="sm:hidden fixed inset-0 bg-stone-950/35 z-40"
                       onClick={() => setUserDropdownOpen(false)}
                     />
-                    <div className="fixed inset-x-3 top-20 sm:top-auto sm:inset-x-auto sm:absolute sm:left-0 sm:mt-3 sm:w-80 bg-white rounded-3xl border border-stone-200 shadow-2xl p-4 text-stone-900 z-50 space-y-3">
+                    <div className="fixed inset-x-3 top-20 sm:top-auto sm:inset-x-auto sm:absolute sm:left-0 sm:mt-3 sm:w-80 bg-[#FCFCF9] rounded-3xl border border-[#DFD8C4] shadow-2xl p-4 text-[#121D19] z-50 space-y-3">
                       {/* Profile Header */}
-                      <div className="p-3 bg-stone-50 rounded-2xl space-y-1 border border-stone-100">
-                        <p className="font-bold text-sm text-stone-900">{currentUser?.fullName}</p>
-                        <p className="text-xs text-emerald-800 font-medium">{currentUser?.roleTitle}</p>
-                        <p className="text-[11px] text-stone-500 font-mono">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
-                        <p className="text-[11px] text-emerald-800 font-mono font-bold">کد مرکز: {currentUser?.centerCode || 'ثبت نشده'}</p>
+                      <div className="p-3 bg-[#FAF8F2] rounded-2xl space-y-1 border border-[#E5DEC9]">
+                        <p className="font-bold text-sm text-[#121D19]">{currentUser?.fullName}</p>
+                        <p className="text-xs text-[#0C4A38] font-medium">{currentUser?.roleTitle}</p>
+                        <p className="text-[11px] text-[#525E58] tabular-nums">کد ملی: {toPersianNumbers(currentUser?.nationalId || '')}</p>
+                        <p className="text-[11px] text-[#0C4A38] tabular-nums font-bold">کد مرکز: {currentUser?.centerCode || 'ثبت نشده'}</p>
                       </div>
 
                       {/* Reform 56: Open Identity Card from dropdown */}
@@ -473,13 +476,13 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                           setUserDropdownOpen(false);
                           setIsIdentityCardOpen(true);
                         }}
-                        className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-black flex items-center justify-between border border-emerald-200 transition-colors cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-xl bg-[#FAF8F2] hover:bg-[#F2EDE0] text-[#071E17] text-xs font-black flex items-center justify-between border border-[#DFD8C4] transition-colors cursor-pointer"
                       >
                         <span className="flex items-center gap-2">
-                          <IdCard className="w-4 h-4 text-emerald-700" />
+                          <IdCard className="w-4 h-4 text-[#0C4A38]" />
                           <span>کارت اطلاعات هویتی من</span>
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-white text-[10px] tabular-nums">
+                        <span className="px-2 py-0.5 rounded-md bg-[#071E17] text-[#F3D078] text-[10px] tabular-nums">
                           {toPersianNumbers(completionPct)}٪
                         </span>
                       </button>
@@ -552,7 +555,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
         </header>
 
         {/* HORIZONTAL NAVIGATION BAR (Desktop / Tablet Landscape; Mobile uses Thumb Bottom Tab Bar) */}
-        <nav className="hidden lg:block bg-white/95 backdrop-blur-xl rounded-2xl p-2 px-3 sm:px-4 border border-stone-200/90 shadow-sm overflow-x-auto scrollbar-none z-20">
+        <nav className="hidden lg:block bg-[#FCFCF9]/95 backdrop-blur-xl rounded-2xl py-1.5 px-3 border border-[#DFD8C4] shadow-[0_6px_20px_-16px_rgba(7,30,23,0.12)] overflow-x-auto scrollbar-none z-20">
           <div className="flex items-center justify-start xl:justify-center gap-1 min-w-max mx-auto">
             {navItems.map(item => {
               const Icon = item.icon;
@@ -576,35 +579,35 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                   >
                     <button
                       onClick={() => setActiveNav('Counseling')}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center gap-2 px-3 py-2 min-h-[38px] rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         isActive
-                          ? 'bg-emerald-700 text-white shadow-xs'
-                          : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900'
+                          ? 'bg-[#071E17] text-[#F3D078] shadow-xs'
+                          : 'text-[#4C5852] hover:bg-[#F2EFE4] hover:text-[#071E17]'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-emerald-700'}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#F3D078]' : 'text-[#0C4A38]'}`} />
                       <span>{item.label}</span>
-                      <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                      <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
                     </button>
 
                     {/* 2-Option Counseling Dropdown */}
                     {counselingDropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-stone-200 shadow-xl p-2 z-50 space-y-1">
+                      <div className="absolute right-0 mt-2 w-68 bg-[#FCFCF9] rounded-2xl border border-[#DFD8C4] shadow-xl p-2 z-50 space-y-1">
                         <button
                           onClick={() => {
                             setActiveNav('Counseling');
                             setCounselingDropdownOpen(false);
                           }}
-                          className="w-full text-right p-2.5 rounded-xl hover:bg-emerald-50 text-xs font-bold text-stone-800 flex items-center justify-between group cursor-pointer"
+                          className="w-full text-right p-2.5 rounded-xl hover:bg-[#F2F7F4] text-xs font-bold text-[#071E17] flex items-center justify-between gap-2 group cursor-pointer"
                         >
-                          <div className="flex items-center gap-2">
-                            <HeartHandshake className="w-4 h-4 text-emerald-700" />
-                            <div>
-                              <p className="group-hover:text-emerald-900">خدمات روانشناختی و مشاوره</p>
-                              <p className="text-[10px] text-stone-500 font-normal">خانواده، شخصیت و ازدواج</p>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <HeartHandshake className="w-4 h-4 text-[#0C4A38] shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-extrabold">خدمات روانشناختی و مشاوره</p>
+                              <p className="text-[10px] text-[#525E58] font-normal">خانواده، شخصیت و ازدواج</p>
                             </div>
                           </div>
-                          <span className="text-[10px] bg-stone-100 group-hover:bg-emerald-100 text-stone-600 group-hover:text-emerald-800 px-2 py-0.5 rounded-full">روانشناختی</span>
+                          <span className="text-[10px] font-extrabold text-[#0C4A38] shrink-0">روانشناختی</span>
                         </button>
 
                         <button
@@ -612,16 +615,16 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                             setActiveNav('SpecializedCounseling');
                             setCounselingDropdownOpen(false);
                           }}
-                          className="w-full text-right p-2.5 rounded-xl hover:bg-amber-50 text-xs font-bold text-stone-800 flex items-center justify-between group cursor-pointer"
+                          className="w-full text-right p-2.5 rounded-xl hover:bg-[#FAF5E6] text-xs font-bold text-[#071E17] flex items-center justify-between gap-2 group cursor-pointer"
                         >
-                          <div className="flex items-center gap-2">
-                            <Scale className="w-4 h-4 text-amber-600" />
-                            <div>
-                              <p className="group-hover:text-amber-900">مشاوره تخصصی شغلی</p>
-                              <p className="text-[10px] text-stone-500 font-normal">هدایت قضایی و تحصیلی</p>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Scale className="w-4 h-4 text-[#B88928] shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-extrabold">مشاوره تخصصی شغلی</p>
+                              <p className="text-[10px] text-[#525E58] font-normal">هدایت قضایی و تحصیلی</p>
                             </div>
                           </div>
-                          <span className="text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">تخصصی</span>
+                          <span className="text-[10px] font-extrabold text-[#8A6314] shrink-0">تخصصی</span>
                         </button>
                       </div>
                     )}
@@ -633,13 +636,13 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 <button
                   key={item.id}
                   onClick={() => setActiveNav(item.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-3 py-2 min-h-[38px] rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                     isActive
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900'
+                      ? 'bg-[#071E17] text-[#F3D078] shadow-xs'
+                      : 'text-[#4C5852] hover:bg-[#F2EFE4] hover:text-[#071E17]'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-emerald-700'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#F3D078]' : 'text-[#0C4A38]'}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -647,7 +650,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           </div>
         </nav>
 
-        {/* WARM ELEGANT CONTENT CANVAS (Seamless edge-to-edge on mobile Dashboard, framed on Desktop >= lg) */}
+        {/* WARM ELEGANT CONTENT CANVAS (Seamless edge-to-edge on mobile Dashboard, calm architectural surface on Desktop >= lg) */}
         <main
           className={`${canvasBgClass} ${
             activeNav === 'Dashboard' ||
@@ -659,7 +662,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 activeNav === 'Setting'))
               ? 'max-lg:!bg-transparent max-lg:!border-0 max-lg:!shadow-none max-lg:!p-0 max-lg:!rounded-none'
               : 'rounded-2xl p-3.5 shadow-sm border'
-          } lg:rounded-[40px] lg:p-10 lg:shadow-2xl lg:border text-stone-900 min-h-[60vh] sm:min-h-[700px] transition-colors duration-500`}
+          } lg:rounded-[30px] lg:p-7 xl:p-8 lg:shadow-[0_14px_40px_-24px_rgba(7,30,23,0.12)] lg:border text-stone-900 min-h-[60vh] sm:min-h-[700px] transition-colors duration-500`}
         >
           {activeNav === 'Dashboard' || (!effectiveStaff && (activeNav === 'Finance' || activeNav === 'Alumni' || activeNav === 'Users' || activeNav === 'Admin' || activeNav === 'Setting')) ? (
             <CrextioDashboard

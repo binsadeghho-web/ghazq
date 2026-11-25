@@ -47,6 +47,7 @@ export const WelfareCooperativeManager: React.FC = () => {
   const [isEditingSectionHeader, setIsEditingSectionHeader] = useState(false);
   const [headerForm, setHeaderForm] = useState<CooperativeSectionInfo>({ ...cooperativeSectionInfo });
   const [saveBanner, setSaveBanner] = useState(false);
+  const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -99,10 +100,16 @@ export const WelfareCooperativeManager: React.FC = () => {
     if (!file) return;
     setUploadingPhoto(true);
     try {
-      const uploaded = await api.uploadFile(file, 'misc');
+      const uploaded = await api.uploadFile(file, 'welfare_media');
       if (uploaded?.url) {
         setProductForm(prev => ({ ...prev, imageUrl: uploaded.url }));
       }
+    } catch (err: any) {
+      window.dispatchEvent(
+        new CustomEvent('app:toast', {
+          detail: { message: err?.message || 'آپلود تصویر با خطا مواجه شد.', type: 'error' },
+        })
+      );
     } finally {
       setUploadingPhoto(false);
     }
@@ -414,17 +421,36 @@ export const WelfareCooperativeManager: React.FC = () => {
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>ویرایش کامل</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`آیا از حذف محصول «${item.title || item.name}» از تعاونی اطمینان دارید؟`)) {
-                        deleteConsumableItem(item.id);
-                      }
-                    }}
-                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer"
-                    title="حذف کالا"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {confirmDeleteItemId === item.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await deleteConsumableItem(item.id);
+                          setConfirmDeleteItemId(null);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black cursor-pointer"
+                      >
+                        تایید حذف
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteItemId(null)}
+                        className="px-2 py-1 rounded-lg bg-stone-200 text-stone-700 text-[11px] font-bold cursor-pointer"
+                      >
+                        لغو
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteItemId(item.id)}
+                      className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer"
+                      title="حذف کالا"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

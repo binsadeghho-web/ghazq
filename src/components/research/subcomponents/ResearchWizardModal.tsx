@@ -20,6 +20,9 @@ import {
   AlertCircle,
   Send,
   Sparkles,
+  Upload,
+  Paperclip,
+  Trash2,
 } from 'lucide-react';
 import {
   ResearchCategory,
@@ -27,6 +30,7 @@ import {
   ResearchPortalConfig,
   User,
 } from '../../../types';
+import { api } from '../../../services/apiClient';
 import { getDeliveryModeLabel } from './researchUiHelpers';
 
 interface ResearchWizardModalProps {
@@ -88,6 +92,8 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
   const [thesisTitle, setThesisTitle] = useState('');
   const [field, setField] = useState('فقه القضاء و رویه دادرسی');
   const [targetInstitution, setTargetInstitution] = useState('');
+  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; size?: number }>>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -160,6 +166,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
       setThesisTitle(activeEdit.thesisTitle || '');
       setField(activeEdit.field || 'فقه القضاء و رویه دادرسی');
       setTargetInstitution(activeEdit.targetInstitution || '');
+      setAttachments(Array.isArray(activeEdit.attachments) ? activeEdit.attachments : []);
     } else {
       const startCat: ResearchCategory = initCat || 'thesis';
       setResearchCategory(startCat);
@@ -196,10 +203,88 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
       setThesisTitle('');
       setField('فقه القضاء و رویه دادرسی');
       setTargetInstitution('');
+      setAttachments([]);
     }
   }, [isOpen, currentEditingId]);
 
   if (!isOpen) return null;
+
+  const handleUploadResearchFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      setErrorMsg('حجم هر فایل پیوست پژوهشی نباید بیشتر از ۸ مگابایت باشد.');
+      return;
+    }
+    setUploadingAttachment(true);
+    setErrorMsg('');
+    try {
+      const uploaded = await api.uploadFile(file, 'research');
+      if (uploaded?.url) {
+        setAttachments(prev => [
+          ...prev,
+          { url: uploaded.url, name: uploaded.originalName || file.name, size: uploaded.sizeBytes || file.size },
+        ]);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'آپلود فایل پیوست با خطا مواجه شد.');
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const renderResearchAttachmentsBox = () => (
+    <div className="p-3.5 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <Paperclip className="w-3.5 h-3.5 text-amber-600" />
+            <span>پیوست پروپوزال، پیش‌نویس یا فایل مستندات (اختیاری)</span>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            فرمت‌های مجاز: PDF، Word (DOC/DOCX) یا تصویر (حداکثر ۸ مگابایت) — ذخیره امن در پوشه اختصاصی پژوهش
+          </p>
+        </div>
+        <label className="px-3.5 py-2 min-h-[38px] rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] font-black inline-flex items-center gap-1.5 cursor-pointer shrink-0">
+          <Upload className="w-3.5 h-3.5" />
+          <span>{uploadingAttachment ? 'در حال آپلود...' : 'انتخاب فایل'}</span>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp"
+            disabled={uploadingAttachment}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              e.target.value = '';
+              handleUploadResearchFile(f);
+            }}
+            className="hidden"
+          />
+        </label>
+      </div>
+      {attachments.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          {attachments.map((att, idx) => (
+            <div
+              key={`${att.url}-${idx}`}
+              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+            >
+              <span className="truncate font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">{att.name}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                className="p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer shrink-0"
+                title="حذف فایل پیوست"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   const enabledStep1 = w.step1Options.filter(o => o.enabled);
   const enabledStep2 = w.step2Options.filter(o => o.enabled);
@@ -328,6 +413,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
         thesisTitle: derivedTitle,
         field: field.trim() || 'فقه و حقوق اسلامی',
         targetInstitution: targetInstitution.trim(),
+        attachments: attachments.length > 0 ? attachments : undefined,
       };
 
       const res = editingRequest
@@ -640,6 +726,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       className="w-full p-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                     />
                   </div>
+                  {renderResearchAttachmentsBox()}
                 </div>
               </div>
             )}
@@ -872,6 +959,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                     />
                   </div>
+                  {renderResearchAttachmentsBox()}
                 </div>
               </div>
             )}
@@ -1022,6 +1110,7 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       />
                     </div>
                   </div>
+                  {renderResearchAttachmentsBox()}
                 </div>
               </div>
             )}
@@ -1098,6 +1187,22 @@ export const ResearchWizardModal: React.FC<ResearchWizardModalProps> = ({
                       {briefSummary}
                     </p>
                   </div>
+                  {attachments.length > 0 && (
+                    <div className="pt-2 border-t border-amber-200/70 dark:border-amber-800/50">
+                      <span className="text-slate-500 dark:text-slate-400 block mb-1">فایل‌های پیوست‌شده:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {attachments.map((att, idx) => (
+                          <span
+                            key={`${att.url}-${idx}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-amber-300/60 text-slate-800 dark:text-slate-200 font-bold"
+                          >
+                            <Paperclip className="w-3 h-3 text-emerald-600" />
+                            <span>{att.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

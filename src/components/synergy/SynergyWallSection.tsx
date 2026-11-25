@@ -367,34 +367,36 @@ export const SynergyWallSection: React.FC = () => {
         </div>
       </div>
 
-      {/* DESKTOP Editorial Header */}
-      <div className="hidden sm:flex bg-[#FCFCFA] rounded-[32px] p-6 border border-stone-200/90 shadow-sm flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="p-2 rounded-2xl bg-amber-100 text-amber-900 border border-amber-200">
-              <Users2 className="w-5 h-5 text-amber-700" />
+      {/* DESKTOP Theme 2 Obsidian-Emerald Editorial Header */}
+      <div className="hidden sm:flex relative rounded-[28px] overflow-hidden bg-gradient-to-br from-[#071E17] via-[#0B2A20] to-[#113D30] text-white p-6 sm:p-7 border border-[#F3D078]/25 shadow-xl flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2.5 mb-2">
+            <span className="p-2 rounded-xl bg-white/10 border border-[#F3D078]/30 text-[#F3D078]">
+              <Users2 className="w-5 h-5" />
             </span>
-            <h1 className="text-xl font-black text-stone-900 tracking-tight">
+            <h1 className="text-xl font-black text-white tracking-tight">
               درگاه تخصصی تجارب علمی و شبکه هم‌افزایی اعضا
             </h1>
           </div>
-          <p className="text-xs text-stone-500 max-w-2xl leading-relaxed">
+          <p className="text-xs text-emerald-100/80 max-w-2xl leading-relaxed">
             محیطی امن، حرفه‌ای و محرمانه جهت اشتراک‌گذاری تجربیات قضایی-اداری و ثبت درخواست‌های شبکه هم‌افزایی. اطلاعات هویتی و شماره همراه اعضا کاملاً محفوظ باقی می‌ماند.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative z-10 flex items-center gap-2.5 flex-wrap shrink-0">
           <button
+            type="button"
             onClick={() => setNewExperienceModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer shrink-0"
           >
-            <Sparkles className="w-4 h-4 text-amber-300" />
+            <Sparkles className="w-4 h-4 text-[#F3D078]" />
             <span>+ ثبت تجربه کاربردی جدید</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setNewSynergyModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-[#D4AF37] to-[#F3D078] hover:brightness-105 text-[#071E17] rounded-2xl text-xs font-black transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>+ ثبت درخواست هم‌افزایی</span>
@@ -403,14 +405,14 @@ export const SynergyWallSection: React.FC = () => {
       </div>
 
       {/* Main Split Navigation Tabs (تجارب / هم‌افزایی) */}
-      <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-white sm:bg-[#FCFCFA] rounded-2xl border border-stone-200/90 shadow-2xs">
+      <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-[#FCFCF9] rounded-2xl border border-[#E2DAC3] shadow-2xs">
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => setMainTab('synergy')}
           className={`flex-1 min-h-[42px] py-2.5 sm:py-3 px-2.5 sm:px-4 rounded-xl text-[11px] sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             mainTab === 'synergy'
-              ? 'bg-[#071E17] sm:bg-amber-600 text-[#F3D078] sm:text-white shadow-sm'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+              ? 'bg-[#071E17] text-[#F3D078] shadow-sm'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF8F2]'
           }`}
         >
           <Users2 className="w-4 h-4 shrink-0" />
@@ -423,8 +425,8 @@ export const SynergyWallSection: React.FC = () => {
           onClick={() => setMainTab('experiences')}
           className={`flex-1 min-h-[42px] py-2.5 sm:py-3 px-2.5 sm:px-4 rounded-xl text-[11px] sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             mainTab === 'experiences'
-              ? 'bg-[#071E17] sm:bg-emerald-800 text-[#F3D078] sm:text-white shadow-sm'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+              ? 'bg-[#071E17] text-[#F3D078] shadow-sm'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF8F2]'
           }`}
         >
           <BookOpen className="w-4 h-4 shrink-0" />
@@ -503,12 +505,12 @@ export const SynergyWallSection: React.FC = () => {
               filteredSynergyPosts.map(post => (
                 <div
                   key={post.id}
-                  className="bg-white rounded-3xl border border-stone-200/90 p-5 space-y-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+                  className="bg-[#FCFCF9] rounded-3xl border border-[#E2DAC3] p-5 space-y-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     {/* Header Line */}
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 font-extrabold text-[10px]">
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-[#FAF8F2] text-[#8E651C] border border-[#E2DAC3] font-extrabold text-[10px]">
                         {post.categoryTitle || 'هم‌افزایی اداری-شغلی'}
                       </span>
 
@@ -522,18 +524,18 @@ export const SynergyWallSection: React.FC = () => {
                       </div>
                     </div>
 
-                    <h3 className="font-black text-sm text-stone-900 leading-snug">
+                    <h3 className="font-black text-sm text-[#071E17] leading-snug">
                       {post.title}
                     </h3>
 
-                    <p className="text-xs text-stone-700 leading-relaxed bg-[#FCFCFA] p-3.5 rounded-2xl border border-stone-200/80">
+                    <p className="text-xs text-stone-700 leading-relaxed bg-white p-3.5 rounded-2xl border border-[#E2DAC3]/70">
                       {post.content}
                     </p>
 
                     {/* Anonymity Notice */}
-                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                        <Shield className="w-3.5 h-3.5 text-amber-700" />
+                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-[#E2DAC3]/60">
+                      <div className="flex items-center gap-1.5 font-bold text-[#8E651C]">
+                        <Shield className="w-3.5 h-3.5 text-[#A87923]" />
                         <span>{post.authorPseudonym}</span>
                       </div>
                       <span className="text-stone-400 font-medium">اطلاعات تماس محفوظ است</span>
@@ -541,7 +543,7 @@ export const SynergyWallSection: React.FC = () => {
                   </div>
 
                   {/* Public Responses & Action Buttons */}
-                  <div className="pt-3 border-t border-stone-100 space-y-3">
+                  <div className="pt-3 border-t border-[#E2DAC3]/60 space-y-3">
                     {post.responses && post.responses.length > 0 && (
                       <div className="space-y-2">
                         <span className="text-[11px] font-extrabold text-stone-800 block">
@@ -549,8 +551,8 @@ export const SynergyWallSection: React.FC = () => {
                         </span>
                         <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                           {post.responses.map(resp => (
-                            <div key={resp.id} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs space-y-1">
-                              <div className="flex items-center justify-between font-bold text-stone-900 text-[11px]">
+                            <div key={resp.id} className="p-2.5 rounded-xl bg-white border border-[#E2DAC3]/80 text-xs space-y-1">
+                              <div className="flex items-center justify-between font-bold text-[#071E17] text-[11px]">
                                 <span>{resp.responderPseudonym}</span>
                                 <span className="text-[10px] text-stone-400 font-normal">{resp.timestamp}</span>
                               </div>
@@ -563,18 +565,20 @@ export const SynergyWallSection: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <button
+                        type="button"
                         onClick={() => setSelectedPost(post)}
-                        className="w-full py-2 px-3 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-stone-200"
+                        className="w-full py-2 px-3 bg-[#FAF8F2] hover:bg-stone-100 text-stone-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-[#E2DAC3]"
                       >
                         <MessageCircle className="w-3.5 h-3.5 text-stone-700" />
                         <span>ارسال پاسخ عمومی</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleOpenPrivateChat(post.authorPseudonym, post.title)}
-                        className="w-full py-2 px-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        className="w-full py-2 px-3 bg-[#071E17] hover:bg-[#0D3529] text-[#F3D078] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                       >
-                        <LockIcon className="w-3.5 h-3.5 text-amber-300" />
+                        <LockIcon className="w-3.5 h-3.5 text-[#F3D078]" />
                         <span>درخواست مکالمه خصوصی</span>
                       </button>
                     </div>
@@ -691,14 +695,20 @@ export const SynergyWallSection: React.FC = () => {
 
       {/* PRIVATE 1-ON-1 DIRECT CHAT DRAWER */}
       {privateChatOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-white rounded-[32px] w-full max-w-xl border border-stone-200 shadow-2xl flex flex-col h-[600px] max-h-[90vh] overflow-hidden">
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-1 sm:p-5 overflow-hidden"
+          onClick={() => setPrivateChatOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-t-[26px] sm:rounded-3xl w-full max-w-xl border border-[#E2DAC3] shadow-2xl flex flex-col h-[88dvh] sm:h-[600px] max-h-[92dvh] overflow-hidden"
+          >
             {/* Chat Drawer Header */}
-            <div className="p-4 bg-emerald-900 text-white flex items-center justify-between shrink-0">
-              <div>
+            <div className="p-4 bg-[#071E17] text-white flex items-center justify-between shrink-0 border-b border-[#F3D078]/20">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <LockIcon className="w-4 h-4 text-amber-300" />
-                  <h4 className="font-extrabold text-sm text-white">{chatPartnerTitle}</h4>
+                  <LockIcon className="w-4 h-4 text-[#F3D078] shrink-0" />
+                  <h4 className="font-extrabold text-sm text-white truncate">{chatPartnerTitle}</h4>
                 </div>
                 <p className="text-[11px] text-emerald-200/90 mt-0.5 truncate max-w-sm">
                   موضوع گفتگو: {chatTopic}
@@ -706,21 +716,23 @@ export const SynergyWallSection: React.FC = () => {
               </div>
 
               <button
+                type="button"
                 onClick={() => setPrivateChatOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+                aria-label="بستن"
+                className="w-9 h-9 rounded-full hover:bg-white/15 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Privacy Confidentiality Banner */}
-            <div className="p-2.5 bg-amber-50 border-b border-amber-200 text-amber-900 text-[11px] font-bold flex items-center justify-center gap-1.5 shrink-0">
-              <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+            <div className="p-2.5 bg-[#FAF8F2] border-b border-[#E2DAC3] text-[#8E651C] text-[11px] font-bold flex items-center justify-center gap-1.5 shrink-0">
+              <ShieldCheck className="w-4 h-4 text-[#A87923] shrink-0" />
               <span>فضای گفتگو کاملاً اختصاصی است · نام واقعی و تلفن طرفین برای یکدیگر مخفی می‌باشد</span>
             </div>
 
             {/* Chat Messages Feed */}
-            <div className="p-4 overflow-y-auto flex-1 space-y-3 bg-[#FCFCFA]">
+            <div className="p-4 overflow-y-auto overscroll-y-contain flex-1 min-h-0 space-y-3 bg-[#FCFCF9]">
               {chatMessages.map(msg => (
                 <div
                   key={msg.id}
@@ -734,8 +746,8 @@ export const SynergyWallSection: React.FC = () => {
                   <div
                     className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                       msg.isMine
-                        ? 'bg-emerald-800 text-white rounded-tl-none shadow-xs'
-                        : 'bg-white text-stone-900 rounded-tr-none border border-stone-200 shadow-2xs'
+                        ? 'bg-[#071E17] text-white rounded-tl-none shadow-xs'
+                        : 'bg-white text-stone-900 rounded-tr-none border border-[#E2DAC3] shadow-2xs'
                     }`}
                   >
                     {msg.text}
@@ -745,17 +757,20 @@ export const SynergyWallSection: React.FC = () => {
             </div>
 
             {/* Chat Input Bar */}
-            <form onSubmit={handleSendChatMessage} className="p-3 bg-white border-t border-stone-200 flex items-center gap-2 shrink-0">
+            <form
+              onSubmit={handleSendChatMessage}
+              className="p-3 bg-white border-t border-[#E2DAC3] flex items-center gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            >
               <input
                 type="text"
                 placeholder="پیام خود را بنویسید..."
                 value={newChatMessage}
                 onChange={e => setNewChatMessage(e.target.value)}
-                className="flex-1 px-4 py-2.5 text-xs rounded-2xl bg-stone-100 border border-stone-200 text-stone-900 focus:outline-emerald-600 font-medium"
+                className="flex-1 px-4 py-2.5 text-xs rounded-2xl bg-[#FAF8F2] border border-[#E2DAC3] text-stone-900 focus:outline-emerald-700 font-medium"
               />
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl text-xs font-bold shadow-md transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 min-h-[42px] bg-[#071E17] hover:bg-[#0D3529] text-[#F3D078] rounded-2xl text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <span>ارسال</span>
                 <Send className="w-3.5 h-3.5" />

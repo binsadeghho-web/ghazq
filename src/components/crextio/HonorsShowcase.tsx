@@ -129,25 +129,25 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`rounded-2xl sm:rounded-3xl border overflow-hidden transition-colors ${
+      className={`rounded-2xl sm:rounded-[26px] border overflow-hidden transition-colors ${
         darkSurface
-          ? 'bg-[#111F1A] border-[#243B32] text-stone-100'
-          : 'bg-white border-stone-200/90 text-stone-900 shadow-sm'
+          ? 'bg-[#0B231B] border-[#243B32] text-stone-100'
+          : 'bg-[#FCFCF9] border-[#DFD8C4] text-[#071E17] shadow-[0_8px_24px_-18px_rgba(7,30,23,0.14)]'
       }`}
       dir="rtl"
     >
       {/* Clean Header Bar */}
       <div
-        className={`px-3.5 sm:px-5 py-3 sm:py-3.5 border-b flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 ${
-          darkSurface ? 'border-white/10 bg-[#14251F]' : 'border-stone-100 bg-stone-50/70'
+        className={`px-4 sm:px-6 py-3.5 border-b flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 ${
+          darkSurface ? 'border-white/10 bg-[#0E2920]' : 'border-[#ECE6D6] bg-[#F7F4EC]/80'
         }`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
               darkSurface
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                : 'bg-amber-100 text-amber-800 border border-amber-200'
+                ? 'bg-[#F3D078]/15 text-[#F3D078] border-[#F3D078]/35'
+                : 'bg-[#071E17] text-[#F3D078] border-[#F3D078]/35'
             }`}
           >
             <Award className="w-4 h-4" />
@@ -155,7 +155,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
           <div className="min-w-0">
             <h2
               className={`text-sm sm:text-base font-black truncate ${
-                darkSurface ? 'text-white' : 'text-stone-900'
+                darkSurface ? 'text-white' : 'text-[#071E17]'
               }`}
             >
               {crextioConfig.honorsShowcaseTitle || 'تالار افتخارات، انتصابات و دستاوردهای نخبگان'}
@@ -163,7 +163,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
             {span === 'full' && (
               <p
                 className={`text-[11px] truncate ${
-                  darkSurface ? 'text-stone-400' : 'text-stone-500'
+                  darkSurface ? 'text-stone-400' : 'text-[#525E58]'
                 }`}
               >
                 {crextioConfig.honorsShowcaseSubtitle ||
@@ -177,8 +177,8 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
           {items.length > 1 && (
             <div className="flex items-center gap-1.5">
               <span
-                className={`text-[11px] font-mono tabular-nums font-bold px-2 ${
-                  darkSurface ? 'text-stone-300' : 'text-stone-600'
+                className={`text-[11px] tabular-nums font-extrabold px-2 ${
+                  darkSurface ? 'text-stone-300' : 'text-[#525E58]'
                 }`}
               >
                 {toPersianNumbers(safeIdx + 1)} / {toPersianNumbers(items.length)}
@@ -191,7 +191,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
                 className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-300 hover:bg-white/10'
-                    : 'border-stone-200 text-stone-600 hover:bg-stone-100'
+                    : 'border-[#DFD8C4] bg-[#FCFCF9] text-[#071E17] hover:bg-[#EFEADB]'
                 }`}
               >
                 {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -204,7 +204,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
                 className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-200 hover:bg-white/10'
-                    : 'border-stone-200 text-stone-700 hover:bg-stone-100'
+                    : 'border-[#DFD8C4] bg-[#FCFCF9] text-[#071E17] hover:bg-[#EFEADB]'
                 }`}
               >
                 <ChevronRight className="w-4 h-4" />
@@ -217,7 +217,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
                 className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-200 hover:bg-white/10'
-                    : 'border-stone-200 text-stone-700 hover:bg-stone-100'
+                    : 'border-[#DFD8C4] bg-[#FCFCF9] text-[#071E17] hover:bg-[#EFEADB]'
                 }`}
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -229,7 +229,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
             <button
               type="button"
               onClick={onOpenEditor}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-[11px] font-black flex items-center gap-1 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#071E17] hover:bg-[#0D3227] text-[#F3D078] border border-[#F3D078]/35 text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
             >
               <Edit3 className="w-3 h-3" />
               <span>ویرایش صفحات</span>
@@ -345,7 +345,7 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
                     <button
                       type="button"
                       onClick={() => handleCta(activeItem)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer active:scale-95"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] text-xs font-black transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                     >
                       <span>{activeItem.ctaLabel}</span>
                       <ArrowLeft className="w-3.5 h-3.5" />

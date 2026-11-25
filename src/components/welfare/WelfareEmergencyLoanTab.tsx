@@ -10,8 +10,13 @@ import {
   Banknote,
   AlertCircle,
   FileText,
+  Upload,
+  Paperclip,
+  Trash2,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { formatIsoToJalali } from '../../utils/jalaliDate';
 
@@ -22,6 +27,8 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
 
   const [amountInput, setAmountInput] = useState('');
   const [reasonInput, setReasonInput] = useState('');
+  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; size?: number }>>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [isDescModalOpen, setIsDescModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -62,10 +69,14 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
         requestedValue: formattedVal,
         description: reasonInput.trim(),
         rulesAcknowledged: true,
-        metadata: { amountToman: numericAmount },
+        metadata: {
+          amountToman: numericAmount,
+          ...(attachments.length > 0 ? { attachments } : {}),
+        },
       });
       setAmountInput('');
       setReasonInput('');
+      setAttachments([]);
       setFeedback({
         type: 'success',
         text: 'درخواست تسهیلات اضطراری شما ثبت شد و در صف رسیدگی ۴۸ ساعته کارگروه قرار گرفت.',
@@ -243,6 +254,76 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
             />
           </div>
 
+          <div className="p-3.5 rounded-2xl border border-dashed border-stone-300 bg-[#FCFCF9] space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="font-black text-[#071E17] flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>مدارک یا فیش پشتیبان (اختیاری)</span>
+                </span>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  PDF، Word یا تصویر (حداکثر ۸ مگابایت)
+                </p>
+              </div>
+              <label className="px-3 py-2 min-h-[36px] rounded-xl bg-stone-200 hover:bg-stone-300 text-[#071E17] font-black inline-flex items-center gap-1.5 cursor-pointer shrink-0">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{uploadingDoc ? 'در حال آپلود...' : 'انتخاب مدرک'}</span>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp"
+                  disabled={uploadingDoc}
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!f) return;
+                    if (f.size > 8 * 1024 * 1024) {
+                      setFeedback({ type: 'error', text: 'حجم فایل نباید بیشتر از ۸ مگابایت باشد.' });
+                      return;
+                    }
+                    setUploadingDoc(true);
+                    setFeedback(null);
+                    try {
+                      const up = await api.uploadFile(f, 'welfare_receipt');
+                      if (up?.url) {
+                        setAttachments((prev) => [
+                          ...prev,
+                          { url: up.url, name: up.originalName || f.name, size: up.sizeBytes || f.size },
+                        ]);
+                      }
+                    } catch (err: any) {
+                      setFeedback({ type: 'error', text: err?.message || 'آپلود مدرک با خطا مواجه شد.' });
+                    } finally {
+                      setUploadingDoc(false);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {attachments.map((att, idx) => (
+                  <div
+                    key={`${att.url}-${idx}`}
+                    className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white border border-stone-200"
+                  >
+                    <span className="truncate font-bold text-stone-700 flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span className="truncate">{att.name}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                      className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={isSubmitting}
@@ -292,6 +373,32 @@ export const WelfareEmergencyLoanTab: React.FC = () => {
                     </div>
 
                     <p className="text-xs text-stone-600 leading-relaxed">{req.description}</p>
+
+                    {Array.isArray(req.metadata?.attachments) && req.metadata.attachments.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="font-bold text-stone-500 inline-flex items-center gap-1">
+                          <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>مدارک پیوست:</span>
+                        </span>
+                        {req.metadata.attachments.map((att: any, idx: number) => (
+                          <button
+                            key={`${att.url}-${idx}`}
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await api.downloadPrivateFile(att.url, att.name);
+                              } catch (err: any) {
+                                setFeedback({ type: 'error', text: err?.message || 'خطا در دانلود مدرک پیوست.' });
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 text-[#071E17] border border-stone-200 font-bold cursor-pointer"
+                          >
+                            <Download className="w-3 h-3 text-emerald-700" />
+                            <span>{att.name || `مدرک ${idx + 1}`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
                     {/* 3-Step Visual Progress */}
                     <div className="grid grid-cols-3 gap-2 pt-1 text-[10px] font-bold">
