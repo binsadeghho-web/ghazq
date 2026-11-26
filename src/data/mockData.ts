@@ -422,6 +422,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
   showShowcaseImagesInMinimal: true,
   showcaseImageOverrides: {},
   showHonorsShowcase: true,
+  alumniDefaultTheme: 'crextio',
   honorsShowcaseTitle: 'تالار افتخارات، انتصابات و دستاوردهای نخبگان',
   honorsShowcaseSubtitle: 'تبریک انتصابات قضایی، رتبه‌های برتر علمی و مفاخر مجمع دانش‌آموختگان فقه و قضا',
   honorsAutoplaySeconds: 7,
@@ -553,6 +554,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
       },
     ],
     showServicesList: true,
+    showServicesListHeaderBox: true,
     servicesListTitle: 'فهرست خدمات',
     servicesListOrder: [
       'courses',
@@ -689,6 +691,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
       },
     ],
     showServicesList: true,
+    showServicesListHeaderBox: true,
     servicesListTitle: 'فهرست خدمات',
     showActiveWorkshopsSpotlight: true,
     servicesListOrder: [

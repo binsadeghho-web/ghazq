@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutGrid,
@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   GraduationCap,
   ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Compass,
   Scale,
@@ -60,6 +61,7 @@ interface Theme3ServicesWorkbenchProps {
   feedTabs: Theme3FeedTabItem[];
   resolvedFeedTab: MobileServiceListTabId;
   onSelectTab: (tab: MobileServiceListTabId) => void;
+  showServicesListHeaderBox?: boolean;
   showActiveWorkshopsSpotlight?: boolean;
   combinedWorkshopsCount: number;
   activeWorkshops: any[];
@@ -95,6 +97,7 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
   feedTabs,
   resolvedFeedTab,
   onSelectTab,
+  showServicesListHeaderBox = true,
   showActiveWorkshopsSpotlight = true,
   combinedWorkshopsCount,
   activeWorkshops,
@@ -124,9 +127,16 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
   navigateDeep,
   onBookGeneralCounseling,
 }) => {
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+
   if (feedTabs.length === 0) return null;
 
   const showSpotlight = showActiveWorkshopsSpotlight && combinedWorkshopsCount > 0;
+  const showTopRow = showServicesListHeaderBox || showSpotlight;
+
+  const scrollTabsBy = (deltaX: number) => {
+    tabsScrollRef.current?.scrollBy({ left: deltaX, behavior: 'smooth' });
+  };
 
   const tabAccentColor: Record<string, string> = {
     courses: 'text-cyan-700',
@@ -143,119 +153,148 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
   return (
     <section aria-label={title} className="space-y-4">
       {/* Header + Standout Active Workshop Spotlight side-by-side on laptop */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
-        <div
-          className={`${
-            showSpotlight ? 'lg:col-span-7' : 'lg:col-span-12'
-          } relative overflow-hidden rounded-[22px] bg-gradient-to-l from-[#071E17] via-[#0C3025] to-[#134434] text-white px-5 py-4 border border-[#F3D078]/30 flex items-center justify-between gap-3 shadow-sm`}
-        >
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-45" />
-          <div className="relative z-10 flex items-center gap-3 min-w-0">
-            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F3D078] to-[#D6A53D] text-[#071E17] flex items-center justify-center shrink-0 shadow-xs">
-              <LayoutGrid className="w-5 h-5 stroke-[2.2]" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-[15px] font-black text-white truncate">{title}</h2>
-              <p className="text-[11px] text-emerald-100/80 truncate mt-0.5">
-                انتخاب بخش جهت مشاهده امکانات زنده و ورود سریع
-              </p>
+      {showTopRow && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+          {showServicesListHeaderBox && (
+            <div
+              className={`${
+                showSpotlight ? 'lg:col-span-7' : 'lg:col-span-12'
+              } relative overflow-hidden rounded-[22px] bg-gradient-to-l from-[#071E17] via-[#0C3025] to-[#134434] text-white px-5 py-4 border border-[#F3D078]/30 flex items-center justify-between gap-3 shadow-sm`}
+            >
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-45" />
+              <div className="relative z-10 flex items-center gap-3 min-w-0">
+                <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F3D078] to-[#D6A53D] text-[#071E17] flex items-center justify-center shrink-0 shadow-xs">
+                  <LayoutGrid className="w-5 h-5 stroke-[2.2]" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-black text-white truncate">{title}</h2>
+                  <p className="text-[11px] text-emerald-100/80 truncate mt-0.5">
+                    انتخاب بخش جهت مشاهده امکانات زنده و ورود سریع
+                  </p>
+                </div>
+              </div>
+              <span className="relative z-10 px-3 py-1 rounded-xl bg-white/10 border border-[#F3D078]/30 text-xs font-black text-[#F3D078] tabular-nums shrink-0">
+                {toPersianNumbers(feedTabs.length)} خدمت
+              </span>
             </div>
-          </div>
-          <span className="relative z-10 px-3 py-1 rounded-xl bg-white/10 border border-[#F3D078]/30 text-xs font-black text-[#F3D078] tabular-nums shrink-0">
-            {toPersianNumbers(feedTabs.length)} خدمت
-          </span>
+          )}
+
+          {showSpotlight && (
+            <motion.button
+              type="button"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.985 }}
+              onClick={() => navigateDeep('CounselingGeneral', 'workshops')}
+              className={`${
+                showServicesListHeaderBox ? 'lg:col-span-5' : 'lg:col-span-12'
+              } relative overflow-hidden rounded-[22px] bg-gradient-to-l from-[#071E17] via-[#0F3528] to-[#134232] text-white p-4 px-5 border border-[#F3D078]/35 shadow-[0_14px_30px_-16px_rgba(7,30,23,0.65)] text-right flex items-center justify-between gap-3 cursor-pointer`}
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-[#F3D078]/15 to-transparent luxury-sheen"
+              />
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/80 to-transparent"
+              />
+              <div className="relative z-10 flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-[#F3D078]/15 border border-[#F3D078]/40 text-[#F3D078] flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-[#F3D078]">
+                    <span>کارگاه در حال برگزاری</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="tabular-nums">{toPersianNumbers(combinedWorkshopsCount)} کارگاه فعال</span>
+                  </div>
+                  <p className="text-xs font-black text-white truncate mt-0.5">
+                    {activeWorkshops[0]?.title || activeWorkshopCourses[0]?.title || 'کارگاه‌های تخصصی مرکز'}
+                  </p>
+                </div>
+              </div>
+              <span className="relative z-10 px-3.5 py-2 rounded-xl bg-[#F3D078] text-[#071E17] text-[11px] font-black shrink-0 whitespace-nowrap flex items-center gap-1">
+                <span>ثبت‌نام</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </span>
+            </motion.button>
+          )}
+        </div>
+      )}
+
+      {/* Horizontal Segmented Service Tabs with 10%-enlarged Left/Right Controls */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => scrollTabsBy(240)}
+          aria-label="اسکرول سربرگ‌ها به راست"
+          className="w-10 h-10 rounded-2xl bg-white hover:bg-[#F5F2E8] border border-[#DFD8C4] text-[#071E17] flex items-center justify-center shrink-0 shadow-2xs transition-colors cursor-pointer"
+        >
+          <ChevronRight className="w-[18px] h-[18px]" />
+        </button>
+
+        <div
+          ref={tabsScrollRef}
+          className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5"
+        >
+          {feedTabs.map(tab => {
+            const Icon = tab.icon;
+            const isSelected = resolvedFeedTab === tab.id;
+            const hasLiveWorkshop =
+              combinedWorkshopsCount > 0 && (tab.id === 'counseling' || tab.id === 'courses');
+
+            return (
+              <motion.button
+                key={tab.id}
+                type="button"
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => onSelectTab(tab.id)}
+                className={`relative flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-2xl text-xs font-extrabold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'text-white'
+                    : 'bg-white text-stone-700 border border-[#DFD8C4] hover:text-stone-950 shadow-2xs'
+                }`}
+              >
+                {isSelected && (
+                  <motion.span
+                    layoutId="theme3FeedTabPill"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    className="absolute inset-0 rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0C3126] to-[#134434] shadow-md border border-[#F3D078]/35 overflow-hidden"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
+                    />
+                  </motion.span>
+                )}
+                <Icon
+                  className={`relative z-10 w-4 h-4 ${
+                    isSelected ? 'text-[#F3D078]' : tabAccentColor[tab.id] || 'text-emerald-700'
+                  }`}
+                />
+                <span className="relative z-10">{tab.label}</span>
+                {hasLiveWorkshop && (
+                  <span
+                    className={`relative z-10 text-[10px] font-black tabular-nums ${
+                      isSelected ? 'text-[#F3D078]' : 'text-emerald-700'
+                    }`}
+                  >
+                    · {toPersianNumbers(combinedWorkshopsCount)} کارگاه
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
         </div>
 
-        {showSpotlight && (
-          <motion.button
-            type="button"
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => navigateDeep('CounselingGeneral', 'workshops')}
-            className="lg:col-span-5 relative overflow-hidden rounded-[22px] bg-gradient-to-l from-[#071E17] via-[#0F3528] to-[#134232] text-white p-4 px-5 border border-[#F3D078]/35 shadow-[0_14px_30px_-16px_rgba(7,30,23,0.65)] text-right flex items-center justify-between gap-3 cursor-pointer"
-          >
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-[#F3D078]/15 to-transparent luxury-sheen"
-            />
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/80 to-transparent"
-            />
-            <div className="relative z-10 flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-[#F3D078]/15 border border-[#F3D078]/40 text-[#F3D078] flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-black text-[#F3D078]">
-                  <span>کارگاه در حال برگزاری</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="tabular-nums">{toPersianNumbers(combinedWorkshopsCount)} کارگاه فعال</span>
-                </div>
-                <p className="text-xs font-black text-white truncate mt-0.5">
-                  {activeWorkshops[0]?.title || activeWorkshopCourses[0]?.title || 'کارگاه‌های تخصصی مرکز'}
-                </p>
-              </div>
-            </div>
-            <span className="relative z-10 px-3.5 py-2 rounded-xl bg-[#F3D078] text-[#071E17] text-[11px] font-black shrink-0 whitespace-nowrap flex items-center gap-1">
-              <span>ثبت‌نام</span>
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </span>
-          </motion.button>
-        )}
-      </div>
-
-      {/* Horizontal Segmented Service Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
-        {feedTabs.map(tab => {
-          const Icon = tab.icon;
-          const isSelected = resolvedFeedTab === tab.id;
-          const hasLiveWorkshop =
-            combinedWorkshopsCount > 0 && (tab.id === 'counseling' || tab.id === 'courses');
-
-          return (
-            <motion.button
-              key={tab.id}
-              type="button"
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => onSelectTab(tab.id)}
-              className={`relative flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-2xl text-xs font-extrabold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                isSelected
-                  ? 'text-white'
-                  : 'bg-white text-stone-700 border border-[#DFD8C4] hover:text-stone-950 shadow-2xs'
-              }`}
-            >
-              {isSelected && (
-                <motion.span
-                  layoutId="theme3FeedTabPill"
-                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  className="absolute inset-0 rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0C3126] to-[#134434] shadow-md border border-[#F3D078]/35 overflow-hidden"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
-                  />
-                </motion.span>
-              )}
-              <Icon
-                className={`relative z-10 w-4 h-4 ${
-                  isSelected ? 'text-[#F3D078]' : tabAccentColor[tab.id] || 'text-emerald-700'
-                }`}
-              />
-              <span className="relative z-10">{tab.label}</span>
-              {hasLiveWorkshop && (
-                <span
-                  className={`relative z-10 text-[10px] font-black tabular-nums ${
-                    isSelected ? 'text-[#F3D078]' : 'text-emerald-700'
-                  }`}
-                >
-                  · {toPersianNumbers(combinedWorkshopsCount)} کارگاه
-                </span>
-              )}
-            </motion.button>
-          );
-        })}
+        <button
+          type="button"
+          onClick={() => scrollTabsBy(-240)}
+          aria-label="اسکرول سربرگ‌ها به چپ"
+          className="w-10 h-10 rounded-2xl bg-white hover:bg-[#F5F2E8] border border-[#DFD8C4] text-[#071E17] flex items-center justify-center shrink-0 shadow-2xs transition-colors cursor-pointer"
+        >
+          <ChevronLeft className="w-[18px] h-[18px]" />
+        </button>
       </div>
 
       {/* Expanded Rich Multi-Column Detail Card */}

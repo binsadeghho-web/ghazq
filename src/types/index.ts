@@ -433,6 +433,7 @@ export interface CrextioDashboardConfig {
     }
   >;
   defaultAlumniTheme?: 'crextio' | 'minimal';
+  alumniDefaultTheme?: 'crextio' | 'theme3';
 
   // تنظیمات تصاویر باکس‌های ساده/مینیمال و کلیه ویترین‌ها
   showShowcaseImagesInMinimal?: boolean;
@@ -552,6 +553,7 @@ export interface CrextioMobileConfig {
   detailedShowcaseOverrides?: Record<string, CrextioMobileShowcaseOverride>;
   customShowcaseCards?: CrextioMobileCustomCard[];
   showServicesList?: boolean;
+  showServicesListHeaderBox?: boolean;
   servicesListTitle?: string;
   servicesListOrder?: MobileServiceListTabId[];
   hiddenServicesListItems?: Record<string, boolean>;

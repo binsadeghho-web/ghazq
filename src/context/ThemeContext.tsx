@@ -160,6 +160,7 @@ export function resolveMobileConfig(
     detailedShowcaseOverrides: merged.detailedShowcaseOverrides || {},
     customShowcaseCards: Array.isArray(customCards) ? customCards : [],
     showServicesList: merged.showServicesList !== false,
+    showServicesListHeaderBox: merged.showServicesListHeaderBox !== false,
     servicesListTitle: merged.servicesListTitle || 'فهرست خدمات',
     servicesListOrder: reconcileMobileOrder(merged.servicesListOrder, CANONICAL_MOBILE_SERVICES_LIST_ORDER),
     hiddenServicesListItems: merged.hiddenServicesListItems || {},
@@ -271,6 +272,7 @@ export function resolveTheme3Config(
     detailedShowcaseOverrides: merged.detailedShowcaseOverrides || {},
     customShowcaseCards: Array.isArray(customCards) ? customCards : [],
     showServicesList: merged.showServicesList !== false,
+    showServicesListHeaderBox: merged.showServicesListHeaderBox !== false,
     servicesListTitle: merged.servicesListTitle || 'فهرست خدمات',
     showActiveWorkshopsSpotlight: merged.showActiveWorkshopsSpotlight !== false,
     servicesListOrder: reconcileMobileOrder(merged.servicesListOrder, CANONICAL_MOBILE_SERVICES_LIST_ORDER),
@@ -401,8 +403,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return updated;
         });
       }
-    }).catch(() => {
-      // Keep UI responsive; avoid crashing on transient network errors
+    }).catch((err: any) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app:toast', {
+            detail: {
+              message: err?.message || 'خطا در ذخیره تنظیمات تم در پایگاه داده',
+              type: 'error',
+            },
+          })
+        );
+      }
     }).finally(() => {
       crextioSavingRef.current = false;
       if (crextioQueuedRef.current) {
@@ -467,37 +478,51 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     refreshDashboardConfig();
 
+    let sseUnsubscribe: (() => void) | null = null;
+    const connectThemeSse = () => {
+      if (sseUnsubscribe) {
+        sseUnsubscribe();
+        sseUnsubscribe = null;
+      }
+      const token = typeof window !== 'undefined' ? localStorage.getItem('feqh_access_token') : null;
+      if (!token) return;
+      sseUnsubscribe = api.subscribeToEvents(event => {
+        if (event.type === 'admin.theme_updated' || event.type === 'admin.dashboard_config_updated') {
+          const envelope = event.data?.data?.updates || event.data?.data || event.data;
+          const ver = event.data?.data?.version || envelope?.version;
+          const target = envelope?.target;
+          const config = envelope?.config || envelope;
+
+          if (config && typeof config === 'object') {
+            if (target === 'mizan' || (config.mizan && !config.crextio)) {
+              const mizanPayload = config.mizan || envelope?.mizan || config;
+              applyMizanConfigPayload(mizanPayload, ver);
+            } else if (config.crextio || config.mizan) {
+              if (config.crextio && !crextioSavingRef.current && !crextioQueuedRef.current) {
+                applyCrextioConfigPayload(config.crextio, ver);
+              }
+              if (config.mizan) applyMizanConfigPayload(config.mizan, ver);
+            } else if (!crextioSavingRef.current && !crextioQueuedRef.current) {
+              applyCrextioConfigPayload(config, ver);
+            }
+          }
+        }
+      });
+    };
+
+    connectThemeSse();
+
     const handleAuthOrRoleSync = () => {
       refreshDashboardConfig();
+      connectThemeSse();
     };
     window.addEventListener('app:auth_changed', handleAuthOrRoleSync);
     window.addEventListener('app:role_switched', handleAuthOrRoleSync);
 
-    const unsubscribe = api.subscribeToEvents(event => {
-      if (event.type === 'admin.theme_updated' || event.type === 'admin.dashboard_config_updated') {
-        const envelope = event.data?.data?.updates || event.data?.data || event.data;
-        const ver = event.data?.data?.version || envelope?.version;
-        const target = envelope?.target;
-        const config = envelope?.config || envelope;
-
-        if (config && typeof config === 'object') {
-          if (target === 'mizan' || (config.mizan && !config.crextio)) {
-            const mizanPayload = config.mizan || envelope?.mizan || config;
-            applyMizanConfigPayload(mizanPayload, ver);
-          } else if (config.crextio || config.mizan) {
-            if (config.crextio) applyCrextioConfigPayload(config.crextio, ver);
-            if (config.mizan) applyMizanConfigPayload(config.mizan, ver);
-          } else {
-            applyCrextioConfigPayload(config, ver);
-          }
-        }
-      }
-    });
-
     return () => {
       window.removeEventListener('app:auth_changed', handleAuthOrRoleSync);
       window.removeEventListener('app:role_switched', handleAuthOrRoleSync);
-      unsubscribe();
+      if (sseUnsubscribe) sseUnsubscribe();
     };
   }, [refreshDashboardConfig, applyCrextioConfigPayload, applyMizanConfigPayload]);
 
@@ -545,7 +570,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res?.version) {
         mizanVersionRef.current = Number(res.version);
       }
-    }).catch(() => {});
+    }).catch((err: any) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app:toast', {
+            detail: {
+              message: err?.message || 'خطا در ذخیره تنظیمات تم در پایگاه داده',
+              type: 'error',
+            },
+          })
+        );
+      }
+    });
   }, []);
 
   const resetMizanConfig = useCallback(() => {
@@ -560,7 +596,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res?.version) {
         mizanVersionRef.current = Number(res.version);
       }
-    }).catch(() => {});
+    }).catch((err: any) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app:toast', {
+            detail: {
+              message: err?.message || 'خطا در بازنشانی تنظیمات تم در پایگاه داده',
+              type: 'error',
+            },
+          })
+        );
+      }
+    });
   }, []);
 
   const [designTheme, setDesignThemeState] = useState<DesignThemeType>('crextio');

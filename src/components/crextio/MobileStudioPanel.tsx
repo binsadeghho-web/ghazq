@@ -343,6 +343,7 @@ export const MobileStudioPanel: React.FC<MobileStudioPanelProps> = ({
       | 'separateHonorsShowcase'
       | 'showServicesShowcase'
       | 'showServicesList'
+      | 'showServicesListHeaderBox'
     >;
     title: string;
     subtitle: string;
@@ -407,6 +408,12 @@ export const MobileStudioPanel: React.FC<MobileStudioPanelProps> = ({
       title: 'نمایش بخش «فهرست خدمات»',
       subtitle: 'نمای تفصیلی و بزرگ هر زیربخش پس از انتخاب توسط کاربر',
       value: m.showServicesList,
+    },
+    {
+      key: 'showServicesListHeaderBox',
+      title: 'نمایش باکس عنوان «فهرست خدمات»',
+      subtitle: 'فقط باکس تیتر بالای سربرگ‌ها را مخفی می‌کند؛ تب‌ها و فهرست خدمات فعال می‌مانند',
+      value: m.showServicesListHeaderBox,
     },
   ];
 
@@ -1234,18 +1241,31 @@ export const MobileStudioPanel: React.FC<MobileStudioPanelProps> = ({
               تمام بخش‌ها به صورت مستقل و تفکیک‌شده نمایش داده می‌شوند؛ ترتیب یا وضعیت نمایش آن‌ها را تغییر دهید.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              patchMobile({
-                servicesListOrder: [...CANONICAL_MOBILE_SERVICES_LIST_ORDER],
-                hiddenServicesListItems: {},
-              })
-            }
-            className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-[10px] font-bold text-stone-700 cursor-pointer"
-          >
-            بازنشانی
-          </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => patchMobile({ showServicesListHeaderBox: !m.showServicesListHeaderBox })}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black border cursor-pointer ${
+                m.showServicesListHeaderBox
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}
+            >
+              {m.showServicesListHeaderBox ? 'باکس عنوان: فعال' : 'باکس عنوان: مخفی'}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                patchMobile({
+                  servicesListOrder: [...CANONICAL_MOBILE_SERVICES_LIST_ORDER],
+                  hiddenServicesListItems: {},
+                })
+              }
+              className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-[10px] font-bold text-stone-700 cursor-pointer"
+            >
+              بازنشانی
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">

@@ -198,40 +198,40 @@ export const CustomizerModulesTab: React.FC<CustomizerModulesTabProps> = ({
       <div className="p-4 rounded-3xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h4 className="font-extrabold text-xs sm:text-sm text-stone-900">
-            تم پیش‌فرض ورود دانش‌آموختگان
+            تم نمایشی پیش‌فرض دانش‌آموختگان (تم ۲ یا تم ۳)
           </h4>
           <p className="text-[11px] text-stone-500 mt-0.5">
-            تعیین کنید دانش‌آموختگان به صورت پیش‌فرض با تم ۲ (کرکستیو) یا تم ۳ (مجمع مینیمال و هم‌افزایی) وارد شوند.
+            تعیین کنید دانش‌آموختگان سامانه را در تم ۲ (طرح میزان) یا تم ۳ (نمای موبایل‌محور) مشاهده کنند؛ این تنظیم برای همه کاربران ذخیره و اعمال می‌شود.
           </p>
         </div>
         <div className="flex items-center gap-1.5 bg-stone-200/70 p-1 rounded-2xl shrink-0">
           <button
             type="button"
             onClick={() => {
-              updateCrextioConfig({ defaultAlumniTheme: 'crextio' });
+              updateCrextioConfig({ alumniDefaultTheme: 'crextio' });
               triggerSuccess();
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-              (crextioConfig.defaultAlumniTheme || 'crextio') === 'crextio'
+              (crextioConfig.alumniDefaultTheme || 'crextio') === 'crextio'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-700 hover:bg-white/60'
             }`}
           >
-            تم ۲: کرکستیو فاخر
+            تم ۲: طرح میزان
           </button>
           <button
             type="button"
             onClick={() => {
-              updateCrextioConfig({ defaultAlumniTheme: 'minimal' });
+              updateCrextioConfig({ alumniDefaultTheme: 'theme3' });
               triggerSuccess();
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-              crextioConfig.defaultAlumniTheme === 'minimal'
+              crextioConfig.alumniDefaultTheme === 'theme3'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-700 hover:bg-white/60'
             }`}
           >
-            تم ۳: مجمع مینیمال و هم‌افزایی
+            تم ۳: موبایل‌محور
           </button>
         </div>
       </div>

@@ -36,12 +36,25 @@ export const HonorsManagerEditor: React.FC<EditorBaseProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeUploadTargetRef = useRef<string | null>(null);
 
+  const MAX_HONORS_ITEMS = 5;
+
   const commitItems = (nextItems: HonorAppointmentItem[]) => {
-    updateCrextioConfig({ honorsItems: nextItems });
+    updateCrextioConfig({ honorsItems: nextItems.slice(0, MAX_HONORS_ITEMS) });
     triggerSuccess?.();
   };
 
   const handleAddPage = () => {
+    if (items.length >= MAX_HONORS_ITEMS) {
+      window.dispatchEvent(
+        new CustomEvent('app:toast', {
+          detail: {
+            message: 'حداکثر ۵ مورد در بخش انتصابات و افتخارات قابل ثبت است.',
+            type: 'warning',
+          },
+        })
+      );
+      return;
+    }
     const newPage: HonorAppointmentItem = {
       id: `honor_${Date.now()}`,
       category: 'انتصاب قضایی',
@@ -114,7 +127,7 @@ export const HonorsManagerEditor: React.FC<EditorBaseProps> = ({
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-800" />
             <h4 className="font-extrabold text-xs sm:text-sm text-stone-900">
-              تنظیمات کلی ویترین افتخارات و انتصابات ({toPersianNumbers(items.length)} صفحه)
+              تنظیمات کلی ویترین افتخارات و انتصابات ({toPersianNumbers(Math.min(items.length, MAX_HONORS_ITEMS))} از {toPersianNumbers(MAX_HONORS_ITEMS)} مورد)
             </h4>
           </div>
 
@@ -159,11 +172,12 @@ export const HonorsManagerEditor: React.FC<EditorBaseProps> = ({
 
             <button
               type="button"
+              disabled={items.length >= MAX_HONORS_ITEMS}
               onClick={handleAddPage}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-black flex items-center gap-1 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:bg-stone-300 disabled:text-stone-600 disabled:cursor-not-allowed text-white text-xs font-black flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>افزودن صفحه جدید</span>
+              <span>{items.length >= MAX_HONORS_ITEMS ? 'سقف ۵ مورد تکمیل است' : 'افزودن صفحه جدید'}</span>
             </button>
           </div>
         </div>

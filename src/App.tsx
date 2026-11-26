@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/layout/Navbar';
@@ -52,6 +52,15 @@ const MainLayout: React.FC = () => {
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const alumniConfiguredTheme: 'crextio' | 'theme3' =
+    crextioConfig.alumniDefaultTheme === 'theme3' ? 'theme3' : 'crextio';
+
+  useEffect(() => {
+    if (currentUser?.role === 'alumni' && designTheme !== alumniConfiguredTheme) {
+      setDesignTheme(alumniConfiguredTheme);
+    }
+  }, [currentUser?.role, alumniConfiguredTheme, designTheme, setDesignTheme]);
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-[#040A19] flex flex-col items-center justify-center gap-4 text-[#F3D082]" dir="rtl">
@@ -67,11 +76,10 @@ const MainLayout: React.FC = () => {
   }
 
   const isRegularEndUser = currentUser.role === 'alumni' || currentUser.role === 'customer';
-
-
+  const effectiveTheme = currentUser.role === 'alumni' ? alumniConfiguredTheme : designTheme;
 
   // Theme 3 (Mobile-Inspired Laptop Theme)
-  if (designTheme === 'theme3') {
+  if (effectiveTheme === 'theme3') {
     return (
       <Suspense fallback={<ModuleFallback />}>
         <Theme3Layout />
@@ -79,8 +87,8 @@ const MainLayout: React.FC = () => {
     );
   }
 
-  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio unless Theme 3 is active.
-  if (designTheme === 'crextio' || currentUser?.role === 'alumni') {
+  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on the configured alumni theme.
+  if (effectiveTheme === 'crextio' || currentUser?.role === 'alumni') {
     return (
       <Suspense fallback={<ModuleFallback />}>
         <CrextioLayout onToggleToPortalTheme={() => setDesignTheme('portal')} />

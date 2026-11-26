@@ -67,6 +67,7 @@ export const Theme3Layout: React.FC = () => {
     currentUser,
     logout,
     crextioConfig,
+    updateCrextioConfig,
     setDesignTheme,
     isAlumniPreview,
     setIsAlumniPreview,
@@ -257,6 +258,56 @@ export const Theme3Layout: React.FC = () => {
               <div className="flex items-center gap-2 shrink-0">
                 {canCustomizeLayout && (
                   <>
+                    <div
+                      className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-xl border border-[#F3D078]/30 shrink-0"
+                      title="تعیین تم نمایشی پیش‌فرض برای تمام دانش‌آموختگان"
+                    >
+                      <span className="text-[10px] font-bold text-[#F3D078] whitespace-nowrap ml-1">
+                        نمای دانش‌آموختگان:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateCrextioConfig({ alumniDefaultTheme: 'crextio' });
+                          window.dispatchEvent(
+                            new CustomEvent('app:toast', {
+                              detail: {
+                                message: 'تم پیش‌فرض دانش‌آموختگان روی «تم ۲ (میزان)» تنظیم و ذخیره شد.',
+                                type: 'success',
+                              },
+                            })
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-colors cursor-pointer whitespace-nowrap ${
+                          (crextioConfig.alumniDefaultTheme || 'crextio') === 'crextio'
+                            ? 'bg-[#F3D078] text-[#071E17]'
+                            : 'text-emerald-100/80 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        تم ۲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateCrextioConfig({ alumniDefaultTheme: 'theme3' });
+                          window.dispatchEvent(
+                            new CustomEvent('app:toast', {
+                              detail: {
+                                message: 'تم پیش‌فرض دانش‌آموختگان روی «تم ۳ (موبایل‌محور)» تنظیم و ذخیره شد.',
+                                type: 'success',
+                              },
+                            })
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-colors cursor-pointer whitespace-nowrap ${
+                          crextioConfig.alumniDefaultTheme === 'theme3'
+                            ? 'bg-[#F3D078] text-[#071E17]'
+                            : 'text-emerald-100/80 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        تم ۳
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {

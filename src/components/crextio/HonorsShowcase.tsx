@@ -67,10 +67,11 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
 }) => {
   const { crextioConfig } = useApp();
 
-  const items =
+  const items = (
     crextioConfig.honorsItems && crextioConfig.honorsItems.length > 0
       ? crextioConfig.honorsItems
-      : FALLBACK_HONORS;
+      : FALLBACK_HONORS
+  ).slice(0, 5);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -201,26 +202,26 @@ export const HonorsShowcase: React.FC<HonorsShowcaseProps> = ({
                 type="button"
                 onClick={() => setCurrentIdx((safeIdx - 1 + items.length) % items.length)}
                 title="صفحه قبلی"
-                className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-200 hover:bg-white/10'
                     : 'border-[#DFD8C4] bg-[#FCFCF9] text-[#071E17] hover:bg-[#EFEADB]'
                 }`}
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-[18px] h-[18px]" />
               </button>
 
               <button
                 type="button"
                 onClick={() => setCurrentIdx((safeIdx + 1) % items.length)}
                 title="صفحه بعدی"
-                className={`w-9 h-9 sm:w-8 sm:h-8 rounded-xl sm:rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
                   darkSurface
                     ? 'border-white/15 text-stone-200 hover:bg-white/10'
                     : 'border-[#DFD8C4] bg-[#FCFCF9] text-[#071E17] hover:bg-[#EFEADB]'
                 }`}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-[18px] h-[18px]" />
               </button>
             </div>
           )}

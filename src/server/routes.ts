@@ -908,6 +908,8 @@ export function createMasterRouter(): Router {
         const isAllowedForPsychologist =
           msg.topic.startsWith('counseling.') ||
           msg.topic === 'research.config_updated' ||
+          msg.topic === 'admin.theme_updated' ||
+          msg.topic === 'admin.dashboard_config_updated' ||
           msg.topic.startsWith('dashboard.') ||
           msg.topic.startsWith('courses.');
         const isOwnCartableOrPrivate =

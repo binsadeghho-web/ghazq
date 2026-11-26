@@ -150,6 +150,7 @@ export const Theme3StudioPanel: React.FC<Theme3StudioPanelProps> = ({
       detailedShowcaseOverrides: { ...m.detailedShowcaseOverrides },
       customShowcaseCards: [...(m.customShowcaseCards || [])],
       showServicesList: m.showServicesList,
+      showServicesListHeaderBox: m.showServicesListHeaderBox,
       servicesListTitle: m.servicesListTitle,
       servicesListOrder: [...m.servicesListOrder],
       hiddenServicesListItems: { ...m.hiddenServicesListItems },
@@ -201,6 +202,7 @@ export const Theme3StudioPanel: React.FC<Theme3StudioPanelProps> = ({
       | 'separateHonorsShowcase'
       | 'showServicesShowcase'
       | 'showServicesList'
+      | 'showServicesListHeaderBox'
       | 'showActiveWorkshopsSpotlight'
     >;
     title: string;
@@ -298,6 +300,12 @@ export const Theme3StudioPanel: React.FC<Theme3StudioPanelProps> = ({
       value: t3.showServicesList,
     },
     {
+      key: 'showServicesListHeaderBox',
+      title: 'نمایش باکس عنوان «فهرست خدمات»',
+      subtitle: 'فقط باکس تیتر بالای سربرگ‌ها را مخفی می‌کند؛ تب‌ها و محتوای خدمات فعال می‌مانند',
+      value: t3.showServicesListHeaderBox,
+    },
+    {
       key: 'showActiveWorkshopsSpotlight',
       title: 'نمایش کارت ویژه «کارگاه در حال برگزاری» کنار فهرست خدمات',
       subtitle: 'کارت اطلاع‌رسانی و ثبت‌نام سریع کارگاه‌های فعال',
@@ -390,6 +398,56 @@ export const Theme3StudioPanel: React.FC<Theme3StudioPanelProps> = ({
       {/* TAB 1: LAYOUT, VISIBILITY & ORDER */}
       {activeTab === 'layout' && (
         <div className="space-y-5">
+          {/* Alumni Default Theme Selector (Theme 2 vs Theme 3) */}
+          <div className="p-4 rounded-2xl border border-[#DFD8C4] bg-[#FAF8F2] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-black text-[#071E17]">
+                تم نمایشی پیش‌فرض برای تمام دانش‌آموختگان
+              </h4>
+              <p className="text-[11px] text-stone-600 mt-0.5">
+                انتخاب کنید کاربران با نقش دانش‌آموخته هنگام ورود، سامانه را در تم ۲ یا تم ۳ مشاهده کنند (بلافاصله برای همه اعمال و ذخیره می‌شود).
+              </p>
+            </div>
+            <div className="inline-flex p-1 rounded-xl bg-white border border-stone-200 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  commit({ alumniDefaultTheme: 'crextio' });
+                  window.dispatchEvent(
+                    new CustomEvent('app:toast', {
+                      detail: { message: 'تم نمایشی دانش‌آموختگان روی «تم ۲ (میزان)» تنظیم و ذخیره شد.', type: 'success' },
+                    })
+                  );
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition-colors ${
+                  (crextioConfig.alumniDefaultTheme || 'crextio') === 'crextio'
+                    ? 'bg-[#071E17] text-[#F3D078]'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                تم ۲ (میزان)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  commit({ alumniDefaultTheme: 'theme3' });
+                  window.dispatchEvent(
+                    new CustomEvent('app:toast', {
+                      detail: { message: 'تم نمایشی دانش‌آموختگان روی «تم ۳ (موبایل‌محور)» تنظیم و ذخیره شد.', type: 'success' },
+                    })
+                  );
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition-colors ${
+                  crextioConfig.alumniDefaultTheme === 'theme3'
+                    ? 'bg-[#071E17] text-[#F3D078]'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                تم ۳ (موبایل‌محور)
+              </button>
+            </div>
+          </div>
+
           {/* Visibility Toggles */}
           <div className="p-4 rounded-2xl border border-stone-200 bg-white space-y-3">
             <h4 className="text-xs font-black text-stone-900 flex items-center gap-1.5">
@@ -1030,7 +1088,18 @@ export const Theme3StudioPanel: React.FC<Theme3StudioPanelProps> = ({
                 هر یک از ۹ بخش داخل میز فهرست خدمات تم ۳ را به صورت مستقل تغییر نام، مرتب یا غیرفعال کنید.
               </p>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => patchTheme3({ showServicesListHeaderBox: !t3.showServicesListHeaderBox })}
+                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black border cursor-pointer ${
+                  t3.showServicesListHeaderBox
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}
+              >
+                {t3.showServicesListHeaderBox ? 'باکس عنوان: فعال' : 'باکس عنوان: مخفی'}
+              </button>
               <button
                 type="button"
                 onClick={() => patchTheme3({ showServicesList: !t3.showServicesList })}

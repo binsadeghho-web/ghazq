@@ -1697,25 +1697,27 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
             aria-label={mobileConfig.servicesListTitle || 'فهرست خدمات'}
             className="space-y-3"
           >
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0C3025] to-[#134434] text-white px-4 py-3 border border-[#F3D078]/30 flex items-center justify-between gap-2 shadow-sm">
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-45" />
-              <div className="relative z-10 flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#F3D078] to-[#D6A53D] text-[#071E17] flex items-center justify-center shrink-0">
-                  <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="text-[14px] font-black text-white truncate">
-                    {mobileConfig.servicesListTitle || 'فهرست خدمات'}
-                  </h2>
-                  <p className="text-[10px] text-emerald-100/80 truncate">
-                    انتخاب بخش جهت مشاهده امکانات و ورود سریع
-                  </p>
+            {mobileConfig.showServicesListHeaderBox !== false && (
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0C3025] to-[#134434] text-white px-4 py-3 border border-[#F3D078]/30 flex items-center justify-between gap-2 shadow-sm">
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-45" />
+                <div className="relative z-10 flex items-center gap-2.5 min-w-0">
+                  <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#F3D078] to-[#D6A53D] text-[#071E17] flex items-center justify-center shrink-0">
+                    <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-[14px] font-black text-white truncate">
+                      {mobileConfig.servicesListTitle || 'فهرست خدمات'}
+                    </h2>
+                    <p className="text-[10px] text-emerald-100/80 truncate">
+                      انتخاب بخش جهت مشاهده امکانات و ورود سریع
+                    </p>
+                  </div>
                 </div>
+                <span className="relative z-10 text-[11px] font-black text-[#F3D078] tabular-nums shrink-0">
+                  {toPersianNumbers(feedTabs.length)} خدمت
+                </span>
               </div>
-              <span className="relative z-10 text-[11px] font-black text-[#F3D078] tabular-nums shrink-0">
-                {toPersianNumbers(feedTabs.length)} خدمت
-              </span>
-            </div>
+            )}
 
             {/* Standout Active Workshops Spotlight inside Services List */}
             {combinedWorkshopsCount > 0 && (

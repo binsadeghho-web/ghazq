@@ -71,6 +71,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
     consumables,
     synergyPosts,
     crextioConfig,
+    updateCrextioConfig,
   } = useApp();
   const { rolePolicies } = useRbacPolicies();
 
@@ -410,14 +411,66 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onNavigate }
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap text-xs">
             {showAdminCard && (
-              <button
-                type="button"
-                onClick={() => setIsNavCustomizerOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <Menu className="w-3.5 h-3.5" />
-                <span>ترتیب و نام ناوبری و منوها</span>
-              </button>
+              <>
+                <div
+                  className="flex items-center gap-1 bg-slate-900/90 dark:bg-slate-800 px-2 py-1 rounded-xl border border-amber-400/35 shrink-0"
+                  title="تعیین تم نمایشی پیش‌فرض برای تمام دانش‌آموختگان"
+                >
+                  <span className="text-[10px] font-bold text-amber-300 whitespace-nowrap ml-1">
+                    نمای دانش‌آموختگان:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCrextioConfig({ alumniDefaultTheme: 'crextio' });
+                      window.dispatchEvent(
+                        new CustomEvent('app:toast', {
+                          detail: {
+                            message: 'تم پیش‌فرض دانش‌آموختگان روی «تم ۲ (میزان)» تنظیم و ذخیره شد.',
+                            type: 'success',
+                          },
+                        })
+                      );
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-colors cursor-pointer whitespace-nowrap ${
+                      (crextioConfig.alumniDefaultTheme || 'crextio') === 'crextio'
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'text-slate-200 hover:bg-white/10'
+                    }`}
+                  >
+                    تم ۲
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCrextioConfig({ alumniDefaultTheme: 'theme3' });
+                      window.dispatchEvent(
+                        new CustomEvent('app:toast', {
+                          detail: {
+                            message: 'تم پیش‌فرض دانش‌آموختگان روی «تم ۳ (موبایل‌محور)» تنظیم و ذخیره شد.',
+                            type: 'success',
+                          },
+                        })
+                      );
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-colors cursor-pointer whitespace-nowrap ${
+                      crextioConfig.alumniDefaultTheme === 'theme3'
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'text-slate-200 hover:bg-white/10'
+                    }`}
+                  >
+                    تم ۳
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNavCustomizerOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <Menu className="w-3.5 h-3.5" />
+                  <span>ترتیب و نام ناوبری و منوها</span>
+                </button>
+              </>
             )}
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/80 dark:border-white/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs whitespace-nowrap shrink-0">

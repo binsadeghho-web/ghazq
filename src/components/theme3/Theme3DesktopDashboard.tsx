@@ -360,7 +360,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     if (!t3.showHonorsShowcase) {
       return [];
     }
-    return honorsList.slice(0, 6).map((honor, hIdx) => ({
+    return honorsList.slice(0, 5).map((honor, hIdx) => ({
       id: `honor_${honor.id}`,
       kicker: `${honor.category}${honor.dateOrLocation ? ` · ${honor.dateOrLocation}` : ''}`,
       title: honor.title,
@@ -1090,6 +1090,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               feedTabs={feedTabs}
               resolvedFeedTab={resolvedFeedTab}
               onSelectTab={setActiveFeedTab}
+              showServicesListHeaderBox={t3.showServicesListHeaderBox}
               showActiveWorkshopsSpotlight={t3.showActiveWorkshopsSpotlight}
               combinedWorkshopsCount={combinedWorkshopsCount}
               activeWorkshops={activeWorkshops}
