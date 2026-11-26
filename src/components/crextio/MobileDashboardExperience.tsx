@@ -7,9 +7,12 @@ import { toPersianNumbers } from '../../utils/persianNumbers';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
 import { formatWelcomeBannerTitle } from '../../utils/welcomeBanner';
 import {
+  DEFAULT_SHOWCASE_IMAGES,
   resolveShowcaseImageUrl,
   resolveHonorImageUrl,
   resolveProductCoverUrl,
+  resolveCourseCoverUrl,
+  handleImageErrorFallback,
 } from '../../data/showcaseImages';
 import { DEFAULT_HERO_STATS, DEFAULT_CREXTIO_CONFIG } from '../../data/mockData';
 import {
@@ -1021,7 +1024,14 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                             src={heroPortraitSrc}
                             alt={currentUser?.fullName || 'تصویر کاربر'}
                             referrerPolicy="no-referrer"
-                            onError={() => setHeroImgFailed(true)}
+                            onError={e => {
+                              const fallback = DEFAULT_SHOWCASE_IMAGES.hero_portrait;
+                              if (fallback && e.currentTarget.src !== fallback) {
+                                handleImageErrorFallback(e, fallback);
+                              } else {
+                                setHeroImgFailed(true);
+                              }
+                            }}
                             className="w-12 h-12 rounded-[16px] object-cover object-top bg-[#09231B]"
                           />
                         ) : (
@@ -1232,12 +1242,17 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
         return (
           <section key="mobile_sec_quick_dock" aria-label="درگاه‌های دسترسی سریع" className="space-y-3">
             <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-[14px] font-black text-stone-900">درگاه‌های دسترسی سریع</h2>
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#071E17] to-[#113D30] text-[#F3D078] flex items-center justify-center border border-[#F3D078]/35">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </span>
+                <h2 className="text-[14px] font-black text-stone-900">درگاه‌های دسترسی سریع</h2>
+              </div>
               {onOpenAllServices && (
                 <button
                   type="button"
                   onClick={onOpenAllServices}
-                  className="flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 min-h-[36px] px-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1 text-xs font-black text-emerald-800 hover:text-emerald-950 min-h-[36px] px-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>همه بخش‌ها</span>
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -1245,21 +1260,39 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
               )}
             </div>
 
-            <div className="flex items-start gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-none -mx-3 px-3 pb-1">
-              {permittedDock.slice(0, 9).map(item => {
+            <div className="flex items-start gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-none -mx-3 px-3 pb-1.5">
+              {permittedDock.slice(0, 9).map((item, dIdx) => {
                 const Icon = item.icon;
                 const hasCountBadge = item.id === 'People' && totalActiveRequests > 0;
+                const tileToneMap: Record<string, string> = {
+                  People: 'from-emerald-50 to-white border-emerald-200/80',
+                  Courses: 'from-teal-50 to-white border-teal-200/80',
+                  CounselingGeneral: 'from-rose-50 to-white border-rose-200/80',
+                  SpecializedCounseling: 'from-amber-50 to-white border-amber-200/80',
+                  Rulings: 'from-[#FBF4DC] to-white border-amber-200/85',
+                  Research: 'from-emerald-50 to-white border-teal-200/80',
+                  Welfare: 'from-pink-50 to-white border-pink-200/80',
+                  Products: 'from-indigo-50 to-white border-indigo-200/80',
+                  Synergy: 'from-sky-50 to-white border-sky-200/80',
+                };
+                const toneCls = tileToneMap[item.id] || 'from-stone-50 to-white border-stone-200/85';
                 return (
-                  <button
+                  <motion.button
                     key={item.id}
                     type="button"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(dIdx * 0.03, 0.25), duration: 0.24 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => onNavigateTab?.(item.id)}
-                    className="snap-start shrink-0 w-[68px] flex flex-col items-center gap-1.5 cursor-pointer group active:scale-95 transition-transform focus:outline-none"
+                    className="snap-start shrink-0 w-[70px] flex flex-col items-center gap-1.5 cursor-pointer group focus:outline-none"
                   >
-                    <div className="relative w-14 h-14 rounded-[20px] bg-white border border-stone-200/80 shadow-[0_8px_18px_-12px_rgba(7,30,23,0.18)] flex items-center justify-center group-hover:border-emerald-300 transition-colors">
-                      <Icon className={`w-6 h-6 stroke-[2] ${item.accentColor}`} />
+                    <div
+                      className={`relative w-14 h-14 rounded-[20px] bg-gradient-to-br ${toneCls} border shadow-[0_10px_20px_-12px_rgba(7,30,23,0.22)] flex items-center justify-center transition-transform duration-200 group-hover:-translate-y-0.5`}
+                    >
+                      <Icon className={`w-6 h-6 stroke-[2.1] ${item.accentColor}`} />
                       {hasCountBadge && (
-                        <span className="absolute -top-1 -left-1 min-w-[20px] h-5 px-1 rounded-full bg-emerald-800 text-[#F3D078] text-[10px] font-black flex items-center justify-center tabular-nums shadow-xs">
+                        <span className="absolute -top-1 -left-1 min-w-[20px] h-5 px-1 rounded-full bg-gradient-to-br from-[#071E17] to-[#113D30] text-[#F3D078] border border-[#F3D078]/40 text-[10px] font-black flex items-center justify-center tabular-nums shadow-xs">
                           {toPersianNumbers(totalActiveRequests)}
                         </span>
                       )}
@@ -1267,23 +1300,28 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                     <span className="text-[11px] font-bold text-stone-800 text-center leading-tight line-clamp-1 w-full">
                       {item.label}
                     </span>
-                  </button>
+                  </motion.button>
                 );
               })}
 
               {onOpenAllServices && (
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.9 }}
                   onClick={onOpenAllServices}
-                  className="snap-start shrink-0 w-[68px] flex flex-col items-center gap-1.5 cursor-pointer group active:scale-95 transition-transform focus:outline-none"
+                  className="snap-start shrink-0 w-[70px] flex flex-col items-center gap-1.5 cursor-pointer group focus:outline-none"
                 >
-                  <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-[#071E17] to-[#113D30] border border-[#F3D078]/35 text-[#F3D078] shadow-md flex items-center justify-center">
-                    <LayoutGrid className="w-6 h-6 stroke-[2]" />
+                  <div className="relative overflow-hidden w-14 h-14 rounded-[20px] bg-gradient-to-br from-[#071E17] to-[#113D30] border border-[#F3D078]/40 text-[#F3D078] shadow-md flex items-center justify-center">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 w-10 bg-gradient-to-r from-transparent via-[#F3D078]/20 to-transparent luxury-sheen"
+                    />
+                    <LayoutGrid className="relative z-10 w-6 h-6 stroke-[2]" />
                   </div>
                   <span className="text-[11px] font-extrabold text-emerald-950 text-center leading-tight whitespace-nowrap">
                     بیشتر
                   </span>
-                </button>
+                </motion.button>
               )}
             </div>
           </section>
@@ -1489,7 +1527,14 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                         alt={slide.title}
                         referrerPolicy="no-referrer"
                         loading={hIdx === 0 ? 'eager' : 'lazy'}
-                        onError={() => setSlideImgFailed(prev => ({ ...prev, [slide.id]: true }))}
+                        onError={e => {
+                          const fallback = DEFAULT_SHOWCASE_IMAGES.honors_showcase;
+                          if (fallback && e.currentTarget.src !== fallback && e.currentTarget.dataset.fallbackApplied !== '1') {
+                            handleImageErrorFallback(e, fallback);
+                          } else {
+                            setSlideImgFailed(prev => ({ ...prev, [slide.id]: true }));
+                          }
+                        }}
                         className="absolute inset-0 w-full h-full object-cover object-center"
                       />
                     ) : (
@@ -1584,7 +1629,14 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                         alt={slide.title}
                         referrerPolicy="no-referrer"
                         loading={sIdx === 0 ? 'eager' : 'lazy'}
-                        onError={() => setSlideImgFailed(prev => ({ ...prev, [slide.id]: true }))}
+                        onError={e => {
+                          const fallback = DEFAULT_SHOWCASE_IMAGES.unified_showcase;
+                          if (fallback && e.currentTarget.src !== fallback && e.currentTarget.dataset.fallbackApplied !== '1') {
+                            handleImageErrorFallback(e, fallback);
+                          } else {
+                            setSlideImgFailed(prev => ({ ...prev, [slide.id]: true }));
+                          }
+                        }}
                         className="absolute inset-0 w-full h-full object-cover object-center"
                       />
                     ) : (
@@ -1645,12 +1697,23 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
             aria-label={mobileConfig.servicesListTitle || 'فهرست خدمات'}
             className="space-y-3"
           >
-            <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-[14px] font-black text-stone-900">
-                {mobileConfig.servicesListTitle || 'فهرست خدمات'}
-              </h2>
-              <span className="text-[11px] font-bold text-stone-500">
-                انتخاب جهت مشاهده جزئیات
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0C3025] to-[#134434] text-white px-4 py-3 border border-[#F3D078]/30 flex items-center justify-between gap-2 shadow-sm">
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-45" />
+              <div className="relative z-10 flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#F3D078] to-[#D6A53D] text-[#071E17] flex items-center justify-center shrink-0">
+                  <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-[14px] font-black text-white truncate">
+                    {mobileConfig.servicesListTitle || 'فهرست خدمات'}
+                  </h2>
+                  <p className="text-[10px] text-emerald-100/80 truncate">
+                    انتخاب بخش جهت مشاهده امکانات و ورود سریع
+                  </p>
+                </div>
+              </div>
+              <span className="relative z-10 text-[11px] font-black text-[#F3D078] tabular-nums shrink-0">
+                {toPersianNumbers(feedTabs.length)} خدمت
               </span>
             </div>
 
@@ -1664,9 +1727,13 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
               >
                 <span
                   aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-[#F3D078]/15 to-transparent luxury-sheen"
+                />
+                <span
+                  aria-hidden="true"
                   className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/80 to-transparent"
                 />
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="relative z-10 flex items-center gap-3 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-[#F3D078]/15 border border-[#F3D078]/40 text-[#F3D078] flex items-center justify-center shrink-0">
                     <Sparkles className="w-5 h-5" />
                   </div>
@@ -1686,41 +1753,58 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                     )}
                   </div>
                 </div>
-                <span className="px-3 py-1.5 rounded-xl bg-[#F3D078] text-[#071E17] text-[10px] font-black shrink-0 whitespace-nowrap flex items-center gap-1">
+                <span className="relative z-10 px-3 py-1.5 rounded-xl bg-[#F3D078] text-[#071E17] text-[10px] font-black shrink-0 whitespace-nowrap flex items-center gap-1">
                   <span>ثبت‌نام</span>
                   <ArrowLeft className="w-3 h-3" />
                 </span>
               </motion.button>
             )}
 
-            {/* Independent De-merged Segmented Service Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 -mx-1 px-1">
+            {/* Independent De-merged Segmented Service Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
               {feedTabs.map(tab => {
                 const Icon = tab.icon;
                 const isSelected = resolvedFeedTab === tab.id;
                 const hasLiveWorkshop =
                   combinedWorkshopsCount > 0 && (tab.id === 'counseling' || tab.id === 'courses');
+                const mobileTabColor: Record<string, string> = {
+                  courses: 'text-cyan-700',
+                  counseling: 'text-rose-600',
+                  specialized_counseling: 'text-amber-700',
+                  rulings: 'text-amber-800',
+                  research: 'text-teal-700',
+                  welfare: 'text-pink-600',
+                  products: 'text-violet-700',
+                  cartable: 'text-emerald-700',
+                  synergy: 'text-blue-600',
+                };
                 return (
-                  <button
+                  <motion.button
                     key={tab.id}
                     type="button"
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setActiveFeedTab(tab.id)}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2.5 min-h-[42px] rounded-2xl text-xs font-bold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2.5 min-h-[42px] rounded-2xl text-xs font-extrabold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                       isSelected
                         ? 'text-white'
-                        : 'bg-white text-stone-700 border border-stone-200/85 hover:text-stone-950'
+                        : 'bg-white text-stone-700 border border-[#DFD8C4] hover:text-stone-950 shadow-2xs'
                     }`}
                   >
                     {isSelected && (
                       <motion.span
                         layoutId="mobileFeedTabPill"
                         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                        className="absolute inset-0 rounded-2xl bg-gradient-to-l from-[#071E17] to-[#10382B] shadow-sm border border-[#F3D078]/25"
-                      />
+                        className="absolute inset-0 rounded-2xl bg-gradient-to-l from-[#071E17] via-[#0C3126] to-[#134434] shadow-md border border-[#F3D078]/35 overflow-hidden"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
+                        />
+                      </motion.span>
                     )}
                     <Icon
                       className={`relative z-10 w-3.5 h-3.5 ${
-                        isSelected ? 'text-[#F3D078]' : 'text-stone-400'
+                        isSelected ? 'text-[#F3D078]' : mobileTabColor[tab.id] || 'text-emerald-700'
                       }`}
                     />
                     <span className="relative z-10">{tab.label}</span>
@@ -1733,7 +1817,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                         · {toPersianNumbers(combinedWorkshopsCount)} کارگاه
                       </span>
                     )}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -1742,12 +1826,16 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
             <AnimatePresence mode="wait">
               <motion.div
                 key={resolvedFeedTab}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
-                className="bg-[#FCFCF9] rounded-[28px] border border-[#E5DEC9] overflow-hidden shadow-[0_14px_34px_-18px_rgba(7,30,23,0.18)]"
+                initial={{ opacity: 0, y: 12, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.985 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                className="relative bg-gradient-to-b from-[#FCFCF9] to-[#F7F3E7] rounded-[28px] border border-[#DDD3B8] overflow-hidden shadow-[0_18px_40px_-20px_rgba(7,30,23,0.22)]"
               >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-10 top-0 h-[1.5px] bg-gradient-to-l from-transparent via-[#D4AF37]/80 to-transparent"
+                />
                 {/* 1. COURSES EXPANDED VIEW */}
                 {resolvedFeedTab === 'courses' && (
                   <div className="p-5 space-y-4">
@@ -1766,10 +1854,8 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                     </div>
 
                     <div className="space-y-2.5">
-                      {activeCourses.slice(0, 3).map(course => {
-                        const thumbSrc =
-                          course.coverImage ||
-                          resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides);
+                      {activeCourses.slice(0, 3).map((course, cIdx) => {
+                        const thumbSrc = resolveCourseCoverUrl(course.coverImage, cIdx);
                         return (
                           <button
                             key={course.id}
@@ -1778,18 +1864,13 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                             className="w-full p-3 rounded-2xl bg-white border border-stone-200/80 hover:border-emerald-300 flex items-start gap-3 text-right cursor-pointer group active:scale-[0.99] transition-all"
                           >
                             <div className="w-14 h-14 rounded-xl bg-emerald-950 overflow-hidden shrink-0 border border-stone-200/80">
-                              {thumbSrc ? (
-                                <img
-                                  src={thumbSrc}
-                                  alt={course.title}
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[#F3D078]">
-                                  <GraduationCap className="w-5 h-5" />
-                                </div>
-                              )}
+                              <img
+                                src={thumbSrc}
+                                alt={course.title}
+                                referrerPolicy="no-referrer"
+                                onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.course_showcase)}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
                             <div className="flex-1 min-w-0 space-y-1">
                               <p className="text-xs font-black text-stone-900 group-hover:text-emerald-800 leading-snug">
@@ -1837,12 +1918,15 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                     <div className="flex items-start gap-3.5">
                       <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-stone-200 bg-emerald-950">
                         <img
-                          src={resolveShowcaseImageUrl(
-                            'counseling_general_showcase',
-                            crextioConfig.showcaseImageOverrides
-                          )}
+                          src={
+                            resolveShowcaseImageUrl(
+                              'counseling_general_showcase',
+                              crextioConfig.showcaseImageOverrides
+                            ) || DEFAULT_SHOWCASE_IMAGES.counseling_general_showcase
+                          }
                           alt="خدمات روانشناختی و مشاوره"
                           referrerPolicy="no-referrer"
+                          onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.counseling_general_showcase)}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -2341,6 +2425,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                             src={resolveProductCoverUrl(prod.coverImage, prod.format, idx)}
                             alt={prod.title}
                             referrerPolicy="no-referrer"
+                            onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.books_showcase)}
                             className="w-14 h-14 rounded-xl object-cover bg-stone-100 border border-stone-200/80 shrink-0"
                           />
                           <div className="flex-1 min-w-0 space-y-1">

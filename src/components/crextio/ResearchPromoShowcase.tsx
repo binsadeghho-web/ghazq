@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import {
   Compass,
   GraduationCap,
@@ -153,11 +157,15 @@ export const ResearchPromoShowcase: React.FC<ResearchPromoShowcaseProps> = ({
         <div className="absolute inset-0 pointer-events-none z-0 opacity-28">
           <img
             src={
-              crextioConfig.researchPromoBgImage ||
-              resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides)
+              (crextioConfig.researchPromoBgImage && !crextioConfig.researchPromoBgImage.includes('unsplash.com')
+                ? crextioConfig.researchPromoBgImage
+                : '') ||
+              resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides) ||
+              DEFAULT_SHOWCASE_IMAGES.research_promo
             }
             alt="باشگاه نخبگانی راهبری رساله‌ها و اساتید فقه و حقوق"
             referrerPolicy="no-referrer"
+            onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.research_promo)}
             className="w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/82 to-transparent" />

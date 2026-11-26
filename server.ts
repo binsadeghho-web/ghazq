@@ -179,6 +179,11 @@ async function bootstrap() {
     }
   }));
 
+  // Ensure missing uploaded files return 404 instead of SPA index.html
+  app.use('/uploads', (_req: Request, res: Response) => {
+    res.status(404).json({ error: 'فایل مورد نظر یافت نشد.' });
+  });
+
   // Rate Limiting on API routes (Section 9 & 10)
   app.use('/api', rateLimitMiddleware());
 

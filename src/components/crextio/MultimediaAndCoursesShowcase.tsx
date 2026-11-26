@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/apiClient';
-import { DEFAULT_SHOWCASE_IMAGES, resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import {
   ArrowUpRight,
   ChevronLeft,
@@ -216,6 +220,7 @@ export const MultimediaAndCoursesShowcase: React.FC<MultimediaAndCoursesShowcase
                   src={item.cover || showcaseBannerUrl || DEFAULT_SHOWCASE_IMAGES.multimedia_showcase}
                   alt={item.title}
                   referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.multimedia_showcase)}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/75 via-transparent to-transparent flex items-center justify-center">

@@ -2,7 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
-import { resolveProductCoverUrl, resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveProductCoverUrl,
+  resolveShowcaseImageUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   formatPresentersText,
@@ -421,6 +426,8 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                 <img
                   src={prodCover}
                   alt={prod.title}
+                  referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.books_showcase)}
                   className="w-14 h-14 rounded-xl object-cover shrink-0 border border-black/10"
                 />
                 <div className="min-w-0 flex-1 space-y-1">
@@ -646,6 +653,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                         src={thumb}
                         alt={item.title}
                         referrerPolicy="no-referrer"
+                        onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES[item.key] || DEFAULT_SHOWCASE_IMAGES.unified_showcase)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -786,6 +794,7 @@ export const UnifiedShowcaseHub: React.FC<UnifiedShowcaseHubProps> = ({
                   src={imgUrl}
                   alt={currentItem.title}
                   referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES[currentItem.key] || DEFAULT_SHOWCASE_IMAGES.unified_showcase)}
                   initial={{ scale: 1.05 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 5, ease: 'easeOut' }}

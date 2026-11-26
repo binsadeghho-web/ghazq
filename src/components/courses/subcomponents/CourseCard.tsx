@@ -3,6 +3,11 @@ import { motion } from 'motion/react';
 import { Course, CourseEnrollment, CourseScope } from '../../../types';
 import { toPersianNumbers } from '../../../utils/persianNumbers';
 import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveCourseCoverUrl,
+  handleImageErrorFallback,
+} from '../../../data/showcaseImages';
+import {
   Eye,
   GraduationCap,
   User,
@@ -90,26 +95,22 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           className="relative h-40 sm:h-44 w-full bg-slate-900 overflow-hidden group/img"
           title="کلیک جهت مشاهده کامل توضیحات، رزومه استاد و مشخصات دوره"
         >
-          {course.coverImage ? (
-            <>
-              <img
-                src={course.coverImage}
-                alt={course.title}
-                className="w-full h-full object-cover group-hover/img:scale-108 transition-transform duration-500 opacity-90"
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-black/20" />
-              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
-                <Eye className="w-5 h-5 text-emerald-400 drop-shadow" />
-                <span className="text-xs font-black bg-black/65 px-3 py-1.5 rounded-xl backdrop-blur-sm">
-                  مشاهده جزئیات کامل {unitNoun}
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 flex items-center justify-center">
-              <GraduationCap className="w-16 h-16 text-emerald-500/20" />
+          <>
+            <img
+              src={resolveCourseCoverUrl(course.coverImage, 0)}
+              alt={course.title}
+              referrerPolicy="no-referrer"
+              onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.course_showcase)}
+              className="w-full h-full object-cover group-hover/img:scale-108 transition-transform duration-500 opacity-90"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-black/20" />
+            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
+              <Eye className="w-5 h-5 text-emerald-400 drop-shadow" />
+              <span className="text-xs font-black bg-black/65 px-3 py-1.5 rounded-xl backdrop-blur-sm">
+                مشاهده جزئیات کامل {unitNoun}
+              </span>
             </div>
-          )}
+          </>
 
           {/* Floating Badges */}
           <div className="absolute top-3 right-3 flex flex-wrap gap-1.5 z-10 pointer-events-none">

@@ -2,7 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
-import { resolveProductCoverUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveProductCoverUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
@@ -231,6 +235,8 @@ export const BooksAndPublicationsShowcase: React.FC<BooksAndPublicationsShowcase
                     <img
                       src={coverUrl}
                       alt={prod.title}
+                      referrerPolicy="no-referrer"
+                      onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.books_showcase)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-[#071E17]/88 text-[#F3D078] text-[10px] font-black">

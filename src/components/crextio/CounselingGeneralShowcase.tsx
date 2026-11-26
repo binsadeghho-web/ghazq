@@ -1,7 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  resolveConsultantAvatarUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
   CounselingWorkshopItem,
@@ -244,13 +249,19 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
     editorOpen,
   ]);
 
-  const fallbackAvatarUrl = resolveShowcaseImageUrl(
-    'hero_portrait',
-    crextioConfig.showcaseImageOverrides
+  const fallbackAvatarUrl = resolveConsultantAvatarUrl(
+    resolveShowcaseImageUrl('hero_portrait', crextioConfig.showcaseImageOverrides),
+    0
   );
+  const defaultCounselingCover =
+    DEFAULT_SHOWCASE_IMAGES.counseling_general_showcase ||
+    '/assets/showcase/counseling-general-fallback.jpg';
   const coverImageUrl =
-    generalShowcase.showcaseImageUrl ||
-    resolveShowcaseImageUrl('counseling_general_showcase', crextioConfig.showcaseImageOverrides);
+    (generalShowcase.showcaseImageUrl && !generalShowcase.showcaseImageUrl.includes('unsplash.com')
+      ? generalShowcase.showcaseImageUrl
+      : '') ||
+    resolveShowcaseImageUrl('counseling_general_showcase', crextioConfig.showcaseImageOverrides) ||
+    defaultCounselingCover;
 
   useEffect(() => {
     setCoverImgFailed(false);
@@ -389,6 +400,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                           src={ws.bannerUrl}
                           alt={ws.title}
                           referrerPolicy="no-referrer"
+                          onError={e => handleImageErrorFallback(e, defaultCounselingCover)}
                           className={`${isCompact ? 'w-10 h-10 rounded-lg' : 'w-12 h-12 rounded-xl'} object-cover shrink-0 shadow-2xs`}
                         />
                       ) : (
@@ -511,6 +523,7 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                         src={ann.bannerUrl}
                         alt={ann.title || 'پوستر اطلاعیه روان‌شناسی'}
                         referrerPolicy="no-referrer"
+                        onError={e => handleImageErrorFallback(e, defaultCounselingCover)}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
@@ -607,9 +620,10 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
           <div className="space-y-3 py-1">
             <div className="flex items-center gap-3.5">
               <img
-                src={currentConsultant.avatarUrl || fallbackAvatarUrl}
+                src={resolveConsultantAvatarUrl(currentConsultant.avatarUrl, consultantIdx)}
                 alt={currentConsultant.name}
                 referrerPolicy="no-referrer"
+                onError={e => handleImageErrorFallback(e, fallbackAvatarUrl)}
                 className={`${isCompact ? 'w-14 h-14 rounded-2xl' : 'w-18 h-18 rounded-2xl'} object-cover object-top shrink-0 shadow-xs`}
               />
               <div className="min-w-0 flex-1 space-y-1">
@@ -847,22 +861,28 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
           {/* Balanced Editorial Split: Optional Showcase Image + Animated Active Pillar Stage */}
           <div className={`grid grid-cols-1 ${showCoverPanel ? 'lg:grid-cols-12' : ''} gap-4 sm:gap-5 items-stretch`}>
             {showCoverPanel && (
-              <div className={`lg:col-span-4 relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 ${isCompact ? 'min-h-[155px] sm:min-h-[180px]' : isExpanded ? 'min-h-[200px] sm:min-h-[290px]' : 'min-h-[175px] sm:min-h-[235px]'}`}>
+              <div className={`lg:col-span-4 relative rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 ${isCompact ? 'min-h-[165px] sm:min-h-[190px]' : isExpanded ? 'min-h-[210px] sm:min-h-[290px]' : 'min-h-[185px] sm:min-h-[235px]'}`}>
                 {!coverImgFailed ? (
                   <img
                     src={coverImageUrl}
                     alt={generalShowcase.sectionTitle || 'ویترین خدمات روانشناختی و مشاوره'}
                     referrerPolicy="no-referrer"
-                    onError={() => setCoverImgFailed(true)}
-                    className="w-full h-full object-cover lg:absolute lg:inset-0"
+                    onError={e => {
+                      if (e.currentTarget.src !== defaultCounselingCover && defaultCounselingCover) {
+                        handleImageErrorFallback(e, defaultCounselingCover);
+                      } else {
+                        setCoverImgFailed(true);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-emerald-200/70">
+                  <div className="absolute inset-0 w-full h-full flex items-center justify-center text-emerald-200/70">
                     <HeartHandshake className="w-12 h-12" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
-                <div className="relative lg:absolute lg:inset-x-0 lg:bottom-0 p-4 text-white space-y-2 z-10 flex flex-col justify-end h-full">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/30 to-transparent" />
+                <div className="relative p-4 text-white space-y-2 z-10 flex flex-col justify-end min-h-full">
                   <div className="text-xs font-black text-emerald-300">
                     همراهی تخصصی و محرمانه
                   </div>
@@ -948,6 +968,8 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                 <img
                   src={liveSelectedWorkshop.bannerUrl}
                   alt={liveSelectedWorkshop.title}
+                  referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, defaultCounselingCover)}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
@@ -1130,6 +1152,8 @@ export const CounselingGeneralShowcase: React.FC<CounselingGeneralShowcaseProps>
                   <img
                     src={selectedAnnouncement.bannerUrl}
                     alt={selectedAnnouncement.title || 'پوستر دوره'}
+                    referrerPolicy="no-referrer"
+                    onError={e => handleImageErrorFallback(e, defaultCounselingCover)}
                     className="max-h-[58dvh] w-auto object-contain mx-auto"
                   />
                 </div>

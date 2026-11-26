@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { DEFAULT_SHOWCASE_IMAGES, handleImageErrorFallback } from '../../data/showcaseImages';
 
 interface MinimalShowcaseStat {
   label: string;
@@ -161,7 +162,14 @@ export const MinimalShowcaseCard: React.FC<MinimalShowcaseCardProps> = ({
             src={imageUrl}
             alt={title}
             referrerPolicy="no-referrer"
-            onError={() => setImgError(true)}
+            onError={e => {
+              const fallback = DEFAULT_SHOWCASE_IMAGES.unified_showcase;
+              if (fallback && e.currentTarget.src !== fallback && e.currentTarget.dataset.fallbackApplied !== '1') {
+                handleImageErrorFallback(e, fallback);
+              } else {
+                setImgError(true);
+              }
+            }}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />

@@ -1,3 +1,4 @@
+import React from 'react';
 // Client-only image registry importing local high-resolution assets generated for the platform.
 // Note: Keep `.jpg` imports exclusively inside client modules (never import in server.ts or mockData.ts).
 
@@ -13,6 +14,8 @@ import productBookJurisprudenceImg from '../assets/images/product_book_jurisprud
 import productMultimediaSoftwareImg from '../assets/images/product_multimedia_software_1795010204743.jpg';
 import productAudioLecturesImg from '../assets/images/product_audio_lectures_1795010203811.jpg';
 import productBookMonographImg from '../assets/images/product_book_monograph_1795010203427.jpg';
+import consultantPortraitDefaultImg from '../assets/images/consultant_portrait_default_1795679822967.jpg';
+import consultantPortraitFemaleImg from '../assets/images/consultant_portrait_female_1795679886793.jpg';
 
 export const PRODUCT_STUDIO_IMAGES = {
   book_jurisprudence: productBookJurisprudenceImg,
@@ -21,12 +24,25 @@ export const PRODUCT_STUDIO_IMAGES = {
   audio_lectures: productAudioLecturesImg,
 };
 
+export const CONSULTANT_FALLBACK_IMAGES = {
+  default: consultantPortraitDefaultImg,
+  female: consultantPortraitFemaleImg,
+};
+
+export function isUsableImageUrl(url?: string): url is string {
+  if (!url) return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (trimmed.includes('unsplash.com')) return false;
+  return true;
+}
+
 export function resolveProductCoverUrl(
   url?: string,
   format: string = 'book',
   index = 0
 ): string {
-  if (url && url.trim() && !url.includes('unsplash.com')) {
+  if (isUsableImageUrl(url)) {
     return url;
   }
   if (format === 'multimedia') return productMultimediaSoftwareImg;
@@ -34,8 +50,34 @@ export function resolveProductCoverUrl(
   return index % 2 === 0 ? productBookJurisprudenceImg : productBookMonographImg;
 }
 
+export function resolveCourseCoverUrl(url?: string, index = 0): string {
+  if (isUsableImageUrl(url)) {
+    return url;
+  }
+  return index % 2 === 0 ? showcaseCoursesLectureImg : showcaseBooksArchiveImg;
+}
+
+export function resolveConsultantAvatarUrl(url?: string, index = 0): string {
+  if (isUsableImageUrl(url)) {
+    return url;
+  }
+  return index % 2 === 0 ? consultantPortraitDefaultImg : consultantPortraitFemaleImg;
+}
+
+export function handleImageErrorFallback(
+  event: React.SyntheticEvent<HTMLImageElement>,
+  fallbackUrl: string
+): void {
+  const img = event.currentTarget;
+  if (img.dataset.fallbackApplied === '1') return;
+  img.dataset.fallbackApplied = '1';
+  if (fallbackUrl && img.src !== fallbackUrl) {
+    img.src = fallbackUrl;
+  }
+}
+
 export const DEFAULT_SHOWCASE_IMAGES: Record<string, string> = {
-  hero_portrait: showcaseCounselingDialogueImg,
+  hero_portrait: consultantPortraitDefaultImg,
   unified_showcase: showcaseResearchLibraryImg,
   honors_showcase: honorsJudicialAppointmentImg,
   rulings_showcase: showcaseRulingsJusticeImg,
@@ -83,8 +125,9 @@ export function resolveShowcaseImageUrl(
   sectionKey: string,
   overrides?: Record<string, string>
 ): string | undefined {
-  if (overrides && overrides[sectionKey]) {
-    return overrides[sectionKey];
+  const override = overrides?.[sectionKey];
+  if (isUsableImageUrl(override)) {
+    return override;
   }
   return DEFAULT_SHOWCASE_IMAGES[sectionKey];
 }

@@ -3,7 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/apiClient';
 import { Consultant } from '../../types';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  resolveConsultantAvatarUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import {
   HeartHandshake,
   Compass,
@@ -94,13 +99,12 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
     crextioConfig.counselingPromoSubtitle ||
     'ارائه خدمات مشاوره تخصصی شغلی-تحصیلی قضایی و مشاوره‌های روان‌شناختی، خانواده و فردی با حفظ کامل محرمانگی';
 
-  const showcaseBannerUrl = resolveShowcaseImageUrl(
-    'counseling_promo',
-    crextioConfig.showcaseImageOverrides
-  );
-  const fallbackAvatarUrl = resolveShowcaseImageUrl(
-    'hero_portrait',
-    crextioConfig.showcaseImageOverrides
+  const showcaseBannerUrl =
+    resolveShowcaseImageUrl('counseling_promo', crextioConfig.showcaseImageOverrides) ||
+    DEFAULT_SHOWCASE_IMAGES.counseling_promo;
+  const fallbackAvatarUrl = resolveConsultantAvatarUrl(
+    resolveShowcaseImageUrl('hero_portrait', crextioConfig.showcaseImageOverrides),
+    0
   );
 
   // Merge MySQL persisted consultant overrides with system consultants
@@ -364,19 +368,35 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
               </div>
             </div>
 
-            {/* Counselors Preview */}
+            {/* Counselors Preview + Visual Cover */}
             <div className="rounded-2xl bg-[#FAF8F2] p-4 border border-[#E2DAC3] flex flex-col justify-between space-y-3">
               <div className="space-y-2.5">
+                {showcaseBannerUrl && (
+                  <div className="relative h-28 rounded-xl overflow-hidden bg-[#071E17] border border-[#E2DAC3]">
+                    <img
+                      src={showcaseBannerUrl}
+                      alt={shownSpecHeading}
+                      referrerPolicy="no-referrer"
+                      onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.counseling_promo)}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/85 via-[#071E17]/20 to-transparent" />
+                    <span className="absolute bottom-2 right-3 text-[11px] font-black text-[#F3D078]">
+                      همراهی اساتید و قضات پیشکسوت
+                    </span>
+                  </div>
+                )}
                 <span className="text-xs font-black text-[#071E17] block">
                   مشاوران برگزیده هدایت شغلی:
                 </span>
                 <div className="space-y-2">
-                  {displaySpecialized.slice(0, 2).map(c => (
+                  {displaySpecialized.slice(0, 2).map((c, idx) => (
                     <div key={c.id} className="p-2.5 rounded-xl bg-white border border-[#E2DAC3] flex items-center gap-2.5">
                       <img
-                        src={c.avatarUrl || fallbackAvatarUrl}
+                        src={resolveConsultantAvatarUrl(c.avatarUrl, idx)}
                         alt={c.name}
                         referrerPolicy="no-referrer"
+                        onError={e => handleImageErrorFallback(e, fallbackAvatarUrl)}
                         className="w-11 h-11 rounded-xl object-cover object-top border border-[#D4AF37]/40 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
@@ -452,19 +472,35 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
               </div>
             </div>
 
-            {/* Counselors Preview */}
+            {/* Counselors Preview + Visual Cover */}
             <div className="rounded-2xl bg-[#FAF8F2] p-4 border border-[#E2DAC3] flex flex-col justify-between space-y-3">
               <div className="space-y-2.5">
+                {showcaseBannerUrl && (
+                  <div className="relative h-28 rounded-xl overflow-hidden bg-[#071E17] border border-[#E2DAC3]">
+                    <img
+                      src={showcaseBannerUrl}
+                      alt={shownGenHeading}
+                      referrerPolicy="no-referrer"
+                      onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.counseling_general_showcase)}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/85 via-[#071E17]/20 to-transparent" />
+                    <span className="absolute bottom-2 right-3 text-[11px] font-black text-emerald-300">
+                      کلینیک تخصصی و محرمانه مشاوره
+                    </span>
+                  </div>
+                )}
                 <span className="text-xs font-black text-[#071E17] block">
                   مشاوران و درمانگران برگزیده:
                 </span>
                 <div className="space-y-2">
-                  {displayGeneral.slice(0, 2).map(c => (
+                  {displayGeneral.slice(0, 2).map((c, idx) => (
                     <div key={c.id} className="p-2.5 rounded-xl bg-white border border-[#E2DAC3] flex items-center gap-2.5">
                       <img
-                        src={c.avatarUrl || fallbackAvatarUrl}
+                        src={resolveConsultantAvatarUrl(c.avatarUrl, idx)}
                         alt={c.name}
                         referrerPolicy="no-referrer"
+                        onError={e => handleImageErrorFallback(e, fallbackAvatarUrl)}
                         className="w-11 h-11 rounded-xl object-cover object-top border border-[#D4AF37]/40 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
@@ -687,9 +723,10 @@ export const CounselingPromoShowcase: React.FC<CounselingPromoShowcaseProps> = (
                       >
                         <div className="flex items-center gap-2">
                           <img
-                            src={currentAvatar}
+                            src={resolveConsultantAvatarUrl(currentAvatar, 0)}
                             alt={currentName}
                             referrerPolicy="no-referrer"
+                            onError={e => handleImageErrorFallback(e, fallbackAvatarUrl)}
                             className="w-9 h-9 rounded-lg object-cover border border-stone-300 shrink-0"
                           />
                           <div className="min-w-0 flex-1">

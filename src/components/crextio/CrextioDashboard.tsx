@@ -54,7 +54,11 @@ import { Theme2StudioDrawer, Theme2StudioTab } from './Theme2StudioDrawer';
 import { ShowcaseQuickEditModal } from './ShowcaseQuickEditModal';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { DEFAULT_HERO_STATS, DEFAULT_CREXTIO_CONFIG } from '../../data/mockData';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { DashboardWidgetsSuite } from '../dashboard/DashboardWidgetsSuite';
 import { CANONICAL_DASHBOARD_SECTION_ORDER, reconcileDashboardSectionOrder } from '../../context/ThemeContext';
 import { AlumniProfileCompletionWidget } from '../alumni/AlumniProfileCompletionWidget';
@@ -438,6 +442,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                       src={heroPortraitSrc}
                       alt={currentUser?.fullName || 'پرتره'}
                       referrerPolicy="no-referrer"
+                      onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.hero_portrait)}
                       className="w-11 h-11 rounded-xl object-cover object-top border border-[#F3D078]/40 shrink-0"
                     />
                   )}
@@ -525,6 +530,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                     src={heroPortraitSrc}
                     alt="پرتره دانش‌آموخته"
                     referrerPolicy="no-referrer"
+                    onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.hero_portrait)}
                     className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/55 to-transparent flex items-end p-5 text-white">
@@ -636,6 +642,7 @@ export const CrextioDashboard: React.FC<CrextioDashboardProps> = ({
                                 src={heroPortraitSrc}
                                 alt="پرتره دانش‌آموخته"
                                 referrerPolicy="no-referrer"
+                                onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.hero_portrait)}
                                 className="w-12 h-12 rounded-xl object-cover object-top border border-[#F3D078]/40 shrink-0"
                               />
                               <div className="min-w-0">

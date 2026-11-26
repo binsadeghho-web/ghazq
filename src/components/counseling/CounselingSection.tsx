@@ -37,6 +37,11 @@ import { CounselingCalendarAndDossierSuite } from './CounselingCalendarAndDossie
 import { ModuleFallback } from '../common/ModuleFallback';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { useRbacPolicies, canManageAllInSection, isReadOnlyObserverRole } from '../../utils/rbacPolicy';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveConsultantAvatarUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 
 const CoursesSection = lazy(() =>
   import('../courses/CoursesSection').then(m => ({ default: m.CoursesSection }))
@@ -603,24 +608,20 @@ export const CounselingSection: React.FC<CounselingSectionProps> = ({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-                  {generalConsultants.map(c => (
+                  {generalConsultants.map((c, cIdx) => (
                     <div
                       key={c.id}
                       className="bg-white/95 sm:bg-white/80 dark:bg-slate-900/75 backdrop-blur-xl rounded-[22px] sm:rounded-3xl border border-stone-200/80 sm:border-white/60 dark:border-white/10 p-4 sm:p-5 flex flex-col justify-between gap-3 sm:gap-4 shadow-2xs sm:shadow-sm hover:shadow-lg transition-all"
                     >
                       <div className="space-y-2.5 sm:space-y-3">
                         <div className="flex items-center gap-3">
-                          {c.avatarUrl ? (
-                            <img
-                              src={c.avatarUrl}
-                              alt={c.name}
-                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/10 text-emerald-700 font-black flex items-center justify-center shrink-0">
-                              {c.name.slice(0, 2)}
-                            </div>
-                          )}
+                          <img
+                            src={resolveConsultantAvatarUrl(c.avatarUrl, cIdx)}
+                            alt={c.name}
+                            referrerPolicy="no-referrer"
+                            onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.hero_portrait)}
+                            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover object-top border border-slate-200 dark:border-slate-700 shrink-0"
+                          />
                           <div className="min-w-0 flex-1 space-y-0.5">
                             <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">{c.name}</h3>
                             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 block truncate">

@@ -77,6 +77,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   const [customizerInitialTab, setCustomizerInitialTab] = useState<CustomizerTab>('modules');
   const [isIdentityCardOpen, setIsIdentityCardOpen] = useState<boolean>(false);
   const [counselingDropdownOpen, setCounselingDropdownOpen] = useState<boolean>(false);
+  const [hoveredNavId, setHoveredNavId] = useState<string | null>(null);
   const [generalBookingAutoOpenNonce, setGeneralBookingAutoOpenNonce] = useState<number>(0);
   const [subTabNav, setSubTabNav] = useState<{ nav: string; subTab?: string; nonce: number }>({
     nav: 'Dashboard',
@@ -89,6 +90,25 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
   };
   const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const completionPct = calculateProfileCompletion(currentUser).percentage;
+
+  const getNavIconAccent = (id: string): string => {
+    switch (id) {
+      case 'Dashboard': return 'text-emerald-700';
+      case 'People': return 'text-blue-600';
+      case 'Courses': return 'text-cyan-700';
+      case 'Products': return 'text-violet-700';
+      case 'Counseling': return 'text-rose-600';
+      case 'Research': return 'text-teal-700';
+      case 'Welfare': return 'text-pink-600';
+      case 'Rulings': return 'text-amber-700';
+      case 'Synergy': return 'text-sky-600';
+      case 'Finance': return 'text-emerald-700';
+      case 'Alumni': return 'text-teal-700';
+      case 'Users': return 'text-indigo-600';
+      case 'Admin': return 'text-rose-700';
+      default: return 'text-[#0C4A38]';
+    }
+  };
 
   const mapNavToTabId = (nav: string): NavTabId => {
     const n = nav.toLowerCase();
@@ -308,7 +328,7 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
               onClick={() => setActiveNav('Dashboard')}
               className="flex items-center gap-2.5 lg:gap-3 group text-right cursor-pointer min-w-0 shrink"
             >
-              <div className={`${activeNav !== 'Dashboard' ? 'hidden lg:flex' : 'flex'} w-9 h-9 lg:w-11 lg:h-11 rounded-xl lg:rounded-2xl bg-gradient-to-br from-[#071E17] to-[#113D30] items-center justify-center text-[#F3D078] shadow-sm border border-[#F3D078]/40 shrink-0`}>
+              <div className={`${activeNav !== 'Dashboard' ? 'hidden lg:flex' : 'flex'} relative overflow-hidden w-9 h-9 lg:w-11 lg:h-11 rounded-xl lg:rounded-2xl bg-gradient-to-br from-[#071E17] via-[#0D3327] to-[#134636] items-center justify-center text-[#F3D078] shadow-sm border border-[#F3D078]/45 shrink-0 transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3`}>
                 <Scale className="w-4.5 h-4.5 lg:w-6 lg:h-6 stroke-[2.2]" />
               </div>
               <div className="min-w-0">
@@ -554,19 +574,35 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
           </div>
         </header>
 
-        {/* HORIZONTAL NAVIGATION BAR (Desktop / Tablet Landscape; Mobile uses Thumb Bottom Tab Bar) */}
-        <nav className="hidden lg:block bg-[#FCFCF9]/95 backdrop-blur-xl rounded-2xl py-1.5 px-3 border border-[#DFD8C4] shadow-[0_6px_20px_-16px_rgba(7,30,23,0.12)] overflow-x-auto scrollbar-none z-20">
-          <div className="flex items-center justify-start xl:justify-center gap-1 min-w-max mx-auto">
+        {/* SCULPTED LIVING HORIZONTAL NAVIGATION DOCK (Desktop / Tablet Landscape) */}
+        <nav
+          aria-label="منوی اصلی سامانه"
+          className="hidden lg:block relative bg-gradient-to-l from-[#FCFCF9]/96 via-[#FAF7EE]/96 to-[#F2F7F4]/96 backdrop-blur-2xl rounded-[22px] py-2 px-3.5 border border-[#DDD4BC] shadow-[0_12px_30px_-20px_rgba(7,30,23,0.22)] z-20"
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-14 top-0 h-px bg-gradient-to-l from-transparent via-[#D4AF37]/65 to-transparent"
+          />
+          <div
+            onMouseLeave={() => setHoveredNavId(null)}
+            className="flex items-center justify-start xl:justify-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 px-0.5"
+          >
             {navItems.map(item => {
               const Icon = item.icon;
-              const isActive = activeNav === item.id;
+              const isActive =
+                activeNav === item.id ||
+                (item.id === 'Counseling' &&
+                  (activeNav === 'CounselingGeneral' || activeNav === 'SpecializedCounseling'));
+              const isHovered = hoveredNavId === item.id;
+              const iconAccent = getNavIconAccent(item.id);
 
               if (item.id === 'Counseling') {
                 return (
                   <div
                     key={item.id}
-                    className="relative"
+                    className="relative shrink-0"
                     onMouseEnter={() => {
+                      setHoveredNavId(item.id);
                       if (counselingTimerRef.current) clearTimeout(counselingTimerRef.current);
                       setCounselingDropdownOpen(true);
                     }}
@@ -574,77 +610,144 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                       if (counselingTimerRef.current) clearTimeout(counselingTimerRef.current);
                       counselingTimerRef.current = setTimeout(() => {
                         setCounselingDropdownOpen(false);
-                      }, 2000);
+                      }, 450);
                     }}
                   >
-                    <button
+                    <motion.button
+                      type="button"
+                      whileHover={{ y: -1.5 }}
+                      whileTap={{ scale: 0.96 }}
                       onClick={() => setActiveNav('Counseling')}
-                      className={`flex items-center gap-2 px-3 py-2 min-h-[38px] rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                        isActive
-                          ? 'bg-[#071E17] text-[#F3D078] shadow-xs'
-                          : 'text-[#4C5852] hover:bg-[#F2EFE4] hover:text-[#071E17]'
+                      className={`group relative flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-extrabold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                        isActive ? 'text-[#F3D078]' : 'text-[#3F4D46] hover:text-[#071E17]'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#F3D078]' : 'text-[#0C4A38]'}`} />
-                      <span>{item.label}</span>
-                      <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                    </button>
-
-                    {/* 2-Option Counseling Dropdown */}
-                    {counselingDropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-68 bg-[#FCFCF9] rounded-2xl border border-[#DFD8C4] shadow-xl p-2 z-50 space-y-1">
-                        <button
-                          onClick={() => {
-                            setActiveNav('Counseling');
-                            setCounselingDropdownOpen(false);
-                          }}
-                          className="w-full text-right p-2.5 rounded-xl hover:bg-[#F2F7F4] text-xs font-bold text-[#071E17] flex items-center justify-between gap-2 group cursor-pointer"
+                      {isHovered && !isActive && (
+                        <motion.span
+                          layoutId="crextioDesktopNavHover"
+                          transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+                          className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#EFE8D5] to-[#E6F0EA] border border-[#D7CEB5]/70"
+                        />
+                      )}
+                      {isActive && (
+                        <motion.span
+                          layoutId="crextioDesktopNavActivePill"
+                          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#071E17] via-[#0C3126] to-[#134434] shadow-[0_8px_18px_-8px_rgba(7,30,23,0.5)] border border-[#F3D078]/35 overflow-hidden"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <HeartHandshake className="w-4 h-4 text-[#0C4A38] shrink-0" />
-                            <div className="min-w-0">
-                              <p className="font-extrabold">خدمات روانشناختی و مشاوره</p>
-                              <p className="text-[10px] text-[#525E58] font-normal">خانواده، شخصیت و ازدواج</p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-extrabold text-[#0C4A38] shrink-0">روانشناختی</span>
-                        </button>
+                          <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
+                          />
+                        </motion.span>
+                      )}
+                      <Icon
+                        className={`relative z-10 w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6 ${
+                          isActive ? 'text-[#F3D078]' : iconAccent
+                        }`}
+                      />
+                      <span className="relative z-10">{item.label}</span>
+                      <ChevronDown
+                        className={`relative z-10 w-3.5 h-3.5 opacity-75 shrink-0 transition-transform duration-200 ${
+                          counselingDropdownOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </motion.button>
 
-                        <button
-                          onClick={() => {
-                            setActiveNav('SpecializedCounseling');
-                            setCounselingDropdownOpen(false);
-                          }}
-                          className="w-full text-right p-2.5 rounded-xl hover:bg-[#FAF5E6] text-xs font-bold text-[#071E17] flex items-center justify-between gap-2 group cursor-pointer"
+                    {/* 2-Option Animated Counseling Dropdown */}
+                    <AnimatePresence>
+                      {counselingDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                          transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                          className="absolute right-0 mt-2.5 w-72 bg-[#FCFCF9]/98 backdrop-blur-xl rounded-2xl border border-[#D8CEB4] shadow-[0_22px_48px_-16px_rgba(7,30,23,0.3)] p-2 z-50 space-y-1.5"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Scale className="w-4 h-4 text-[#B88928] shrink-0" />
-                            <div className="min-w-0">
-                              <p className="font-extrabold">مشاوره تخصصی شغلی</p>
-                              <p className="text-[10px] text-[#525E58] font-normal">هدایت قضایی و تحصیلی</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveNav('CounselingGeneral');
+                              setCounselingDropdownOpen(false);
+                            }}
+                            className="w-full text-right p-2.5 rounded-xl hover:bg-gradient-to-l hover:from-rose-50/90 hover:to-white text-xs font-bold text-[#071E17] flex items-center justify-between gap-2 group cursor-pointer border border-transparent hover:border-rose-200/70 transition-all"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200/80 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                                <HeartHandshake className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-black">خدمات روانشناختی و مشاوره</p>
+                                <p className="text-[10px] text-[#525E58] font-medium">خانواده، شخصیت و ازدواج</p>
+                              </div>
                             </div>
-                          </div>
-                          <span className="text-[10px] font-extrabold text-[#8A6314] shrink-0">تخصصی</span>
-                        </button>
-                      </div>
-                    )}
+                            <span className="text-[10px] font-black text-rose-700 shrink-0">روانشناختی</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveNav('SpecializedCounseling');
+                              setCounselingDropdownOpen(false);
+                            }}
+                            className="w-full text-right p-2.5 rounded-xl hover:bg-gradient-to-l hover:from-amber-50/90 hover:to-white text-xs font-bold text-[#071E17] flex items-center justify-between gap-2 group cursor-pointer border border-transparent hover:border-amber-200/70 transition-all"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                                <Scale className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-black">مشاوره تخصصی شغلی</p>
+                                <p className="text-[10px] text-[#525E58] font-medium">هدایت قضایی و تحصیلی</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black text-amber-800 shrink-0">تخصصی</span>
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               }
 
               return (
-                <button
+                <motion.button
                   key={item.id}
+                  type="button"
+                  whileHover={{ y: -1.5 }}
+                  whileTap={{ scale: 0.96 }}
+                  onMouseEnter={() => setHoveredNavId(item.id)}
                   onClick={() => setActiveNav(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 min-h-[38px] rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                    isActive
-                      ? 'bg-[#071E17] text-[#F3D078] shadow-xs'
-                      : 'text-[#4C5852] hover:bg-[#F2EFE4] hover:text-[#071E17]'
+                  className={`group relative flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-extrabold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                    isActive ? 'text-[#F3D078]' : 'text-[#3F4D46] hover:text-[#071E17]'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#F3D078]' : 'text-[#0C4A38]'}`} />
-                  <span>{item.label}</span>
-                </button>
+                  {isHovered && !isActive && (
+                    <motion.span
+                      layoutId="crextioDesktopNavHover"
+                      transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+                      className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#EFE8D5] to-[#E6F0EA] border border-[#D7CEB5]/70"
+                    />
+                  )}
+                  {isActive && (
+                    <motion.span
+                      layoutId="crextioDesktopNavActivePill"
+                      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                      className="absolute inset-0 rounded-xl bg-gradient-to-l from-[#071E17] via-[#0C3126] to-[#134434] shadow-[0_8px_18px_-8px_rgba(7,30,23,0.5)] border border-[#F3D078]/35 overflow-hidden"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
+                      />
+                    </motion.span>
+                  )}
+                  <Icon
+                    className={`relative z-10 w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6 ${
+                      isActive ? 'text-[#F3D078]' : iconAccent
+                    }`}
+                  />
+                  <span className="relative z-10">{item.label}</span>
+                </motion.button>
               );
             })}
           </div>
@@ -726,34 +829,44 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
       {/* Floating Luxury Frosted Mobile Bottom Dock for Theme 2 (Crextio) */}
       <nav
         aria-label="ناوبری پایین موبایل"
-        className="lg:hidden fixed bottom-2.5 inset-x-3 z-40 rounded-[26px] bg-white/96 backdrop-blur-md border border-stone-200/90 px-2 py-1.5 flex items-center justify-around gap-1 shadow-[0_14px_32px_-14px_rgba(7,30,23,0.24)] safe-area-bottom"
+        className="lg:hidden fixed bottom-2.5 inset-x-3 z-40 rounded-[26px] bg-gradient-to-l from-[#FCFCF9]/96 via-[#FAF8F2]/96 to-[#F2F7F4]/96 backdrop-blur-md border border-[#D8CEB4] px-2 py-1.5 flex items-center justify-around gap-1 shadow-[0_18px_36px_-14px_rgba(7,30,23,0.3)] safe-area-bottom"
       >
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-amber-400/50 to-transparent"
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-l from-transparent via-[#D4AF37]/70 to-transparent"
         />
         {fallbackMobileItems.map(item => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
+          const iconAccent = getNavIconAccent(item.id);
           return (
             <motion.button
               key={item.id}
               type="button"
-              whileTap={{ scale: 0.92 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setActiveNav(item.id)}
-              className={`relative flex flex-col items-center justify-center flex-1 min-h-[50px] min-w-[44px] py-1 rounded-2xl transition-colors cursor-pointer ${
-                isActive ? 'text-emerald-950 font-black' : 'text-stone-500 hover:text-stone-800'
+              className={`relative flex flex-col items-center justify-center flex-1 min-h-[52px] min-w-[44px] py-1 rounded-2xl transition-colors cursor-pointer ${
+                isActive ? 'text-[#F3D078] font-black' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               {isActive && (
                 <motion.span
                   layoutId="crextioMobileDockPill"
                   transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  className="absolute inset-0 rounded-2xl bg-gradient-to-b from-emerald-50 to-amber-50/70 border border-emerald-200/80 shadow-2xs"
-                />
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-b from-[#071E17] to-[#113C2E] border border-[#F3D078]/40 shadow-sm overflow-hidden"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-l from-transparent via-[#F3D078]/85 to-transparent"
+                  />
+                </motion.span>
               )}
               <div className="relative z-10 flex flex-col items-center">
-                <Icon className={`w-[19px] h-[19px] transition-transform ${isActive ? 'text-emerald-800 stroke-[2.4] -translate-y-0.5' : 'stroke-[1.9]'}`} />
+                <Icon
+                  className={`w-[19px] h-[19px] transition-transform duration-200 ${
+                    isActive ? 'text-[#F3D078] stroke-[2.4] -translate-y-0.5 scale-105' : `${iconAccent} stroke-[2]`
+                  }`}
+                />
                 <span className="text-[10px] mt-0.5 whitespace-nowrap truncate max-w-[64px]">
                   {item.id === 'Courses' ? 'دوره‌ها' : item.id === 'People' ? 'کارتابل' : item.label}
                 </span>
@@ -764,14 +877,18 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
 
         <motion.button
           type="button"
-          whileTap={{ scale: 0.92 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => setServicesSheetOpen(true)}
-          className="relative flex flex-col items-center justify-center flex-1 min-h-[50px] min-w-[44px] py-1 rounded-2xl cursor-pointer group"
+          className="relative flex flex-col items-center justify-center flex-1 min-h-[52px] min-w-[44px] py-1 rounded-2xl cursor-pointer group"
         >
-          <div className="w-9 h-7 rounded-xl bg-gradient-to-br from-[#071E17] via-[#0E3226] to-emerald-800 text-amber-300 border border-amber-400/35 shadow-sm flex items-center justify-center group-active:scale-95 transition-transform">
-            <LayoutGrid className="w-4 h-4 stroke-[2.2]" />
+          <div className="relative overflow-hidden w-9 h-7 rounded-xl bg-gradient-to-br from-[#071E17] via-[#0E3226] to-emerald-800 text-[#F3D078] border border-[#F3D078]/45 shadow-sm flex items-center justify-center group-active:scale-95 transition-transform">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 w-10 bg-gradient-to-r from-transparent via-[#F3D078]/25 to-transparent luxury-sheen"
+            />
+            <LayoutGrid className="relative z-10 w-4 h-4 stroke-[2.2]" />
           </div>
-          <span className="text-[10px] mt-0.5 font-extrabold text-emerald-950 whitespace-nowrap">
+          <span className="text-[10px] mt-0.5 font-extrabold text-[#071E17] whitespace-nowrap">
             همه بخش‌ها
           </span>
         </motion.button>

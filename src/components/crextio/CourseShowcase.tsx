@@ -14,7 +14,12 @@ import {
 import { Course } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { useApp } from '../../context/AppContext';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  resolveCourseCoverUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { CourseShowcaseEditModal } from './CourseShowcaseEditModal';
 
 interface CourseShowcaseProps {
@@ -46,10 +51,9 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
   const autoplay = crextioConfig.courseShowcaseAutoplay !== false;
   const selectedIds = crextioConfig.courseShowcaseSelectedIds;
   const customCourseData = crextioConfig.courseShowcaseCustomData || {};
-  const showcaseCoverImg = resolveShowcaseImageUrl(
-    'course_showcase',
-    crextioConfig.showcaseImageOverrides
-  );
+  const showcaseCoverImg =
+    resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides) ||
+    DEFAULT_SHOWCASE_IMAGES.course_showcase;
 
   const displayCourses = useMemo(() => {
     const filtered =
@@ -135,8 +139,8 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
             </span>
           </div>
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:pb-0">
-            {displayCourses.slice(0, 3).map((c) => {
-              const cardCover = c.coverImage || showcaseCoverImg;
+            {displayCourses.slice(0, 3).map((c, cIdx) => {
+              const cardCover = resolveCourseCoverUrl(c.coverImage, cIdx);
               return (
                 <motion.div
                   key={c.id}
@@ -144,14 +148,15 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
                   className="min-w-[78vw] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-gradient-to-br from-[#071E17] via-[#0B2D22] to-[#113C2E] text-white rounded-2xl sm:rounded-[28px] border border-[#F3D078]/25 shadow-lg flex flex-col justify-between overflow-hidden"
                 >
                   {cardCover && (
-                    <div className="relative h-28 w-full overflow-hidden">
+                    <div className="relative h-32 w-full overflow-hidden">
                       <img
                         src={cardCover}
                         alt={c.title}
                         referrerPolicy="no-referrer"
+                        onError={e => handleImageErrorFallback(e, showcaseCoverImg)}
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-black/35 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-black/30 to-transparent" />
                     </div>
                   )}
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
@@ -224,62 +229,78 @@ export const CourseShowcase: React.FC<CourseShowcaseProps> = ({
           </div>
         </div>
       ) : (
-        /* Carousel View (Mode 1: Featured Courses Slider with configurable timer + cover image) */
-        <div className="relative w-full min-h-[240px] sm:min-h-[280px] overflow-hidden rounded-2xl sm:rounded-[30px] shadow-[0_22px_50px_-24px_rgba(7,30,23,0.45)] group bg-gradient-to-br from-[#071E17] via-[#0B2D22] to-[#113C2E] border border-[#F3D078]/30 text-white p-4 sm:p-8 flex flex-col justify-between">
-          {(currentCourse.coverImage || showcaseCoverImg) && (
-            <div className="absolute inset-0 pointer-events-none opacity-25">
-              <img
-                src={currentCourse.coverImage || showcaseCoverImg}
-                alt={currentCourse.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/78 to-transparent" />
-            </div>
-          )}
+        /* Carousel View (Mode 1: Featured Courses Slider with framed cover image + configurable timer) */
+        <div className="relative w-full min-h-[240px] sm:min-h-[280px] overflow-hidden rounded-2xl sm:rounded-[30px] shadow-[0_22px_50px_-24px_rgba(7,30,23,0.45)] group bg-gradient-to-br from-[#071E17] via-[#0B2D22] to-[#113C2E] border border-[#F3D078]/30 text-white p-4 sm:p-7 flex flex-col justify-between">
+          <div className="absolute inset-0 pointer-events-none opacity-15">
+            <img
+              src={resolveCourseCoverUrl(currentCourse.coverImage, index)}
+              alt=""
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              onError={e => handleImageErrorFallback(e, showcaseCoverImg)}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#071E17] via-[#071E17]/80 to-transparent" />
+          </div>
           <div className="absolute top-0 right-0 w-80 h-80 bg-[#F3D078]/8 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
 
           <AnimatePresence mode="wait">
             <motion.div
               key={currentCourse.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="relative z-10 space-y-4"
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+              className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-center"
             >
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-[#F3D078] font-black inline-flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#F3D078]" />
-                  {crextioConfig.courseShowcaseBadge || 'ویترین ویژه دوره‌های علمی'}
-                </span>
-                <span aria-hidden="true" className="text-white/30">·</span>
-                <span className="text-emerald-100/85 font-medium">
-                  سطح: {currentCourse.level}
-                </span>
-                <span aria-hidden="true" className="text-white/30">·</span>
-                <span className="text-[#F3D078]/90 font-bold tabular-nums">
-                  {toPersianNumbers(currentCourse.hours)} ساعت آموزش
-                </span>
-                <span className="text-[11px] text-emerald-100/65 font-medium tabular-nums">
-                  (هر {toPersianNumbers(intervalSeconds)} ثانیه)
+              <div className="lg:col-span-4 relative h-40 sm:h-48 lg:h-52 rounded-2xl overflow-hidden border border-[#F3D078]/30 shadow-lg bg-[#051510]">
+                <img
+                  src={resolveCourseCoverUrl(currentCourse.coverImage, index)}
+                  alt={currentCourse.title}
+                  referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, showcaseCoverImg)}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/85 via-transparent to-transparent" />
+                <span className="absolute bottom-2.5 right-3 text-[11px] font-black text-[#F3D078]">
+                  {currentCourse.category || 'دوره علمی'}
                 </span>
               </div>
 
-              <div className="space-y-2">
-                <h2 className="text-lg sm:text-3xl font-extrabold text-white leading-tight">
-                  {currentCourse.title}
-                </h2>
-                <p className="text-emerald-100/85 text-xs sm:text-sm font-medium flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-[#F3D078]" />
-                  مدرس: {currentCourse.instructor}
+              <div className="lg:col-span-8 space-y-3.5">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-[#F3D078] font-black inline-flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#F3D078]" />
+                    {crextioConfig.courseShowcaseBadge || 'ویترین ویژه دوره‌های علمی'}
+                  </span>
+                  <span aria-hidden="true" className="text-white/30">·</span>
+                  <span className="text-emerald-100/85 font-medium">
+                    سطح: {currentCourse.level}
+                  </span>
+                  <span aria-hidden="true" className="text-white/30">·</span>
+                  <span className="text-[#F3D078]/90 font-bold tabular-nums">
+                    {toPersianNumbers(currentCourse.hours)} ساعت آموزش
+                  </span>
+                  <span className="text-[11px] text-emerald-100/65 font-medium tabular-nums">
+                    (هر {toPersianNumbers(intervalSeconds)} ثانیه)
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <h2 className="text-lg sm:text-2xl lg:text-[26px] font-extrabold text-white leading-snug">
+                    {currentCourse.title}
+                  </h2>
+                  <p className="text-emerald-100/85 text-xs sm:text-sm font-medium flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-[#F3D078]" />
+                    مدرس: {currentCourse.instructor}
+                  </p>
+                </div>
+
+                <p className="text-emerald-100/75 text-xs sm:text-sm line-clamp-2 max-w-2xl leading-relaxed">
+                  {currentCourse.description}
                 </p>
               </div>
-
-              <p className="text-emerald-100/75 text-xs sm:text-sm line-clamp-2 max-w-2xl leading-relaxed">
-                {currentCourse.description}
-              </p>
             </motion.div>
           </AnimatePresence>
 

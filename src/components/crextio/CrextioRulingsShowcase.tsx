@@ -2,7 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { JudicialRuling } from '../../types';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { RulingsShowcaseEditModal } from './RulingsShowcaseEditModal';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { canManageRulingsRole, getRulingTagStyleClasses } from '../rulings/rulingTypesAndTags';
@@ -342,6 +346,7 @@ export const CrextioRulingsShowcase: React.FC<CrextioRulingsShowcaseProps> = ({
                   src={coverImage}
                   alt={currentCarouselRuling.title}
                   referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.rulings_showcase)}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071E17]/90 via-[#071E17]/40 to-transparent" />

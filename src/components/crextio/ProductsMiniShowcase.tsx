@@ -1,7 +1,11 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { toPersianNumbers } from '../../utils/persianNumbers';
-import { resolveProductCoverUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveProductCoverUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import { canManageAllInSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
   formatPresentersText,
@@ -77,6 +81,8 @@ export const ProductsMiniShowcase: React.FC<ProductsMiniShowcaseProps> = ({
                 <img
                   src={resolveProductCoverUrl(item.coverImage, item.format, idx)}
                   alt={item.title}
+                  referrerPolicy="no-referrer"
+                  onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.books_showcase)}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-purple-900/85 text-white text-[10px] font-black">

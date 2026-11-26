@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/apiClient';
-import { resolveShowcaseImageUrl } from '../../data/showcaseImages';
+import {
+  DEFAULT_SHOWCASE_IMAGES,
+  resolveShowcaseImageUrl,
+  handleImageErrorFallback,
+} from '../../data/showcaseImages';
 import {
   Gift,
   ArrowUpRight,
@@ -326,6 +330,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                       src={item.imageUrl}
                       alt={item.title}
                       referrerPolicy="no-referrer"
+                      onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.welfare_showcase)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
@@ -395,6 +400,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
                       src={showcaseBannerUrl}
                       alt="تصویر ویترین رفاهیات"
                       referrerPolicy="no-referrer"
+                      onError={e => handleImageErrorFallback(e, DEFAULT_SHOWCASE_IMAGES.welfare_showcase)}
                       className="w-14 h-12 rounded-xl object-cover border border-stone-300 shrink-0"
                     />
                   )}
