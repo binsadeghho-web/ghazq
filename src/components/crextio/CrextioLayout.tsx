@@ -232,13 +232,22 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 <Scale className="w-4 h-4 text-amber-700 shrink-0" />
                 <span className="truncate">پیش‌نمایش نمای دانش‌آموخته فعال است</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAlumniPreview(false)}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-[11px] sm:text-xs font-black transition-colors cursor-pointer shrink-0"
-              >
-                خروج از پیش‌نمایش
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setDesignTheme('theme3')}
+                  className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-[#071E17] hover:bg-[#0E3226] text-[#F3D078] text-[11px] font-black transition-colors cursor-pointer shrink-0"
+                >
+                  تست تم ۳ (موبایل‌محور)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAlumniPreview(false)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-[11px] sm:text-xs font-black transition-colors cursor-pointer shrink-0"
+                >
+                  خروج از پیش‌نمایش
+                </button>
+              </div>
             </div>
           ) : (
             <div className="hidden lg:flex w-full bg-[#071E17] text-[#FCFCF9] rounded-2xl px-4 py-2 border border-[#F3D078]/25 items-center justify-between gap-3 shadow-[0_8px_24px_-16px_rgba(7,30,23,0.45)]">
@@ -282,13 +291,25 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                 )}
 
                 {isStaffMember && (
+                  <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/15 shrink-0">
                     <button
+                      type="button"
                       onClick={onToggleToPortalTheme}
-                      className="flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl bg-[#F3D078] hover:bg-[#F8DC91] text-[#071E17] text-xs font-black transition-colors active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-100/85 hover:text-white hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>تم ۱ (پرتال)</span>
+                      تم ۱ (پرتال)
                     </button>
+                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-[#F3D078] text-[#071E17] shadow-xs whitespace-nowrap">
+                      تم ۲ (میزان)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDesignTheme('theme3')}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#F3D078] hover:bg-[#F3D078]/15 transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      تم ۳ (موبایل‌محور)
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -539,17 +560,30 @@ export const CrextioLayout: React.FC<CrextioLayoutProps> = ({ onToggleToPortalTh
                             </>
                           )}
                           {isStaffMember && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUserDropdownOpen(false);
-                                onToggleToPortalTheme();
-                              }}
-                              className="w-full py-2 px-3 rounded-xl bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 cursor-pointer"
-                            >
-                              <ArrowLeftRight className="w-4 h-4" />
-                              <span>تغییر به تم ۱ (پرتال)</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUserDropdownOpen(false);
+                                  setDesignTheme('theme3');
+                                }}
+                                className="w-full py-2 px-3 rounded-xl bg-[#071E17] text-[#F3D078] text-xs font-bold flex items-center gap-2 cursor-pointer"
+                              >
+                                <Sparkles className="w-4 h-4" />
+                                <span>تست تم ۳ (موبایل‌محور)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUserDropdownOpen(false);
+                                  onToggleToPortalTheme();
+                                }}
+                                className="w-full py-2 px-3 rounded-xl bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 cursor-pointer"
+                              >
+                                <ArrowLeftRight className="w-4 h-4" />
+                                <span>تغییر به تم ۱ (پرتال)</span>
+                              </button>
+                            </>
                           )}
                         </div>
                       )}

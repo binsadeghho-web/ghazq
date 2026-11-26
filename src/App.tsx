@@ -21,6 +21,7 @@ import { isOrganizationalRole, isReadOnlyObserverRole } from './utils/rbacPolicy
 // Lazy Loaded Components with Inline Named Export Resolution (Phase 2 - Code Splitting)
 const AdminControlCenter = lazy(() => import('./components/admin/AdminControlCenter').then(m => ({ default: m.AdminControlCenter })));
 const CrextioLayout = lazy(() => import('./components/crextio/CrextioLayout').then(m => ({ default: m.CrextioLayout })));
+const Theme3Layout = lazy(() => import('./components/theme3/Theme3Layout').then(m => ({ default: m.Theme3Layout })));
 
 const MizanLayout = lazy(() => import('./components/mizan/MizanLayout').then(m => ({ default: m.MizanLayout })));
 const WelfareSection = lazy(() => import('./components/welfare/WelfareSection').then(m => ({ default: m.WelfareSection })));
@@ -69,9 +70,22 @@ const MainLayout: React.FC = () => {
 
 
 
-  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio unless Minimal is selected as default.
+  // Theme 3 (Mobile-Inspired Laptop Theme)
+  if (designTheme === 'theme3') {
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <Theme3Layout />
+      </Suspense>
+    );
+  }
+
+  // Default theme is Theme 2 (Crextio). Regular users (alumni) stay on Crextio unless Theme 3 is active.
   if (designTheme === 'crextio' || currentUser?.role === 'alumni') {
-    return <CrextioLayout onToggleToPortalTheme={() => setDesignTheme('portal')} />;
+    return (
+      <Suspense fallback={<ModuleFallback />}>
+        <CrextioLayout onToggleToPortalTheme={() => setDesignTheme('portal')} />
+      </Suspense>
+    );
   }
 
   return (
@@ -267,10 +281,18 @@ const MainLayout: React.FC = () => {
             تم ۱: پرتال
           </span>
           <button
+            type="button"
             onClick={() => setDesignTheme('crextio')}
             className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-slate-300 hover:text-white"
           >
-            تم ۲: کرکستیو
+            تم ۲: میزان
+          </button>
+          <button
+            type="button"
+            onClick={() => setDesignTheme('theme3')}
+            className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-emerald-300 hover:text-white"
+          >
+            تم ۳: موبایل‌محور
           </button>
         </div>
       )}

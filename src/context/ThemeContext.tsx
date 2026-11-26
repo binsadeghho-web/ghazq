@@ -436,7 +436,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const toggleDesignTheme = useCallback(() => {
-    setDesignThemeState(prev => (prev === 'portal' ? 'crextio' : 'portal'));
+    setDesignThemeState(prev =>
+      prev === 'portal' ? 'crextio' : prev === 'crextio' ? 'theme3' : 'portal'
+    );
   }, []);
 
   useEffect(() => {

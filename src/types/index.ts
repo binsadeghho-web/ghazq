@@ -602,7 +602,7 @@ export type NavTabId =
   | 'finance'
   | 'admin';
 
-export type DesignThemeType = 'portal' | 'crextio';
+export type DesignThemeType = 'portal' | 'crextio' | 'theme3';
 
 export interface MizanDashboardConfig {
   showHeroSeal: boolean;
