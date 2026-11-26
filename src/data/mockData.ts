@@ -508,6 +508,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
       'welfare_accommodation',
       'welfare_consumables',
       'welfare_installments',
+      'welfare_recreation',
       'products_featured',
     ],
     detailedShowcaseEnabled: {
@@ -524,6 +525,7 @@ export const DEFAULT_CREXTIO_CONFIG: CrextioDashboardConfig = {
       welfare_accommodation: false,
       welfare_consumables: false,
       welfare_installments: false,
+      welfare_recreation: false,
     },
     detailedShowcaseOverrides: {},
     customShowcaseCards: [
@@ -906,7 +908,7 @@ export const INITIAL_COURSES: Course[] = [
     holdingFormat: 'online',
     meetingLink: 'https://lms.feqh-ghaza.ir/room/crypto-evidence-403',
     meetingAccessGuide: 'ورود به تالار آنلاین اسکای‌روم با نام کاربری (کد ملی) و رمز عبور پیامک‌شده. ۳۰ دقیقه قبل از شروع کلاس اتاق فعال است.',
-    coverImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/assets/courses/course_1.jpg',
     price: 850000,
     hasInstallments: true,
     installmentDetails: 'امکان پرداخت شهریه در ۲ قسط مساوی ۴۲۵,۰۰۰ تومانی (قسط اول زمان ثبت‌نام و قسط دوم تا پایان جلسه چهارم).',
@@ -950,7 +952,7 @@ export const INITIAL_COURSES: Course[] = [
     venueAddress: 'تهران، خیابان پاستور شرقی، مجتمع نخبگان فقه و قضا، طبقه دوم، سالن کنفرانس شهید قدوسی',
     meetingLink: 'https://lms.feqh-ghaza.ir/room/arbitration-workshop',
     meetingAccessGuide: 'برای داوطلبان حضوری کارت ورود در حراست مجتمع تحویل داده می‌شود؛ برای شرکت‌کنندگان برخط پخش زنده Full HD فعال است.',
-    coverImage: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/assets/courses/course_2.jpg',
     price: 1200000,
     hasInstallments: true,
     installmentDetails: 'امکان پرداخت در ۳ قسط ۴۰۰,۰۰۰ تومانی ماهانه با هماهنگی صندوق رفاهی مرکز.',
@@ -988,7 +990,7 @@ export const INITIAL_COURSES: Course[] = [
     holdingFormat: 'online',
     meetingLink: 'https://lms.feqh-ghaza.ir/archive/criminal-drafting',
     meetingAccessGuide: 'دوره برگزار شده است؛ تمامی جلسات به همراه تمپلیت‌های ویرایش‌پذیر Word در پنل اعضا در دسترس است.',
-    coverImage: 'https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/assets/courses/course_3.jpg',
     price: 600000,
     hasInstallments: false,
     hasCertificate: true,
@@ -1029,7 +1031,7 @@ export const INITIAL_COURSES: Course[] = [
     holdingFormat: 'online',
     meetingLink: 'https://lms.feqh-ghaza.ir/room/blockchain-crimes',
     meetingAccessGuide: 'نرم‌افزار مرورگر ادله بلاک‌چین در جلسه آموزش داده می‌شود و حساب دموی تحلیلی در اختیار فراگیران قرار می‌گیرد.',
-    coverImage: 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/assets/courses/course_4.jpg',
     price: 950000,
     hasInstallments: false,
     hasCertificate: true,
@@ -1067,7 +1069,7 @@ export const INITIAL_COURSES: Course[] = [
     venueAddress: 'قم، بلوار بهار، مدرسه عالی فیضیه، مدرس شماره ۲',
     meetingLink: 'https://lms.feqh-ghaza.ir/archive/tahrir-alwasila',
     meetingAccessGuide: 'دسترسی عمومی علمی برای تمامی دانش‌آموختگان حوزوی و دانشگاهی عضو مرکز فعال است.',
-    coverImage: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/assets/courses/course_5.jpg',
     price: 0,
     hasInstallments: false,
     hasCertificate: false,
@@ -1106,7 +1108,7 @@ export const INITIAL_COURSES: Course[] = [
     holdingFormat: 'online',
     meetingLink: 'https://lms.feqh-ghaza.ir/archive/ponzi-crimes',
     meetingAccessGuide: 'دوره توسط مسئول آموزش با پین کد تایید دو مرحله‌ای پیامکی حذف منطقی شده است.',
-    coverImage: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/assets/courses/course_6.jpg',
     price: 750000,
     hasInstallments: false,
     hasCertificate: true,
@@ -1139,7 +1141,7 @@ export const INITIAL_COURSE_ENROLLMENTS: CourseEnrollment[] = [
     paymentStatus: 'pending_review',
     amountPaid: 1200000,
     trackingCode: 'TRX-7749210',
-    receiptFileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=60',
+    receiptFileUrl: '/assets/receipts/sample_receipt.svg',
     receiptBankName: 'بانک ملی ایران (حواله پایا)',
     receiptDate: '۱۴۰۳/۰۸/۰۴',
     adminNote: 'فیش واریزی ارسال شده و در نوبت استعلام بانکی توسط معاونت آموزش است.',
@@ -1196,7 +1198,7 @@ export const INITIAL_COURSE_ENROLLMENTS: CourseEnrollment[] = [
     paymentStatus: 'confirmed',
     amountPaid: 950000,
     trackingCode: 'TRX-4421098',
-    receiptFileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=60',
+    receiptFileUrl: '/assets/receipts/sample_receipt.svg',
     receiptBankName: 'بانک صادرات ایران',
     receiptDate: '۱۴۰۳/۰۸/۰۳',
     adminNote: 'واریز فیش تایید شد. دسترسی به لینک کلاس اسکای‌روم فعال گردید.',
@@ -1217,7 +1219,7 @@ export const INITIAL_COURSE_ENROLLMENTS: CourseEnrollment[] = [
     paymentStatus: 'pending_review',
     amountPaid: 1200000,
     trackingCode: 'TRX-9938102',
-    receiptFileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=60',
+    receiptFileUrl: '/assets/receipts/sample_receipt.svg',
     receiptBankName: 'بانک تجارت',
     receiptDate: '۱۴۰۳/۰۸/۰۵',
     adminNote: 'رسید در انتظار تایید مسئول کارگروه آموزش است.',
@@ -1462,7 +1464,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     bio: 'عضو هیئت علمی دانشگاه، با بیش از ۱۸ سال سابقه مشاوره تخصصی برای کادر قضایی، خانواده‌های جامعه حقوقی و نخبگان علمی کشور.',
     experienceYears: 18,
     availability: 'دوشنبه‌ها و چهارشنبه‌ها بعد از ظهر',
-    avatarUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
+    avatarUrl: '/assets/consultants/male_scholar.jpg',
     academicRank: 'دکتری تخصصی روان‌شناسی بالینی - عضو هیئت علمی دانشگاه',
     resumeDetails: [
       'استاد دانشگاه و مدرس دوره‌های مدیریت فرسودگی شغلی قضات و مستشاران',
@@ -1480,7 +1482,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     bio: 'قاضی پیشین دیوان عالی کشور و استاد مدعو دانشکده‌های علوم قضایی و حقوق؛ راهنمای صدها دانش‌آموخته در مدارج عالی قضاوت و پژوهش.',
     experienceYears: 25,
     availability: 'شنبه‌ها و سه‌شنبه‌ها صبح',
-    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80',
+    avatarUrl: '/assets/consultants/senior_judge.jpg',
     academicRank: 'دکتری حقوق جزا - قاضی بازنشسته دیوان عالی کشور',
     resumeDetails: [
       'رئیس اسبق شعبه تخصصی حقوقی و کیفری دادگاه تجدیدنظر',
@@ -1498,7 +1500,7 @@ export const INITIAL_CONSULTANTS: Consultant[] = [
     bio: 'پژوهشگر حوزه روان‌شناسی قضایی و مشاور مرکز نخبگان حوزوی و دانشگاهی.',
     experienceYears: 14,
     availability: 'یکشنبه‌ها و پنج‌شنبه‌ها',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+    avatarUrl: '/assets/consultants/female_psychologist.jpg',
     academicRank: 'دکتری روان‌شناسی سلامت و سنجش شخصیت',
     resumeDetails: [
       'پژوهشگر برگزیده آسیب‌شناسی استرس شغلی در محاکم دادگستری',
@@ -1759,7 +1761,7 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
     unit: 'کیسه ۱۰ کیلوگرمی',
     stock: 85,
     description: 'محصول مستقیم تعاونی کشاورزان دابودشت مازندران؛ الک شده با عطر و قد عالی بدون شکستگی و ناخالصی.',
-    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80'
+    imageUrl: '/assets/cooperative/rice.jpg'
   },
   {
     id: 'cnsm_2',
@@ -1774,7 +1776,7 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
     unit: 'بطری ۱ لیتری شیشه‌ای تیره',
     stock: 120,
     description: 'تهیه‌شده از باغات زیتون رودبار بدون اسید و نگهدارنده با تاییدیه‌های بهداشت و کنترل کیفی آزمایشگاه استاندارد.',
-    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80'
+    imageUrl: '/assets/cooperative/olive_oil.jpg'
   },
   {
     id: 'cnsm_3',
@@ -1789,7 +1791,7 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
     unit: 'بسته ۱ کیلوگرمی وکیوم',
     stock: 45,
     description: 'گردوی امساله تویسرکان همدان، پوست کاغذی و مغز سفید بدون تلخی، سرشار از امگا ۳ و طراوت بالا.',
-    imageUrl: 'https://images.unsplash.com/photo-1582293041079-7814c2f12063?auto=format&fit=crop&w=600&q=80'
+    imageUrl: '/assets/cooperative/walnuts.jpg'
   },
   {
     id: 'cnsm_4',
@@ -1804,7 +1806,7 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
     unit: 'ظرف ۱ کیلوگرمی',
     stock: 60,
     description: 'عسل صد درصد خالص دامنه کوهستان سبلان، عطر گل‌های آویشن و گون با تاییدیه کتبی آزمایشگاه جهاد دانشگاهی.',
-    imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=600&q=80'
+    imageUrl: '/assets/cooperative/honey.jpg'
   },
   {
     id: 'cnsm_5',
@@ -1819,7 +1821,7 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
     unit: 'بسته ۵۰۰ گرمی متالایز',
     stock: 90,
     description: 'چای سیاه بهاره گیلان با عطر طبیعی بدون رنگ‌افزا و اسانس مصنوعی با ماندگاری و طعم سنتی ایرانی.',
-    imageUrl: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80'
+    imageUrl: '/assets/cooperative/tea.jpg'
   },
   {
     id: 'cnsm_6',
@@ -1834,7 +1836,7 @@ export const INITIAL_CONSUMABLES: ConsumableItem[] = [
     unit: 'بسته ۸۰۰ گرمی بهداشتی',
     stock: 75,
     description: 'خرمای شکلاتی شاه‌پسند حاجی‌آباد، گوشتی و مرغوب با قند فروکتوز طبیعی مناسب رژیم‌های سلامت قضات و اساتید.',
-    imageUrl: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80'
+    imageUrl: '/assets/cooperative/dates.jpg'
   }
 ];
 

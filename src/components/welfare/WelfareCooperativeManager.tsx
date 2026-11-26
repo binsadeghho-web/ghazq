@@ -17,17 +17,32 @@ import {
 } from 'lucide-react';
 
 const READY_PHOTO_PRESETS = [
-  { label: 'برنج طارم', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80' },
-  { label: 'روغن زیتون', url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80' },
-  { label: 'گردوی تویسرکان', url: 'https://images.unsplash.com/photo-1582293041079-7814c2f12063?auto=format&fit=crop&w=600&q=80' },
-  { label: 'عسل طبیعی', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=600&q=80' },
-  { label: 'چای بهاره گیلان', url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80' },
-  { label: 'خرمای پیارم', url: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80' },
-  { label: 'بسته خواربار کامل', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80' },
-  { label: 'زعفران قائنات', url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80' },
-  { label: 'پسته رفسنجان', url: 'https://images.unsplash.com/photo-1563861826100-9cb868fdbe1c?auto=format&fit=crop&w=600&q=80' },
-  { label: 'پروتئین و گوشت سالم', url: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80' }
+  { label: 'برنج طارم', url: '/assets/cooperative/rice.jpg' },
+  { label: 'روغن زیتون', url: '/assets/cooperative/olive_oil.jpg' },
+  { label: 'گردوی تویسرکان', url: '/assets/cooperative/walnuts.jpg' },
+  { label: 'عسل طبیعی', url: '/assets/cooperative/honey.jpg' },
+  { label: 'چای بهاره گیلان', url: '/assets/cooperative/tea.jpg' },
+  { label: 'خرمای پیارم', url: '/assets/cooperative/dates.jpg' },
+  { label: 'بسته خواربار کامل', url: '/assets/cooperative/groceries.jpg' },
+  { label: 'زعفران قائنات', url: '/assets/cooperative/saffron.jpg' },
+  { label: 'پسته رفسنجان', url: '/assets/cooperative/pistachio.jpg' },
+  { label: 'پروتئین و گوشت سالم', url: '/assets/cooperative/protein.jpg' }
 ];
+
+function resolveLocalConsumableImage(url?: string, title?: string): string {
+  if (url && url.trim() && !url.includes('unsplash.com')) return url;
+  const t = `${title || ''}`.trim();
+  if (t.includes('برنج')) return '/assets/cooperative/rice.jpg';
+  if (t.includes('روغن') || t.includes('زیتون')) return '/assets/cooperative/olive_oil.jpg';
+  if (t.includes('گردو')) return '/assets/cooperative/walnuts.jpg';
+  if (t.includes('عسل')) return '/assets/cooperative/honey.jpg';
+  if (t.includes('چای')) return '/assets/cooperative/tea.jpg';
+  if (t.includes('خرما')) return '/assets/cooperative/dates.jpg';
+  if (t.includes('زعفران')) return '/assets/cooperative/saffron.jpg';
+  if (t.includes('پسته')) return '/assets/cooperative/pistachio.jpg';
+  if (t.includes('گوشت') || t.includes('پروتئین')) return '/assets/cooperative/protein.jpg';
+  return '/assets/cooperative/groceries.jpg';
+}
 
 export const WelfareCooperativeManager: React.FC = () => {
   const {
@@ -332,7 +347,7 @@ export const WelfareCooperativeManager: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-stone-200 shrink-0 bg-stone-100 shadow-2xs">
                     <img
-                      src={item.imageUrl || READY_PHOTO_PRESETS[0].url}
+                      src={resolveLocalConsumableImage(item.imageUrl, item.title || item.name)}
                       alt={item.name || item.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />

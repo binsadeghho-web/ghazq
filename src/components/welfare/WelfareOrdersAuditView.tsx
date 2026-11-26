@@ -216,7 +216,7 @@ export const WelfareOrdersAuditView: React.FC = () => {
                     }`}
                   >
                     <img
-                      src={stat.item.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80'}
+                      src={stat.item.imageUrl && !stat.item.imageUrl.includes('unsplash.com') ? stat.item.imageUrl : '/assets/cooperative/groceries.jpg'}
                       alt={stat.item.name || stat.item.title}
                       className="w-12 h-12 rounded-xl object-cover border border-white/20 shrink-0"
                     />
@@ -241,7 +241,7 @@ export const WelfareOrdersAuditView: React.FC = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
                   <div className="flex items-center gap-3">
                     <img
-                      src={selectedItemData.item.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80'}
+                      src={selectedItemData.item.imageUrl && !selectedItemData.item.imageUrl.includes('unsplash.com') ? selectedItemData.item.imageUrl : '/assets/cooperative/groceries.jpg'}
                       alt={selectedItemData.item.title}
                       className="w-16 h-16 rounded-2xl object-cover border border-stone-200 shrink-0"
                     />

@@ -153,6 +153,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
     welfarePortalConfig,
     myFundMembership,
     installmentPartners,
+    recreationPrograms,
     synergyPosts,
     crextioConfig,
     generalShowcase,
@@ -434,7 +435,13 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
     if (mobileConfig.showcaseMode === 'detailed') {
       const welfareMods = welfarePortalConfig?.modulesConfig;
       const isWelfareSlideEnabled = (
-        modKey: 'emergency_loan' | 'qarzolhasaneh_fund' | 'accommodation' | 'consumables' | 'installment_sales',
+        modKey:
+          | 'emergency_loan'
+          | 'qarzolhasaneh_fund'
+          | 'accommodation'
+          | 'consumables'
+          | 'installment_sales'
+          | 'recreation_tourism',
         detailedId: MobileDetailedShowcaseId
       ): boolean => {
         const modCfg = welfareMods?.[modKey];
@@ -642,6 +649,31 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
               icon: Gift,
               onPress: () => navigateDeep('Welfare', 'installment_sales'),
             }
+          : null,
+        welfare_recreation: isWelfareSlideEnabled('recreation_tourism', 'welfare_recreation')
+          ? (() => {
+              const activePrograms = (recreationPrograms || []).filter(p => p.isActive !== false);
+              const firstProgram = activePrograms[0];
+              const rawCover = firstProgram?.coverImage;
+              const safeCover =
+                rawCover && rawCover.trim() && !rawCover.includes('unsplash.com')
+                  ? rawCover
+                  : '/assets/recreation/default.jpg';
+              return {
+                id: 'detailed_welfare_recreation',
+                kicker: `رفاهیات · ${toPersianNumbers(activePrograms.length)} برنامه فعال`,
+                title: 'تفریحی و گردشگری (تورها و اردوها)',
+                subtitle:
+                  firstProgram?.title ||
+                  'مشاهده اطلاعیه‌ها، ظرفیت، هزینه، شیوه ثبت‌نام و ثبت‌نام تورها',
+                metaText: 'تور، اردو و سفرهای خانوادگی',
+                ctaLabel: 'مشاهده برنامه‌ها',
+                imageUrl: safeCover,
+                accentGradient: 'from-[#092822] via-[#103D33] to-[#071E17]',
+                icon: Compass,
+                onPress: () => navigateDeep('Welfare', 'recreation_tourism'),
+              };
+            })()
           : null,
         products_featured:
           mobileConfig.detailedShowcaseEnabled?.products_featured !== false &&
@@ -2162,6 +2194,20 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                       iconClass: 'bg-orange-50 text-orange-800 border-orange-200',
                       glowBg: 'from-white via-white to-amber-50/55 text-stone-900 border-[#E5DEC9]',
                     },
+                    {
+                      key: 'recreation_tourism' as WelfareModuleKey,
+                      indexLabel: '۰۶',
+                      title:
+                        welfarePortalConfig.modulesConfig.recreation_tourism?.title ||
+                        'تفریحی و گردشگری',
+                      subtitle:
+                        welfarePortalConfig.modulesConfig.recreation_tourism?.subtitle ||
+                        'تورها، اردوها و برنامه‌های تفریحی با ظرفیت، هزینه و ثبت‌نام آنلاین',
+                      metaText: `${toPersianNumbers((recreationPrograms || []).filter(p => p.isActive !== false).length)} برنامه فعال · تور و اردو`,
+                      icon: Compass,
+                      iconClass: 'bg-sky-50 text-sky-800 border-sky-200',
+                      glowBg: 'from-white via-white to-sky-50/55 text-stone-900 border-[#E5DEC9]',
+                    },
                   ].filter(item => {
                     const cfg = welfarePortalConfig?.modulesConfig?.[item.key];
                     if (cfg && cfg.enabled === false) return false;
@@ -2185,7 +2231,7 @@ export const MobileDashboardExperience: React.FC<MobileDashboardExperienceProps>
                             {crextioConfig.welfareShowcaseTitle || 'تسهیلات و رفاهیات مجتمع فقه و حقوق اسلامی'}
                           </h3>
                           <p className="text-[11px] text-stone-600 leading-relaxed">
-                            هر یک از ۵ خدمت رفاهی زیر را لمس کنید تا مستقیم به صفحه ثبت درخواست و سوابق آن بخش بروید.
+                            هر یک از ۶ خدمت رفاهی زیر را لمس کنید تا مستقیم به صفحه ثبت درخواست و سوابق آن بخش بروید.
                           </p>
                         </div>
                       </div>

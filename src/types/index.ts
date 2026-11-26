@@ -490,7 +490,8 @@ export type MobileDetailedShowcaseId =
   | 'welfare_fund'
   | 'welfare_accommodation'
   | 'welfare_consumables'
-  | 'welfare_installments';
+  | 'welfare_installments'
+  | 'welfare_recreation';
 
 export type MobileServiceListTabId =
   | 'courses'

@@ -152,6 +152,13 @@ const MOBILE_DETAILED_SHOWCASE_META: Record<
     defaultSubtitle: 'مشاهده سقف اعتبار، شرایط اقساط و ثبت درخواست اعتبار',
     defaultCta: 'مشاهده شرایط',
   },
+  welfare_recreation: {
+    label: 'رفاهیات: تفریحی و گردشگری (تور و اردو)',
+    defaultKicker: 'تور، اردو و برنامه‌های تفریحی',
+    defaultTitle: 'برنامه‌های تفریحی و گردشگری اعضا',
+    defaultSubtitle: 'مشاهده اطلاعیه‌ها، ظرفیت، هزینه، شیوه ثبت‌نام و جزئیات کامل تورها و اردوها',
+    defaultCta: 'مشاهده برنامه‌ها',
+  },
   products_featured: {
     label: 'کتاب و محصولات چند رسانه‌ای',
     defaultKicker: 'نشر و رسانه علمی',
@@ -194,6 +201,7 @@ const TARGET_VIEW_OPTIONS: Array<{ value: string; label: string; subTabs?: Array
       { value: 'accommodation', label: 'اسکان در قم و سایر شهرها' },
       { value: 'consumables', label: 'تهیه اقلام مصرفی' },
       { value: 'installment_sales', label: 'فروش اقساطی' },
+      { value: 'recreation_tourism', label: 'تفریحی و گردشگری' },
     ],
   },
   { value: 'Courses', label: 'دوره‌ها و کارگاه‌های علمی' },

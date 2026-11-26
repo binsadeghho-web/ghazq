@@ -6,6 +6,7 @@ import {
   Building2,
   ShoppingBag,
   Store,
+  Compass,
   ShieldCheck,
   Gift,
   ArrowLeft,
@@ -25,6 +26,7 @@ import { WelfareQarzolhasanehFundTab } from './WelfareQarzolhasanehFundTab';
 import { WelfareAccommodationTab } from './WelfareAccommodationTab';
 import { WelfareConsumablesTab } from './WelfareConsumablesTab';
 import { WelfareInstallmentsTab } from './WelfareInstallmentsTab';
+import { WelfareRecreationTab } from './WelfareRecreationTab';
 
 interface WelfareSectionProps {
   initialModuleTab?: WelfareModuleKey;
@@ -37,6 +39,7 @@ const MODULE_ORDER: WelfareModuleKey[] = [
   'accommodation',
   'consumables',
   'installment_sales',
+  'recreation_tourism',
 ];
 
 interface ModuleVisualMeta {
@@ -106,6 +109,17 @@ const MODULE_META: Record<WelfareModuleKey, ModuleVisualMeta> = {
       'radial-gradient(300px circle at 8% 12%, rgba(180,83,9,0.12), transparent 68%)',
     accentStripClass: 'from-amber-700/80 via-stone-400/60 to-transparent',
   },
+  recreation_tourism: {
+    icon: Compass,
+    indexLabel: '۰۶',
+    shortKicker: 'تورها، اردوها و گردشگری',
+    actionLabel: 'مشاهده اطلاعیه‌ها و ثبت‌نام',
+    iconSurfaceClass: 'bg-emerald-950 text-[#F3D078] border-[#F3D078]/35',
+    cardBorderHoverClass: 'hover:border-emerald-700/45',
+    ambientGradient:
+      'radial-gradient(300px circle at 8% 12%, rgba(16,185,129,0.13), transparent 68%)',
+    accentStripClass: 'from-emerald-700/80 via-[#D4AF37]/80 to-transparent',
+  },
 };
 
 export const WelfareSection: React.FC<WelfareSectionProps> = ({
@@ -122,6 +136,8 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
     consumableOrders,
     installmentPartners,
     installmentRequests,
+    recreationPrograms,
+    recreationRegistrations,
   } = useApp();
   const { rolePolicies } = useRbacPolicies();
 
@@ -240,6 +256,19 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
     [installmentRequests, currentUser]
   );
 
+  const activeRecreationPrograms = useMemo(
+    () => (recreationPrograms || []).filter((p) => p.isActive !== false),
+    [recreationPrograms]
+  );
+
+  const myRecreationCount = useMemo(
+    () =>
+      (recreationRegistrations || []).filter(
+        (r) => !currentUser || r.userId === currentUser.id
+      ).length,
+    [recreationRegistrations, currentUser]
+  );
+
   const getCardMetrics = (
     key: WelfareModuleKey
   ): { highlight: string; statusLine: string } => {
@@ -310,6 +339,17 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
               : `${toPersianNumbers(activePartners.length)} فروشگاه فعال طرف قرارداد`,
         };
       }
+      case 'recreation_tourism':
+        return {
+          highlight:
+            activeRecreationPrograms.length > 0
+              ? `${toPersianNumbers(activeRecreationPrograms.length)} برنامه و اردوی فعال`
+              : 'اطلاع‌رسانی تورها و اردوهای اعضا',
+          statusLine:
+            myRecreationCount > 0
+              ? `${toPersianNumbers(myRecreationCount)} ثبت‌نام در کارنامه شما`
+              : 'ظرفیت، هزینه و ثبت‌نام آنلاین',
+        };
       default:
         return { highlight: '', statusLine: '' };
     }
@@ -439,7 +479,8 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
                           myEmergencyCount +
                             myAccommodationCount +
                             myOrdersCount +
-                            myInstallmentCount
+                            myInstallmentCount +
+                            myRecreationCount
                         )}
                       </div>
                     </div>
@@ -447,17 +488,16 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
                 </div>
               </section>
 
-              {/* 5 Spacious Radiant Gateway Cards (2+3 Bento Architecture on Desktop) */}
+              {/* 6 Balanced Radiant Gateway Cards */}
               <section
                 aria-label="فهرست بخش‌های تسهیلات و رفاهیات"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-5"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5"
               >
-                {enabledModules.map((modKey, idx) => {
+                {enabledModules.map((modKey) => {
                   const meta = MODULE_META[modKey];
                   const Icon = meta.icon;
                   const modCfg = welfarePortalConfig.modulesConfig[modKey];
                   const metrics = getCardMetrics(modKey);
-                  const isFeaturedRow = idx < 2 && enabledModules.length >= 4;
 
                   return (
                     <motion.button
@@ -466,10 +506,8 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
                       whileHover={{ y: -3 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => navigateToModule(modKey)}
-                      className={`group relative overflow-hidden text-right rounded-[26px] border border-[#E2DAC3] bg-[#FCFCF9] hover:bg-white p-5 sm:p-6 flex flex-col justify-between gap-5 shadow-[0_8px_24px_-16px_rgba(7,30,23,0.16)] hover:shadow-[0_20px_38px_-18px_rgba(7,30,23,0.28)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#071E17] ${
+                      className={`group relative overflow-hidden text-right rounded-[26px] border border-[#E2DAC3] bg-[#FCFCF9] hover:bg-white p-5 sm:p-6 flex flex-col justify-between gap-5 shadow-[0_8px_24px_-16px_rgba(7,30,23,0.16)] hover:shadow-[0_20px_38px_-18px_rgba(7,30,23,0.28)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#071E17] min-h-[205px] ${
                         meta.cardBorderHoverClass
-                      } ${
-                        isFeaturedRow ? 'lg:col-span-3 min-h-[210px]' : 'lg:col-span-2 min-h-[200px]'
                       }`}
                     >
                       {/* Top Accent Hairline + Subtle Ambient Radial */}
@@ -599,6 +637,7 @@ export const WelfareSection: React.FC<WelfareSectionProps> = ({
               {activeModule === 'accommodation' && <WelfareAccommodationTab />}
               {activeModule === 'consumables' && <WelfareConsumablesTab />}
               {activeModule === 'installment_sales' && <WelfareInstallmentsTab />}
+              {activeModule === 'recreation_tourism' && <WelfareRecreationTab />}
 
               <WelfareContactsBanner />
             </motion.div>

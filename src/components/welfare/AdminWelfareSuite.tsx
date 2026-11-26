@@ -7,6 +7,7 @@ import {
   Building2,
   ShoppingBag,
   Store,
+  Compass,
   Eye,
   Save,
   CheckCircle2,
@@ -24,6 +25,7 @@ import { WelfareCooperativeManager } from './WelfareCooperativeManager';
 import { WelfareOrdersAuditView } from './WelfareOrdersAuditView';
 import { AdminInstallmentSalesPanel } from './AdminInstallmentSalesPanel';
 import { WelfareCalculatorAndPostalSuite } from './WelfareCalculatorAndPostalSuite';
+import { AdminRecreationPanel } from './AdminRecreationPanel';
 
 interface AdminWelfareSuiteProps {
   onSwitchToStudentPreview: () => void;
@@ -65,6 +67,12 @@ const MODULE_META: Array<{
     detailedShowcaseKey: 'welfare_installments',
     icon: Store,
   },
+  {
+    key: 'recreation_tourism',
+    defaultLabel: 'تفریحی و گردشگری',
+    detailedShowcaseKey: 'welfare_recreation',
+    icon: Compass,
+  },
 ];
 
 export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
@@ -76,6 +84,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
     consumableOrders,
     allFundMemberships,
     installmentRequests,
+    recreationRegistrations,
     welfarePortalConfig,
     updateWelfarePortalConfig,
     crextioConfig,
@@ -96,6 +105,9 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
     (r) => r.type === 'accommodation' && r.status === 'pending'
   ).length;
   const pendingInstallments = installmentRequests.filter((r) => r.status === 'pending').length;
+  const pendingRecreation = (recreationRegistrations || []).filter(
+    (r) => r.status === 'pending_review'
+  ).length;
 
   const syncMobileShowcaseFlags = (nextModules: typeof modulesDraft) => {
     const mobileCfg = crextioConfig.mobileConfig;
@@ -108,6 +120,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
       welfare_accommodation: Boolean(nextModules.accommodation?.showInMobileShowcase),
       welfare_consumables: Boolean(nextModules.consumables?.showInMobileShowcase),
       welfare_installments: Boolean(nextModules.installment_sales?.showInMobileShowcase),
+      welfare_recreation: Boolean(nextModules.recreation_tourism?.showInMobileShowcase),
     };
     const anyWelfareInShowcase = MODULE_META.some((m) => nextModules[m.key]?.showInMobileShowcase);
     updateCrextioConfig({
@@ -131,7 +144,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
       syncMobileShowcaseFlags(modulesDraft);
       setFeedback({
         type: 'success',
-        text: 'تنظیمات فعال‌سازی ۵ بخش، ویترین خدمات موبایل و شماره‌های تماس با موفقیت ذخیره و همگام‌سازی شد.',
+        text: 'تنظیمات فعال‌سازی ۶ بخش، ویترین خدمات موبایل و شماره‌های تماس با موفقیت ذخیره و همگام‌سازی شد.',
       });
     } catch (err: any) {
       setFeedback({ type: 'error', text: err?.message || 'خطا در ذخیره تنظیمات.' });
@@ -148,7 +161,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
   }> = [
     {
       id: 'portal_settings',
-      label: 'تنظیمات ۵ بخش، ویترین و تماس',
+      label: 'تنظیمات ۶ بخش، ویترین و تماس',
       icon: Sliders,
     },
     {
@@ -181,6 +194,12 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
       icon: Store,
       badge: pendingInstallments > 0 ? toPersianNumbers(pendingInstallments) : undefined,
     },
+    {
+      id: 'recreation_tourism',
+      label: '۶. تفریحی و گردشگری',
+      icon: Compass,
+      badge: pendingRecreation > 0 ? toPersianNumbers(pendingRecreation) : undefined,
+    },
   ];
 
   return (
@@ -191,13 +210,13 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-[#F3D078] text-xs font-black">
               <Gift className="w-4 h-4" />
-              <span>پنل جامع مدیریت ۵ بخش تسهیلات و رفاهیات</span>
+              <span>پنل جامع مدیریت ۶ بخش تسهیلات و رفاهیات</span>
             </div>
             <h1 className="text-lg sm:text-2xl font-black text-white">
               مدیریت مستقل خدمات رفاهی، صندوق قرض‌الحسنه و ویترین موبایل
             </h1>
             <p className="text-xs text-stone-200 max-w-2xl leading-relaxed">
-              هر یک از ۵ بخش دارای پنل مدیریتی مجزا، کلید فعال‌سازی، امکان نمایش در ویترین خدمات موبایل و تنظیمات اختصاصی شماره‌های تماس است.
+              هر یک از ۶ بخش دارای پنل مدیریتی مجزا، کلید فعال‌سازی، امکان نمایش در ویترین خدمات موبایل و تنظیمات اختصاصی شماره‌های تماس است.
             </p>
           </div>
 
@@ -268,7 +287,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
           <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
             <div className="border-b border-stone-100 pb-3">
               <h3 className="text-sm font-black text-[#071E17]">
-                فعال‌سازی بخش‌های پنج‌گانه و نمایش در «ویترین خدمات» موبایل
+                فعال‌سازی بخش‌های شش‌گانه و نمایش در «ویترین خدمات» موبایل
               </h3>
               <p className="text-xs text-stone-500 mt-0.5">
                 با فعال‌کردن گزینه نمایش در ویترین موبایل، کارت اختصاصی آن بخش به‌صورت خودکار در حالت پیشرفته ویترین موبایل نمایان می‌شود.
@@ -368,7 +387,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
             <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
               <Phone className="w-4 h-4 text-[#071E17]" />
               <h3 className="text-sm font-black text-[#071E17]">
-                تنظیم شماره‌های تماس و کانال‌های ارتباطی مجموعه (قابل نمایش در تمام ۵ بخش)
+                تنظیم شماره‌های تماس و کانال‌های ارتباطی مجموعه (قابل نمایش در تمام ۶ بخش)
               </h3>
             </div>
 
@@ -445,7 +464,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
         </form>
       )}
 
-      {/* 5 INDEPENDENT MODULE ADMIN PANELS */}
+      {/* 6 INDEPENDENT MODULE ADMIN PANELS */}
       {activeTab === 'emergency_loan' && <AdminEmergencyLoanPanel />}
       {activeTab === 'qarzolhasaneh_fund' && <AdminQarzolhasanehFundPanel />}
       {activeTab === 'accommodation' && <AdminAccommodationPanel />}
@@ -457,6 +476,7 @@ export const AdminWelfareSuite: React.FC<AdminWelfareSuiteProps> = ({
         </div>
       )}
       {activeTab === 'installment_sales' && <AdminInstallmentSalesPanel />}
+      {activeTab === 'recreation_tourism' && <AdminRecreationPanel />}
     </div>
   );
 };

@@ -48,6 +48,8 @@ import {
   WelfareFundPayment,
   WelfareInstallmentPartner,
   WelfareInstallmentRequest,
+  WelfareRecreationProgram,
+  WelfareRecreationRegistration,
   DeliveryMethodType,
 } from '../types';
 import { api } from '../services/apiClient';
@@ -271,6 +273,7 @@ export interface AppContextType {
     nights: number;
     description?: string;
     phone?: string;
+    attachments?: Array<{ url: string; name: string; size?: number }>;
   }) => Promise<{ message: string; request: WelfareRequest }>;
   welfarePortalConfig: WelfarePortalConfig;
   updateWelfarePortalConfig: (updates: Partial<WelfarePortalConfig>) => Promise<WelfarePortalConfig>;
@@ -302,6 +305,24 @@ export interface AppContextType {
     status: WelfareInstallmentRequest['status'],
     adminNote?: string
   ) => Promise<void>;
+  recreationPrograms: WelfareRecreationProgram[];
+  recreationRegistrations: WelfareRecreationRegistration[];
+  createRecreationProgram: (data: Partial<WelfareRecreationProgram>) => Promise<WelfareRecreationProgram>;
+  updateRecreationProgram: (id: string, updates: Partial<WelfareRecreationProgram>) => Promise<WelfareRecreationProgram>;
+  deleteRecreationProgram: (id: string) => Promise<void>;
+  registerRecreationProgram: (data: {
+    programId: string;
+    companionsCount?: number;
+    paymentMethod?: 'free' | 'online_gateway' | 'bank_receipt';
+    receiptUrl?: string;
+    notes?: string;
+    phone?: string;
+  }) => Promise<WelfareRecreationRegistration>;
+  reviewRecreationRegistration: (
+    id: string,
+    status: WelfareRecreationRegistration['status'],
+    adminNote?: string
+  ) => Promise<WelfareRecreationRegistration>;
   placeConsumableOrder: (
     items: { itemId: string; title: string; quantity: number; unitPrice: number }[],
     deliveryAddress: string,
@@ -616,6 +637,8 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     allFundPayments: welfare.allFundPayments,
     installmentPartners: welfare.installmentPartners,
     installmentRequests: welfare.installmentRequests,
+    recreationPrograms: welfare.recreationPrograms,
+    recreationRegistrations: welfare.recreationRegistrations,
     submitWelfareRequest: welfare.submitWelfareRequest,
     updateWelfareStatus: welfare.updateWelfareStatus,
     submitAccommodationRequest: welfare.submitAccommodationRequest,
@@ -631,6 +654,11 @@ const AppContextBridge: React.FC<{ children: React.ReactNode }> = ({ children })
     deleteInstallmentPartner: welfare.deleteInstallmentPartner,
     submitInstallmentRequest: welfare.submitInstallmentRequest,
     reviewInstallmentRequest: welfare.reviewInstallmentRequest,
+    createRecreationProgram: welfare.createRecreationProgram,
+    updateRecreationProgram: welfare.updateRecreationProgram,
+    deleteRecreationProgram: welfare.deleteRecreationProgram,
+    registerRecreationProgram: welfare.registerRecreationProgram,
+    reviewRecreationRegistration: welfare.reviewRecreationRegistration,
     placeConsumableOrder: welfare.placeConsumableOrder,
     submitProductProposal: welfare.submitProductProposal,
     updateConsumableStock: welfare.updateConsumableStock,

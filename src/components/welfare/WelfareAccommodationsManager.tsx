@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { WelfareRequest } from '../../types';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import {
@@ -17,7 +18,9 @@ import {
   Building,
   Key,
   ShieldCheck,
-  X
+  X,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 
 export const WelfareAccommodationsManager: React.FC = () => {
@@ -153,6 +156,32 @@ export const WelfareAccommodationsManager: React.FC = () => {
 
                   <h4 className="font-black text-xs text-stone-800">{req.title}</h4>
                   <p className="text-xs text-stone-600 leading-relaxed font-sans max-w-2xl">{req.description}</p>
+
+                  {Array.isArray(req.metadata?.attachments) && req.metadata.attachments.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="font-bold text-stone-500 inline-flex items-center gap-1">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>مدارک پیوست:</span>
+                      </span>
+                      {req.metadata.attachments.map((att: any, idx: number) => (
+                        <button
+                          key={`${att.url}-${idx}`}
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.downloadPrivateFile(att.url, att.name);
+                            } catch (err: any) {
+                              window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: err?.message || 'خطا در دانلود مدرک.', type: 'error' } }));
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 text-[#071E17] border border-stone-200 font-bold cursor-pointer"
+                        >
+                          <Download className="w-3 h-3 text-emerald-700" />
+                          <span>{att.name || `مدرک ${idx + 1}`}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {req.adminNote && (
                     <div className="p-2.5 rounded-xl bg-teal-50/80 border border-teal-200/60 text-xs text-teal-900 font-medium">

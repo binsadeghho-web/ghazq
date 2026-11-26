@@ -24,6 +24,21 @@ const DELIVERY_LABELS: Record<DeliveryMethodType, string> = {
   courier: 'ارسال با پیک اختصاصی',
 };
 
+function resolveConsumableImg(url?: string, title?: string): string {
+  if (url && url.trim() && !url.includes('unsplash.com')) return url;
+  const t = `${title || ''}`.trim();
+  if (t.includes('برنج')) return '/assets/cooperative/rice.jpg';
+  if (t.includes('روغن') || t.includes('زیتون')) return '/assets/cooperative/olive_oil.jpg';
+  if (t.includes('گردو')) return '/assets/cooperative/walnuts.jpg';
+  if (t.includes('عسل')) return '/assets/cooperative/honey.jpg';
+  if (t.includes('چای')) return '/assets/cooperative/tea.jpg';
+  if (t.includes('خرما')) return '/assets/cooperative/dates.jpg';
+  if (t.includes('زعفران')) return '/assets/cooperative/saffron.jpg';
+  if (t.includes('پسته')) return '/assets/cooperative/pistachio.jpg';
+  if (t.includes('گوشت') || t.includes('پروتئین')) return '/assets/cooperative/protein.jpg';
+  return '/assets/cooperative/groceries.jpg';
+}
+
 export const WelfareConsumablesTab: React.FC = () => {
   const {
     currentUser,
@@ -286,7 +301,8 @@ export const WelfareConsumablesTab: React.FC = () => {
                 const mkt = Number(item.marketPrice || price);
                 const savings = mkt > price ? mkt - price : 0;
                 const qty = cartQuantities[item.id] || 0;
-                const showImg = Boolean(item.imageUrl) && !failedImages[item.id];
+                const resolvedImg = resolveConsumableImg(item.imageUrl, item.title || item.name);
+                const showImg = !failedImages[item.id];
 
                 return (
                   <article
@@ -301,7 +317,7 @@ export const WelfareConsumablesTab: React.FC = () => {
                       <div className="relative h-44 rounded-2xl overflow-hidden bg-gradient-to-br from-[#F4EFE0] to-[#EAE3CF] border border-stone-200/70">
                         {showImg ? (
                           <img
-                            src={item.imageUrl}
+                            src={resolvedImg}
                             alt={item.title}
                             referrerPolicy="no-referrer"
                             onError={() =>

@@ -46,6 +46,7 @@ export const CANONICAL_MOBILE_DETAILED_SHOWCASE_ORDER: MobileDetailedShowcaseId[
   'welfare_accommodation',
   'welfare_consumables',
   'welfare_installments',
+  'welfare_recreation',
   'products_featured',
 ];
 

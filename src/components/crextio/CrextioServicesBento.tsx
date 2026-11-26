@@ -167,7 +167,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
                   <div className="pt-2.5 border-t border-[#ECE6D6] space-y-1.5">
                     <div className="text-[10px] font-black text-[#6E5A28] flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-[#0C4A38]" />
-                      <span>بخش‌های ۵گانه رفاهیات:</span>
+                      <span>بخش‌های ۶گانه رفاهیات:</span>
                     </div>
                     <div className="grid grid-cols-1 gap-1 text-[11px]">
                       {(
@@ -177,6 +177,7 @@ export const CrextioServicesBento: React.FC<CrextioServicesBentoProps> = ({
                           'accommodation',
                           'consumables',
                           'installment_sales',
+                          'recreation_tourism',
                         ] as WelfareModuleKey[]
                       )
                         .filter(mk => welfarePortalConfig?.modulesConfig?.[mk]?.enabled !== false)

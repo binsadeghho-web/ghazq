@@ -33,6 +33,12 @@ export const DEFAULT_WELFARE_PORTAL_CONFIG: WelfarePortalConfig = {
       title: 'فروش اقساطی',
       subtitle: 'خرید اعتباری و اقساطی از فروشگاه‌های طرف قرارداد مجتمع',
     },
+    recreation_tourism: {
+      enabled: true,
+      showInMobileShowcase: false,
+      title: 'تفریحی و گردشگری',
+      subtitle: 'اطلاع‌رسانی و ثبت‌نام تورها، اردوها و برنامه‌های فرهنگی و تفریحی اعضا',
+    },
   },
   emergencyLoanDescription:
     'این تسهیلات با هدف پشتیبانی سریع در شرایط اضطراری درمان، مسکن، حوادث غیرمترقبه و نیازهای فوری خانواده دانش‌آموختگان و اساتید مجتمع فقه و حقوق اسلامی پیش‌بینی شده است. پس از ثبت مبلغ و علت درخواست، کارگروه رفاهی ظرف ۴۸ تا ۷۲ ساعت کاری درخواست را بررسی و نتیجه را در همین پنل و از طریق تماس تلفنی اعلام می‌نماید. اولویت تخصیص با موارد مستند و نیازمندی‌های فوری درمانی است.',
@@ -46,6 +52,38 @@ export const DEFAULT_WELFARE_PORTAL_CONFIG: WelfarePortalConfig = {
     noticeText: 'کارشناسان امور رفاهی در ساعات اداری آماده پاسخگویی و پیگیری پرونده‌های شما هستند.',
   },
   accommodationCities: ['قم', 'مشهد مقدس', 'تهران', 'شیراز', 'اصفهان'],
+  accommodationCityDetails: {
+    'قم': {
+      description:
+        'مهمانسرای اساتید و پژوهشگران مجتمع در بلوار امین قم، مجهز به سوئیت‌های خانوادگی مبله، دسترسی سریع به حرم مطهر حضرت معصومه (س) و سالن مطالعه آرام ویژه ایام پژوهش.',
+      imageUrl: '/assets/accommodation/qom.jpg',
+      gallery: ['/assets/accommodation/qom.jpg'],
+    },
+    'مشهد مقدس': {
+      description:
+        'واحدهای اقامتی طرف قرارداد در فاصله نزدیک به بارگاه منور رضوی، دارای پارکینگ، اینترنت پرسرعت و پذیرایی صبحانه ویژه اعضا و خانواده درجه یک.',
+      imageUrl: '/assets/accommodation/mashhad.jpg',
+      gallery: ['/assets/accommodation/mashhad.jpg'],
+    },
+    'تهران': {
+      description:
+        'مهمانسرای اداری و اقامتی مرکز تهران جهت تسهیل امور مأموریت‌های قضایی، جلسات پژوهشی و اسکان موقت همکاران غیربومی.',
+      imageUrl: '/assets/accommodation/default.jpg',
+      gallery: ['/assets/accommodation/default.jpg'],
+    },
+    'شیراز': {
+      description:
+        'اقامتگاه طرف قرارداد رفاهی در مرکز شهر شیراز با دسترسی مناسب به حرم مطهر شاهچراغ (ع) و اماکن تاریخی، ویژه سفرهای خانوادگی اعضا.',
+      imageUrl: '/assets/accommodation/default.jpg',
+      gallery: ['/assets/accommodation/default.jpg'],
+    },
+    'اصفهان': {
+      description:
+        'مجتمع اقامتی همکار در شهر اصفهان با سوئیت‌های آرام خانوادگی و شرایط ویژه رزرو برای اعضای مرکز و خانواده.',
+      imageUrl: '/assets/accommodation/default.jpg',
+      gallery: ['/assets/accommodation/default.jpg'],
+    },
+  },
   accommodationMaxNights: 3,
   accommodationMinLeadDays: 3,
   fundConfig: {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Building2,
   MapPin,
@@ -10,8 +10,14 @@ import {
   XCircle,
   Send,
   Calendar,
+  Paperclip,
+  Upload,
+  Trash2,
+  Download,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/apiClient';
 import { JalaliDatePicker } from './JalaliDatePicker';
 import { addDaysToIso, formatIsoToJalali, getTehranTodayIso } from '../../utils/jalaliDate';
 import { toPersianNumbers } from '../../utils/persianNumbers';
@@ -32,12 +38,43 @@ export const WelfareAccommodationTab: React.FC = () => {
   );
 
   const [selectedCity, setSelectedCity] = useState<string>(cities[0] || 'قم');
+  const [activePhotoIdx, setActivePhotoIdx] = useState<number>(0);
   const [checkInIso, setCheckInIso] = useState<string>(defaultCheckInIso);
   const [nights, setNights] = useState<number>(Math.min(2, maxNights));
   const [phone, setPhone] = useState<string>((currentUser as any)?.phone || '');
   const [description, setDescription] = useState<string>('');
+  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; size?: number }>>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (cities.length > 0 && !cities.includes(selectedCity)) {
+      setSelectedCity(cities[0]);
+    }
+  }, [cities, selectedCity]);
+
+  useEffect(() => {
+    setActivePhotoIdx(0);
+  }, [selectedCity]);
+
+  const selectedCityDetail = useMemo(() => {
+    const detail = welfarePortalConfig.accommodationCityDetails?.[selectedCity];
+    const rawGallery = Array.isArray(detail?.gallery)
+      ? detail.gallery.filter((u) => typeof u === 'string' && u.trim() && !u.includes('unsplash.com'))
+      : [];
+    const primary =
+      detail?.imageUrl && !detail.imageUrl.includes('unsplash.com')
+        ? detail.imageUrl
+        : rawGallery[0] || '/assets/accommodation/default.jpg';
+    const gallery = rawGallery.length > 0 ? rawGallery : [primary];
+    return {
+      description:
+        detail?.description?.trim() ||
+        `اطلاعات مهمانسرا و واحدهای اقامتی طرف قرارداد مجتمع در شهر ${selectedCity}؛ پس از ثبت درخواست، کارشناسان رفاهیات جهت هماهنگی پذیرش با شما تماس می‌گیرند.`,
+      gallery,
+    };
+  }, [welfarePortalConfig.accommodationCityDetails, selectedCity]);
 
   const myAccommodationRequests = useMemo(
     () =>
@@ -58,8 +95,10 @@ export const WelfareAccommodationTab: React.FC = () => {
         nights,
         phone: phone.trim() || undefined,
         description: description.trim() || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
       setDescription('');
+      setAttachments([]);
       setFeedback({
         type: 'success',
         text: res?.message || 'درخواست رزرو اقامتگاه ثبت شد و جهت هماهنگی با شما تماس گرفته می‌شود.',
@@ -183,6 +222,54 @@ export const WelfareAccommodationTab: React.FC = () => {
               </div>
             </div>
 
+            {/* Selected City Residence Info & Gallery Card */}
+            <div className="rounded-2xl border border-[#DFD7C2] bg-[#FAF8F2] overflow-hidden shadow-2xs">
+              <div className="relative h-44 sm:h-48 w-full bg-stone-200">
+                <img
+                  src={selectedCityDetail.gallery[activePhotoIdx] || '/assets/accommodation/default.jpg'}
+                  alt={`اقامتگاه ${selectedCity}`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#071E17]/85 via-[#071E17]/35 to-transparent p-3.5 flex items-end justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-[#F3D078] block">
+                      معرفی اقامتگاه منتخب
+                    </span>
+                    <h3 className="text-sm font-black text-white">{selectedCity}</h3>
+                  </div>
+                  {selectedCityDetail.gallery.length > 1 && (
+                    <span className="text-[10px] font-bold text-white/90 tabular-nums inline-flex items-center gap-1">
+                      <ImageIcon className="w-3 h-3 text-[#F3D078]" />
+                      {toPersianNumbers(activePhotoIdx + 1)} / {toPersianNumbers(selectedCityDetail.gallery.length)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {selectedCityDetail.gallery.length > 1 && (
+                <div className="flex items-center gap-1.5 px-3.5 pt-2.5 overflow-x-auto scrollbar-none">
+                  {selectedCityDetail.gallery.map((photoUrl, pIdx) => (
+                    <button
+                      key={`${photoUrl}-${pIdx}`}
+                      type="button"
+                      onClick={() => setActivePhotoIdx(pIdx)}
+                      className={`w-12 h-9 rounded-lg overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
+                        activePhotoIdx === pIdx
+                          ? 'border-[#071E17] scale-105'
+                          : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="p-3.5 sm:p-4 text-xs text-stone-700 leading-relaxed whitespace-pre-line">
+                {selectedCityDetail.description}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <label className="text-xs font-black text-stone-800 flex items-center gap-1.5">
                 <Moon className="w-4 h-4 text-[#071E17]" />
@@ -234,6 +321,77 @@ export const WelfareAccommodationTab: React.FC = () => {
                 placeholder="مثال: اقامت به همراه خانواده (۳ نفر)، ترجیحاً نزدیک به حرم مطهر یا مجتمع..."
                 className="w-full p-3.5 rounded-xl border border-stone-300 text-xs leading-relaxed bg-stone-50 focus:bg-white focus:border-[#071E17] outline-none"
               />
+            </div>
+
+            {/* Optional Document Attachment */}
+            <div className="p-3.5 rounded-2xl border border-dashed border-stone-300 bg-[#FCFCF9] space-y-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-black text-[#071E17] flex items-center gap-1.5">
+                    <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>مدارک مأموریت، معرفی‌نامه یا پیوست (اختیاری)</span>
+                  </span>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    PDF، Word یا تصویر (حداکثر ۸ مگابایت)
+                  </p>
+                </div>
+                <label className="px-3 py-2 min-h-[36px] rounded-xl bg-stone-200 hover:bg-stone-300 text-[#071E17] font-black inline-flex items-center gap-1.5 cursor-pointer shrink-0">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{uploadingDoc ? 'در حال آپلود...' : 'انتخاب مدرک'}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp"
+                    disabled={uploadingDoc}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      if (f.size > 8 * 1024 * 1024) {
+                        setFeedback({ type: 'error', text: 'حجم فایل نباید بیشتر از ۸ مگابایت باشد.' });
+                        return;
+                      }
+                      setUploadingDoc(true);
+                      setFeedback(null);
+                      try {
+                        const up = await api.uploadFile(f, 'welfare_receipt');
+                        if (up?.url) {
+                          setAttachments((prev) => [
+                            ...prev,
+                            { url: up.url, name: up.originalName || f.name, size: up.sizeBytes || f.size },
+                          ]);
+                        }
+                      } catch (err: any) {
+                        setFeedback({ type: 'error', text: err?.message || 'آپلود مدرک با خطا مواجه شد.' });
+                      } finally {
+                        setUploadingDoc(false);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {attachments.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  {attachments.map((att, idx) => (
+                    <div
+                      key={`${att.url}-${idx}`}
+                      className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white border border-stone-200"
+                    >
+                      <span className="truncate font-bold text-stone-700 flex items-center gap-1.5">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span className="truncate">{att.name}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -310,6 +468,31 @@ export const WelfareAccommodationTab: React.FC = () => {
                 </div>
                 {req.description && (
                   <p className="text-[11px] text-stone-500 leading-relaxed">{req.description}</p>
+                )}
+                {Array.isArray(req.metadata?.attachments) && req.metadata.attachments.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="font-bold text-stone-500 inline-flex items-center gap-1">
+                      <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>مدارک پیوست:</span>
+                    </span>
+                    {req.metadata.attachments.map((att: any, idx: number) => (
+                      <button
+                        key={`${att.url}-${idx}`}
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await api.downloadPrivateFile(att.url, att.name);
+                          } catch (err: any) {
+                            setFeedback({ type: 'error', text: err?.message || 'خطا در دانلود مدرک پیوست.' });
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-emerald-50 text-[#071E17] border border-stone-200 font-bold cursor-pointer"
+                      >
+                        <Download className="w-3 h-3 text-emerald-700" />
+                        <span>{att.name || `مدرک ${idx + 1}`}</span>
+                      </button>
+                    ))}
+                  </div>
                 )}
                 {req.adminNote && (
                   <p className="text-[11px] font-bold text-emerald-900 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">

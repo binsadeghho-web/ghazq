@@ -3,7 +3,8 @@ export type WelfareModuleKey =
   | 'qarzolhasaneh_fund'
   | 'accommodation'
   | 'consumables'
-  | 'installment_sales';
+  | 'installment_sales'
+  | 'recreation_tourism';
 
 export type DeliveryMethodType = 'in_person' | 'post' | 'courier';
 
@@ -12,6 +13,12 @@ export interface WelfareModulePortalConfig {
   showInMobileShowcase: boolean;
   title: string;
   subtitle: string;
+}
+
+export interface WelfareAccommodationCityDetail {
+  description: string;
+  imageUrl?: string;
+  gallery?: string[];
 }
 
 export interface WelfareContactsConfig {
@@ -37,9 +44,70 @@ export interface WelfarePortalConfig {
   emergencyLoanMaxAmountLabel?: string;
   contactsConfig: WelfareContactsConfig;
   accommodationCities: string[];
+  accommodationCityDetails?: Record<string, WelfareAccommodationCityDetail>;
   accommodationMaxNights: number;
   accommodationMinLeadDays: number;
   fundConfig: WelfareFundConfig;
+}
+
+export type RecreationRegistrationMethod =
+  | 'direct_free'
+  | 'online_gateway'
+  | 'bank_receipt'
+  | 'both';
+
+export interface WelfareRecreationProgram {
+  id: string;
+  title: string;
+  programType: string;
+  destination: string;
+  summary: string;
+  description: string;
+  scheduleText: string;
+  startDate?: string;
+  endDate?: string;
+  registrationDeadline?: string;
+  capacity: number;
+  registeredCount: number;
+  remainingCapacity: number | null;
+  isFree: boolean;
+  feeAmount: number;
+  registrationMethod: RecreationRegistrationMethod;
+  paymentInstructions?: string;
+  cardNumber?: string;
+  coverImage?: string;
+  gallery?: string[];
+  isActive: boolean;
+  displayOrder: number;
+  version: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WelfareRecreationRegistration {
+  id: string;
+  programId: string;
+  programTitle: string;
+  destination?: string;
+  scheduleText?: string;
+  userId: string;
+  userName: string;
+  userPhone?: string;
+  userNationalId?: string;
+  companionsCount: number;
+  seatsReserved: number;
+  totalAmount: number;
+  paymentMethod: 'free' | 'online_gateway' | 'bank_receipt';
+  trackingCode: string;
+  receiptUrl?: string;
+  notes?: string;
+  status: 'pending_review' | 'confirmed' | 'rejected' | 'cancelled';
+  adminNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  version: number;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface WelfareFundMembership {

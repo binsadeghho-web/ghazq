@@ -56,7 +56,7 @@ export const ConsultantManagementModule: React.FC = () => {
     fee: 1200000,
     subsidyNotice: '۷۰٪ یارانه پرداختی مرکز دانش‌آموختگان',
     isActive: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&fit=crop&q=80',
+    avatarUrl: '/assets/consultants/male_scholar.jpg',
     resumeDetails: ['مستشار دادگاه تجدیدنظر', 'مدرس دوره‌های عالی فقه القضا']
   });
 
@@ -101,7 +101,7 @@ export const ConsultantManagementModule: React.FC = () => {
       fee: 1200000,
       subsidyNotice: '۷۰٪ یارانه پرداختی مرکز دانش‌آموختگان',
       isActive: true,
-      avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&fit=crop&q=80',
+      avatarUrl: '/assets/consultants/senior_judge.jpg',
       resumeDetails: ['قاضی دادگاه تجدیدنظر استان', 'مدرس خارج فقه القضا']
     });
     setSpecialtyInput('');
@@ -145,7 +145,7 @@ export const ConsultantManagementModule: React.FC = () => {
       fee: Number(formData.fee || 0),
       subsidyNotice: formData.subsidyNotice || '',
       isActive: formData.isActive !== false,
-      avatarUrl: formData.avatarUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&fit=crop&q=80',
+      avatarUrl: formData.avatarUrl || '/assets/consultants/male_scholar.jpg',
       resumeDetails: formData.resumeDetails || []
     };
 
@@ -403,7 +403,11 @@ export const ConsultantManagementModule: React.FC = () => {
                 {/* Profile Avatar & Details */}
                 <div className="flex items-start gap-3 pt-1">
                   <img
-                    src={consultant.avatarUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&fit=crop&q=80'}
+                    src={
+                      consultant.avatarUrl && !consultant.avatarUrl.includes('unsplash.com')
+                        ? consultant.avatarUrl
+                        : '/assets/consultants/male_scholar.jpg'
+                    }
                     alt={consultant.name}
                     className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-500/40 shadow-md shrink-0"
                   />

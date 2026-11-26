@@ -13,6 +13,8 @@ import {
   WelfareFundPayment,
   WelfareInstallmentPartner,
   WelfareInstallmentRequest,
+  WelfareRecreationProgram,
+  WelfareRecreationRegistration,
   DeliveryMethodType,
 } from '../types';
 import {
@@ -45,7 +47,7 @@ export interface WelfareContextType {
   loanTermsAndRules: WelfareLoanTermsAndRules;
   cooperativeSectionInfo: CooperativeSectionInfo;
 
-  // 5-Module Portal State
+  // 6-Module Portal State
   welfarePortalConfig: WelfarePortalConfig;
   myFundMembership: WelfareFundMembership | null;
   myFundPayments: WelfareFundPayment[];
@@ -53,6 +55,8 @@ export interface WelfareContextType {
   allFundPayments: WelfareFundPayment[];
   installmentPartners: WelfareInstallmentPartner[];
   installmentRequests: WelfareInstallmentRequest[];
+  recreationPrograms: WelfareRecreationProgram[];
+  recreationRegistrations: WelfareRecreationRegistration[];
 
   // Actions
   submitWelfareRequest: (data: Omit<WelfareRequest, 'id' | 'status' | 'createdAt'>) => Promise<WelfareRequest>;
@@ -63,6 +67,7 @@ export interface WelfareContextType {
     nights: number;
     description?: string;
     phone?: string;
+    attachments?: Array<{ url: string; name: string; size?: number }>;
   }) => Promise<{ message: string; request: WelfareRequest }>;
 
   updateWelfarePortalConfig: (updates: Partial<WelfarePortalConfig>) => Promise<WelfarePortalConfig>;
@@ -110,6 +115,24 @@ export interface WelfareContextType {
     adminNote?: string
   ) => Promise<void>;
 
+  // Recreation & Tourism Actions
+  createRecreationProgram: (data: Partial<WelfareRecreationProgram>) => Promise<WelfareRecreationProgram>;
+  updateRecreationProgram: (id: string, updates: Partial<WelfareRecreationProgram>) => Promise<WelfareRecreationProgram>;
+  deleteRecreationProgram: (id: string) => Promise<void>;
+  registerRecreationProgram: (data: {
+    programId: string;
+    companionsCount?: number;
+    paymentMethod?: 'free' | 'online_gateway' | 'bank_receipt';
+    receiptUrl?: string;
+    notes?: string;
+    phone?: string;
+  }) => Promise<WelfareRecreationRegistration>;
+  reviewRecreationRegistration: (
+    id: string,
+    status: WelfareRecreationRegistration['status'],
+    adminNote?: string
+  ) => Promise<WelfareRecreationRegistration>;
+
   updateWelfareSectionsConfig: (configs: WelfareSectionConfig[]) => void;
   updateLoanTermsAndRules: (updates: Partial<WelfareLoanTermsAndRules>) => void;
   updateCooperativeSectionInfo: (updates: Partial<CooperativeSectionInfo>) => void;
@@ -137,6 +160,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
   const [allFundPayments, setAllFundPayments] = useState<WelfareFundPayment[]>([]);
   const [installmentPartners, setInstallmentPartners] = useState<WelfareInstallmentPartner[]>([]);
   const [installmentRequests, setInstallmentRequests] = useState<WelfareInstallmentRequest[]>([]);
+  const [recreationPrograms, setRecreationPrograms] = useState<WelfareRecreationProgram[]>([]);
+  const [recreationRegistrations, setRecreationRegistrations] = useState<WelfareRecreationRegistration[]>([]);
 
   const isOrgRole = Boolean(currentUser && ORGANIZATIONAL_ROLES.has(currentUser.role));
 
@@ -151,6 +176,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       setAllFundPayments([]);
       setInstallmentPartners([]);
       setInstallmentRequests([]);
+      setRecreationPrograms([]);
+      setRecreationRegistrations([]);
       return;
     }
 
@@ -164,6 +191,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
         fetchedMyFund,
         fetchedPartners,
         fetchedInstReqs,
+        fetchedRecPrograms,
+        fetchedRecRegs,
       ] = await Promise.all([
         api.getWelfarePortalConfig().catch(() => null),
         api.getWelfareRequests().catch(() => null),
@@ -173,6 +202,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
         api.getMyFundMembership().catch(() => null),
         api.getInstallmentPartners().catch(() => null),
         api.getInstallmentRequests().catch(() => null),
+        api.getRecreationPrograms().catch(() => null),
+        api.getRecreationRegistrations().catch(() => null),
       ]);
 
       if (fetchedConfig && fetchedConfig.modulesConfig) setWelfarePortalConfig(fetchedConfig);
@@ -186,6 +217,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       }
       if (Array.isArray(fetchedPartners)) setInstallmentPartners(fetchedPartners);
       if (Array.isArray(fetchedInstReqs)) setInstallmentRequests(fetchedInstReqs);
+      if (Array.isArray(fetchedRecPrograms)) setRecreationPrograms(fetchedRecPrograms);
+      if (Array.isArray(fetchedRecRegs)) setRecreationRegistrations(fetchedRecRegs);
 
       if (isOrgRole) {
         const [adminMem, adminPay] = await Promise.all([
@@ -211,6 +244,33 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
         setWelfarePortalConfig(delta.config);
         return;
       }
+      if (event.type === 'welfare.recreation_updated') {
+        if (delta?.deletedProgramId) {
+          setRecreationPrograms((prev) => prev.filter((p) => p.id !== delta.deletedProgramId));
+          return;
+        }
+        if (delta?.program) {
+          const prog = delta.program as WelfareRecreationProgram;
+          setRecreationPrograms((prev) =>
+            prev.some((p) => p.id === prog.id)
+              ? prev.map((p) => (p.id === prog.id ? prog : p))
+              : [prog, ...prev]
+          );
+          return;
+        }
+      }
+      if (event.type === 'welfare.recreation_registration_updated' && delta?.registration) {
+        const reg = delta.registration as WelfareRecreationRegistration;
+        if (isOrgRole || reg.userId === currentUser.id) {
+          setRecreationRegistrations((prev) =>
+            prev.some((r) => r.id === reg.id)
+              ? prev.map((r) => (r.id === reg.id ? reg : r))
+              : [reg, ...prev]
+          );
+        }
+        api.getRecreationPrograms().then((list) => Array.isArray(list) && setRecreationPrograms(list)).catch(() => {});
+        return;
+      }
       const resourceId = delta?.resourceId;
       const updates = delta?.updates;
       const version = delta?.version;
@@ -226,7 +286,7 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       }
     });
     return () => unsubscribe();
-  }, [refreshWelfare, currentUser]);
+  }, [refreshWelfare, currentUser, isOrgRole]);
 
   const submitWelfareRequest = useCallback(async (data: Omit<WelfareRequest, 'id' | 'status' | 'createdAt'>) => {
     const created = await api.createWelfareRequest(data);
@@ -248,7 +308,14 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
   );
 
   const submitAccommodationRequest = useCallback(
-    async (data: { city: string; checkInIso: string; nights: number; description?: string; phone?: string }) => {
+    async (data: {
+      city: string;
+      checkInIso: string;
+      nights: number;
+      description?: string;
+      phone?: string;
+      attachments?: Array<{ url: string; name: string; size?: number }>;
+    }) => {
       const res = await api.submitAccommodationRequest(data);
       if (res?.request) {
         setWelfareRequests((prev) => [res.request, ...prev]);
@@ -269,6 +336,10 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       contactsConfig: {
         ...welfarePortalConfig.contactsConfig,
         ...(updates.contactsConfig || {}),
+      },
+      accommodationCityDetails: {
+        ...(welfarePortalConfig.accommodationCityDetails || {}),
+        ...(updates.accommodationCityDetails || {}),
       },
       fundConfig: {
         ...welfarePortalConfig.fundConfig,
@@ -472,6 +543,72 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
     []
   );
 
+  // Recreation & Tourism methods
+  const createRecreationProgram = useCallback(async (data: Partial<WelfareRecreationProgram>) => {
+    const created = await api.createRecreationProgram(data);
+    setRecreationPrograms((prev) => [created, ...prev]);
+    return created;
+  }, []);
+
+  const updateRecreationProgram = useCallback(
+    async (id: string, updates: Partial<WelfareRecreationProgram>) => {
+      const target = recreationPrograms.find((p) => p.id === id);
+      const updated = await api.updateRecreationProgram(id, {
+        ...updates,
+        expectedVersion: updates.version ?? target?.version ?? 1,
+      });
+      setRecreationPrograms((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      return updated;
+    },
+    [recreationPrograms]
+  );
+
+  const deleteRecreationProgram = useCallback(
+    async (id: string) => {
+      const target = recreationPrograms.find((p) => p.id === id);
+      await api.deleteRecreationProgram(id, target?.version ?? 1);
+      setRecreationPrograms((prev) => prev.filter((p) => p.id !== id));
+    },
+    [recreationPrograms]
+  );
+
+  const registerRecreationProgram = useCallback(
+    async (data: {
+      programId: string;
+      companionsCount?: number;
+      paymentMethod?: 'free' | 'online_gateway' | 'bank_receipt';
+      receiptUrl?: string;
+      notes?: string;
+      phone?: string;
+    }) => {
+      const created = await api.registerRecreationProgram(data);
+      setRecreationRegistrations((prev) => [created, ...prev]);
+      api.getRecreationPrograms().then((list) => Array.isArray(list) && setRecreationPrograms(list)).catch(() => {});
+      return created;
+    },
+    []
+  );
+
+  const reviewRecreationRegistration = useCallback(
+    async (
+      id: string,
+      status: WelfareRecreationRegistration['status'],
+      adminNote?: string
+    ) => {
+      const target = recreationRegistrations.find((r) => r.id === id);
+      const updated = await api.reviewRecreationRegistration(
+        id,
+        status,
+        target?.version ?? 1,
+        adminNote
+      );
+      setRecreationRegistrations((prev) => prev.map((r) => (r.id === id ? updated : r)));
+      api.getRecreationPrograms().then((list) => Array.isArray(list) && setRecreationPrograms(list)).catch(() => {});
+      return updated;
+    },
+    [recreationRegistrations]
+  );
+
   const updateWelfareSectionsConfig = useCallback((configs: WelfareSectionConfig[]) => {
     setWelfareSectionsConfig(configs);
   }, []);
@@ -500,6 +637,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       allFundPayments,
       installmentPartners,
       installmentRequests,
+      recreationPrograms,
+      recreationRegistrations,
       submitWelfareRequest,
       updateWelfareStatus,
       submitAccommodationRequest,
@@ -523,6 +662,11 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       deleteInstallmentPartner,
       submitInstallmentRequest,
       reviewInstallmentRequest,
+      createRecreationProgram,
+      updateRecreationProgram,
+      deleteRecreationProgram,
+      registerRecreationProgram,
+      reviewRecreationRegistration,
       updateWelfareSectionsConfig,
       updateLoanTermsAndRules,
       updateCooperativeSectionInfo,
@@ -543,6 +687,8 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       allFundPayments,
       installmentPartners,
       installmentRequests,
+      recreationPrograms,
+      recreationRegistrations,
       submitWelfareRequest,
       updateWelfareStatus,
       submitAccommodationRequest,
@@ -566,6 +712,11 @@ export const WelfareProvider: React.FC<{ children: React.ReactNode; currentUser?
       deleteInstallmentPartner,
       submitInstallmentRequest,
       reviewInstallmentRequest,
+      createRecreationProgram,
+      updateRecreationProgram,
+      deleteRecreationProgram,
+      registerRecreationProgram,
+      reviewRecreationRegistration,
       updateWelfareSectionsConfig,
       updateLoanTermsAndRules,
       updateCooperativeSectionInfo,

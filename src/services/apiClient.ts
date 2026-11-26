@@ -998,6 +998,7 @@ class ApiClient {
     nights: number;
     description?: string;
     phone?: string;
+    attachments?: Array<{ url: string; name: string; size?: number }>;
   }) {
     return this.request<{ message: string; request: any }>('/api/welfare/accommodation-requests', {
       method: 'POST',
@@ -1108,6 +1109,61 @@ class ApiClient {
     return this.request<any>(`/api/welfare/installments/requests/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status, adminNote }),
+    });
+  }
+
+  async getRecreationPrograms() {
+    return this.request<any[]>('/api/welfare/recreation/programs');
+  }
+
+  async createRecreationProgram(data: any) {
+    return this.request<any>('/api/welfare/recreation/programs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRecreationProgram(id: string, data: any) {
+    return this.request<any>(`/api/welfare/recreation/programs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRecreationProgram(id: string, expectedVersion: number) {
+    return this.request<{ success: boolean; id: string }>(`/api/welfare/recreation/programs/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ expectedVersion }),
+    });
+  }
+
+  async getRecreationRegistrations() {
+    return this.request<any[]>('/api/welfare/recreation/registrations');
+  }
+
+  async registerRecreationProgram(data: {
+    programId: string;
+    companionsCount?: number;
+    paymentMethod?: 'free' | 'online_gateway' | 'bank_receipt';
+    receiptUrl?: string;
+    notes?: string;
+    phone?: string;
+  }) {
+    return this.request<any>('/api/welfare/recreation/registrations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async reviewRecreationRegistration(
+    id: string,
+    status: 'pending_review' | 'confirmed' | 'rejected' | 'cancelled',
+    expectedVersion: number,
+    adminNote?: string
+  ) {
+    return this.request<any>(`/api/welfare/recreation/registrations/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, expectedVersion, adminNote }),
     });
   }
 

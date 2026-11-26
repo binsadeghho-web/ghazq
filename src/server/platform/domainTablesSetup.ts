@@ -30,6 +30,7 @@ async function runDomainTablesSetup(): Promise<void> {
         `SELECT
            (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (
              'welfare_fund_memberships', 'welfare_fund_payments', 'welfare_installment_partners', 'welfare_installment_requests',
+             'welfare_recreation_programs', 'welfare_recreation_registrations',
              'counseling_workshop_registrations', 'dashboard_banners', 'dashboard_events', 'alumni_privacy_settings', 'research_messages',
              'ops_error_logs', 'ops_security_alerts', 'ops_blocked_ips', 'audit_logs'
            )) AS tbl_cnt,
@@ -43,7 +44,7 @@ async function runDomainTablesSetup(): Promise<void> {
       const row = schemaCheck?.[0];
       if (
         row &&
-        Number(row.tbl_cnt) >= 13 &&
+        Number(row.tbl_cnt) >= 15 &&
         Number(row.col1) >= 1 &&
         Number(row.col2) >= 1 &&
         Number(row.col3) >= 1 &&
@@ -1362,6 +1363,98 @@ async function runDomainTablesSetup(): Promise<void> {
         created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // 15. Recreation & Tourism (تفریحی و گردشگری)
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_recreation_programs (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        program_type VARCHAR(100) NOT NULL DEFAULT 'تور و اردو',
+        destination VARCHAR(255) NOT NULL,
+        summary TEXT NULL,
+        description TEXT NULL,
+        schedule_text VARCHAR(255) NULL,
+        start_date VARCHAR(64) NULL,
+        end_date VARCHAR(64) NULL,
+        registration_deadline VARCHAR(64) NULL,
+        capacity INT NOT NULL DEFAULT 0,
+        registered_count INT NOT NULL DEFAULT 0,
+        is_free TINYINT(1) NOT NULL DEFAULT 0,
+        fee_amount BIGINT NOT NULL DEFAULT 0,
+        registration_method ENUM('direct_free', 'online_gateway', 'bank_receipt', 'both') NOT NULL DEFAULT 'both',
+        payment_instructions TEXT NULL,
+        card_number VARCHAR(64) NULL,
+        cover_image VARCHAR(512) NULL,
+        gallery JSON NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        display_order INT NOT NULL DEFAULT 1,
+        deleted_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_rec_prog_active (deleted_at, is_active, display_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS welfare_recreation_registrations (
+        id BINARY(16) NOT NULL PRIMARY KEY,
+        program_id BINARY(16) NOT NULL,
+        program_title VARCHAR(255) NOT NULL,
+        user_id BINARY(16) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(32) NULL,
+        user_national_id VARCHAR(32) NULL,
+        companions_count INT NOT NULL DEFAULT 0,
+        seats_reserved INT NOT NULL DEFAULT 1,
+        total_amount BIGINT NOT NULL DEFAULT 0,
+        payment_method ENUM('free', 'online_gateway', 'bank_receipt') NOT NULL DEFAULT 'free',
+        tracking_code VARCHAR(64) NOT NULL,
+        receipt_url VARCHAR(512) NULL,
+        notes TEXT NULL,
+        status ENUM('pending_review', 'confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending_review',
+        admin_note TEXT NULL,
+        reviewed_by VARCHAR(128) NULL,
+        reviewed_at DATETIME(3) NULL,
+        deleted_at DATETIME(3) NULL,
+        version INT NOT NULL DEFAULT 1,
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        INDEX idx_rec_reg_prog (program_id, deleted_at, status),
+        INDEX idx_rec_reg_user (user_id, deleted_at, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    const [existingRecPrograms]: any = await p.query(
+      `SELECT COUNT(*) as cnt FROM welfare_recreation_programs WHERE deleted_at IS NULL`
+    );
+    if (existingRecPrograms && Number(existingRecPrograms[0]?.cnt || 0) === 0) {
+      await p.query(
+        `INSERT INTO welfare_recreation_programs (
+          id, title, program_type, destination, summary, description, schedule_text, start_date, end_date, registration_deadline,
+          capacity, registered_count, is_free, fee_amount, registration_method, payment_instructions, cover_image, gallery, is_active, display_order, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 1, 1, 1)`,
+        [
+          toIdBuffer(generateUUIDv7()),
+          'اردوی فرهنگی و سیاحتی خانواده (ویژه اعضا)',
+          'اردوی خانوادگی',
+          'باغ‌موزه و مجموعه تفریحی کوهستانی',
+          'برنامه یک‌روزه فرهنگی، طبیعت‌گردی و ضیافت ناهار ویژه اعضای مجتمع و خانواده محترم',
+          'این برنامه با هدف نشاط علمی و هم‌افزایی خانوادگی اساتید، قضات و دانش‌آموختگان تدارک دیده شده است. خدمات شامل ایاب‌وذهاب رفت و برگشت با اتوبوس ویژه، صبحانه و ناهار، برنامه فرهنگی و بازی‌های خانوادگی است. اولویت با ثبت‌نام‌های زودهنگام و تا تکمیل ظرفیت خواهد بود.',
+          'پنج‌شنبه · حرکت ساعت ۷:۳۰ صبح از محل مجتمع',
+          '۱۴۰۴/۰۹/۲۰',
+          '۱۴۰۴/۰۹/۲۰',
+          '۱۴۰۴/۰۹/۱۷',
+          45,
+          0,
+          350000,
+          'both',
+          'پس از انتخاب تعداد همراهان و ثبت‌نام از طریق درگاه یا آپلود فیش واریزی، کد پیگیری حضور صادر می‌شود.',
+          '/assets/recreation/default.jpg',
+          JSON.stringify(['/assets/recreation/default.jpg']),
+        ]
+      );
+    }
 
     domainTablesInitialized = true;
     logger.info('All domain-specific tables and composite indexes verified and initialized in MySQL.');

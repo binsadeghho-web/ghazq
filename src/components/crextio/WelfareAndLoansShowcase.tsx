@@ -27,6 +27,7 @@ import {
   Upload,
   Loader2,
   Camera,
+  Compass,
 } from 'lucide-react';
 
 import { WelfareModuleKey } from '../../types';
@@ -49,7 +50,8 @@ const AVAILABLE_ICONS = [
   { id: 'Award', name: 'نشان افتخار', icon: Award },
   { id: 'Flame', name: 'پیشنهاد داغ', icon: Flame },
   { id: 'Coffee', name: 'خدمات پذیرایی و اوقات فراغت', icon: Coffee },
-  { id: 'GraduationCap', name: 'کمک‌هزینه تحصیلی', icon: GraduationCap }
+  { id: 'GraduationCap', name: 'کمک‌هزینه تحصیلی', icon: GraduationCap },
+  { id: 'Compass', name: 'تور، اردو و گردشگری', icon: Compass },
 ];
 
 const getIconComponent = (iconId: string) => {
@@ -138,7 +140,19 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       accent: '#B45309',
       bgClass: 'bg-orange-50/60 border-orange-200',
       imageUrl: '',
-    }
+    },
+    {
+      id: 'welf-6',
+      moduleKey: 'recreation_tourism' as WelfareModuleKey,
+      title: 'تفریحی و گردشگری',
+      amount: 'تورها و اردوهای اعضا',
+      subtext: 'مشاهده اطلاعیه‌ها، ظرفیت، هزینه، شیوه ثبت‌نام و ثبت‌نام آنلاین',
+      tag: 'گردشگری و اردو',
+      iconId: 'Compass',
+      accent: '#047857',
+      bgClass: 'bg-emerald-50/60 border-emerald-200',
+      imageUrl: '',
+    },
   ];
 
   const normalizedSavedCards =
@@ -294,7 +308,7 @@ export const WelfareAndLoansShowcase: React.FC<WelfareAndLoansShowcaseProps> = (
       </div>
 
       {/* Welfare Grid */}
-      <div className={`flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 ${welfareCards.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} sm:gap-3.5 sm:overflow-visible sm:pb-0`}>
+      <div className={`flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scrollbar-none sm:grid sm:grid-cols-2 ${welfareCards.length >= 6 ? 'lg:grid-cols-3' : welfareCards.length === 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} sm:gap-3.5 sm:overflow-visible sm:pb-0`}>
         {welfareCards.map(item => {
           const Icon = getIconComponent(item.iconId);
 

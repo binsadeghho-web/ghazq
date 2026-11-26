@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getPool, selectWithTimeout, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
+import { getPool, selectWithTimeout, withTx, ensureDatabaseConnection } from '../../platform/mysqlDatabase';
 import { ensureDomainTablesAndIndexes } from '../../platform/domainTablesSetup';
 import { AppError } from '../../platform/errors';
 import { idempotencyMiddleware } from '../../platform/idempotency';
@@ -8,16 +8,58 @@ import { generateUUIDv7, toIdBuffer, fromIdBuffer } from '../../platform/uuidv7'
 import { adminSettingsRepo } from '../admin/adminSettingsRepository';
 import { auditChain } from '../../platform/auditChain';
 import { outbox } from '../../platform/outbox';
+import { extractExpectedVersion } from '../../platform/httpUtils';
 import { isOrganizationalUserRole } from '../../platform/authorization';
 import { DEFAULT_WELFARE_PORTAL_CONFIG } from '../../../data/welfareData';
 import {
   WelfarePortalConfig,
+  WelfareAccommodationCityDetail,
   WelfareFundMembership,
   WelfareFundPayment,
   WelfareInstallmentPartner,
   WelfareInstallmentRequest,
+  WelfareRecreationProgram,
+  WelfareRecreationRegistration,
 } from '../../../types/welfare';
 import { diffDaysIso, formatIsoToJalali, getTehranTodayIso } from '../../../utils/jalaliDate';
+
+function mergeAccommodationCityDetails(
+  baseDetails?: Record<string, WelfareAccommodationCityDetail>,
+  rawDetails?: any
+): Record<string, WelfareAccommodationCityDetail> {
+  const result: Record<string, WelfareAccommodationCityDetail> = {};
+  if (baseDetails) {
+    for (const [city, detail] of Object.entries(baseDetails)) {
+      result[city] = {
+        description: detail.description || '',
+        imageUrl: detail.imageUrl,
+        gallery: Array.isArray(detail.gallery) ? [...detail.gallery] : [],
+      };
+    }
+  }
+  if (rawDetails && typeof rawDetails === 'object') {
+    for (const [city, detail] of Object.entries(rawDetails)) {
+      const cleanCity = String(city).trim();
+      if (!cleanCity || !detail || typeof detail !== 'object') continue;
+      const d = detail as any;
+      const prev = result[cleanCity] || { description: '', gallery: [] };
+      const gallery = Array.isArray(d.gallery)
+        ? d.gallery.map((u: any) => String(u).trim()).filter(Boolean)
+        : prev.gallery || [];
+      const imageUrl =
+        d.imageUrl !== undefined
+          ? (d.imageUrl ? String(d.imageUrl).trim() : undefined)
+          : prev.imageUrl || gallery[0];
+      result[cleanCity] = {
+        description:
+          typeof d.description === 'string' ? d.description : prev.description || '',
+        imageUrl,
+        gallery: gallery.length > 0 ? gallery : imageUrl ? [imageUrl] : [],
+      };
+    }
+  }
+  return result;
+}
 
 function mergePortalConfig(raw: any): WelfarePortalConfig {
   const base = DEFAULT_WELFARE_PORTAL_CONFIG;
@@ -29,6 +71,7 @@ function mergePortalConfig(raw: any): WelfarePortalConfig {
       accommodation: { ...base.modulesConfig.accommodation, ...(raw.modulesConfig?.accommodation || {}) },
       consumables: { ...base.modulesConfig.consumables, ...(raw.modulesConfig?.consumables || {}) },
       installment_sales: { ...base.modulesConfig.installment_sales, ...(raw.modulesConfig?.installment_sales || {}) },
+      recreation_tourism: { ...base.modulesConfig.recreation_tourism, ...(raw.modulesConfig?.recreation_tourism || {}) },
     },
     emergencyLoanDescription:
       typeof raw.emergencyLoanDescription === 'string' && raw.emergencyLoanDescription.trim()
@@ -46,6 +89,10 @@ function mergePortalConfig(raw: any): WelfarePortalConfig {
       Array.isArray(raw.accommodationCities) && raw.accommodationCities.length > 0
         ? raw.accommodationCities.map((c: any) => String(c).trim()).filter(Boolean)
         : base.accommodationCities,
+    accommodationCityDetails: mergeAccommodationCityDetails(
+      base.accommodationCityDetails,
+      raw.accommodationCityDetails
+    ),
     accommodationMaxNights: Math.max(1, Number(raw.accommodationMaxNights ?? base.accommodationMaxNights)),
     accommodationMinLeadDays: Math.max(1, Number(raw.accommodationMinLeadDays ?? base.accommodationMinLeadDays)),
     fundConfig: {
@@ -180,6 +227,10 @@ export function registerWelfareExtendedRoutes(router: Router): void {
           ...existingMerged.contactsConfig,
           ...(body.contactsConfig || {}),
         },
+        accommodationCityDetails: mergeAccommodationCityDetails(
+          existingMerged.accommodationCityDetails,
+          body.accommodationCityDetails
+        ),
         fundConfig: {
           ...existingMerged.fundConfig,
           ...(body.fundConfig || {}),
@@ -211,7 +262,7 @@ export function registerWelfareExtendedRoutes(router: Router): void {
       ensureDatabaseConnection();
       await ensureDomainTablesAndIndexes();
       const currentUser = getCurrentUser(req);
-      const { city, checkInIso, nights, description, phone } = req.body || {};
+      const { city, checkInIso, nights, description, phone, attachments: rawAttachments } = req.body || {};
 
       const cleanCity = String(city || '').trim();
       const cleanIso = String(checkInIso || '').trim().slice(0, 10);
@@ -240,6 +291,16 @@ export function registerWelfareExtendedRoutes(router: Router): void {
         );
       }
 
+      const cleanAttachments = Array.isArray(rawAttachments)
+        ? rawAttachments
+            .filter((a: any) => a && typeof a.url === 'string' && a.url.trim())
+            .map((a: any) => ({
+              url: String(a.url).trim(),
+              name: String(a.name || 'مدرک پیوست').trim().slice(0, 180),
+              ...(typeof a.size === 'number' ? { size: a.size } : {}),
+            }))
+        : [];
+
       const checkInJalali = formatIsoToJalali(cleanIso, true);
       const id = generateUUIDv7();
       const idBuf = toIdBuffer(id);
@@ -253,6 +314,7 @@ export function registerWelfareExtendedRoutes(router: Router): void {
         checkInJalali,
         nights: numNights,
         phone: phone ? String(phone).trim() : (currentUser as any).phone || '',
+        ...(cleanAttachments.length > 0 ? { attachments: cleanAttachments } : {}),
       };
 
       await p.query(
@@ -969,6 +1031,595 @@ export function registerWelfareExtendedRoutes(router: Router): void {
       const mapped = mapInstallmentRequestRow(fresh[0]);
       outbox.enqueue('welfare.installment_updated', { request: mapped });
       res.json(mapped);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // 5. Recreation & Tourism (تفریحی و گردشگری)
+  function mapRecreationProgramRow(row: any): WelfareRecreationProgram {
+    let gallery: string[] = [];
+    if (row.gallery) {
+      try {
+        const parsed = typeof row.gallery === 'string' ? JSON.parse(row.gallery) : row.gallery;
+        if (Array.isArray(parsed)) {
+          gallery = parsed.map((u: any) => String(u).trim()).filter(Boolean);
+        }
+      } catch {}
+    }
+    const capacity = Math.max(0, Number(row.capacity || 0));
+    const registeredCount = Math.max(0, Number(row.registered_count || 0));
+    return {
+      id: fromIdBuffer(row.id),
+      title: row.title || '',
+      programType: row.program_type || 'تور و اردو',
+      destination: row.destination || '',
+      summary: row.summary || '',
+      description: row.description || '',
+      scheduleText: row.schedule_text || '',
+      startDate: row.start_date || undefined,
+      endDate: row.end_date || undefined,
+      registrationDeadline: row.registration_deadline || undefined,
+      capacity,
+      registeredCount,
+      remainingCapacity: capacity > 0 ? Math.max(0, capacity - registeredCount) : null,
+      isFree: Boolean(row.is_free),
+      feeAmount: Math.max(0, Number(row.fee_amount || 0)),
+      registrationMethod: row.registration_method || 'both',
+      paymentInstructions: row.payment_instructions || undefined,
+      cardNumber: row.card_number || undefined,
+      coverImage: row.cover_image || gallery[0] || '/assets/recreation/default.jpg',
+      gallery: gallery.length > 0 ? gallery : undefined,
+      isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
+      displayOrder: Number(row.display_order || 1),
+      version: Number(row.version || 1),
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
+    };
+  }
+
+  function mapRecreationRegistrationRow(row: any): WelfareRecreationRegistration {
+    return {
+      id: fromIdBuffer(row.id),
+      programId: fromIdBuffer(row.program_id),
+      programTitle: row.program_title || '',
+      destination: row.destination || undefined,
+      scheduleText: row.schedule_text || undefined,
+      userId: fromIdBuffer(row.user_id),
+      userName: row.user_name || '',
+      userPhone: row.user_phone || undefined,
+      userNationalId: row.user_national_id || undefined,
+      companionsCount: Math.max(0, Number(row.companions_count || 0)),
+      seatsReserved: Math.max(1, Number(row.seats_reserved || 1)),
+      totalAmount: Math.max(0, Number(row.total_amount || 0)),
+      paymentMethod: row.payment_method || 'free',
+      trackingCode: row.tracking_code || '',
+      receiptUrl: row.receipt_url || undefined,
+      notes: row.notes || undefined,
+      status: row.status || 'pending_review',
+      adminNote: row.admin_note || undefined,
+      reviewedBy: row.reviewed_by || undefined,
+      reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : undefined,
+      version: Number(row.version || 1),
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
+    };
+  }
+
+  router.get('/recreation/programs', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      const isAdmin = isOrganizationalUserRole(currentUser.role);
+      const sql = isAdmin
+        ? `SELECT * FROM welfare_recreation_programs WHERE deleted_at IS NULL ORDER BY display_order ASC, created_at DESC`
+        : `SELECT * FROM welfare_recreation_programs WHERE deleted_at IS NULL AND is_active = 1 ORDER BY display_order ASC, created_at DESC`;
+      const rows = await selectWithTimeout<any>(sql, [], 3000);
+      res.json((rows || []).map(mapRecreationProgramRow));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/recreation/programs', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      if (!isOrganizationalUserRole(currentUser.role)) {
+        throw AppError.forbidden('فقط مدیران مجاز به ایجاد برنامه تفریحی و گردشگری هستند.');
+      }
+
+      const b = req.body || {};
+      const title = String(b.title || '').trim();
+      const destination = String(b.destination || '').trim();
+      if (!title || !destination) {
+        throw AppError.badRequest('عنوان برنامه و مقصد الزامی است.');
+      }
+
+      const id = generateUUIDv7();
+      const idBuf = toIdBuffer(id);
+      const isFree = Boolean(b.isFree);
+      const feeAmount = isFree ? 0 : Math.max(0, Math.round(Number(b.feeAmount || 0)));
+      const regMethod = isFree
+        ? 'direct_free'
+        : ['direct_free', 'online_gateway', 'bank_receipt', 'both'].includes(b.registrationMethod)
+        ? b.registrationMethod
+        : 'both';
+      const coverImage = b.coverImage ? String(b.coverImage).trim() : '/assets/recreation/default.jpg';
+      const gallery = Array.isArray(b.gallery)
+        ? b.gallery.map((u: any) => String(u).trim()).filter(Boolean)
+        : [coverImage];
+
+      const p = getPool();
+      await p.query(
+        `INSERT INTO welfare_recreation_programs (
+          id, title, program_type, destination, summary, description, schedule_text,
+          start_date, end_date, registration_deadline, capacity, registered_count,
+          is_free, fee_amount, registration_method, payment_instructions, card_number,
+          cover_image, gallery, is_active, display_order, version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        [
+          idBuf,
+          title,
+          String(b.programType || 'تور و اردو').trim(),
+          destination,
+          b.summary ? String(b.summary).trim() : '',
+          b.description ? String(b.description).trim() : '',
+          b.scheduleText ? String(b.scheduleText).trim() : '',
+          b.startDate ? String(b.startDate).trim() : null,
+          b.endDate ? String(b.endDate).trim() : null,
+          b.registrationDeadline ? String(b.registrationDeadline).trim() : null,
+          Math.max(0, Math.floor(Number(b.capacity || 0))),
+          isFree ? 1 : 0,
+          feeAmount,
+          regMethod,
+          b.paymentInstructions ? String(b.paymentInstructions).trim() : null,
+          b.cardNumber ? String(b.cardNumber).trim() : null,
+          coverImage,
+          JSON.stringify(gallery),
+          b.isActive !== false ? 1 : 0,
+          Number(b.displayOrder || 1),
+        ]
+      );
+
+      const fresh = await selectWithTimeout<any>(
+        `SELECT * FROM welfare_recreation_programs WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
+        [idBuf],
+        3000
+      );
+      const mapped = mapRecreationProgramRow(fresh[0]);
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `ایجاد برنامه تفریحی و گردشگری: ${mapped.title}`,
+        severity: 'info',
+      });
+
+      outbox.enqueue('welfare.recreation_updated', { resourceId: mapped.id, program: mapped });
+      res.status(201).json(mapped);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/recreation/programs/:id', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      if (!isOrganizationalUserRole(currentUser.role)) {
+        throw AppError.forbidden('فقط مدیران مجاز به ویرایش برنامه تفریحی و گردشگری هستند.');
+      }
+
+      const idBuf = toIdBuffer(req.params.id);
+      const expectedVersion = extractExpectedVersion(req);
+      const existingRows = await selectWithTimeout<any>(
+        `SELECT * FROM welfare_recreation_programs WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
+        [idBuf],
+        3000
+      );
+      if (!existingRows || existingRows.length === 0) {
+        throw AppError.notFound('برنامه تفریحی و گردشگری');
+      }
+      const prev = mapRecreationProgramRow(existingRows[0]);
+      const b = req.body || {};
+
+      const isFree = b.isFree !== undefined ? Boolean(b.isFree) : prev.isFree;
+      const feeAmount = isFree
+        ? 0
+        : b.feeAmount !== undefined
+        ? Math.max(0, Math.round(Number(b.feeAmount)))
+        : prev.feeAmount;
+      const regMethod = isFree
+        ? 'direct_free'
+        : ['direct_free', 'online_gateway', 'bank_receipt', 'both'].includes(b.registrationMethod)
+        ? b.registrationMethod
+        : prev.registrationMethod;
+      const coverImage =
+        b.coverImage !== undefined
+          ? String(b.coverImage || '/assets/recreation/default.jpg').trim()
+          : prev.coverImage || '/assets/recreation/default.jpg';
+      const gallery =
+        b.gallery !== undefined && Array.isArray(b.gallery)
+          ? b.gallery.map((u: any) => String(u).trim()).filter(Boolean)
+          : prev.gallery || [coverImage];
+
+      const p = getPool();
+      const [upd]: any = await p.query(
+        `UPDATE welfare_recreation_programs
+         SET title = ?, program_type = ?, destination = ?, summary = ?, description = ?, schedule_text = ?,
+             start_date = ?, end_date = ?, registration_deadline = ?, capacity = ?,
+             is_free = ?, fee_amount = ?, registration_method = ?, payment_instructions = ?, card_number = ?,
+             cover_image = ?, gallery = ?, is_active = ?, display_order = ?,
+             version = version + 1, updated_at = NOW(3)
+         WHERE id = ? AND version = ? AND deleted_at IS NULL`,
+        [
+          b.title !== undefined ? String(b.title).trim() : prev.title,
+          b.programType !== undefined ? String(b.programType).trim() : prev.programType,
+          b.destination !== undefined ? String(b.destination).trim() : prev.destination,
+          b.summary !== undefined ? String(b.summary).trim() : prev.summary,
+          b.description !== undefined ? String(b.description).trim() : prev.description,
+          b.scheduleText !== undefined ? String(b.scheduleText).trim() : prev.scheduleText,
+          b.startDate !== undefined ? (b.startDate ? String(b.startDate).trim() : null) : prev.startDate || null,
+          b.endDate !== undefined ? (b.endDate ? String(b.endDate).trim() : null) : prev.endDate || null,
+          b.registrationDeadline !== undefined
+            ? b.registrationDeadline
+              ? String(b.registrationDeadline).trim()
+              : null
+            : prev.registrationDeadline || null,
+          b.capacity !== undefined ? Math.max(0, Math.floor(Number(b.capacity))) : prev.capacity,
+          isFree ? 1 : 0,
+          feeAmount,
+          regMethod,
+          b.paymentInstructions !== undefined
+            ? b.paymentInstructions
+              ? String(b.paymentInstructions).trim()
+              : null
+            : prev.paymentInstructions || null,
+          b.cardNumber !== undefined
+            ? b.cardNumber
+              ? String(b.cardNumber).trim()
+              : null
+            : prev.cardNumber || null,
+          coverImage,
+          JSON.stringify(gallery),
+          b.isActive !== undefined ? (b.isActive ? 1 : 0) : prev.isActive ? 1 : 0,
+          b.displayOrder !== undefined ? Number(b.displayOrder) : prev.displayOrder,
+          idBuf,
+          expectedVersion,
+        ]
+      );
+
+      if (!upd || upd.affectedRows === 0) {
+        throw AppError.conflict(
+          'تداخل همزمانی در ویرایش برنامه تفریحی رخ داده است. لطفاً صفحه را به‌روزرسانی کنید.',
+          'CONCURRENT_MODIFICATION_CONFLICT'
+        );
+      }
+
+      const fresh = await selectWithTimeout<any>(
+        `SELECT * FROM welfare_recreation_programs WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
+        [idBuf],
+        3000
+      );
+      const mapped = mapRecreationProgramRow(fresh[0]);
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `ویرایش برنامه تفریحی و گردشگری: ${mapped.title}`,
+        severity: 'info',
+      });
+
+      outbox.enqueue('welfare.recreation_updated', { resourceId: mapped.id, program: mapped });
+      res.json(mapped);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/recreation/programs/:id', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      if (!isOrganizationalUserRole(currentUser.role)) {
+        throw AppError.forbidden('فقط مدیران مجاز به حذف برنامه تفریحی و گردشگری هستند.');
+      }
+
+      const idBuf = toIdBuffer(req.params.id);
+      const expectedVersion = extractExpectedVersion(req);
+      const p = getPool();
+      const [upd]: any = await p.query(
+        `UPDATE welfare_recreation_programs
+         SET deleted_at = NOW(3), is_active = 0, version = version + 1, updated_at = NOW(3)
+         WHERE id = ? AND version = ? AND deleted_at IS NULL`,
+        [idBuf, expectedVersion]
+      );
+      if (!upd || upd.affectedRows === 0) {
+        const check = await selectWithTimeout<any>(
+          `SELECT id FROM welfare_recreation_programs WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
+          [idBuf],
+          3000
+        );
+        if (!check || check.length === 0) throw AppError.notFound('برنامه تفریحی و گردشگری');
+        throw AppError.conflict(
+          'تداخل همزمانی در حذف برنامه رخ داده است.',
+          'CONCURRENT_MODIFICATION_CONFLICT'
+        );
+      }
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `حذف نرم برنامه تفریحی و گردشگری (${req.params.id})`,
+        severity: 'warning',
+      });
+
+      outbox.enqueue('welfare.recreation_updated', { deletedProgramId: req.params.id });
+      res.json({ success: true, id: req.params.id });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/recreation/registrations', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      const isAdmin = isOrganizationalUserRole(currentUser.role);
+      const rows = isAdmin
+        ? await selectWithTimeout<any>(
+            `SELECT r.*, p.destination, p.schedule_text
+             FROM welfare_recreation_registrations r
+             LEFT JOIN welfare_recreation_programs p ON p.id = r.program_id
+             WHERE r.deleted_at IS NULL
+             ORDER BY r.created_at DESC`,
+            [],
+            4000
+          )
+        : await selectWithTimeout<any>(
+            `SELECT r.*, p.destination, p.schedule_text
+             FROM welfare_recreation_registrations r
+             LEFT JOIN welfare_recreation_programs p ON p.id = r.program_id
+             WHERE r.user_id = ? AND r.deleted_at IS NULL
+             ORDER BY r.created_at DESC`,
+            [toIdBuffer(currentUser.id)],
+            4000
+          );
+      res.json((rows || []).map(mapRecreationRegistrationRow));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/recreation/registrations', idempotencyMiddleware, async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      const { programId, companionsCount, paymentMethod, receiptUrl, notes, phone } = req.body || {};
+
+      if (!programId) {
+        throw AppError.badRequest('انتخاب برنامه تفریحی الزامی است.');
+      }
+
+      const cleanCompanions = Math.max(0, Math.min(10, Math.floor(Number(companionsCount || 0))));
+      const seatsReserved = 1 + cleanCompanions;
+      const programBuf = toIdBuffer(programId);
+      const userBuf = toIdBuffer(currentUser.id);
+      const regId = generateUUIDv7();
+      const trackingCode = `REC-${Date.now().toString().slice(-7)}`;
+
+      const created = await withTx(async (conn) => {
+        const [progRows]: any = await conn.query(
+          `SELECT * FROM welfare_recreation_programs WHERE id = ? AND deleted_at IS NULL FOR UPDATE`,
+          [programBuf]
+        );
+        if (!progRows || progRows.length === 0) {
+          throw AppError.notFound('برنامه تفریحی و گردشگری');
+        }
+        const prog = mapRecreationProgramRow(progRows[0]);
+        if (!prog.isActive) {
+          throw AppError.badRequest('ثبت‌نام این برنامه در حال حاضر غیرفعال است.');
+        }
+
+        const [dupRows]: any = await conn.query(
+          `SELECT id FROM welfare_recreation_registrations
+           WHERE program_id = ? AND user_id = ? AND deleted_at IS NULL AND status IN ('pending_review', 'confirmed')
+           LIMIT 1`,
+          [programBuf, userBuf]
+        );
+        if (dupRows && dupRows.length > 0) {
+          throw AppError.conflict('شما قبلاً در این برنامه تفریحی ثبت‌نام کرده‌اید.');
+        }
+
+        const chosenMethod: 'free' | 'online_gateway' | 'bank_receipt' = prog.isFree
+          ? 'free'
+          : paymentMethod === 'bank_receipt'
+          ? 'bank_receipt'
+          : 'online_gateway';
+
+        if (!prog.isFree && prog.registrationMethod === 'bank_receipt' && chosenMethod !== 'bank_receipt') {
+          throw AppError.badRequest('روش ثبت‌نام این برنامه منحصراً از طریق آپلود فیش واریزی است.');
+        }
+        if (!prog.isFree && prog.registrationMethod === 'online_gateway' && chosenMethod !== 'online_gateway') {
+          throw AppError.badRequest('روش ثبت‌نام این برنامه منحصراً پرداخت آنلاین است.');
+        }
+        if (chosenMethod === 'bank_receipt' && (!receiptUrl || !String(receiptUrl).trim())) {
+          throw AppError.badRequest('بارگذاری تصویر فیش واریزی الزامی است.');
+        }
+
+        const [capUpd]: any = await conn.query(
+          `UPDATE welfare_recreation_programs
+           SET registered_count = registered_count + ?, version = version + 1, updated_at = NOW(3)
+           WHERE id = ? AND deleted_at IS NULL AND is_active = 1 AND (capacity = 0 OR registered_count + ? <= capacity)`,
+          [seatsReserved, programBuf, seatsReserved]
+        );
+        if (!capUpd || capUpd.affectedRows === 0) {
+          throw AppError.conflict(
+            'ظرفیت باقی‌مانده این برنامه برای تعداد نفرات درخواستی شما کافی نیست.'
+          );
+        }
+
+        const totalAmount = prog.isFree ? 0 : prog.feeAmount * seatsReserved;
+        const initialStatus = chosenMethod === 'bank_receipt' ? 'pending_review' : 'confirmed';
+
+        await conn.query(
+          `INSERT INTO welfare_recreation_registrations (
+            id, program_id, program_title, user_id, user_name, user_phone, user_national_id,
+            companions_count, seats_reserved, total_amount, payment_method, tracking_code,
+            receipt_url, notes, status, version
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+          [
+            toIdBuffer(regId),
+            programBuf,
+            prog.title,
+            userBuf,
+            currentUser.fullName,
+            phone ? String(phone).trim() : (currentUser as any).phone || null,
+            currentUser.nationalId || null,
+            cleanCompanions,
+            seatsReserved,
+            totalAmount,
+            chosenMethod,
+            trackingCode,
+            receiptUrl ? String(receiptUrl).trim() : null,
+            notes ? String(notes).trim() : null,
+            initialStatus,
+          ]
+        );
+
+        const [freshReg]: any = await conn.query(
+          `SELECT r.*, p.destination, p.schedule_text
+           FROM welfare_recreation_registrations r
+           LEFT JOIN welfare_recreation_programs p ON p.id = r.program_id
+           WHERE r.id = ? LIMIT 1`,
+          [toIdBuffer(regId)]
+        );
+        return mapRecreationRegistrationRow(freshReg[0]);
+      });
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `ثبت‌نام در برنامه تفریحی «${created.programTitle}» (${seatsReserved} نفر)`,
+        severity: 'info',
+      });
+
+      outbox.enqueue('welfare.recreation_registration_updated', { registration: created });
+      res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/recreation/registrations/:id/status', async (req: Request, res: Response, next) => {
+    try {
+      ensureDatabaseConnection();
+      await ensureDomainTablesAndIndexes();
+      const currentUser = getCurrentUser(req);
+      if (!isOrganizationalUserRole(currentUser.role)) {
+        throw AppError.forbidden('فقط مدیر مجاز به بررسی ثبت‌نام برنامه‌های تفریحی است.');
+      }
+
+      const idBuf = toIdBuffer(req.params.id);
+      const expectedVersion = extractExpectedVersion(req);
+      const { status, adminNote } = req.body || {};
+      if (!['pending_review', 'confirmed', 'rejected', 'cancelled'].includes(status)) {
+        throw AppError.badRequest('وضعیت ثبت‌نام نامعتبر است.');
+      }
+
+      const updated = await withTx(async (conn) => {
+        const [rows]: any = await conn.query(
+          `SELECT * FROM welfare_recreation_registrations WHERE id = ? AND deleted_at IS NULL FOR UPDATE`,
+          [idBuf]
+        );
+        if (!rows || rows.length === 0) {
+          throw AppError.notFound('ثبت‌نام برنامه تفریحی');
+        }
+        const prev = mapRecreationRegistrationRow(rows[0]);
+        if (prev.version !== expectedVersion) {
+          throw AppError.conflict(
+            'تداخل همزمانی در بررسی ثبت‌نام رخ داده است.',
+            'CONCURRENT_MODIFICATION_CONFLICT'
+          );
+        }
+
+        const wasOccupying = prev.status === 'pending_review' || prev.status === 'confirmed';
+        const willOccupy = status === 'pending_review' || status === 'confirmed';
+        const programBuf = toIdBuffer(prev.programId);
+
+        if (wasOccupying && !willOccupy) {
+          await conn.query(
+            `UPDATE welfare_recreation_programs
+             SET registered_count = GREATEST(0, registered_count - ?), version = version + 1, updated_at = NOW(3)
+             WHERE id = ? AND deleted_at IS NULL`,
+            [prev.seatsReserved, programBuf]
+          );
+        } else if (!wasOccupying && willOccupy) {
+          const [capUpd]: any = await conn.query(
+            `UPDATE welfare_recreation_programs
+             SET registered_count = registered_count + ?, version = version + 1, updated_at = NOW(3)
+             WHERE id = ? AND deleted_at IS NULL AND (capacity = 0 OR registered_count + ? <= capacity)`,
+            [prev.seatsReserved, programBuf, prev.seatsReserved]
+          );
+          if (!capUpd || capUpd.affectedRows === 0) {
+            throw AppError.conflict('ظرفیت برنامه برای تایید مجدد این ثبت‌نام کافی نیست.');
+          }
+        }
+
+        const [upd]: any = await conn.query(
+          `UPDATE welfare_recreation_registrations
+           SET status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = NOW(3), version = version + 1, updated_at = NOW(3)
+           WHERE id = ? AND version = ? AND deleted_at IS NULL`,
+          [status, adminNote ? String(adminNote).trim() : null, currentUser.fullName, idBuf, expectedVersion]
+        );
+        if (!upd || upd.affectedRows === 0) {
+          throw AppError.conflict(
+            'تداخل همزمانی در بررسی ثبت‌نام رخ داده است.',
+            'CONCURRENT_MODIFICATION_CONFLICT'
+          );
+        }
+
+        const [fresh]: any = await conn.query(
+          `SELECT r.*, p.destination, p.schedule_text
+           FROM welfare_recreation_registrations r
+           LEFT JOIN welfare_recreation_programs p ON p.id = r.program_id
+           WHERE r.id = ? LIMIT 1`,
+          [idBuf]
+        );
+        return mapRecreationRegistrationRow(fresh[0]);
+      });
+
+      auditChain.appendEntry({
+        eventType: 'CARTABLE_STATUS_CHANGE',
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: currentUser.role,
+        ip: req.ip || '127.0.0.1',
+        details: `تغییر وضعیت ثبت‌نام تفریحی ${updated.userName} به ${status}`,
+        severity: 'info',
+      });
+
+      outbox.enqueue('welfare.recreation_registration_updated', { registration: updated });
+      res.json(updated);
     } catch (err) {
       next(err);
     }
