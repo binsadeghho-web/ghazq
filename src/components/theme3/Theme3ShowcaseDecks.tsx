@@ -86,7 +86,11 @@ export const Theme3ShowcaseDeck: React.FC<Theme3ShowcaseDeckProps> = ({
 
       <div
         className={`grid grid-cols-1 md:grid-cols-2 ${
-          cardsPerPageDesktop >= 4 ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-3'
+          cardsPerPageDesktop <= 2
+            ? 'lg:grid-cols-2'
+            : cardsPerPageDesktop >= 4
+            ? 'lg:grid-cols-3 xl:grid-cols-4'
+            : 'lg:grid-cols-3'
         } gap-4`}
       >
         {visibleSlides.map((slide, sIdx) => {

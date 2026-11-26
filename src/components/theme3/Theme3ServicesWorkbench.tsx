@@ -60,6 +60,7 @@ interface Theme3ServicesWorkbenchProps {
   feedTabs: Theme3FeedTabItem[];
   resolvedFeedTab: MobileServiceListTabId;
   onSelectTab: (tab: MobileServiceListTabId) => void;
+  showActiveWorkshopsSpotlight?: boolean;
   combinedWorkshopsCount: number;
   activeWorkshops: any[];
   activeWorkshopCourses: Course[];
@@ -94,6 +95,7 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
   feedTabs,
   resolvedFeedTab,
   onSelectTab,
+  showActiveWorkshopsSpotlight = true,
   combinedWorkshopsCount,
   activeWorkshops,
   activeWorkshopCourses,
@@ -124,6 +126,8 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
 }) => {
   if (feedTabs.length === 0) return null;
 
+  const showSpotlight = showActiveWorkshopsSpotlight && combinedWorkshopsCount > 0;
+
   const tabAccentColor: Record<string, string> = {
     courses: 'text-cyan-700',
     counseling: 'text-rose-600',
@@ -142,7 +146,7 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
         <div
           className={`${
-            combinedWorkshopsCount > 0 ? 'lg:col-span-7' : 'lg:col-span-12'
+            showSpotlight ? 'lg:col-span-7' : 'lg:col-span-12'
           } relative overflow-hidden rounded-[22px] bg-gradient-to-l from-[#071E17] via-[#0C3025] to-[#134434] text-white px-5 py-4 border border-[#F3D078]/30 flex items-center justify-between gap-3 shadow-sm`}
         >
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 luxury-lattice-bg opacity-45" />
@@ -162,7 +166,7 @@ export const Theme3ServicesWorkbench: React.FC<Theme3ServicesWorkbenchProps> = (
           </span>
         </div>
 
-        {combinedWorkshopsCount > 0 && (
+        {showSpotlight && (
           <motion.button
             type="button"
             whileHover={{ y: -2 }}

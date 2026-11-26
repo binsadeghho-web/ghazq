@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import {
   CrextioDashboardConfig,
   CrextioMobileConfig,
+  CrextioTheme3Config,
   MizanDashboardConfig,
   DesignThemeType,
   MobileSectionId,
@@ -60,6 +61,22 @@ export const CANONICAL_MOBILE_SERVICES_LIST_ORDER: MobileServiceListTabId[] = [
   'products',
   'cartable',
   'synergy',
+];
+
+export const CANONICAL_THEME3_QUICK_DOCK_ORDER: string[] = [
+  'People',
+  'Courses',
+  'CounselingGeneral',
+  'SpecializedCounseling',
+  'Rulings',
+  'Research',
+  'Welfare',
+  'Products',
+  'Synergy',
+  'Finance',
+  'Alumni',
+  'Users',
+  'Admin',
 ];
 
 export function reconcileMobileOrder<T extends string>(saved: T[] | undefined, canonical: readonly T[]): T[] {
@@ -147,6 +164,126 @@ export function resolveMobileConfig(
     servicesListOrder: reconcileMobileOrder(merged.servicesListOrder, CANONICAL_MOBILE_SERVICES_LIST_ORDER),
     hiddenServicesListItems: merged.hiddenServicesListItems || {},
     mobileSectionOrder: reconcileMobileOrder(merged.mobileSectionOrder, CANONICAL_MOBILE_SECTION_ORDER),
+  };
+}
+
+export function resolveTheme3Config(
+  incoming?: Partial<CrextioTheme3Config>,
+  prev?: Partial<CrextioTheme3Config>
+): Required<CrextioTheme3Config> {
+  const base = (DEFAULT_CREXTIO_CONFIG.theme3Config || {}) as Required<CrextioTheme3Config>;
+  const merged: CrextioTheme3Config = {
+    ...base,
+    ...(prev || {}),
+    ...(incoming || {}),
+    hiddenShowcases: {
+      ...(base.hiddenShowcases || {}),
+      ...(prev?.hiddenShowcases || {}),
+      ...(incoming?.hiddenShowcases || {}),
+    },
+    showcaseOverrides: {
+      ...(base.showcaseOverrides || {}),
+      ...(prev?.showcaseOverrides || {}),
+      ...(incoming?.showcaseOverrides || {}),
+    },
+    detailedShowcaseEnabled: {
+      ...(base.detailedShowcaseEnabled || {}),
+      ...(prev?.detailedShowcaseEnabled || {}),
+      ...(incoming?.detailedShowcaseEnabled || {}),
+    },
+    detailedShowcaseOverrides: {
+      ...(base.detailedShowcaseOverrides || {}),
+      ...(prev?.detailedShowcaseOverrides || {}),
+      ...(incoming?.detailedShowcaseOverrides || {}),
+    },
+    hiddenServicesListItems: {
+      ...(base.hiddenServicesListItems || {}),
+      ...(prev?.hiddenServicesListItems || {}),
+      ...(incoming?.hiddenServicesListItems || {}),
+    },
+    hiddenQuickDockItems: {
+      ...(base.hiddenQuickDockItems || {}),
+      ...(prev?.hiddenQuickDockItems || {}),
+      ...(incoming?.hiddenQuickDockItems || {}),
+    },
+    quickDockLabelOverrides: {
+      ...(base.quickDockLabelOverrides || {}),
+      ...(prev?.quickDockLabelOverrides || {}),
+      ...(incoming?.quickDockLabelOverrides || {}),
+    },
+    servicesListLabelOverrides: {
+      ...(base.servicesListLabelOverrides || {}),
+      ...(prev?.servicesListLabelOverrides || {}),
+      ...(incoming?.servicesListLabelOverrides || {}),
+    },
+  };
+
+  const customCards =
+    incoming?.customShowcaseCards !== undefined
+      ? incoming.customShowcaseCards
+      : prev?.customShowcaseCards !== undefined
+      ? prev.customShowcaseCards
+      : base.customShowcaseCards || [];
+
+  const quickButtons =
+    incoming?.heroQuickButtons !== undefined
+      ? incoming.heroQuickButtons
+      : prev?.heroQuickButtons !== undefined
+      ? prev.heroQuickButtons
+      : base.heroQuickButtons || [];
+
+  return {
+    showTopNavBar: merged.showTopNavBar !== false,
+    showHeroBanner: merged.showHeroBanner !== false,
+    showWelcomeQuickButtons: merged.showWelcomeQuickButtons !== false,
+    showHeroStats: merged.showHeroStats !== false,
+    showHeroPortrait: merged.showHeroPortrait !== false,
+    heroTitleOverride: merged.heroTitleOverride || '',
+    heroSchemeLabelOverride: merged.heroSchemeLabelOverride || '',
+    heroPortraitOverride: merged.heroPortraitOverride || '',
+    heroQuickButtons: Array.isArray(quickButtons) ? quickButtons : [],
+    showQuickDock: merged.showQuickDock !== false,
+    quickDockTitle: merged.quickDockTitle || 'درگاه‌های دسترسی سریع',
+    showQuickDockMoreButton: merged.showQuickDockMoreButton !== false,
+    quickDockOrder: reconcileMobileOrder(merged.quickDockOrder, CANONICAL_THEME3_QUICK_DOCK_ORDER),
+    hiddenQuickDockItems: merged.hiddenQuickDockItems || {},
+    quickDockLabelOverrides: merged.quickDockLabelOverrides || {},
+    showStatusLedger: merged.showStatusLedger !== false,
+    showLedgerBanner: merged.showLedgerBanner !== false,
+    showLedgerCounters: merged.showLedgerCounters !== false,
+    showLedgerCalendar: merged.showLedgerCalendar !== false,
+    showHonorsShowcase: merged.showHonorsShowcase !== false,
+    separateHonorsShowcase: merged.separateHonorsShowcase !== false,
+    honorsShowcaseTitle: merged.honorsShowcaseTitle || 'ویترین انتصاب و افتخارات',
+    honorsCardsPerRow: merged.honorsCardsPerRow === 2 || merged.honorsCardsPerRow === 4 ? merged.honorsCardsPerRow : 3,
+    showServicesShowcase: merged.showServicesShowcase !== false,
+    servicesShowcaseTitle: merged.servicesShowcaseTitle || 'ویترین خدمات',
+    servicesCardsPerRow: merged.servicesCardsPerRow === 2 || merged.servicesCardsPerRow === 3 ? merged.servicesCardsPerRow : 4,
+    showcaseMode: merged.showcaseMode === 'detailed' ? 'detailed' : 'simple',
+    showcaseOrder: reconcileMobileOrder(merged.showcaseOrder, CANONICAL_MOBILE_SHOWCASE_ORDER),
+    hiddenShowcases: merged.hiddenShowcases || {},
+    showcaseOverrides: merged.showcaseOverrides || {},
+    detailedShowcaseOrder: reconcileMobileOrder(
+      merged.detailedShowcaseOrder,
+      CANONICAL_MOBILE_DETAILED_SHOWCASE_ORDER
+    ),
+    detailedShowcaseEnabled: merged.detailedShowcaseEnabled || {},
+    detailedShowcaseOverrides: merged.detailedShowcaseOverrides || {},
+    customShowcaseCards: Array.isArray(customCards) ? customCards : [],
+    showServicesList: merged.showServicesList !== false,
+    servicesListTitle: merged.servicesListTitle || 'فهرست خدمات',
+    showActiveWorkshopsSpotlight: merged.showActiveWorkshopsSpotlight !== false,
+    servicesListOrder: reconcileMobileOrder(merged.servicesListOrder, CANONICAL_MOBILE_SERVICES_LIST_ORDER),
+    hiddenServicesListItems: merged.hiddenServicesListItems || {},
+    servicesListLabelOverrides: merged.servicesListLabelOverrides || {},
+    mobileSectionOrder: reconcileMobileOrder(
+      merged.theme3SectionOrder ?? merged.mobileSectionOrder,
+      CANONICAL_MOBILE_SECTION_ORDER
+    ),
+    theme3SectionOrder: reconcileMobileOrder(
+      merged.theme3SectionOrder ?? merged.mobileSectionOrder,
+      CANONICAL_MOBILE_SECTION_ORDER
+    ),
   };
 }
 
@@ -287,6 +424,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ...(incoming.navigationConfig || {}),
         },
         mobileConfig: resolveMobileConfig(incoming.mobileConfig, prev.mobileConfig),
+        theme3Config: resolveTheme3Config(incoming.theme3Config, prev.theme3Config),
         dashboardSectionOrder: reconciledOrder,
         showResearchPromoShowcase:
           incoming.showResearchPromoShowcase !== undefined
@@ -373,6 +511,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ? { ...(prev.navigationConfig || {}), ...updates.navigationConfig }
           : prev.navigationConfig,
       mobileConfig: resolveMobileConfig(updates.mobileConfig, prev.mobileConfig),
+      theme3Config: resolveTheme3Config(updates.theme3Config, prev.theme3Config),
       dashboardSectionOrder: reconcileDashboardSectionOrder(updates.dashboardSectionOrder ?? prev.dashboardSectionOrder),
     };
     crextioStateRef.current = next;

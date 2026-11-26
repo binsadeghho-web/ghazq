@@ -456,6 +456,9 @@ export interface CrextioDashboardConfig {
 
   // تنظیمات اختصاصی نسخه موبایل داشبورد (ذخیره دائم در system_settings)
   mobileConfig?: CrextioMobileConfig;
+
+  // تنظیمات کاملاً مستقل تم سوم (نمای لپ‌تاپ موبایل‌محور - ذخیره دائم در system_settings)
+  theme3Config?: CrextioTheme3Config;
 }
 
 export type MobileSectionId =
@@ -553,6 +556,34 @@ export interface CrextioMobileConfig {
   servicesListOrder?: MobileServiceListTabId[];
   hiddenServicesListItems?: Record<string, boolean>;
   mobileSectionOrder?: MobileSectionId[];
+}
+
+export interface Theme3QuickButtonConfig {
+  id: string;
+  label: string;
+  targetNav: string;
+  visible?: boolean;
+}
+
+export interface CrextioTheme3Config extends CrextioMobileConfig {
+  showTopNavBar?: boolean;
+  heroTitleOverride?: string;
+  heroSchemeLabelOverride?: string;
+  heroPortraitOverride?: string;
+  heroQuickButtons?: Theme3QuickButtonConfig[];
+  quickDockTitle?: string;
+  showQuickDockMoreButton?: boolean;
+  quickDockOrder?: string[];
+  hiddenQuickDockItems?: Record<string, boolean>;
+  quickDockLabelOverrides?: Record<string, string>;
+  showLedgerBanner?: boolean;
+  showLedgerCounters?: boolean;
+  showLedgerCalendar?: boolean;
+  honorsCardsPerRow?: 2 | 3 | 4;
+  servicesCardsPerRow?: 2 | 3 | 4;
+  showActiveWorkshopsSpotlight?: boolean;
+  servicesListLabelOverrides?: Record<string, string>;
+  theme3SectionOrder?: MobileSectionId[];
 }
 
 export interface CustomNavItemConfig {

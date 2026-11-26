@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
-import { resolveMobileConfig } from '../../context/ThemeContext';
+import { resolveTheme3Config } from '../../context/ThemeContext';
 import { api } from '../../services/apiClient';
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { calculateProfileCompletion } from '../../utils/profileCompletion';
 import { formatWelcomeBannerTitle } from '../../utils/welcomeBanner';
 import { DEFAULT_SHOWCASE_IMAGES, resolveShowcaseImageUrl, resolveHonorImageUrl } from '../../data/showcaseImages';
-import { DEFAULT_HERO_STATS, DEFAULT_CREXTIO_CONFIG } from '../../data/mockData';
-import { applyNavigationCustomization, getResolvedNavigationConfig } from '../../utils/navigationConfig';
+import { DEFAULT_HERO_STATS } from '../../data/mockData';
 import { canViewSection, useRbacPolicies } from '../../utils/rbacPolicy';
 import {
   AppSectionId,
@@ -17,7 +16,8 @@ import {
   MobileServiceListTabId,
   MobileServiceShowcaseId,
 } from '../../types';
-import { Theme2StudioDrawer, Theme2StudioTab } from '../crextio/Theme2StudioDrawer';
+import { Theme3StudioDrawer } from './Theme3StudioDrawer';
+import type { Theme3StudioTab } from './Theme3StudioPanel';
 import { Theme3HeroAndLedger } from './Theme3HeroAndLedger';
 import { Theme3ShowcaseDeck, Theme3VisualSlide } from './Theme3ShowcaseDecks';
 import { Theme3ServicesWorkbench, Theme3FeedTabItem } from './Theme3ServicesWorkbench';
@@ -57,6 +57,7 @@ interface Theme3DesktopDashboardProps {
   isAlumni: boolean;
   isAlumniPreview: boolean;
   onToggleAlumniPreview: () => void;
+  openStudioSignal?: { nonce: number; tab?: Theme3StudioTab } | null;
 }
 
 const FALLBACK_HONORS: HonorAppointmentItem[] = [
@@ -103,6 +104,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
   isAlumni,
   isAlumniPreview,
   onToggleAlumniPreview,
+  openStudioSignal,
 }) => {
   const {
     currentUser,
@@ -137,8 +139,15 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     showEventsCalendarWidget: true,
   });
   const [isStudioOpen, setIsStudioOpen] = useState(false);
-  const [studioInitialTab, setStudioInitialTab] = useState<Theme2StudioTab>('hero_quick');
+  const [studioInitialTab, setStudioInitialTab] = useState<Theme3StudioTab>('layout');
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+
+  useEffect(() => {
+    if (openStudioSignal && openStudioSignal.nonce > 0 && isAdmin) {
+      if (openStudioSignal.tab) setStudioInitialTab(openStudioSignal.tab);
+      setIsStudioOpen(true);
+    }
+  }, [openStudioSignal, isAdmin]);
 
   useEffect(() => {
     let active = true;
@@ -175,19 +184,20 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     };
   }, []);
 
-  const mobileConfig = useMemo(
-    () => resolveMobileConfig(crextioConfig.mobileConfig),
-    [crextioConfig.mobileConfig]
+  const t3 = useMemo(
+    () => resolveTheme3Config(crextioConfig.theme3Config),
+    [crextioConfig.theme3Config]
   );
 
   const completionPct = calculateProfileCompletion(currentUser).percentage;
   const welcomeTitle = formatWelcomeBannerTitle(
-    crextioConfig.heroTitle,
+    t3.heroTitleOverride?.trim() ? t3.heroTitleOverride : crextioConfig.heroTitle,
     crextioConfig.heroGreetingPrefix,
     currentUser
   );
 
   const heroPortraitSrc =
+    (t3.heroPortraitOverride?.trim() ? t3.heroPortraitOverride : '') ||
     currentUser?.profilePictureUrl ||
     crextioConfig.showcaseImageOverrides?.hero_portrait ||
     resolveShowcaseImageUrl('hero_portrait', crextioConfig.showcaseImageOverrides);
@@ -196,11 +206,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     .filter(s => s.isVisible !== false)
     .slice(0, 3);
 
-  const allConfiguredQuickBtns =
-    crextioConfig.heroQuickButtons && crextioConfig.heroQuickButtons.length > 0
-      ? crextioConfig.heroQuickButtons
-      : DEFAULT_CREXTIO_CONFIG.heroQuickButtons || [];
-  const quickHeroBtns = allConfiguredQuickBtns
+  const quickHeroBtns = (t3.heroQuickButtons || [])
     .filter(b => {
       if (
         isAlumni &&
@@ -217,58 +223,68 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     .slice(0, 2);
 
   const effectiveStaff = !isAlumni;
-  const resolvedNav = getResolvedNavigationConfig(crextioConfig.navigationConfig);
 
-  const launcherCandidates: Array<{
-    id: string;
-    sectionId: AppSectionId;
-    label: string;
-    icon: any;
-    accentColor: string;
-  }> = [
-    { id: 'People', sectionId: 'cartable', label: 'کارتابل', icon: Inbox, accentColor: 'text-emerald-800' },
-    { id: 'Courses', sectionId: 'courses', label: 'دوره‌ها', icon: GraduationCap, accentColor: 'text-teal-800' },
+  const launcherCandidatesMap: Record<
+    string,
     {
+      id: string;
+      sectionId: AppSectionId;
+      label: string;
+      icon: any;
+      accentColor: string;
+    }
+  > = {
+    People: { id: 'People', sectionId: 'cartable', label: 'کارتابل', icon: Inbox, accentColor: 'text-emerald-800' },
+    Courses: { id: 'Courses', sectionId: 'courses', label: 'دوره‌ها', icon: GraduationCap, accentColor: 'text-teal-800' },
+    CounselingGeneral: {
       id: 'CounselingGeneral',
       sectionId: 'counseling',
       label: 'مشاوره و سلامت',
       icon: HeartHandshake,
       accentColor: 'text-rose-700',
     },
-    {
+    SpecializedCounseling: {
       id: 'SpecializedCounseling',
       sectionId: 'specialized_counseling',
       label: 'مشاوره قضا',
       icon: Compass,
       accentColor: 'text-amber-700',
     },
-    { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء', icon: Scale, accentColor: 'text-amber-800' },
-    { id: 'Research', sectionId: 'research', label: 'پژوهش', icon: BookOpen, accentColor: 'text-emerald-700' },
-    { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات', icon: Gift, accentColor: 'text-teal-700' },
-    { id: 'Products', sectionId: 'products', label: 'انتشارات', icon: BookMarked, accentColor: 'text-indigo-700' },
-    { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی', icon: Users2, accentColor: 'text-violet-700' },
-    { id: 'Finance', sectionId: 'finance', label: 'امور مالی', icon: Wallet, accentColor: 'text-emerald-800' },
-    { id: 'Alumni', sectionId: 'alumni', label: 'دانش‌آموختگان', icon: Award, accentColor: 'text-teal-800' },
-    { id: 'Users', sectionId: 'users', label: 'کاربران', icon: Users, accentColor: 'text-indigo-800' },
-    { id: 'Admin', sectionId: 'admin', label: 'مدیریت', icon: ShieldCheck, accentColor: 'text-stone-800' },
-  ];
+    Rulings: { id: 'Rulings', sectionId: 'rulings', label: 'تالار آراء', icon: Scale, accentColor: 'text-amber-800' },
+    Research: { id: 'Research', sectionId: 'research', label: 'پژوهش', icon: BookOpen, accentColor: 'text-emerald-700' },
+    Welfare: { id: 'Welfare', sectionId: 'welfare', label: 'رفاهیات', icon: Gift, accentColor: 'text-teal-700' },
+    Products: { id: 'Products', sectionId: 'products', label: 'انتشارات', icon: BookMarked, accentColor: 'text-indigo-700' },
+    Synergy: { id: 'Synergy', sectionId: 'synergy', label: 'هم‌افزایی', icon: Users2, accentColor: 'text-violet-700' },
+    Finance: { id: 'Finance', sectionId: 'finance', label: 'امور مالی', icon: Wallet, accentColor: 'text-emerald-800' },
+    Alumni: { id: 'Alumni', sectionId: 'alumni', label: 'دانش‌آموختگان', icon: Award, accentColor: 'text-teal-800' },
+    Users: { id: 'Users', sectionId: 'users', label: 'کاربران', icon: Users, accentColor: 'text-indigo-800' },
+    Admin: { id: 'Admin', sectionId: 'admin', label: 'مدیریت', icon: ShieldCheck, accentColor: 'text-stone-800' },
+  };
 
-  const permittedDock = applyNavigationCustomization(
-    launcherCandidates,
-    resolvedNav.servicesMenuItems,
-    { hideInvisible: true }
-  ).filter(item => {
-    if (
-      !effectiveStaff &&
-      (item.sectionId === 'alumni' ||
-        item.sectionId === 'users' ||
-        item.sectionId === 'admin' ||
-        item.sectionId === 'finance')
-    ) {
-      return false;
-    }
-    return canViewSection(currentUser, item.sectionId, rolePolicies);
-  });
+  const permittedDock = t3.quickDockOrder
+    .map(id => {
+      const base = launcherCandidatesMap[id];
+      if (!base) return null;
+      if (t3.hiddenQuickDockItems?.[id]) return null;
+      const customLabel = t3.quickDockLabelOverrides?.[id]?.trim();
+      return {
+        ...base,
+        label: customLabel || base.label,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .filter(item => {
+      if (
+        !effectiveStaff &&
+        (item.sectionId === 'alumni' ||
+          item.sectionId === 'users' ||
+          item.sectionId === 'admin' ||
+          item.sectionId === 'finance')
+      ) {
+        return false;
+      }
+      return canViewSection(currentUser, item.sectionId, rolePolicies);
+    });
 
   const myCartableActive = cartableRequests.filter(
     r =>
@@ -288,7 +304,6 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
   const totalActiveRequests = myCartableActive + myCounselingActive + myWelfareActive;
   const myEnrolledCourses = courses.filter(c => c.isEnrolled).length;
 
-  const hiddenMap = crextioConfig.hiddenDashboardSections || {};
   const honorsList =
     crextioConfig.honorsItems && crextioConfig.honorsItems.length > 0
       ? crextioConfig.honorsItems
@@ -342,11 +357,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
   };
 
   const honorDeckSlides = useMemo<Theme3VisualSlide[]>(() => {
-    if (
-      !mobileConfig.showHonorsShowcase ||
-      crextioConfig.showHonorsShowcase === false ||
-      hiddenMap.honors_showcase
-    ) {
+    if (!t3.showHonorsShowcase) {
       return [];
     }
     return honorsList.slice(0, 6).map((honor, hIdx) => ({
@@ -361,11 +372,11 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
       icon: Award,
       onPress: () => handleHonorCta(honor),
     }));
-  }, [mobileConfig.showHonorsShowcase, crextioConfig.showHonorsShowcase, hiddenMap.honors_showcase, honorsList]);
+  }, [t3.showHonorsShowcase, honorsList]);
 
   const serviceDeckSlides = useMemo<Theme3VisualSlide[]>(() => {
     const orderedSlides: Theme3VisualSlide[] = [];
-    if (!mobileConfig.separateHonorsShowcase && honorDeckSlides.length > 0) {
+    if (!t3.separateHonorsShowcase && honorDeckSlides.length > 0) {
       orderedSlides.push(...honorDeckSlides);
     }
 
@@ -385,7 +396,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
       };
     };
 
-    if (mobileConfig.showcaseMode === 'detailed') {
+    if (t3.showcaseMode === 'detailed') {
       const welfareMods = welfarePortalConfig?.modulesConfig;
       const isWelfareSlideEnabled = (
         modKey:
@@ -399,15 +410,12 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
       ): boolean => {
         const modCfg = welfareMods?.[modKey];
         if (modCfg && modCfg.enabled === false) return false;
-        const explicitDetailed = mobileConfig.detailedShowcaseEnabled?.[detailedId];
-        if (modCfg?.showInMobileShowcase === true) return true;
-        return explicitDetailed === true;
+        return t3.detailedShowcaseEnabled?.[detailedId] === true;
       };
 
       const detailedMap: Record<MobileDetailedShowcaseId, Theme3VisualSlide | null> = {
         counseling_workshops:
-          mobileConfig.detailedShowcaseEnabled?.counseling_workshops !== false &&
-          crextioConfig.showCounselingGeneralShowcase !== false
+          t3.detailedShowcaseEnabled?.counseling_workshops !== false
             ? {
                 id: 'detailed_counseling_workshops',
                 kicker: `کارگاه‌های روانشناختی · ${toPersianNumbers(combinedWorkshopsCount)} کارگاه فعال`,
@@ -428,8 +436,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               }
             : null,
         counseling_announcements:
-          mobileConfig.detailedShowcaseEnabled?.counseling_announcements !== false &&
-          crextioConfig.showCounselingGeneralShowcase !== false
+          t3.detailedShowcaseEnabled?.counseling_announcements !== false
             ? {
                 id: 'detailed_counseling_announcements',
                 kicker: `اطلاعیه‌های روانشناختی · ${toPersianNumbers(activeAnnouncements.length)} فراخوان`,
@@ -448,8 +455,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               }
             : null,
         counseling_booking:
-          mobileConfig.detailedShowcaseEnabled?.counseling_booking !== false &&
-          crextioConfig.showCounselingGeneralShowcase !== false
+          t3.detailedShowcaseEnabled?.counseling_booking !== false
             ? {
                 id: 'detailed_counseling_booking',
                 kicker: 'کلینیک سلامت روان و خانواده',
@@ -470,8 +476,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               }
             : null,
         counseling_career:
-          mobileConfig.detailedShowcaseEnabled?.counseling_career !== false &&
-          crextioConfig.showCounselingPromo !== false
+          t3.detailedShowcaseEnabled?.counseling_career !== false
             ? {
                 id: 'detailed_counseling_career',
                 kicker: 'هدایت شغلی و ارتقای قضایی',
@@ -486,8 +491,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               }
             : null,
         courses_active:
-          mobileConfig.detailedShowcaseEnabled?.courses_active !== false &&
-          crextioConfig.showCourseShowcase !== false
+          t3.detailedShowcaseEnabled?.courses_active !== false
             ? {
                 id: 'detailed_courses_active',
                 kicker: `آموزش عالی · ${toPersianNumbers(courses.length)} دوره`,
@@ -502,8 +506,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               }
             : null,
         rulings_featured:
-          mobileConfig.detailedShowcaseEnabled?.rulings_featured !== false &&
-          crextioConfig.showRulingsShowcase !== false
+          t3.detailedShowcaseEnabled?.rulings_featured !== false
             ? {
                 id: 'detailed_rulings_featured',
                 kicker: `مباحثات قضایی · ${toPersianNumbers(rulings.length)} دادنامه`,
@@ -518,8 +521,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
               }
             : null,
         research_guidance:
-          mobileConfig.detailedShowcaseEnabled?.research_guidance !== false &&
-          crextioConfig.showResearchPromoShowcase !== false
+          t3.detailedShowcaseEnabled?.research_guidance !== false
             ? {
                 id: 'detailed_research_guidance',
                 kicker: `معاونت پژوهش · ${toPersianNumbers(researchMentorships.length)} پرونده`,
@@ -629,8 +631,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
             })()
           : null,
         products_featured:
-          mobileConfig.detailedShowcaseEnabled?.products_featured !== false &&
-          crextioConfig.showProductsMiniPromo !== false
+          t3.detailedShowcaseEnabled?.products_featured !== false
             ? {
                 id: 'detailed_products_featured',
                 kicker: `نشر و رسانه علمی · ${toPersianNumbers(products.length)} اثر`,
@@ -646,144 +647,122 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
             : null,
       };
 
-      mobileConfig.detailedShowcaseOrder.forEach(dId => {
+      t3.detailedShowcaseOrder.forEach(dId => {
         const baseSlide = detailedMap[dId];
         if (!baseSlide) return;
-        orderedSlides.push(applySlideOverride(baseSlide, mobileConfig.detailedShowcaseOverrides?.[dId]));
+        orderedSlides.push(applySlideOverride(baseSlide, t3.detailedShowcaseOverrides?.[dId]));
       });
     } else {
       const mapById: Record<MobileServiceShowcaseId, Theme3VisualSlide | null> = {
-        counseling:
-          crextioConfig.showCounselingGeneralShowcase !== false &&
-          !hiddenMap.counseling_general_showcase
-            ? {
-                id: 'counseling_deck',
-                kicker: `خدمات روانشناختی و مشاوره · ${toPersianNumbers(combinedWorkshopsCount)} کارگاه`,
-                title: crextioConfig.counselingGeneralShowcaseTitle || 'خدمات روانشناختی و مشاوره',
-                subtitle:
-                  activeWorkshops[0]?.title ||
-                  'مشاوره فردی، تحکیم خانواده، ازدواج، کودک و سنجش‌های روان‌شناختی',
-                metaText: `${toPersianNumbers(generalConsultants.length)} روان‌شناس و مشاور فعال`,
-                ctaLabel: 'رزرو نوبت',
-                imageUrl: resolveShowcaseImageUrl(
-                  'counseling_general_showcase',
-                  crextioConfig.showcaseImageOverrides
-                ),
-                accentGradient: 'from-[#1D1528] via-[#2B1F3A] to-[#0E2921]',
-                icon: HeartHandshake,
-                onPress: () =>
-                  onBookGeneralCounseling
-                    ? onBookGeneralCounseling()
-                    : navigateDeep('CounselingGeneral', 'booking'),
-              }
-            : null,
-        counseling_specialized:
-          crextioConfig.showCounselingPromo !== false && !hiddenMap.counseling_promo
-            ? {
-                id: 'specialized_counseling_deck',
-                kicker: 'هدایت شغلی و ارتقای قضایی',
-                title: crextioConfig.counselingPromoTitle || 'مشاوره شغلی قضا',
-                subtitle: 'گفت‌وگوی محرمانه با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار',
-                metaText: `${toPersianNumbers(specializedConsultants.length)} استاد و قاضی پیشکسوت`,
-                ctaLabel: 'دریافت مشاوره',
-                imageUrl: resolveShowcaseImageUrl(
-                  'counseling_promo',
-                  crextioConfig.showcaseImageOverrides
-                ),
-                accentGradient: 'from-[#182230] via-[#243247] to-[#0B241B]',
-                icon: Compass,
-                onPress: () => navigateDeep('SpecializedCounseling'),
-              }
-            : null,
-        courses:
-          crextioConfig.showCourseShowcase !== false && !hiddenMap.course_showcase
-            ? {
-                id: 'courses_deck',
-                kicker: `آموزش عالی و کارگاه‌ها · ${toPersianNumbers(courses.length)} دوره`,
-                title: crextioConfig.courseShowcaseTitle || 'دوره‌ها و نشست‌های تخصصی فقه و قضا',
-                subtitle: activeCourses[0]?.title || 'کارگاه‌های مهارت‌افزایی و آرشیو صوتی جلسات',
-                metaText: `${toPersianNumbers(myEnrolledCourses)} دوره ثبت‌نامی شما`,
-                ctaLabel: 'گالری دوره‌ها',
-                imageUrl: resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides),
-                accentGradient: 'from-[#082224] via-[#0E3A3D] to-[#071E17]',
-                icon: GraduationCap,
-                onPress: () => navigateDeep('Courses'),
-              }
-            : null,
-        rulings:
-          crextioConfig.showRulingsShowcase !== false && !hiddenMap.rulings_showcase
-            ? {
-                id: 'rulings_deck',
-                kicker: `مباحثات قضایی · ${toPersianNumbers(rulings.length)} دادنامه`,
-                title: crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی',
-                subtitle:
-                  featuredRulings[0]?.title ||
-                  'بررسی استدلال‌های حقوقی و تبادل نظر قضات و نخبگان بر روی آراء منتخب',
-                metaText: 'نقد تحلیلی دیوان عالی و تجدیدنظر',
-                ctaLabel: 'ورود به تالار',
-                imageUrl: resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides),
-                accentGradient: 'from-[#1F180D] via-[#342611] to-[#142921]',
-                icon: Scale,
-                onPress: () => navigateDeep('Rulings'),
-              }
-            : null,
-        research:
-          crextioConfig.showResearchPromoShowcase !== false && !hiddenMap.research_promo
-            ? {
-                id: 'research_deck',
-                kicker: `معاونت پژوهش · ${toPersianNumbers(researchMentorships.length)} پرونده`,
-                title: crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و مقالات',
-                subtitle: 'اساتید معین طراز اول، گرنت پژوهشی و تسهیل اسکان مطالعاتی در قم',
-                metaText: 'حمایت تخصصی تا مرحله دفاع',
-                ctaLabel: 'میز پژوهش',
-                imageUrl: resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides),
-                accentGradient: 'from-[#0A1F2C] via-[#123344] to-[#071E17]',
-                icon: BookOpen,
-                onPress: () => navigateDeep('Research'),
-              }
-            : null,
-        welfare:
-          crextioConfig.showWelfareShowcase !== false && !hiddenMap.welfare_showcase
-            ? {
-                id: 'welfare_deck',
-                kicker: 'صندوق حامی و تعاونی مصرف',
-                title: crextioConfig.welfareShowcaseTitle || 'تسهیلات قرض‌الحسنه، اقامتگاه‌ها و رفاهیات',
-                subtitle: 'تسهیلات اضطراری، صندوق قرض‌الحسنه، اسکان، اقلام مصرفی و فروش اقساطی',
-                metaText: 'تسهیلات ویژه دانش‌آموختگان',
-                ctaLabel: 'میز رفاهیات',
-                imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
-                accentGradient: 'from-[#0C2621] via-[#133C33] to-[#071E17]',
-                icon: Gift,
-                onPress: () => navigateDeep('Welfare'),
-              }
-            : null,
-        products:
-          crextioConfig.showProductsMiniPromo !== false && !hiddenMap.books_showcase
-            ? {
-                id: 'products_deck',
-                kicker: `نشر و رسانه علمی · ${toPersianNumbers(products.length)} اثر`,
-                title: crextioConfig.booksShowcaseTitle || 'کتاب‌ها، نشست‌ها و درس‌گفتارهای چندرسانه‌ای',
-                subtitle: featuredProducts[0]?.title || 'موسوعه‌های فقهی، آثار مرجع و فایل‌های صوتی جلسات',
-                metaText: 'دسترسی آنی به فایل و سفارش فیزیکی',
-                ctaLabel: 'نمایشگاه آثار',
-                imageUrl: resolveShowcaseImageUrl('books_showcase', crextioConfig.showcaseImageOverrides),
-                accentGradient: 'from-[#161B30] via-[#212947] to-[#0A221A]',
-                icon: BookMarked,
-                onPress: () => navigateDeep('Products'),
-              }
-            : null,
+        counseling: {
+          id: 'counseling_deck',
+          kicker: `خدمات روانشناختی و مشاوره · ${toPersianNumbers(combinedWorkshopsCount)} کارگاه`,
+          title: crextioConfig.counselingGeneralShowcaseTitle || 'خدمات روانشناختی و مشاوره',
+          subtitle:
+            activeWorkshops[0]?.title ||
+            'مشاوره فردی، تحکیم خانواده، ازدواج، کودک و سنجش‌های روان‌شناختی',
+          metaText: `${toPersianNumbers(generalConsultants.length)} روان‌شناس و مشاور فعال`,
+          ctaLabel: 'رزرو نوبت',
+          imageUrl: resolveShowcaseImageUrl(
+            'counseling_general_showcase',
+            crextioConfig.showcaseImageOverrides
+          ),
+          accentGradient: 'from-[#1D1528] via-[#2B1F3A] to-[#0E2921]',
+          icon: HeartHandshake,
+          onPress: () =>
+            onBookGeneralCounseling
+              ? onBookGeneralCounseling()
+              : navigateDeep('CounselingGeneral', 'booking'),
+        },
+        counseling_specialized: {
+          id: 'specialized_counseling_deck',
+          kicker: 'هدایت شغلی و ارتقای قضایی',
+          title: crextioConfig.counselingPromoTitle || 'مشاوره شغلی قضا',
+          subtitle: 'گفت‌وگوی محرمانه با قضات پیشکسوت دیوان عالی، ارتقای پایه و اختبار',
+          metaText: `${toPersianNumbers(specializedConsultants.length)} استاد و قاضی پیشکسوت`,
+          ctaLabel: 'دریافت مشاوره',
+          imageUrl: resolveShowcaseImageUrl(
+            'counseling_promo',
+            crextioConfig.showcaseImageOverrides
+          ),
+          accentGradient: 'from-[#182230] via-[#243247] to-[#0B241B]',
+          icon: Compass,
+          onPress: () => navigateDeep('SpecializedCounseling'),
+        },
+        courses: {
+          id: 'courses_deck',
+          kicker: `آموزش عالی و کارگاه‌ها · ${toPersianNumbers(courses.length)} دوره`,
+          title: crextioConfig.courseShowcaseTitle || 'دوره‌ها و نشست‌های تخصصی فقه و قضا',
+          subtitle: activeCourses[0]?.title || 'کارگاه‌های مهارت‌افزایی و آرشیو صوتی جلسات',
+          metaText: `${toPersianNumbers(myEnrolledCourses)} دوره ثبت‌نامی شما`,
+          ctaLabel: 'گالری دوره‌ها',
+          imageUrl: resolveShowcaseImageUrl('course_showcase', crextioConfig.showcaseImageOverrides),
+          accentGradient: 'from-[#082224] via-[#0E3A3D] to-[#071E17]',
+          icon: GraduationCap,
+          onPress: () => navigateDeep('Courses'),
+        },
+        rulings: {
+          id: 'rulings_deck',
+          kicker: `مباحثات قضایی · ${toPersianNumbers(rulings.length)} دادنامه`,
+          title: crextioConfig.rulingsShowcaseTitle || 'تالار نقد و مباحثه آراء قضایی',
+          subtitle:
+            featuredRulings[0]?.title ||
+            'بررسی استدلال‌های حقوقی و تبادل نظر قضات و نخبگان بر روی آراء منتخب',
+          metaText: 'نقد تحلیلی دیوان عالی و تجدیدنظر',
+          ctaLabel: 'ورود به تالار',
+          imageUrl: resolveShowcaseImageUrl('rulings_showcase', crextioConfig.showcaseImageOverrides),
+          accentGradient: 'from-[#1F180D] via-[#342611] to-[#142921]',
+          icon: Scale,
+          onPress: () => navigateDeep('Rulings'),
+        },
+        research: {
+          id: 'research_deck',
+          kicker: `معاونت پژوهش · ${toPersianNumbers(researchMentorships.length)} پرونده`,
+          title: crextioConfig.researchPromoTitle || 'راهبری پژوهش‌ها، رساله‌ها و مقالات',
+          subtitle: 'اساتید معین طراز اول، گرنت پژوهشی و تسهیل اسکان مطالعاتی در قم',
+          metaText: 'حمایت تخصصی تا مرحله دفاع',
+          ctaLabel: 'میز پژوهش',
+          imageUrl: resolveShowcaseImageUrl('research_promo', crextioConfig.showcaseImageOverrides),
+          accentGradient: 'from-[#0A1F2C] via-[#123344] to-[#071E17]',
+          icon: BookOpen,
+          onPress: () => navigateDeep('Research'),
+        },
+        welfare: {
+          id: 'welfare_deck',
+          kicker: 'صندوق حامی و تعاونی مصرف',
+          title: crextioConfig.welfareShowcaseTitle || 'تسهیلات قرض‌الحسنه، اقامتگاه‌ها و رفاهیات',
+          subtitle: 'تسهیلات اضطراری، صندوق قرض‌الحسنه، اسکان، اقلام مصرفی و فروش اقساطی',
+          metaText: 'تسهیلات ویژه دانش‌آموختگان',
+          ctaLabel: 'میز رفاهیات',
+          imageUrl: resolveShowcaseImageUrl('welfare_showcase', crextioConfig.showcaseImageOverrides),
+          accentGradient: 'from-[#0C2621] via-[#133C33] to-[#071E17]',
+          icon: Gift,
+          onPress: () => navigateDeep('Welfare'),
+        },
+        products: {
+          id: 'products_deck',
+          kicker: `نشر و رسانه علمی · ${toPersianNumbers(products.length)} اثر`,
+          title: crextioConfig.booksShowcaseTitle || 'کتاب‌ها، نشست‌ها و درس‌گفتارهای چندرسانه‌ای',
+          subtitle: featuredProducts[0]?.title || 'موسوعه‌های فقهی، آثار مرجع و فایل‌های صوتی جلسات',
+          metaText: 'دسترسی آنی به فایل و سفارش فیزیکی',
+          ctaLabel: 'نمایشگاه آثار',
+          imageUrl: resolveShowcaseImageUrl('books_showcase', crextioConfig.showcaseImageOverrides),
+          accentGradient: 'from-[#161B30] via-[#212947] to-[#0A221A]',
+          icon: BookMarked,
+          onPress: () => navigateDeep('Products'),
+        },
       };
 
-      mobileConfig.showcaseOrder.forEach(scId => {
-        if (mobileConfig.hiddenShowcases[scId]) return;
+      t3.showcaseOrder.forEach(scId => {
+        if (t3.hiddenShowcases[scId]) return;
         const slide = mapById[scId];
         if (slide) {
-          orderedSlides.push(applySlideOverride(slide, mobileConfig.showcaseOverrides?.[scId]));
+          orderedSlides.push(applySlideOverride(slide, t3.showcaseOverrides?.[scId]));
         }
       });
     }
 
-    (mobileConfig.customShowcaseCards || [])
+    (t3.customShowcaseCards || [])
       .filter(c => c.enabled)
       .forEach(customCard => {
         orderedSlides.push({
@@ -804,11 +783,10 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
 
     return orderedSlides;
   }, [
-    mobileConfig,
+    t3,
     welfarePortalConfig,
     honorDeckSlides,
     crextioConfig,
-    hiddenMap,
     activeWorkshops,
     activeWorkshopCourses,
     activeAnnouncements,
@@ -830,81 +808,69 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
   const feedTabs = useMemo<Theme3FeedTabItem[]>(() => {
     const metaMap: Record<
       MobileServiceListTabId,
-      { label: string; icon: any; sectionId: AppSectionId; desktopVisible: boolean }
+      { label: string; icon: any; sectionId: AppSectionId }
     > = {
       courses: {
         label: 'دوره‌ها و کارگاه‌ها',
         icon: GraduationCap,
         sectionId: 'courses',
-        desktopVisible: crextioConfig.showCourseShowcase !== false && !hiddenMap.course_showcase,
       },
       counseling: {
         label: 'خدمات روانشناختی و مشاوره',
         icon: HeartHandshake,
         sectionId: 'counseling',
-        desktopVisible:
-          crextioConfig.showCounselingGeneralShowcase !== false &&
-          !hiddenMap.counseling_general_showcase,
       },
       specialized_counseling: {
         label: 'مشاوره شغلی قضا',
         icon: Compass,
         sectionId: 'specialized_counseling',
-        desktopVisible: crextioConfig.showCounselingPromo !== false && !hiddenMap.counseling_promo,
       },
       rulings: {
         label: 'تالار نقد آراء',
         icon: Scale,
         sectionId: 'rulings',
-        desktopVisible: crextioConfig.showRulingsShowcase !== false && !hiddenMap.rulings_showcase,
       },
       research: {
         label: 'خدمات پژوهشی',
         icon: BookOpen,
         sectionId: 'research',
-        desktopVisible:
-          crextioConfig.showResearchPromoShowcase !== false && !hiddenMap.research_promo,
       },
       welfare: {
         label: 'رفاهیات و تسهیلات',
         icon: Gift,
         sectionId: 'welfare',
-        desktopVisible: crextioConfig.showWelfareShowcase !== false && !hiddenMap.welfare_showcase,
       },
       products: {
         label: 'کتاب و رسانه',
         icon: BookMarked,
         sectionId: 'products',
-        desktopVisible: crextioConfig.showProductsMiniPromo !== false && !hiddenMap.books_showcase,
       },
       cartable: {
         label: 'کارتابل درخواست‌ها',
         icon: Inbox,
         sectionId: 'cartable',
-        desktopVisible: true,
       },
       synergy: {
         label: 'دیوار هم‌افزایی',
         icon: Users2,
         sectionId: 'synergy',
-        desktopVisible: true,
       },
     };
 
     const list: Theme3FeedTabItem[] = [];
-    mobileConfig.servicesListOrder.forEach(tabId => {
-      if (mobileConfig.hiddenServicesListItems[tabId]) return;
+    t3.servicesListOrder.forEach(tabId => {
+      if (t3.hiddenServicesListItems[tabId]) return;
       const meta = metaMap[tabId];
-      if (!meta || !meta.desktopVisible) return;
+      if (!meta) return;
       if (!canViewSection(currentUser, meta.sectionId, rolePolicies)) return;
-      list.push({ id: tabId, label: meta.label, icon: meta.icon });
+      const customLabel = t3.servicesListLabelOverrides?.[tabId]?.trim();
+      list.push({ id: tabId, label: customLabel || meta.label, icon: meta.icon });
     });
     return list;
   }, [
-    mobileConfig.servicesListOrder,
-    mobileConfig.hiddenServicesListItems,
-    crextioConfig,
-    hiddenMap,
+    t3.servicesListOrder,
+    t3.hiddenServicesListItems,
+    t3.servicesListLabelOverrides,
     currentUser,
     rolePolicies,
   ]);
@@ -915,8 +881,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     : feedTabs[0]?.id || 'courses';
 
   const renderQuickDock = () => {
-    const showDock = mobileConfig.showQuickDock || permittedDock.length > 0;
-    if (!showDock) return null;
+    if (!t3.showQuickDock || permittedDock.length === 0) return null;
 
     const tileToneMap: Record<string, string> = {
       People: 'from-emerald-50 to-white border-emerald-200/80',
@@ -931,15 +896,17 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     };
 
     return (
-      <section aria-label="درگاه‌های دسترسی سریع" className="space-y-3">
+      <section aria-label={t3.quickDockTitle || 'درگاه‌های دسترسی سریع'} className="space-y-3">
         <div className="flex items-center justify-between px-0.5">
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#071E17] to-[#113D30] text-[#F3D078] flex items-center justify-center border border-[#F3D078]/35">
               <Sparkles className="w-3.5 h-3.5" />
             </span>
-            <h2 className="text-[15px] font-black text-stone-900">درگاه‌های دسترسی سریع</h2>
+            <h2 className="text-[15px] font-black text-stone-900">
+              {t3.quickDockTitle || 'درگاه‌های دسترسی سریع'}
+            </h2>
           </div>
-          {onOpenAllServices && (
+          {t3.showQuickDockMoreButton && onOpenAllServices && (
             <button
               type="button"
               onClick={onOpenAllServices}
@@ -952,7 +919,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-10 gap-3 bg-white/75 backdrop-blur-sm rounded-[26px] p-4 border border-[#DFD8C4]/85 shadow-[0_12px_30px_-22px_rgba(7,30,23,0.18)]">
-          {permittedDock.slice(0, 9).map((item, dIdx) => {
+          {permittedDock.slice(0, t3.showQuickDockMoreButton ? 9 : 10).map((item, dIdx) => {
             const Icon = item.icon;
             const hasCountBadge = item.id === 'People' && totalActiveRequests > 0;
             const toneCls = tileToneMap[item.id] || 'from-stone-50 to-white border-stone-200/85';
@@ -985,7 +952,7 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
             );
           })}
 
-          {onOpenAllServices && (
+          {t3.showQuickDockMoreButton && onOpenAllServices && (
             <motion.button
               type="button"
               whileHover={{ y: -3 }}
@@ -1010,18 +977,25 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
     );
   };
 
-  // Build ordered blocks respecting mobileSectionOrder while pairing hero + status_ledger cleanly in top 12-col grid
-  const orderedSections = mobileConfig.mobileSectionOrder;
+  // Build ordered blocks respecting theme3SectionOrder while pairing hero + status_ledger cleanly in top 12-col grid
+  const orderedSections = t3.theme3SectionOrder;
   const heroAndLedgerRendered = useMemo(() => (
     <Theme3HeroAndLedger
-      showHero={mobileConfig.showHeroBanner && crextioConfig.showHeroBanner !== false}
-      showStatusLedger={mobileConfig.showStatusLedger}
-      showHeroPortrait={mobileConfig.showHeroPortrait}
-      showWelcomeQuickButtons={mobileConfig.showWelcomeQuickButtons}
-      showHeroStats={mobileConfig.showHeroStats}
+      showHero={t3.showHeroBanner}
+      showStatusLedger={t3.showStatusLedger}
+      showLedgerBanner={t3.showLedgerBanner}
+      showLedgerCounters={t3.showLedgerCounters}
+      showLedgerCalendar={t3.showLedgerCalendar}
+      showHeroPortrait={t3.showHeroPortrait}
+      showWelcomeQuickButtons={t3.showWelcomeQuickButtons}
+      showHeroStats={t3.showHeroStats}
       heroPortraitSrc={heroPortraitSrc || ''}
       welcomeTitle={welcomeTitle}
-      heroSchemeLabel={crextioConfig.heroSchemeLabel}
+      heroSchemeLabel={
+        t3.heroSchemeLabelOverride?.trim()
+          ? t3.heroSchemeLabelOverride
+          : crextioConfig.heroSchemeLabel
+      }
       currentUser={currentUser}
       isAlumni={isAlumni}
       completionPct={completionPct}
@@ -1045,8 +1019,8 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
       onToggleAlumniPreview={onToggleAlumniPreview}
     />
   ), [
-    mobileConfig,
-    crextioConfig,
+    t3,
+    crextioConfig.heroSchemeLabel,
     heroPortraitSrc,
     welcomeTitle,
     currentUser,
@@ -1081,41 +1055,42 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
           return <React.Fragment key="theme3_quick_dock">{renderQuickDock()}</React.Fragment>;
         }
         if (secId === 'honors_showcase') {
-          if (!mobileConfig.separateHonorsShowcase || !mobileConfig.showHonorsShowcase) return null;
+          if (!t3.separateHonorsShowcase || !t3.showHonorsShowcase) return null;
           return (
             <Theme3ShowcaseDeck
               key="theme3_honors_deck"
-              title={mobileConfig.honorsShowcaseTitle || 'ویترین انتصاب و افتخارات'}
+              title={t3.honorsShowcaseTitle || 'ویترین انتصاب و افتخارات'}
               headerIcon={Award}
               slides={honorDeckSlides}
               fallbackImageUrl={DEFAULT_SHOWCASE_IMAGES.honors_showcase}
-              cardsPerPageDesktop={3}
+              cardsPerPageDesktop={t3.honorsCardsPerRow}
               goldBorderAccent={true}
             />
           );
         }
         if (secId === 'services_showcase') {
-          if (!mobileConfig.showServicesShowcase) return null;
+          if (!t3.showServicesShowcase) return null;
           return (
             <Theme3ShowcaseDeck
               key="theme3_services_deck"
-              title={mobileConfig.servicesShowcaseTitle || 'ویترین خدمات'}
+              title={t3.servicesShowcaseTitle || 'ویترین خدمات'}
               headerIcon={Sparkles}
               slides={serviceDeckSlides}
               fallbackImageUrl={DEFAULT_SHOWCASE_IMAGES.unified_showcase || DEFAULT_SHOWCASE_IMAGES.course_showcase || ''}
-              cardsPerPageDesktop={4}
+              cardsPerPageDesktop={t3.servicesCardsPerRow}
             />
           );
         }
         if (secId === 'services_list') {
-          if (!mobileConfig.showServicesList) return null;
+          if (!t3.showServicesList) return null;
           return (
             <Theme3ServicesWorkbench
               key="theme3_services_workbench"
-              title={mobileConfig.servicesListTitle || 'فهرست خدمات'}
+              title={t3.servicesListTitle || 'فهرست خدمات'}
               feedTabs={feedTabs}
               resolvedFeedTab={resolvedFeedTab}
               onSelectTab={setActiveFeedTab}
+              showActiveWorkshopsSpotlight={t3.showActiveWorkshopsSpotlight}
               combinedWorkshopsCount={combinedWorkshopsCount}
               activeWorkshops={activeWorkshops}
               activeWorkshopCourses={activeWorkshopCourses}
@@ -1149,11 +1124,10 @@ export const Theme3DesktopDashboard: React.FC<Theme3DesktopDashboardProps> = ({
         return null;
       })}
 
-      {/* Admin Live Studio & Customizer */}
-      <Theme2StudioDrawer
+      {/* Theme 3 Independent Live Studio & Base Customizer */}
+      <Theme3StudioDrawer
         isOpen={isStudioOpen && isAdmin}
         initialTab={studioInitialTab}
-        defaultDeviceMode="mobile"
         onClose={() => setIsStudioOpen(false)}
         onOpenAdvancedModal={() => setIsCustomizerOpen(true)}
         crextioConfig={crextioConfig}

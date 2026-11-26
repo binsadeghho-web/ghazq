@@ -20,7 +20,7 @@ import {
 import { toPersianNumbers } from '../../utils/persianNumbers';
 import { DEFAULT_SHOWCASE_IMAGES, handleImageErrorFallback } from '../../data/showcaseImages';
 import type { CrextioHeroStatItem, User } from '../../types';
-import type { Theme2StudioTab } from '../crextio/Theme2StudioDrawer';
+import type { Theme3StudioTab } from './Theme3StudioPanel';
 
 interface QuickBtnItem {
   id: string;
@@ -32,6 +32,9 @@ interface QuickBtnItem {
 interface Theme3HeroAndLedgerProps {
   showHero: boolean;
   showStatusLedger: boolean;
+  showLedgerBanner?: boolean;
+  showLedgerCounters?: boolean;
+  showLedgerCalendar?: boolean;
   showHeroPortrait: boolean;
   showWelcomeQuickButtons: boolean;
   showHeroStats: boolean;
@@ -56,7 +59,7 @@ interface Theme3HeroAndLedgerProps {
   myEnrolledCourses: number;
   isRealAdmin: boolean;
   isAlumniPreview: boolean;
-  onOpenStudio?: (tab: Theme2StudioTab) => void;
+  onOpenStudio?: (tab: Theme3StudioTab) => void;
   onOpenCustomizer?: () => void;
   onToggleAlumniPreview?: () => void;
 }
@@ -64,6 +67,9 @@ interface Theme3HeroAndLedgerProps {
 export const Theme3HeroAndLedger: React.FC<Theme3HeroAndLedgerProps> = ({
   showHero,
   showStatusLedger,
+  showLedgerBanner = true,
+  showLedgerCounters = true,
+  showLedgerCalendar = true,
   showHeroPortrait,
   showWelcomeQuickButtons,
   showHeroStats,
@@ -95,17 +101,16 @@ export const Theme3HeroAndLedger: React.FC<Theme3HeroAndLedgerProps> = ({
 
   const activeBanners = banners.filter(b => b.isActive);
   const safeBannerIdx = activeBanners.length > 0 ? bannerIdx % activeBanners.length : 0;
-  const topBanner = activeBanners[safeBannerIdx];
+  const topBanner = showLedgerBanner ? activeBanners[safeBannerIdx] : undefined;
+
+  const showCountersBlock = showLedgerCounters && widgetConfig.showStatusSummaryWidget !== false;
+  const showCalendarBlock =
+    showLedgerCalendar && widgetConfig.showEventsCalendarWidget !== false && events.length > 0;
 
   const hasLedgerContent =
-    showStatusLedger &&
-    Boolean(
-      topBanner ||
-        widgetConfig.showStatusSummaryWidget !== false ||
-        (widgetConfig.showEventsCalendarWidget !== false && events.length > 0)
-    );
+    showStatusLedger && Boolean(topBanner || showCountersBlock || showCalendarBlock);
 
-  if (!showHero && !hasLedgerContent) return null;
+  if (!showHero && !hasLedgerContent && !isRealAdmin) return null;
 
   const completionClamped = Math.max(0, Math.min(100, completionPct));
   const ringCircumference = 2 * Math.PI * 14;
@@ -353,7 +358,7 @@ export const Theme3HeroAndLedger: React.FC<Theme3HeroAndLedgerProps> = ({
               </div>
             )}
 
-            {widgetConfig.showStatusSummaryWidget !== false && (
+            {showCountersBlock && (
               <div className="grid grid-cols-2 divide-x divide-x-reverse divide-stone-100 flex-1">
                 <button
                   type="button"
@@ -393,7 +398,7 @@ export const Theme3HeroAndLedger: React.FC<Theme3HeroAndLedgerProps> = ({
               </div>
             )}
 
-            {widgetConfig.showEventsCalendarWidget !== false && events.length > 0 && (
+            {showCalendarBlock && (
               <div>
                 <button
                   type="button"
@@ -459,14 +464,24 @@ export const Theme3HeroAndLedger: React.FC<Theme3HeroAndLedgerProps> = ({
       {isRealAdmin && (
         <div className="flex flex-wrap items-center gap-2">
           {!isAlumniPreview && onOpenStudio && (
-            <button
-              type="button"
-              onClick={() => onOpenStudio('hero_quick')}
-              className="flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] rounded-xl bg-[#071E17] text-[#F3D078] text-xs font-bold hover:bg-[#0D3327] transition-colors cursor-pointer border border-[#F3D078]/25 whitespace-nowrap"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>ویرایش چیدمان موبایل / تم ۳</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => onOpenStudio('layout')}
+                className="flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] rounded-xl bg-[#071E17] text-[#F3D078] text-xs font-bold hover:bg-[#0D3327] transition-colors cursor-pointer border border-[#F3D078]/25 whitespace-nowrap"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>تنظیمات کامل تم ۳</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenStudio('hero_dock')}
+                className="flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] rounded-xl bg-white border border-stone-200/90 text-stone-800 hover:bg-stone-50 text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-700" />
+                <span>ویرایش دسترسی‌های سریع</span>
+              </button>
+            </>
           )}
           {!isAlumniPreview && onOpenCustomizer && (
             <button
@@ -475,7 +490,7 @@ export const Theme3HeroAndLedger: React.FC<Theme3HeroAndLedgerProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] rounded-xl bg-white border border-stone-200/90 text-stone-800 hover:bg-stone-50 text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
             >
               <Palette className="w-3.5 h-3.5 text-emerald-700" />
-              <span>تنظیمات تکمیلی</span>
+              <span>افتخارات و منوی اصلی</span>
             </button>
           )}
           {onToggleAlumniPreview && (

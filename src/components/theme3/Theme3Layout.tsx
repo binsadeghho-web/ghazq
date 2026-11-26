@@ -13,6 +13,8 @@ import {
   applyNavigationCustomization,
   getResolvedNavigationConfig,
 } from '../../utils/navigationConfig';
+import { resolveTheme3Config } from '../../context/ThemeContext';
+import type { Theme3StudioTab } from './Theme3StudioPanel';
 import {
   Bell,
   Settings,
@@ -87,7 +89,18 @@ export const Theme3Layout: React.FC = () => {
     subTab: undefined,
     nonce: 0,
   });
+  const [studioOpenSignal, setStudioOpenSignal] = useState<{
+    nonce: number;
+    tab?: Theme3StudioTab;
+  } | null>(null);
   const counselingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const t3 = resolveTheme3Config(crextioConfig.theme3Config);
+
+  const handleOpenTheme3Studio = (tab: Theme3StudioTab = 'layout') => {
+    setActiveNav('Dashboard');
+    setStudioOpenSignal({ nonce: Date.now(), tab });
+  };
 
   const handleNavigateDeep = (nav: string, subTab?: string) => {
     setActiveNav(nav);
@@ -257,10 +270,7 @@ export const Theme3Layout: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setCustomizerInitialTab('modules');
-                        setIsCustomizerOpen(true);
-                      }}
+                      onClick={() => handleOpenTheme3Studio('layout')}
                       className="flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl bg-[#F3D078]/15 hover:bg-[#F3D078]/25 text-[#F3D078] border border-[#F3D078]/35 text-xs font-bold transition-colors shrink-0 whitespace-nowrap cursor-pointer"
                     >
                       <Palette className="w-3.5 h-3.5" />
@@ -590,10 +600,11 @@ export const Theme3Layout: React.FC = () => {
         </header>
 
         {/* COMPACT DESKTOP HORIZONTAL NAV BAR (Matches Theme 3 Obsidian Emerald & Gold Language) */}
-        <nav
-          aria-label="منوی اصلی سامانه در تم ۳"
-          className="hidden lg:block relative bg-gradient-to-l from-[#FCFCF9]/96 via-[#FAF7EE]/96 to-[#F2F7F4]/96 backdrop-blur-2xl rounded-[22px] py-2 px-3.5 border border-[#DDD4BC] shadow-[0_12px_30px_-20px_rgba(7,30,23,0.22)] z-20"
-        >
+        {t3.showTopNavBar && (
+          <nav
+            aria-label="منوی اصلی سامانه در تم ۳"
+            className="hidden lg:block relative bg-gradient-to-l from-[#FCFCF9]/96 via-[#FAF7EE]/96 to-[#F2F7F4]/96 backdrop-blur-2xl rounded-[22px] py-2 px-3.5 border border-[#DDD4BC] shadow-[0_12px_30px_-20px_rgba(7,30,23,0.22)] z-20"
+          >
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-14 top-0 h-px bg-gradient-to-l from-transparent via-[#D4AF37]/65 to-transparent"
@@ -764,6 +775,7 @@ export const Theme3Layout: React.FC = () => {
             })}
           </div>
         </nav>
+        )}
 
         {/* MAIN CONTENT AREA */}
         <main
@@ -794,6 +806,7 @@ export const Theme3Layout: React.FC = () => {
                   isAlumni={!effectiveStaff}
                   isAlumniPreview={isAlumniPreview}
                   onToggleAlumniPreview={toggleAlumniPreview}
+                  openStudioSignal={studioOpenSignal}
                 />
               </div>
 
